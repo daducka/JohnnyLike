@@ -26,11 +26,11 @@ public class IslandWorldState : WorldState
     public int CoconutsAvailable { get; set; } = 5;
     public TideLevel TideLevel { get; set; } = TideLevel.Low;
 
-    private double _lastTimeAdvanced = 0.0;
+    public double CurrentTime { get; set; } = 0.0;
 
     public void OnTimeAdvanced(double currentTime, double dt)
     {
-        _lastTimeAdvanced = currentTime;
+        CurrentTime = currentTime;
 
         TimeOfDay += dt / 86400.0;
         if (TimeOfDay >= 1.0)

@@ -37,7 +37,7 @@ public class IslandActorState : ActorState
         };
 
         var buffModifier = ActiveBuffs
-            .Where(b => b.SkillId == skillId && b.Type == BuffType.SkillBonus)
+            .Where(b => (b.SkillId == skillId || string.IsNullOrEmpty(b.SkillId)) && b.Type == BuffType.SkillBonus)
             .Sum(b => b.Value);
 
         return baseModifier + buffModifier;

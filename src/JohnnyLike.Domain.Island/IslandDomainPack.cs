@@ -383,7 +383,8 @@ public class IslandDomainPack : IDomainPack
         var islandState = (IslandActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
 
-        islandWorld.OnTimeAdvanced(outcome.ActualDuration, outcome.ActualDuration);
+        var newCurrentTime = islandWorld.CurrentTime + outcome.ActualDuration;
+        islandWorld.OnTimeAdvanced(newCurrentTime, outcome.ActualDuration);
 
         islandState.Hunger = Math.Min(100.0, islandState.Hunger + outcome.ActualDuration * 0.5);
         islandState.Energy = Math.Max(0.0, islandState.Energy - outcome.ActualDuration * 0.3);
@@ -396,12 +397,17 @@ public class IslandDomainPack : IDomainPack
 
         var actionId = outcome.ActionId.Value;
 
+        // If tier is already provided in ResultData (from tests or external resolvers), use it
         if (outcome.ResultData != null && outcome.ResultData.ContainsKey("tier"))
         {
+            // Tier already resolved, no action needed
         }
+        // Sleep doesn't require a skill check
         else if (actionId == "sleep_under_tree")
         {
+            // No skill check needed for sleep
         }
+        // Resolve skill check for actions with DC parameters
         else
         {
             var seed = actionId.GetHashCode() ^ actorId.Value.GetHashCode();
@@ -612,7 +618,7 @@ public class IslandDomainPack : IDomainPack
 
     private void ApplyPlaneSightingEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
     {
-        _lastPlaneSighting[actorId] = outcome.ActualDuration;
+        _lastPlaneSighting[actorId] = world.CurrentTime;
 
         if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
             return;
