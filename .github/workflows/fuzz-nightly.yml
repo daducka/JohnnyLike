@@ -1,0 +1,46 @@
+name: Fuzz Nightly
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  fuzz-nightly:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+    
+    - name: Restore dependencies
+      run: dotnet restore JohnnyLike.sln
+    
+    - name: Build
+      run: dotnet build JohnnyLike.sln --configuration Release --no-restore
+    
+    - name: Run nightly stress fuzz tests
+      run: dotnet run --project src/JohnnyLike.SimRunner --configuration Release --no-build -- --fuzz --runs 1000 --profile nightly
+    
+    - name: Upload failure artifacts
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: fuzz-nightly-failures-${{ github.run_number }}
+        path: |
+          artifacts/
+        retention-days: 90
+    
+    - name: Upload success artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: fuzz-nightly-results-${{ github.run_number }}
+        path: |
+          artifacts/
+        retention-days: 30

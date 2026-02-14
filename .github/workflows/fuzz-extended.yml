@@ -1,0 +1,37 @@
+name: Fuzz Extended
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  fuzz-extended:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'run-extended-fuzz')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+    
+    - name: Restore dependencies
+      run: dotnet restore JohnnyLike.sln
+    
+    - name: Build
+      run: dotnet build JohnnyLike.sln --configuration Release --no-restore
+    
+    - name: Run extended fuzz tests
+      run: dotnet run --project src/JohnnyLike.SimRunner --configuration Release --no-build -- --fuzz --runs 200 --profile extended
+    
+    - name: Upload failure artifacts
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: fuzz-extended-failures
+        path: |
+          artifacts/
+        retention-days: 30

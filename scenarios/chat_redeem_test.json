@@ -1,0 +1,26 @@
+{
+  "name": "ChatRedeemInterruption",
+  "seed": 100,
+  "durationSeconds": 60.0,
+  "actors": [
+    {
+      "actorId": "Jim",
+      "initialState": {
+        "hunger": 40.0,
+        "energy": 75.0,
+        "social": 45.0
+      }
+    }
+  ],
+  "signals": [
+    {
+      "atTime": 15.0,
+      "type": "chat_redeem",
+      "targetActor": "Jim",
+      "data": {
+        "emote": "dance",
+        "viewer": "CoolViewer123"
+      }
+    }
+  ]
+}
