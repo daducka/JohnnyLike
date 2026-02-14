@@ -221,6 +221,23 @@ public class Engine
             }
         ));
 
+        // Handle chat redeem signals - delegate to domain pack if it has a handler
+        // For now, we'll use reflection to check if the actor state has a LastChatRedeem property
+        if (signal.Type == "chat_redeem" && signal.TargetActor.HasValue)
+        {
+            if (_actors.TryGetValue(signal.TargetActor.Value, out var actorState))
+            {
+                var redeemProp = actorState.GetType().GetProperty("LastChatRedeem");
+                var timeProp = actorState.GetType().GetProperty("LastChatRedeemTime");
+                
+                if (redeemProp != null && signal.Data.TryGetValue("emote", out var emote))
+                {
+                    redeemProp.SetValue(actorState, emote.ToString());
+                    timeProp?.SetValue(actorState, _currentTime);
+                }
+            }
+        }
+
         // Signals can affect future planning but don't interrupt current actions
         // Domain pack should handle signal effects in candidate generation
     }

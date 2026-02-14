@@ -22,6 +22,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\JohnnyLike.Engine\JohnnyLike.Engine.csproj" />
+    <ProjectReference Include="..\..\src\JohnnyLike.Domain.Office\JohnnyLike.Domain.Office.csproj" />
+    <ProjectReference Include="..\..\src\JohnnyLike.SimRunner\JohnnyLike.SimRunner.csproj" />
   </ItemGroup>
 
 </Project>
