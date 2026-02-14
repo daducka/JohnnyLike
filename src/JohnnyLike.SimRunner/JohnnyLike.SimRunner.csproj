@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\JohnnyLike.Engine\JohnnyLike.Engine.csproj" />
     <ProjectReference Include="..\JohnnyLike.Domain.Office\JohnnyLike.Domain.Office.csproj" />
+    <ProjectReference Include="..\JohnnyLike.Domain.Island\JohnnyLike.Domain.Island.csproj" />
   </ItemGroup>
 
 </Project>

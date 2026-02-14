@@ -1,5 +1,6 @@
 ﻿using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Office;
+using JohnnyLike.Domain.Island;
 using JohnnyLike.SimRunner;
 using System.Text.Json;
 
@@ -8,6 +9,7 @@ if (args.Length == 0)
     Console.WriteLine("JohnnyLike SimRunner");
     Console.WriteLine("Usage: SimRunner [options]");
     Console.WriteLine("  --scenario <path>   Load and run scenario from JSON file");
+    Console.WriteLine("  --domain <name>     Domain to use: office, island (default: office)");
     Console.WriteLine("  --seed <number>     Random seed (default: 42)");
     Console.WriteLine("  --duration <sec>    Simulation duration in seconds");
     Console.WriteLine("  --trace             Output detailed trace");
@@ -21,6 +23,7 @@ if (args.Length == 0)
 }
 
 var scenarioPath = "";
+var domainName = "office";
 var seed = 42;
 var duration = 60.0;
 var outputTrace = false;
@@ -36,6 +39,9 @@ for (int i = 0; i < args.Length; i++)
     {
         case "--scenario":
             scenarioPath = args[++i];
+            break;
+        case "--domain":
+            domainName = args[++i].ToLowerInvariant();
             break;
         case "--seed":
             seed = int.Parse(args[++i]);
@@ -66,26 +72,37 @@ for (int i = 0; i < args.Length; i++)
 
 if (fuzzMode)
 {
-    RunFuzz(seed, fuzzRuns, fuzzConfigPath, fuzzProfile, verbose);
+    RunFuzz(seed, fuzzRuns, fuzzConfigPath, fuzzProfile, verbose, domainName);
 }
 else if (!string.IsNullOrEmpty(scenarioPath))
 {
-    RunScenario(scenarioPath, outputTrace);
+    RunScenario(scenarioPath, outputTrace, domainName);
 }
 else
 {
-    RunDefault(seed, duration, outputTrace);
+    RunDefault(seed, duration, outputTrace, domainName);
 }
 
-void RunScenario(string path, bool trace)
+IDomainPack CreateDomainPack(string domainName)
+{
+    return domainName switch
+    {
+        "office" => new OfficeDomainPack(),
+        "island" => new IslandDomainPack(),
+        _ => throw new ArgumentException($"Unknown domain: {domainName}. Valid domains: office, island")
+    };
+}
+
+void RunScenario(string path, bool trace, string domainName)
 {
     Console.WriteLine($"Loading scenario from: {path}");
     var scenario = ScenarioLoader.LoadFromFile(path);
     
     Console.WriteLine($"Running scenario: {scenario.Name}");
     Console.WriteLine($"Seed: {scenario.Seed}, Duration: {scenario.DurationSeconds}s");
+    Console.WriteLine($"Domain: {domainName}");
     
-    var domainPack = new OfficeDomainPack();
+    var domainPack = CreateDomainPack(domainName);
     var traceSink = new InMemoryTraceSink();
     var engine = new JohnnyLike.Engine.Engine(domainPack, scenario.Seed, traceSink);
     
@@ -133,26 +150,45 @@ void RunScenario(string path, bool trace)
     Console.WriteLine($"\nTrace hash: {hash}");
 }
 
-void RunDefault(int seed, double duration, bool trace)
+void RunDefault(int seed, double duration, bool trace, string domainName)
 {
-    Console.WriteLine("Running default office simulation");
+    Console.WriteLine($"Running default {domainName} simulation");
     Console.WriteLine($"Seed: {seed}, Duration: {duration}s");
     
-    var domainPack = new OfficeDomainPack();
+    var domainPack = CreateDomainPack(domainName);
     var traceSink = new InMemoryTraceSink();
     var engine = new JohnnyLike.Engine.Engine(domainPack, seed, traceSink);
     
-    engine.AddActor(new ActorId("Jim"), new Dictionary<string, object>
+    if (domainName == "office")
     {
-        ["hunger"] = 20.0,
-        ["energy"] = 80.0
-    });
-    
-    engine.AddActor(new ActorId("Pam"), new Dictionary<string, object>
+        engine.AddActor(new ActorId("Jim"), new Dictionary<string, object>
+        {
+            ["hunger"] = 20.0,
+            ["energy"] = 80.0
+        });
+        
+        engine.AddActor(new ActorId("Pam"), new Dictionary<string, object>
+        {
+            ["hunger"] = 40.0,
+            ["energy"] = 90.0
+        });
+    }
+    else if (domainName == "island")
     {
-        ["hunger"] = 40.0,
-        ["energy"] = 90.0
-    });
+        engine.AddActor(new ActorId("Johnny"), new Dictionary<string, object>
+        {
+            ["STR"] = 12,
+            ["DEX"] = 14,
+            ["CON"] = 13,
+            ["INT"] = 10,
+            ["WIS"] = 11,
+            ["CHA"] = 15,
+            ["hunger"] = 30.0,
+            ["energy"] = 80.0,
+            ["morale"] = 60.0,
+            ["boredom"] = 20.0
+        });
+    }
     
     var executor = new FakeExecutor(engine);
     var timeStep = 0.5;
@@ -180,11 +216,12 @@ void RunDefault(int seed, double duration, bool trace)
     Console.WriteLine($"\nTrace hash: {hash}");
 }
 
-void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool verbose)
+void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool verbose, string domainName)
 {
     Console.WriteLine("=== FUZZ TESTING MODE ===");
     Console.WriteLine($"Runs: {runs}");
-    Console.WriteLine($"Base Seed: {baseSeed}\n");
+    Console.WriteLine($"Base Seed: {baseSeed}");
+    Console.WriteLine($"Domain: {domainName}\n");
 
     FuzzConfig config;
     if (!string.IsNullOrEmpty(configPath))
@@ -216,13 +253,14 @@ void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool
 
     var failures = new List<FuzzRunResult>();
     var successCount = 0;
+    var domainPack = CreateDomainPack(domainName);
 
     for (int i = 0; i < runs; i++)
     {
         var runConfig = config with { Seed = baseSeed + i };
         Console.WriteLine($"\n--- Run {i + 1}/{runs} (seed: {runConfig.Seed}) ---");
 
-        var result = FuzzRunner.Run(runConfig);
+        var result = FuzzRunner.Run(runConfig, domainPack);
         
         if (result.Success)
         {

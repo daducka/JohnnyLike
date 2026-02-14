@@ -33,11 +33,15 @@ JohnnyLike/
 ├── src/
 │   ├── JohnnyLike.Engine/              # Core simulation engine
 │   ├── JohnnyLike.Domain.Abstractions/ # Interfaces and base types
+│   ├── JohnnyLike.Domain.Kit.Dice/     # Reusable DnD-style dice & skill toolkit
 │   ├── JohnnyLike.Domain.Office/       # Office domain pack (sample)
+│   ├── JohnnyLike.Domain.Island/       # Island survival domain pack with skill checks
 │   └── JohnnyLike.SimRunner/           # Console app for headless simulation
 ├── tests/
 │   ├── JohnnyLike.Engine.Tests/        # Engine unit tests
+│   ├── JohnnyLike.Domain.Kit.Dice.Tests/ # Dice kit unit tests
 │   ├── JohnnyLike.Domain.Office.Tests/ # Domain validation tests
+│   ├── JohnnyLike.Domain.Island.Tests/ # Island domain tests
 │   └── JohnnyLike.Scenario.Tests/      # System/integration tests
 └── scenarios/                          # JSON scenario definitions
 ```
@@ -73,10 +77,16 @@ dotnet test -v n
 
 ### Running Simulations
 
-#### Default Simulation
+#### Default Simulation (Office domain)
 
 ```bash
 dotnet run --project src/JohnnyLike.SimRunner -- --duration 30
+```
+
+#### Island Domain Simulation
+
+```bash
+dotnet run --project src/JohnnyLike.SimRunner -- --domain island --duration 60 --seed 42
 ```
 
 #### With Scenario File
@@ -88,6 +98,7 @@ dotnet run --project src/JohnnyLike.SimRunner -- --scenario scenarios/jim_pam_hi
 #### Command-line Options
 
 - `--scenario <path>`: Load and run scenario from JSON file
+- `--domain <name>`: Domain to use: office, island (default: office)
 - `--seed <number>`: Random seed (default: 42)
 - `--duration <sec>`: Simulation duration in seconds
 - `--trace`: Output detailed trace events
@@ -97,8 +108,11 @@ dotnet run --project src/JohnnyLike.SimRunner -- --scenario scenarios/jim_pam_hi
 Run deterministic fuzz tests to stress-test the engine with random events and validate invariants:
 
 ```bash
-# Run 10 fuzz tests with default config
+# Run 10 fuzz tests with default config (Office domain)
 dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 10 --seed 100
+
+# Run Island domain fuzz tests
+dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --domain island --runs 10 --seed 100 --profile smoke
 
 # Run with custom config
 dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 5 --config fuzz-configs/stress-test.json
@@ -191,6 +205,93 @@ public class MyDomainPack : IDomainPack
     public List<SceneTemplate> GetSceneTemplates() { ... }
     public bool ValidateContent(out List<string> errors) { ... }
 }
+```
+
+## Dice Kit: Reusable DnD-style Skill Resolution
+
+The `JohnnyLike.Domain.Kit.Dice` package provides a generic, reusable D&D-inspired dice rolling and skill check system that can be used by any domain pack.
+
+### Core Features
+
+- **D20 Rolls**: Standard d20, advantage, disadvantage
+- **Skill Checks**: Deterministic skill resolution with DC, modifiers, and advantage
+- **Outcome Tiers**: CriticalFailure, Failure, PartialSuccess, Success, CriticalSuccess
+- **Probability Estimation**: Calculate success chances for action scoring
+- **Domain-Agnostic**: No dependencies on engine internals except `IRngStream`
+
+### Key Types
+
+```csharp
+// Roll a D20 with various modes
+int roll = Dice.RollD20(rng);
+int advantageRoll = Dice.RollD20WithAdvantage(rng);
+int disadvantageRoll = Dice.RollD20WithDisadvantage(rng);
+
+// Calculate ability modifier from D&D stats
+int modifier = DndMath.AbilityModifier(14); // Returns 2
+
+// Estimate success probability for action scoring
+double chance = DndMath.EstimateSuccessChanceD20(dc: 15, modifier: 3, AdvantageType.Normal);
+
+// Resolve a skill check
+var request = new SkillCheckRequest(DC: 15, Modifier: 3, AdvantageType.Normal, "Fishing");
+var result = SkillCheckResolver.Resolve(rng, request);
+// result.OutcomeTier: CriticalSuccess, Success, PartialSuccess, Failure, or CriticalFailure
+// result.IsSuccess: true/false (considers natural 1/20 auto-fail/success)
+// result.EstimatedSuccessChance: probability estimate
+```
+
+### Usage in Domain Packs
+
+Domain packs can use the Dice kit to:
+- Determine action outcomes with realistic probability distributions
+- Weight action candidates by success probability
+- Implement buffs/debuffs via advantage/disadvantage
+- Create dynamic difficulty with context-sensitive DCs
+
+## Island Domain: Survival Simulation
+
+The `JohnnyLike.Domain.Island` demonstrates the Dice kit with a castaway survival domain featuring:
+
+### Actor State
+- **Attributes**: STR, DEX, CON, INT, WIS, CHA (D&D-style stats)
+- **Derived Skills**: FishingSkill, SurvivalSkill, PerceptionSkill, PerformanceSkill
+- **Needs**: Hunger (0-100), Energy (0-100), Morale (0-100), Boredom (0-100)
+- **Buff System**: Temporary modifiers and advantage grants
+
+### World State
+- **Time**: Day/night cycle with timeOfDay (0-1) and dayCount
+- **Weather**: Clear, Rainy, Windy (affects skill DCs)
+- **Resources**: Fish population and coconut availability with regeneration
+- **Tide**: Low/High tides affecting activities
+
+### Actions with Skill Checks
+
+All actions use the Dice kit for resolution:
+
+- **FishForFood**: Fishing skill check, DC varies by time of day, weather, fish availability, and energy
+- **ShakeTreeForCoconut**: Survival skill check, DC based on coconut availability and weather
+- **BuildSandCastle**: Performance skill check for morale/boredom management
+- **Swim**: Survival/athletics check with morale and energy effects
+- **SleepUnderTree**: No check, restores energy
+
+### Vignette Events
+
+Rare, special events with perception checks:
+- **PLANE_SIGHTING** (DC 15): Grants morale boost, critical success adds temporary Luck buff
+- **MERMAID_ENCOUNTER** (DC 18, night only): Grants strong morale boost, critical success adds fishing advantage
+
+### Dynamic Scoring
+
+Action candidates are scored using estimated success probability:
+```csharp
+var baseScore = 0.5 + (hunger / 100.0);
+var estimatedChance = DndMath.EstimateSuccessChanceD20(dc, modifier, advantage);
+var finalScore = baseScore * estimatedChance; // Lower score for harder checks
+
+// Exception: Survival actions override probability penalty when needs are critical
+if (hunger > 70.0 || energy < 20.0)
+    finalScore = 1.0; // Desperation ignores difficulty
 ```
 
 ## Scenario JSON Format

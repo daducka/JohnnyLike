@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Office;
+using JohnnyLike.Domain.Island;
 using JohnnyLike.Engine;
 using System.Text.Json;
 
@@ -19,8 +20,10 @@ public class FuzzRunResult
 
 public class FuzzRunner
 {
-    public static FuzzRunResult Run(FuzzConfig config)
+    public static FuzzRunResult Run(FuzzConfig config, IDomainPack? domainPack = null)
     {
+        domainPack ??= new OfficeDomainPack();
+        
         var result = new FuzzRunResult
         {
             Config = config,
@@ -44,23 +47,44 @@ public class FuzzRunner
             result.EventSchedule = eventSchedule;
 
             // Create engine with domain pack
-            var domainPack = new OfficeDomainPack();
             var traceSink = new InMemoryTraceSink();
             var engine = new JohnnyLike.Engine.Engine(domainPack, config.Seed, traceSink);
 
-            // Add actors
+            // Add actors with domain-specific initial state
             foreach (var actorId in actorIds)
             {
-                var initialHunger = rng.Next(0, 50);
-                var initialEnergy = rng.Next(60, 100);
-                var initialSocial = rng.Next(30, 70);
-                
-                engine.AddActor(actorId, new Dictionary<string, object>
+                Dictionary<string, object> initialData;
+                if (domainPack is IslandDomainPack)
                 {
-                    ["hunger"] = (double)initialHunger,
-                    ["energy"] = (double)initialEnergy,
-                    ["social"] = (double)initialSocial
-                });
+                    initialData = new Dictionary<string, object>
+                    {
+                        ["STR"] = rng.Next(8, 16),
+                        ["DEX"] = rng.Next(8, 16),
+                        ["CON"] = rng.Next(8, 16),
+                        ["INT"] = rng.Next(8, 16),
+                        ["WIS"] = rng.Next(8, 16),
+                        ["CHA"] = rng.Next(8, 16),
+                        ["hunger"] = (double)rng.Next(0, 50),
+                        ["energy"] = (double)rng.Next(60, 100),
+                        ["morale"] = (double)rng.Next(30, 70),
+                        ["boredom"] = (double)rng.Next(0, 40)
+                    };
+                }
+                else
+                {
+                    var initialHunger = rng.Next(0, 50);
+                    var initialEnergy = rng.Next(60, 100);
+                    var initialSocial = rng.Next(30, 70);
+                    
+                    initialData = new Dictionary<string, object>
+                    {
+                        ["hunger"] = (double)initialHunger,
+                        ["energy"] = (double)initialEnergy,
+                        ["social"] = (double)initialSocial
+                    };
+                }
+                
+                engine.AddActor(actorId, initialData);
             }
 
             // Enqueue all signals from schedule
