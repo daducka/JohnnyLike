@@ -638,14 +638,14 @@ public class IslandDomainPack : IDomainPack
                 Type = BuffType.SkillBonus,
                 SkillId = "",
                 Value = 2,
-                ExpiresAt = outcome.ActualDuration + 300.0
+                ExpiresAt = world.CurrentTime + 300.0
             });
         }
     }
 
     private void ApplyMermaidEncounterEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
     {
-        _lastMermaidEncounter[actorId] = outcome.ActualDuration;
+        _lastMermaidEncounter[actorId] = world.CurrentTime;
 
         if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
             return;
@@ -665,7 +665,7 @@ public class IslandDomainPack : IDomainPack
                 Type = BuffType.Advantage,
                 SkillId = "Fishing",
                 Value = 0,
-                ExpiresAt = outcome.ActualDuration + 600.0
+                ExpiresAt = world.CurrentTime + 600.0
             });
         }
     }
