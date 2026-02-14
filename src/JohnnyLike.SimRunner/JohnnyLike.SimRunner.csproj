@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\JohnnyLike.Engine\JohnnyLike.Engine.csproj" />
+    <ProjectReference Include="..\JohnnyLike.Domain.Office\JohnnyLike.Domain.Office.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,24 @@
+{
+  "name": "JimPamHighFive",
+  "seed": 42,
+  "durationSeconds": 60.0,
+  "actors": [
+    {
+      "actorId": "Jim",
+      "initialState": {
+        "hunger": 35.0,
+        "energy": 80.0,
+        "social": 50.0
+      }
+    },
+    {
+      "actorId": "Pam",
+      "initialState": {
+        "hunger": 10.0,
+        "energy": 90.0,
+        "social": 60.0
+      }
+    }
+  ],
+  "signals": []
+}
