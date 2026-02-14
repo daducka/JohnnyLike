@@ -92,6 +92,38 @@ dotnet run --project src/JohnnyLike.SimRunner -- --scenario scenarios/jim_pam_hi
 - `--duration <sec>`: Simulation duration in seconds
 - `--trace`: Output detailed trace events
 
+#### Fuzz Testing
+
+Run deterministic fuzz tests to stress-test the engine with random events and validate invariants:
+
+```bash
+# Run 10 fuzz tests with default config
+dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 10 --seed 100
+
+# Run with custom config
+dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 5 --config fuzz-configs/stress-test.json
+
+# Verbose output for detailed metrics
+dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 1 --seed 42 --verbose
+```
+
+**Fuzz Testing Features:**
+- **Deterministic Event Generation**: Pre-generated signal schedule from seed (Poisson arrivals with bursts)
+- **Action Jitter**: Random duration variations for realism (configurable %)
+- **Failure Injection**: Random task failures, no-shows, busy locks
+- **Invariant Checking**: Real-time validation of reservation conflicts, scene lifetimes, starvation, signal backlogs
+- **Metrics Collection**: Tracks actions, scenes, signals, per-actor completions
+- **Reproducible Failures**: Full config + event schedule + trace logged on violation
+
+**Fuzz Config Parameters:**
+- `Seed`, `SimulatedDurationSeconds`, `DtSeconds`, `NumActors`
+- `EventRatePerMinute`, `BurstProbability`, `BurstMultiplier`
+- `ActionDurationJitterPct`, `TravelTimeJitterPct`, `TaskFailureRate`
+- `NoShowProbability`, `BusyLockProbability`
+- `JoinWindowMinSeconds`, `JoinWindowMaxSeconds`
+- `ResourceScarcityProfile`, `MaxActorQueueLength`, `MaxSceneLifetimeSeconds`
+- `StarvationThresholdSeconds`, `MaxAllowedReservationConflicts`
+
 ## Creating Custom Domain Packs
 
 1. Reference `JohnnyLike.Domain.Abstractions`
