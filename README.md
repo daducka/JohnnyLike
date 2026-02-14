@@ -103,9 +103,31 @@ dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 10 --seed 100
 # Run with custom config
 dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 5 --config fuzz-configs/stress-test.json
 
+# Use predefined profiles
+dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 10 --seed 123 --profile smoke
+dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 200 --profile extended
+dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 1000 --profile nightly
+
 # Verbose output for detailed metrics
 dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 1 --seed 42 --verbose
 ```
+
+**Fuzz Testing Profiles:**
+
+- **smoke** - Fast, deterministic tests for CI (60s sim, 2 actors, low failure rates)
+  - Used in required `fuzz-smoke` CI check
+  - Runs on every PR and push to main
+  - Designed to complete in < 60 seconds
+  
+- **extended** - Moderate stress testing (180s sim, 6 actors, higher event rates)
+  - Triggered manually via `workflow_dispatch` or with `run-extended-fuzz` label
+  - 200 runs for thorough coverage
+  - Uploads failure artifacts for debugging
+  
+- **nightly** - Maximum stress testing (240s sim, 8 actors, high burst/failure rates)
+  - Runs daily via cron schedule at 2 AM UTC
+  - 1000 runs to catch rare edge cases
+  - Uploads all results and failures as artifacts
 
 **Fuzz Testing Features:**
 - **Deterministic Event Generation**: Pre-generated signal schedule from seed (Poisson arrivals with bursts)
@@ -114,6 +136,29 @@ dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 1 --seed 42 --ver
 - **Invariant Checking**: Real-time validation of reservation conflicts, scene lifetimes, starvation, signal backlogs
 - **Metrics Collection**: Tracks actions, scenes, signals, per-actor completions
 - **Reproducible Failures**: Full config + event schedule + trace logged on violation
+
+**Replaying Failures:**
+
+If a fuzz test fails, the output includes:
+1. Seed that caused the failure
+2. Full FuzzConfig as JSON
+3. Complete EventSchedule
+4. Last 100 trace events
+
+To replay a failure:
+```bash
+# Use the seed from the failure output
+dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 1 --seed <failed-seed> --profile <profile-name> --verbose
+```
+
+The deterministic nature ensures the exact same trace will be produced, making debugging straightforward.
+
+**CI Integration:**
+
+The repository includes three GitHub Actions workflows:
+- `.github/workflows/ci.yml` - Required checks including `ci-tests` and `fuzz-smoke`
+- `.github/workflows/fuzz-extended.yml` - Manual or label-triggered extended testing
+- `.github/workflows/fuzz-nightly.yml` - Daily stress testing with artifact uploads
 
 **Fuzz Config Parameters:**
 - `Seed`, `SimulatedDurationSeconds`, `DtSeconds`, `NumActors`

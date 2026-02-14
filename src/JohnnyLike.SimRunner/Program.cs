@@ -15,6 +15,7 @@ if (args.Length == 0)
     Console.WriteLine("  --fuzz              Run fuzz testing mode");
     Console.WriteLine("  --runs <number>     Number of fuzz runs (default: 1)");
     Console.WriteLine("  --config <path>     Load fuzz config from JSON file");
+    Console.WriteLine("  --profile <name>    Use predefined profile: smoke, extended, nightly");
     Console.WriteLine("  --verbose           Verbose output for fuzz runs");
     return;
 }
@@ -26,6 +27,7 @@ var outputTrace = false;
 var fuzzMode = false;
 var fuzzRuns = 1;
 var fuzzConfigPath = "";
+var fuzzProfile = "";
 var verbose = false;
 
 for (int i = 0; i < args.Length; i++)
@@ -53,6 +55,9 @@ for (int i = 0; i < args.Length; i++)
         case "--config":
             fuzzConfigPath = args[++i];
             break;
+        case "--profile":
+            fuzzProfile = args[++i];
+            break;
         case "--verbose":
             verbose = true;
             break;
@@ -61,7 +66,7 @@ for (int i = 0; i < args.Length; i++)
 
 if (fuzzMode)
 {
-    RunFuzz(seed, fuzzRuns, fuzzConfigPath, verbose);
+    RunFuzz(seed, fuzzRuns, fuzzConfigPath, fuzzProfile, verbose);
 }
 else if (!string.IsNullOrEmpty(scenarioPath))
 {
@@ -175,7 +180,7 @@ void RunDefault(int seed, double duration, bool trace)
     Console.WriteLine($"\nTrace hash: {hash}");
 }
 
-void RunFuzz(int baseSeed, int runs, string configPath, bool verbose)
+void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool verbose)
 {
     Console.WriteLine("=== FUZZ TESTING MODE ===");
     Console.WriteLine($"Runs: {runs}");
@@ -190,6 +195,18 @@ void RunFuzz(int baseSeed, int runs, string configPath, bool verbose)
             PropertyNameCaseInsensitive = true
         }) ?? FuzzConfig.Default;
         Console.WriteLine($"Loaded config from: {configPath}");
+    }
+    else if (!string.IsNullOrEmpty(profileName))
+    {
+        var profile = profileName.ToLowerInvariant() switch
+        {
+            "smoke" => FuzzProfile.Smoke,
+            "extended" => FuzzProfile.Extended,
+            "nightly" => FuzzProfile.Nightly,
+            _ => throw new ArgumentException($"Unknown profile: {profileName}. Valid profiles: smoke, extended, nightly")
+        };
+        config = FuzzConfig.FromProfile(profile, baseSeed);
+        Console.WriteLine($"Using profile: {profileName}");
     }
     else
     {
