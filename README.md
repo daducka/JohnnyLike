@@ -1,0 +1,2 @@
+# JohnnyLike
+An idle simulation
