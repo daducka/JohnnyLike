@@ -1,0 +1,21 @@
+{
+  "Seed": 42,
+  "SimulatedDurationSeconds": 120,
+  "DtSeconds": 0.1,
+  "NumActors": 3,
+  "EventRatePerMinute": 15.0,
+  "BurstProbability": 0.15,
+  "BurstMultiplier": 4.0,
+  "ActionDurationJitterPct": 25.0,
+  "TravelTimeJitterPct": 35.0,
+  "TaskFailureRate": 0.08,
+  "NoShowProbability": 0.03,
+  "BusyLockProbability": 0.02,
+  "JoinWindowMinSeconds": 3,
+  "JoinWindowMaxSeconds": 12,
+  "ResourceScarcityProfile": 1,
+  "MaxActorQueueLength": 8,
+  "MaxSceneLifetimeSeconds": 45,
+  "StarvationThresholdSeconds": 90,
+  "MaxAllowedReservationConflicts": 0
+}
