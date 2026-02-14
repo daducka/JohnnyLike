@@ -14,7 +14,7 @@ public static class SkillCheckResolver
         };
 
         var total = roll + request.Modifier;
-        var isSuccess = total >= request.DC;
+        var isSuccess = roll == 20 || (roll != 1 && total >= request.DC);
 
         var outcomeTier = DetermineOutcomeTier(roll, total, request.DC);
 
