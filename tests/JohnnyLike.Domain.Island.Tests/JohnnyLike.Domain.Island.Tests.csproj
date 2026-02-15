@@ -20,6 +20,8 @@
     <ProjectReference Include="..\..\src\JohnnyLike.Domain.Island\JohnnyLike.Domain.Island.csproj" />
     <ProjectReference Include="..\..\src\JohnnyLike.Domain.Kit.Dice\JohnnyLike.Domain.Kit.Dice.csproj" />
     <ProjectReference Include="..\..\src\JohnnyLike.Domain.Abstractions\JohnnyLike.Domain.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\JohnnyLike.Engine\JohnnyLike.Engine.csproj" />
+    <ProjectReference Include="..\..\src\JohnnyLike.SimRunner\JohnnyLike.SimRunner.csproj" />
   </ItemGroup>
 
   <ItemGroup>

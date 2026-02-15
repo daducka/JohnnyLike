@@ -26,6 +26,8 @@ public interface IDomainPack
         ActorState actorState,
         WorldState worldState);
     
+    void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime);
+    
     List<SceneTemplate> GetSceneTemplates();
     
     bool ValidateContent(out List<string> errors);

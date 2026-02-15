@@ -195,6 +195,27 @@ public class OfficeDomainPack : IDomainPack
         return errors.Count == 0;
     }
 
+    public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime)
+    {
+        if (targetActor == null)
+        {
+            return;
+        }
+
+        var officeState = targetActor as OfficeActorState;
+        if (officeState == null)
+        {
+            return;
+        }
+
+        // Handle chat redeem signals
+        if (signal.Type == "chat_redeem" && signal.Data.TryGetValue("emote", out var emote))
+        {
+            officeState.LastChatRedeem = emote.ToString();
+            officeState.LastChatRedeemTime = currentTime;
+        }
+    }
+
     private List<SceneTemplate> CreateSceneTemplates()
     {
         var templates = new List<SceneTemplate>();
