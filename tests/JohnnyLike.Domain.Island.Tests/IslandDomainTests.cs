@@ -283,7 +283,8 @@ public class IslandActionEffectsTests
             }
         );
         
-        domain.ApplyActionEffects(actorId, outcome, actorState, worldState);
+        var rng = new RandomRngStream(new Random(42));
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng);
         
         Assert.True(actorState.Hunger < 60.0);
     }
@@ -313,7 +314,8 @@ public class IslandActionEffectsTests
             null
         );
         
-        domain.ApplyActionEffects(actorId, outcome, actorState, worldState);
+        var rng = new RandomRngStream(new Random(42));
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng);
         
         Assert.True(actorState.Energy > 30.0);
     }
@@ -339,7 +341,8 @@ public class IslandActionEffectsTests
             null
         );
         
-        domain.ApplyActionEffects(actorId, outcome, actorState, worldState);
+        var rng = new RandomRngStream(new Random(42));
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng);
         
         Assert.True(actorState.Hunger > 30.0);
         Assert.True(actorState.Energy < 80.0);
@@ -550,7 +553,8 @@ public class IslandSignalHandlingTests
             null
         );
         
-        domain.ApplyActionEffects(actorId, outcome, actorState, worldState);
+        var rng = new RandomRngStream(new Random(42));
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng);
         
         // Intent should be dequeued after completion
         Assert.Empty(actorState.PendingChatActions);

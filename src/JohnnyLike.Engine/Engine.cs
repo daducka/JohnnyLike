@@ -143,7 +143,8 @@ public class Engine
         ));
 
         // Apply effects
-        _domainPack.ApplyActionEffects(actorId, outcome, actorState, _worldState);
+        var rngStream = new RandomRngStream(_rng);
+        _domainPack.ApplyActionEffects(actorId, outcome, actorState, _worldState, rngStream);
 
         // Record for variety
         _varietyMemory.RecordAction(actorId.Value, outcome.ActionId.Value, _currentTime);

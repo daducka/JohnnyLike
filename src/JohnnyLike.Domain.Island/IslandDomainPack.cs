@@ -424,7 +424,8 @@ public class IslandDomainPack : IDomainPack
         ActorId actorId,
         ActionOutcome outcome,
         ActorState actorState,
-        WorldState worldState)
+        WorldState worldState,
+        IRngStream rng)
     {
         var islandState = (IslandActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
@@ -456,9 +457,6 @@ public class IslandDomainPack : IDomainPack
         // Resolve skill check for actions with DC parameters
         else
         {
-            var seed = actionId.GetHashCode() ^ actorId.Value.GetHashCode();
-            var rngStream = new RandomRngStream(new Random(seed));
-            
             var tier = RollOutcomeTier.Success;
             
             if (actorState.CurrentAction != null && actorState.CurrentAction.Parameters.ContainsKey("dc"))
@@ -474,7 +472,7 @@ public class IslandDomainPack : IDomainPack
                              "Unknown";
 
                 var request = new SkillCheckRequest(dc, modifier, advantage, skillId);
-                var result = SkillCheckResolver.Resolve(rngStream, request);
+                var result = SkillCheckResolver.Resolve(rng, request);
                 tier = result.OutcomeTier;
             }
 
