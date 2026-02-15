@@ -25,7 +25,7 @@ jobs:
       run: dotnet build JohnnyLike.sln --configuration Release --no-restore
     
     - name: Run extended fuzz tests
-      run: dotnet run --project src/JohnnyLike.SimRunner --configuration Release --no-build -- --fuzz --runs 200 --profile extended
+      run: dotnet run --project src/JohnnyLike.SimRunner --configuration Release --no-build -- --fuzz --runs 200 --profile extended --save-artifacts
     
     - name: Upload failure artifacts
       if: failure()

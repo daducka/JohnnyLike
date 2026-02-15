@@ -25,7 +25,7 @@ jobs:
       run: dotnet build JohnnyLike.sln --configuration Release --no-restore
     
     - name: Run nightly stress fuzz tests
-      run: dotnet run --project src/JohnnyLike.SimRunner --configuration Release --no-build -- --fuzz --runs 1000 --profile nightly
+      run: dotnet run --project src/JohnnyLike.SimRunner --configuration Release --no-build -- --fuzz --runs 1000 --profile nightly --save-artifacts
     
     - name: Upload failure artifacts
       if: failure()

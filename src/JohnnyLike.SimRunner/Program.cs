@@ -19,6 +19,7 @@ if (args.Length == 0)
     Console.WriteLine("  --config <path>     Load fuzz config from JSON file");
     Console.WriteLine("  --profile <name>    Use predefined profile: smoke, extended, nightly");
     Console.WriteLine("  --verbose           Verbose output for fuzz runs");
+    Console.WriteLine("  --save-artifacts    Save test artifacts to disk");
     return;
 }
 
@@ -32,6 +33,7 @@ var fuzzRuns = 1;
 var fuzzConfigPath = "";
 var fuzzProfile = "";
 var verbose = false;
+var saveArtifacts = false;
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -67,12 +69,15 @@ for (int i = 0; i < args.Length; i++)
         case "--verbose":
             verbose = true;
             break;
+        case "--save-artifacts":
+            saveArtifacts = true;
+            break;
     }
 }
 
 if (fuzzMode)
 {
-    RunFuzz(seed, fuzzRuns, fuzzConfigPath, fuzzProfile, verbose, domainName);
+    RunFuzz(seed, fuzzRuns, fuzzConfigPath, fuzzProfile, verbose, domainName, saveArtifacts);
 }
 else if (!string.IsNullOrEmpty(scenarioPath))
 {
@@ -216,7 +221,7 @@ void RunDefault(int seed, double duration, bool trace, string domainName)
     Console.WriteLine($"\nTrace hash: {hash}");
 }
 
-void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool verbose, string domainName)
+void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool verbose, string domainName, bool saveArtifacts)
 {
     Console.WriteLine("=== FUZZ TESTING MODE ===");
     Console.WriteLine($"Runs: {runs}");
@@ -289,7 +294,10 @@ void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool
     Console.WriteLine($"Failed: {failures.Count}");
 
     // Save artifacts
-    SaveFuzzArtifacts(profileName, runs, successCount, failures);
+    if (saveArtifacts)
+    {
+        SaveFuzzArtifacts(profileName, runs, successCount, failures);
+    }
 
     if (failures.Count > 0)
     {
@@ -310,14 +318,6 @@ void SaveFuzzArtifacts(string profileName, int totalRuns, int successCount, List
 {
     const int MaxRecentEventsInArtifact = 50;
     const int MaxEventScheduleInArtifact = 20;
-
-    // Only save artifacts for nightly and extended profiles
-    var profileLower = profileName?.ToLowerInvariant();
-    if (string.IsNullOrEmpty(profileLower) || 
-        (profileLower != "nightly" && profileLower != "extended"))
-    {
-        return;
-    }
 
     var artifactsDir = "artifacts";
     Directory.CreateDirectory(artifactsDir);
