@@ -23,6 +23,9 @@ public class IslandActorState : ActorState
     public double Morale { get; set; } = 50.0;
     public double Boredom { get; set; } = 0.0;
 
+    public double LastPlaneSightingTime { get; set; } = double.NegativeInfinity;
+    public double LastMermaidEncounterTime { get; set; } = double.NegativeInfinity;
+
     public List<ActiveBuff> ActiveBuffs { get; set; } = new();
     public Queue<PendingIntent> PendingChatActions { get; set; } = new();
 
@@ -52,6 +55,11 @@ public class IslandActorState : ActorState
 
     public override string Serialize()
     {
+        var options = new JsonSerializerOptions
+        {
+            NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals
+        };
+        
         return JsonSerializer.Serialize(new
         {
             Id = Id.Value,
@@ -69,18 +77,35 @@ public class IslandActorState : ActorState
             Energy,
             Morale,
             Boredom,
+            LastPlaneSightingTime,
+            LastMermaidEncounterTime,
             ActiveBuffs,
             PendingChatActions = PendingChatActions.ToList()
-        });
+        }, options);
     }
 
     public override void Deserialize(string json)
     {
-        var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+        var options = new JsonSerializerOptions
+        {
+            NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals
+        };
+        
+        var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json, options);
         if (data == null) return;
 
         Id = new ActorId(data["Id"].GetString()!);
-        Status = Enum.Parse<ActorStatus>(data["Status"].GetString()!);
+        
+        // Status can be either a string (enum name) or number (enum value)
+        if (data["Status"].ValueKind == JsonValueKind.String)
+        {
+            Status = Enum.Parse<ActorStatus>(data["Status"].GetString()!);
+        }
+        else
+        {
+            Status = (ActorStatus)data["Status"].GetInt32();
+        }
+        
         LastDecisionTime = data["LastDecisionTime"].GetDouble();
         STR = data["STR"].GetInt32();
         DEX = data["DEX"].GetInt32();
@@ -93,14 +118,54 @@ public class IslandActorState : ActorState
         Morale = data["Morale"].GetDouble();
         Boredom = data["Boredom"].GetDouble();
 
+        if (data.TryGetValue("LastPlaneSightingTime", out var lastPlane))
+        {
+            // Handle both number and string representations (e.g., "-Infinity")
+            if (lastPlane.ValueKind == JsonValueKind.String)
+            {
+                var strVal = lastPlane.GetString();
+                LastPlaneSightingTime = strVal switch
+                {
+                    "-Infinity" => double.NegativeInfinity,
+                    "Infinity" => double.PositiveInfinity,
+                    "NaN" => double.NaN,
+                    _ => double.Parse(strVal!)
+                };
+            }
+            else
+            {
+                LastPlaneSightingTime = lastPlane.GetDouble();
+            }
+        }
+
+        if (data.TryGetValue("LastMermaidEncounterTime", out var lastMermaid))
+        {
+            // Handle both number and string representations (e.g., "-Infinity")
+            if (lastMermaid.ValueKind == JsonValueKind.String)
+            {
+                var strVal = lastMermaid.GetString();
+                LastMermaidEncounterTime = strVal switch
+                {
+                    "-Infinity" => double.NegativeInfinity,
+                    "Infinity" => double.PositiveInfinity,
+                    "NaN" => double.NaN,
+                    _ => double.Parse(strVal!)
+                };
+            }
+            else
+            {
+                LastMermaidEncounterTime = lastMermaid.GetDouble();
+            }
+        }
+
         if (data.TryGetValue("ActiveBuffs", out var buffs))
         {
-            ActiveBuffs = JsonSerializer.Deserialize<List<ActiveBuff>>(buffs.GetRawText()) ?? new();
+            ActiveBuffs = JsonSerializer.Deserialize<List<ActiveBuff>>(buffs.GetRawText(), options) ?? new();
         }
 
         if (data.TryGetValue("PendingChatActions", out var actions))
         {
-            var list = JsonSerializer.Deserialize<List<PendingIntent>>(actions.GetRawText()) ?? new();
+            var list = JsonSerializer.Deserialize<List<PendingIntent>>(actions.GetRawText(), options) ?? new();
             PendingChatActions = new Queue<PendingIntent>(list);
         }
     }
