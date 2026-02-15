@@ -72,7 +72,9 @@ public class DndMathTests
     [InlineData(16, 3)]
     [InlineData(18, 4)]
     [InlineData(20, 5)]
+    [InlineData(9, -1)]
     [InlineData(8, -1)]
+    [InlineData(7, -2)]
     [InlineData(6, -2)]
     public void AbilityModifier_CalculatesCorrectly(int stat, int expectedModifier)
     {
@@ -84,7 +86,39 @@ public class DndMathTests
     public void EstimateSuccessChanceD20_AutoSuccessWhenDCTooLow()
     {
         var chance = DndMath.EstimateSuccessChanceD20(1, 5, AdvantageType.Normal);
-        Assert.Equal(1.0, chance);
+        Assert.Equal(0.95, chance);
+    }
+
+    [Fact]
+    public void EstimateSuccessChanceD20_RespectsCriticalFailureNat1()
+    {
+        // With a very low DC, you should still have a 5% chance of failing (nat 1)
+        var chance = DndMath.EstimateSuccessChanceD20(1, 10, AdvantageType.Normal);
+        Assert.Equal(0.95, chance);
+    }
+
+    [Fact]
+    public void EstimateSuccessChanceD20_RespectsCriticalSuccessNat20()
+    {
+        // With a very high DC, you should still have a 5% chance of succeeding (nat 20)
+        var chance = DndMath.EstimateSuccessChanceD20(25, 0, AdvantageType.Normal);
+        Assert.Equal(0.05, chance);
+    }
+
+    [Fact]
+    public void EstimateSuccessChanceD20_RespectsCriticalFailureWithAdvantage()
+    {
+        // Even with advantage, nat 1 on both rolls should be possible (0.05 * 0.05 = 0.0025 or 0.25%)
+        var chance = DndMath.EstimateSuccessChanceD20(1, 10, AdvantageType.Advantage);
+        Assert.True(chance <= 0.95, $"Expected chance <= 0.95, got {chance}");
+    }
+
+    [Fact]
+    public void EstimateSuccessChanceD20_RespectsCriticalSuccessWithDisadvantage()
+    {
+        // Even with disadvantage, nat 20 on both rolls should be possible (0.05 * 0.05 = 0.0025 or 0.25%)
+        var chance = DndMath.EstimateSuccessChanceD20(25, 0, AdvantageType.Disadvantage);
+        Assert.True(chance >= 0.05, $"Expected chance >= 0.05, got {chance}");
     }
 
     [Fact]
