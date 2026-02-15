@@ -370,7 +370,7 @@ public class IslandSignalHandlingTests
         
         domain.OnSignal(signal, actorState, worldState, 0.0);
         
-        Assert.Equal(1, actorState.PendingChatActions.Count);
+        Assert.Single(actorState.PendingChatActions);
         var intent = actorState.PendingChatActions.Peek();
         Assert.Equal("write_name_sand", intent.ActionId);
         Assert.Equal("chat_redeem", intent.Type);
@@ -401,7 +401,7 @@ public class IslandSignalHandlingTests
         Assert.Equal(310.0, inspirationBuff.ExpiresAt);
         
         // Check clap emote intent was enqueued
-        Assert.Equal(1, actorState.PendingChatActions.Count);
+        Assert.Single(actorState.PendingChatActions);
         var intent = actorState.PendingChatActions.Peek();
         Assert.Equal("clap_emote", intent.ActionId);
         Assert.Equal("sub", intent.Type);
@@ -553,7 +553,7 @@ public class IslandSignalHandlingTests
         domain.ApplyActionEffects(actorId, outcome, actorState, worldState);
         
         // Intent should be dequeued after completion
-        Assert.Equal(0, actorState.PendingChatActions.Count);
+        Assert.Empty(actorState.PendingChatActions);
         // Morale should increase
         Assert.True(actorState.Morale > 50.0);
     }
