@@ -130,7 +130,8 @@ public class OfficeDomainPack : IDomainPack
         ActorId actorId,
         ActionOutcome outcome,
         ActorState actorState,
-        WorldState worldState)
+        WorldState worldState,
+        IRngStream rng)
     {
         var officeState = (OfficeActorState)actorState;
         var officeWorld = (OfficeWorldState)worldState;

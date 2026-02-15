@@ -255,7 +255,7 @@ public class SignalHandlingTests
             };
         }
 
-        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState)
+        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng)
         {
         }
 

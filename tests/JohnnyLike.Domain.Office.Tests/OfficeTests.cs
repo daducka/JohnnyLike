@@ -97,6 +97,7 @@ public class ScoringTests
 
         var initialHunger = actorState!.Hunger;
 
+        var rng = new RandomRngStream(new Random(42));
         domainPack.ApplyActionEffects(
             new ActorId("Jim"),
             new ActionOutcome(
@@ -105,7 +106,8 @@ public class ScoringTests
                 10.0
             ),
             actorState,
-            worldState
+            worldState,
+            rng
         );
 
         Assert.True(actorState.Hunger < initialHunger);
@@ -120,6 +122,7 @@ public class ScoringTests
         actorState!.LastChatRedeem = "dance";
         actorState.Social = 50.0;
 
+        var rng = new RandomRngStream(new Random(42));
         domainPack.ApplyActionEffects(
             new ActorId("Jim"),
             new ActionOutcome(
@@ -128,7 +131,8 @@ public class ScoringTests
                 2.0
             ),
             actorState,
-            worldState
+            worldState,
+            rng
         );
 
         Assert.Null(actorState.LastChatRedeem);
