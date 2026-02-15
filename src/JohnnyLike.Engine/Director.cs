@@ -140,7 +140,7 @@ public class Director
                     var deadline = currentTime + template.JoinWindowSeconds + template.MaxDurationSeconds;
                     foreach (var rid in resourceIds)
                     {
-                        _reservations.TryReserve(rid, roleAssignments.Values.First(), sceneId, deadline);
+                        _reservations.TryReserve(rid, sceneId, null, deadline);
                     }
 
                     _scenes[sceneId] = scene;
