@@ -19,6 +19,7 @@ if (args.Length == 0)
     Console.WriteLine("  --config <path>     Load fuzz config from JSON file");
     Console.WriteLine("  --profile <name>    Use predefined profile: smoke, extended, nightly");
     Console.WriteLine("  --verbose           Verbose output for fuzz runs");
+    Console.WriteLine("  --save-artifacts    Save test artifacts to disk");
     return;
 }
 
@@ -32,6 +33,7 @@ var fuzzRuns = 1;
 var fuzzConfigPath = "";
 var fuzzProfile = "";
 var verbose = false;
+var saveArtifacts = false;
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -67,12 +69,15 @@ for (int i = 0; i < args.Length; i++)
         case "--verbose":
             verbose = true;
             break;
+        case "--save-artifacts":
+            saveArtifacts = true;
+            break;
     }
 }
 
 if (fuzzMode)
 {
-    RunFuzz(seed, fuzzRuns, fuzzConfigPath, fuzzProfile, verbose, domainName);
+    RunFuzz(seed, fuzzRuns, fuzzConfigPath, fuzzProfile, verbose, domainName, saveArtifacts);
 }
 else if (!string.IsNullOrEmpty(scenarioPath))
 {
@@ -216,7 +221,7 @@ void RunDefault(int seed, double duration, bool trace, string domainName)
     Console.WriteLine($"\nTrace hash: {hash}");
 }
 
-void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool verbose, string domainName)
+void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool verbose, string domainName, bool saveArtifacts)
 {
     Console.WriteLine("=== FUZZ TESTING MODE ===");
     Console.WriteLine($"Runs: {runs}");
@@ -288,6 +293,12 @@ void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool
     Console.WriteLine($"Passed: {successCount}");
     Console.WriteLine($"Failed: {failures.Count}");
 
+    // Save artifacts
+    if (saveArtifacts)
+    {
+        SaveFuzzArtifacts(profileName, runs, successCount, failures);
+    }
+
     if (failures.Count > 0)
     {
         Console.WriteLine($"\n--- Failed Run Seeds ---");
@@ -300,5 +311,66 @@ void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool
     else
     {
         Console.WriteLine("\n✓ All fuzz runs passed!");
+    }
+}
+
+void SaveFuzzArtifacts(string profileName, int totalRuns, int successCount, List<FuzzRunResult> failures)
+{
+    const int MaxRecentEventsInArtifact = 50;
+    const int MaxEventScheduleInArtifact = 20;
+
+    var artifactsDir = "artifacts";
+    Directory.CreateDirectory(artifactsDir);
+
+    // Save summary
+    var summary = new
+    {
+        Profile = profileName,
+        Timestamp = DateTime.UtcNow.ToString("o"),
+        TotalRuns = totalRuns,
+        Passed = successCount,
+        Failed = failures.Count,
+        FailedSeeds = failures.Select(f => f.Config.Seed).ToList()
+    };
+
+    var summaryPath = Path.Combine(artifactsDir, "summary.json");
+    File.WriteAllText(summaryPath, JsonSerializer.Serialize(summary, new JsonSerializerOptions 
+    { 
+        WriteIndented = true 
+    }));
+    Console.WriteLine($"\n✓ Saved summary to {summaryPath}");
+
+    // Save detailed failure information
+    if (failures.Count > 0)
+    {
+        var failuresDir = Path.Combine(artifactsDir, "failures");
+        Directory.CreateDirectory(failuresDir);
+
+        foreach (var failure in failures)
+        {
+            var failureData = new
+            {
+                Seed = failure.Config.Seed,
+                FailureReason = failure.FailureReason,
+                Config = failure.Config,
+                Metrics = failure.Metrics,
+                Violation = failure.Violation,
+                TraceHash = failure.TraceHash,
+                RecentEvents = failure.RecentEvents.TakeLast(MaxRecentEventsInArtifact).Select(e => e.ToString()).ToList(),
+                EventSchedule = failure.EventSchedule.Events.Take(MaxEventScheduleInArtifact).Select(e => new
+                {
+                    TimeSeconds = e.TimeSeconds,
+                    SignalType = e.Signal.Type,
+                    TargetActor = e.Signal.TargetActor?.Value
+                }).ToList()
+            };
+
+            var failurePath = Path.Combine(failuresDir, $"failure-seed-{failure.Config.Seed}.json");
+            File.WriteAllText(failurePath, JsonSerializer.Serialize(failureData, new JsonSerializerOptions 
+            { 
+                WriteIndented = true 
+            }));
+            Console.WriteLine($"✓ Saved failure details to {failurePath}");
+        }
     }
 }
