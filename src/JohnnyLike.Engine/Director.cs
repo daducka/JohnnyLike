@@ -140,7 +140,8 @@ public class Director
                     var deadline = currentTime + template.JoinWindowSeconds + template.MaxDurationSeconds;
                     foreach (var rid in resourceIds)
                     {
-                        _reservations.TryReserve(rid, roleAssignments.Values.First(), sceneId, deadline);
+                        // Reserve under sceneId with no specific actor during proposal stage
+                        _reservations.TryReserve(rid, sceneId, null, deadline);
                     }
 
                     _scenes[sceneId] = scene;
