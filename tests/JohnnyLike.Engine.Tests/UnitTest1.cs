@@ -170,7 +170,10 @@ public class SignalHandlingTests
     public void ProcessSignal_DoesNotUseReflection()
     {
         // This test verifies that Engine.ProcessSignal does not use reflection
-        // by checking the Engine source code doesn't contain reflection APIs
+        // by checking the Engine source code doesn't contain reflection APIs in ProcessSignal method.
+        // 
+        // Note: This is a simple string-based check suitable for this codebase.
+        // For a production system, consider using Roslyn static analysis for more robust verification.
         var engineSourcePath = Path.Combine(
             Directory.GetCurrentDirectory(),
             "..", "..", "..", "..", "..",
@@ -179,19 +182,29 @@ public class SignalHandlingTests
 
         var engineSource = File.ReadAllText(engineSourcePath);
         
-        // Check that ProcessSignal method doesn't use reflection
+        // Find ProcessSignal method
         var processSignalStart = engineSource.IndexOf("private void ProcessSignal(Signal signal)");
         Assert.True(processSignalStart > 0, "ProcessSignal method should exist");
         
-        var nextMethodStart = engineSource.IndexOf("}", processSignalStart);
-        var processSignalCode = engineSource.Substring(processSignalStart, nextMethodStart - processSignalStart);
+        // Find the next method or end of class (simple approach for this codebase)
+        // This assumes methods are separated by blank lines followed by access modifiers or closing braces
+        var searchStart = processSignalStart + 100; // Skip method signature
+        var nextMethod = engineSource.IndexOf("\n    public ", searchStart);
+        var nextPrivate = engineSource.IndexOf("\n    private ", searchStart);
+        var endOfMethod = Math.Min(
+            nextMethod > 0 ? nextMethod : engineSource.Length,
+            nextPrivate > 0 ? nextPrivate : engineSource.Length
+        );
         
-        // Verify no reflection APIs are used
+        var processSignalCode = engineSource.Substring(processSignalStart, endOfMethod - processSignalStart);
+        
+        // Verify no reflection APIs are used in ProcessSignal
         Assert.DoesNotContain("GetType()", processSignalCode);
-        Assert.DoesNotContain("GetProperty(", processSignalCode);
-        Assert.DoesNotContain("SetValue(", processSignalCode);
-        Assert.DoesNotContain("GetMethod(", processSignalCode);
-        Assert.DoesNotContain("Invoke(", processSignalCode);
+        Assert.DoesNotContain("GetProperty", processSignalCode);
+        Assert.DoesNotContain("SetValue", processSignalCode);
+        Assert.DoesNotContain("GetMethod", processSignalCode);
+        Assert.DoesNotContain(".Invoke(", processSignalCode);
+        Assert.DoesNotContain("Reflection", processSignalCode);
     }
 
     [Fact]

@@ -472,6 +472,10 @@ public class IslandSignalHandlingTests
     {
         // This test proves that Island OnSignal results in a corresponding action 
         // being scheduled within a bounded time (unless survival critical)
+        // 
+        // Bounded time is set to 30 seconds as a reasonable upper limit for non-critical
+        // actions to be scheduled. In practice, actions are typically scheduled much faster
+        // (within a few seconds) at decision boundaries when the actor becomes ready.
         var domainPack = new IslandDomainPack();
         var traceSink = new InMemoryTraceSink();
         var engine = new JohnnyLike.Engine.Engine(domainPack, 42, traceSink);
@@ -502,7 +506,7 @@ public class IslandSignalHandlingTests
         var executor = new FakeExecutor(engine);
         var timeStep = 0.5;
         var elapsed = 0.0;
-        var maxWaitTime = 30.0; // Bounded time limit
+        var maxWaitTime = 30.0; // Bounded time limit - should be much faster in practice
         var actionFound = false;
         
         while (elapsed < maxWaitTime && !actionFound)

@@ -795,12 +795,12 @@ public class IslandDomainPack : IDomainPack
 
     private void HandleSubOrCheer(Signal signal, IslandActorState state, double currentTime)
     {
-        // Add Inspiration buff for subs/cheers
+        // Add Inspiration buff for subs/cheers (applies to all skills as a general morale boost)
         state.ActiveBuffs.Add(new ActiveBuff
         {
             Name = "Inspiration",
             Type = BuffType.SkillBonus,
-            SkillId = "",
+            SkillId = "", // Empty means applies to all skills
             Value = 1,
             ExpiresAt = currentTime + 300.0 // 5 minutes
         });
