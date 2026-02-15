@@ -308,9 +308,13 @@ void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool
 
 void SaveFuzzArtifacts(string profileName, int totalRuns, int successCount, List<FuzzRunResult> failures)
 {
+    const int MaxRecentEventsInArtifact = 50;
+    const int MaxEventScheduleInArtifact = 20;
+
     // Only save artifacts for nightly and extended profiles
-    if (string.IsNullOrEmpty(profileName) || 
-        (profileName.ToLowerInvariant() != "nightly" && profileName.ToLowerInvariant() != "extended"))
+    var profileLower = profileName?.ToLowerInvariant();
+    if (string.IsNullOrEmpty(profileLower) || 
+        (profileLower != "nightly" && profileLower != "extended"))
     {
         return;
     }
@@ -352,8 +356,8 @@ void SaveFuzzArtifacts(string profileName, int totalRuns, int successCount, List
                 Metrics = failure.Metrics,
                 Violation = failure.Violation,
                 TraceHash = failure.TraceHash,
-                RecentEvents = failure.RecentEvents.TakeLast(50).Select(e => e.ToString()).ToList(),
-                EventSchedule = failure.EventSchedule.Events.Take(20).Select(e => new
+                RecentEvents = failure.RecentEvents.TakeLast(MaxRecentEventsInArtifact).Select(e => e.ToString()).ToList(),
+                EventSchedule = failure.EventSchedule.Events.Take(MaxEventScheduleInArtifact).Select(e => new
                 {
                     TimeSeconds = e.TimeSeconds,
                     SignalType = e.Signal.Type,
