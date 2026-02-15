@@ -7,9 +7,6 @@ public class IslandDomainPack : IDomainPack
 {
     public string DomainName => "Island";
 
-    private readonly Dictionary<ActorId, double> _lastPlaneSighting = new();
-    private readonly Dictionary<ActorId, double> _lastMermaidEncounter = new();
-
     public WorldState CreateInitialWorldState()
     {
         return new IslandWorldState();
@@ -134,14 +131,18 @@ public class IslandDomainPack : IDomainPack
 
         var baseDC = 10;
         
+        // Morning (0.0-0.25) and dusk (0.75-1.0) are better for fishing - LOWER DC
         var timeOfDay = world.TimeOfDay;
         if (timeOfDay < 0.25 || timeOfDay > 0.75)
-            baseDC += 3;
+            baseDC -= 2;  // Easier in morning/dusk
+        else if (timeOfDay >= 0.375 && timeOfDay <= 0.625)
+            baseDC += 1;  // Slightly harder in afternoon
 
+        // Rainy weather is good for fishing - LOWER DC
         if (world.Weather == Weather.Rainy)
-            baseDC += 2;
+            baseDC -= 2;  // Easier when rainy
         else if (world.Weather == Weather.Windy)
-            baseDC += 1;
+            baseDC += 1;  // Harder when windy
 
         if (world.FishAvailable < 20.0)
             baseDC += 3;
@@ -360,7 +361,7 @@ public class IslandDomainPack : IDomainPack
         List<ActionCandidate> candidates,
         Random random)
     {
-        if (!_lastPlaneSighting.TryGetValue(actorId, out var lastPlane) || currentTime - lastPlane > 600.0)
+        if (currentTime - state.LastPlaneSightingTime > 600.0)
         {
             if (random.NextDouble() < 0.05)
             {
@@ -390,7 +391,7 @@ public class IslandDomainPack : IDomainPack
 
         if (world.TimeOfDay > 0.75 || world.TimeOfDay < 0.25)
         {
-            if (!_lastMermaidEncounter.TryGetValue(actorId, out var lastMermaid) || currentTime - lastMermaid > 1200.0)
+            if (currentTime - state.LastMermaidEncounterTime > 1200.0)
             {
                 if (random.NextDouble() < 0.02)
                 {
@@ -681,7 +682,7 @@ public class IslandDomainPack : IDomainPack
 
     private void ApplyPlaneSightingEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
     {
-        _lastPlaneSighting[actorId] = world.CurrentTime;
+        state.LastPlaneSightingTime = world.CurrentTime;
 
         if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
             return;
@@ -708,7 +709,7 @@ public class IslandDomainPack : IDomainPack
 
     private void ApplyMermaidEncounterEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
     {
-        _lastMermaidEncounter[actorId] = world.CurrentTime;
+        state.LastMermaidEncounterTime = world.CurrentTime;
 
         if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
             return;

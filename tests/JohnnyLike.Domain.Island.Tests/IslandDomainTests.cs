@@ -623,3 +623,228 @@ public class IslandDeterminismTests
     }
 }
 
+public class IslandDCTuningTests
+{
+    [Fact]
+    public void FishingDC_MorningIsLowerThanAfternoon()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        
+        // Morning scenario (timeOfDay = 0.1)
+        var morningWorld = new IslandWorldState
+        {
+            TimeOfDay = 0.1,
+            Weather = Weather.Clear,
+            FishAvailable = 100.0
+        };
+        
+        // Afternoon scenario (timeOfDay = 0.5)
+        var afternoonWorld = new IslandWorldState
+        {
+            TimeOfDay = 0.5,
+            Weather = Weather.Clear,
+            FishAvailable = 100.0
+        };
+        
+        var morningCandidates = domain.GenerateCandidates(actorId, actorState, morningWorld, 0.0, new Random(42));
+        var afternoonCandidates = domain.GenerateCandidates(actorId, actorState, afternoonWorld, 0.0, new Random(42));
+        
+        var morningFishing = morningCandidates.First(c => c.Action.Id.Value == "fish_for_food");
+        var afternoonFishing = afternoonCandidates.First(c => c.Action.Id.Value == "fish_for_food");
+        
+        var morningDC = (int)morningFishing.Action.Parameters["dc"];
+        var afternoonDC = (int)afternoonFishing.Action.Parameters["dc"];
+        
+        Assert.True(morningDC < afternoonDC, $"Morning DC ({morningDC}) should be lower than afternoon DC ({afternoonDC})");
+    }
+
+    [Fact]
+    public void FishingDC_RainyIsLowerThanClear()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        
+        // Rainy scenario
+        var rainyWorld = new IslandWorldState
+        {
+            TimeOfDay = 0.5,
+            Weather = Weather.Rainy,
+            FishAvailable = 100.0
+        };
+        
+        // Clear scenario
+        var clearWorld = new IslandWorldState
+        {
+            TimeOfDay = 0.5,
+            Weather = Weather.Clear,
+            FishAvailable = 100.0
+        };
+        
+        var rainyCandidates = domain.GenerateCandidates(actorId, actorState, rainyWorld, 0.0, new Random(42));
+        var clearCandidates = domain.GenerateCandidates(actorId, actorState, clearWorld, 0.0, new Random(42));
+        
+        var rainyFishing = rainyCandidates.First(c => c.Action.Id.Value == "fish_for_food");
+        var clearFishing = clearCandidates.First(c => c.Action.Id.Value == "fish_for_food");
+        
+        var rainyDC = (int)rainyFishing.Action.Parameters["dc"];
+        var clearDC = (int)clearFishing.Action.Parameters["dc"];
+        
+        Assert.True(rainyDC < clearDC, $"Rainy DC ({rainyDC}) should be lower than clear DC ({clearDC})");
+    }
+
+    [Fact]
+    public void CoconutDC_WindyIsLowerThanClear()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        
+        // Windy scenario
+        var windyWorld = new IslandWorldState
+        {
+            Weather = Weather.Windy,
+            CoconutsAvailable = 5
+        };
+        
+        // Clear scenario
+        var clearWorld = new IslandWorldState
+        {
+            Weather = Weather.Clear,
+            CoconutsAvailable = 5
+        };
+        
+        var windyCandidates = domain.GenerateCandidates(actorId, actorState, windyWorld, 0.0, new Random(42));
+        var clearCandidates = domain.GenerateCandidates(actorId, actorState, clearWorld, 0.0, new Random(42));
+        
+        var windyCoconut = windyCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
+        var clearCoconut = clearCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
+        
+        var windyDC = (int)windyCoconut.Action.Parameters["dc"];
+        var clearDC = (int)clearCoconut.Action.Parameters["dc"];
+        
+        Assert.True(windyDC < clearDC, $"Windy DC ({windyDC}) should be lower than clear DC ({clearDC})");
+    }
+
+    [Fact]
+    public void CoconutDC_ScarcityIncreasesWithFewerCoconuts()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        
+        // Many coconuts scenario
+        var manyCoconutsWorld = new IslandWorldState
+        {
+            Weather = Weather.Clear,
+            CoconutsAvailable = 5
+        };
+        
+        // Few coconuts scenario
+        var fewCoconutsWorld = new IslandWorldState
+        {
+            Weather = Weather.Clear,
+            CoconutsAvailable = 2
+        };
+        
+        var manyCandidates = domain.GenerateCandidates(actorId, actorState, manyCoconutsWorld, 0.0, new Random(42));
+        var fewCandidates = domain.GenerateCandidates(actorId, actorState, fewCoconutsWorld, 0.0, new Random(42));
+        
+        var manyCoconutAction = manyCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
+        var fewCoconutAction = fewCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
+        
+        var manyDC = (int)manyCoconutAction.Action.Parameters["dc"];
+        var fewDC = (int)fewCoconutAction.Action.Parameters["dc"];
+        
+        Assert.True(fewDC > manyDC, $"Few coconuts DC ({fewDC}) should be higher than many coconuts DC ({manyDC})");
+    }
+}
+
+public class IslandCooldownSerializationTests
+{
+    [Fact]
+    public void ActorState_SerializeDeserialize_PreservesCooldowns()
+    {
+        var originalState = new IslandActorState
+        {
+            Id = new ActorId("TestActor"),
+            Status = ActorStatus.Ready,
+            LastDecisionTime = 10.0,
+            STR = 12,
+            DEX = 14,
+            CON = 10,
+            INT = 10,
+            WIS = 16,
+            CHA = 8,
+            Hunger = 50.0,
+            Energy = 75.0,
+            Morale = 60.0,
+            Boredom = 20.0,
+            LastPlaneSightingTime = 100.0,
+            LastMermaidEncounterTime = 200.0
+        };
+        
+        var serialized = originalState.Serialize();
+        
+        var deserializedState = new IslandActorState();
+        deserializedState.Deserialize(serialized);
+        
+        Assert.Equal(originalState.LastPlaneSightingTime, deserializedState.LastPlaneSightingTime);
+        Assert.Equal(originalState.LastMermaidEncounterTime, deserializedState.LastMermaidEncounterTime);
+        Assert.Equal(originalState.STR, deserializedState.STR);
+        Assert.Equal(originalState.Hunger, deserializedState.Hunger);
+    }
+
+    [Fact]
+    public void ActorState_SerializeDeserialize_DefaultsToNegativeInfinity()
+    {
+        var originalState = new IslandActorState
+        {
+            Id = new ActorId("TestActor"),
+            Status = ActorStatus.Ready,
+            LastDecisionTime = 0.0,
+            STR = 10,
+            DEX = 10,
+            CON = 10,
+            INT = 10,
+            WIS = 10,
+            CHA = 10
+        };
+        
+        // Don't set cooldowns - they should default to -infinity
+        var serialized = originalState.Serialize();
+        
+        var deserializedState = new IslandActorState();
+        deserializedState.Deserialize(serialized);
+        
+        Assert.True(double.IsNegativeInfinity(deserializedState.LastPlaneSightingTime));
+        Assert.True(double.IsNegativeInfinity(deserializedState.LastMermaidEncounterTime));
+    }
+
+    [Fact]
+    public void VignetteCooldown_PreventsDuplicateEvents()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = new IslandActorState
+        {
+            Id = actorId,
+            LastPlaneSightingTime = 50.0
+        };
+        var worldState = new IslandWorldState();
+        
+        // At time 100, cooldown is not expired (only 50 seconds elapsed, need 600)
+        var candidatesEarly = domain.GenerateCandidates(actorId, actorState, worldState, 100.0, new Random(42));
+        var hasPlaneEarly = candidatesEarly.Any(c => c.Action.Id.Value == "plane_sighting");
+        
+        // At time 700, cooldown is expired (650 seconds elapsed, exceeds 600)
+        var candidatesLate = domain.GenerateCandidates(actorId, actorState, worldState, 700.0, new Random(42));
+        // Note: This might not always have plane_sighting due to random chance, but cooldown is no longer preventing it
+        
+        Assert.False(hasPlaneEarly, "Plane sighting should not appear when cooldown is active");
+    }
+}
+
+
