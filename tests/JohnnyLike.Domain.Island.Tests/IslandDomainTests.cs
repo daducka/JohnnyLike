@@ -1,6 +1,8 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Kit.Dice;
+using JohnnyLike.Engine;
+using JohnnyLike.SimRunner;
 
 namespace JohnnyLike.Domain.Island.Tests;
 
@@ -344,3 +346,212 @@ public class IslandActionEffectsTests
         Assert.True(actorState.Boredom > 20.0);
     }
 }
+
+public class IslandSignalHandlingTests
+{
+    [Fact]
+    public void OnSignal_ChatRedeemWriteNameSand_EnqueuesIntent()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = new IslandActorState { Id = actorId };
+        var worldState = new IslandWorldState();
+        
+        var signal = new Signal(
+            "chat_redeem",
+            0.0,
+            actorId,
+            new Dictionary<string, object>
+            {
+                ["redeem_name"] = "write_name_sand",
+                ["viewer_name"] = "TestViewer"
+            }
+        );
+        
+        domain.OnSignal(signal, actorState, worldState, 0.0);
+        
+        Assert.Equal(1, actorState.PendingChatActions.Count);
+        var intent = actorState.PendingChatActions.Peek();
+        Assert.Equal("write_name_sand", intent.ActionId);
+        Assert.Equal("chat_redeem", intent.Type);
+    }
+
+    [Fact]
+    public void OnSignal_SubOrCheer_AddsInspirationBuffAndEnqueuesClap()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = new IslandActorState { Id = actorId };
+        var worldState = new IslandWorldState();
+        
+        var signal = new Signal(
+            "sub",
+            0.0,
+            actorId,
+            new Dictionary<string, object> { ["subscriber"] = "TestSub" }
+        );
+        
+        domain.OnSignal(signal, actorState, worldState, 10.0);
+        
+        // Check Inspiration buff was added
+        Assert.Contains(actorState.ActiveBuffs, b => b.Name == "Inspiration");
+        var inspirationBuff = actorState.ActiveBuffs.First(b => b.Name == "Inspiration");
+        Assert.Equal(BuffType.SkillBonus, inspirationBuff.Type);
+        Assert.Equal(1, inspirationBuff.Value);
+        Assert.Equal(310.0, inspirationBuff.ExpiresAt);
+        
+        // Check clap emote intent was enqueued
+        Assert.Equal(1, actorState.PendingChatActions.Count);
+        var intent = actorState.PendingChatActions.Peek();
+        Assert.Equal("clap_emote", intent.ActionId);
+        Assert.Equal("sub", intent.Type);
+    }
+
+    [Fact]
+    public void GenerateCandidates_WithPendingChatAction_ProducesHighPriorityCandidate()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = new IslandActorState
+        {
+            Id = actorId,
+            Hunger = 30.0,  // Not critical
+            Energy = 60.0   // Not critical
+        };
+        actorState.PendingChatActions.Enqueue(new PendingIntent
+        {
+            ActionId = "write_name_sand",
+            Type = "chat_redeem",
+            Data = new Dictionary<string, object> { ["viewer_name"] = "TestViewer" },
+            EnqueuedAt = 0.0
+        });
+        var worldState = new IslandWorldState();
+        
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 10.0, new Random(42));
+        
+        // Should have a write_name_sand candidate with high priority
+        var writeSandCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "write_name_sand");
+        Assert.NotNull(writeSandCandidate);
+        Assert.Equal(2.0, writeSandCandidate.Score);
+        Assert.Contains("TestViewer", writeSandCandidate.Reason);
+    }
+
+    [Fact]
+    public void GenerateCandidates_SurvivalCritical_SkipsPendingChatActions()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = new IslandActorState
+        {
+            Id = actorId,
+            Hunger = 85.0,  // Critical hunger
+            Energy = 60.0
+        };
+        actorState.PendingChatActions.Enqueue(new PendingIntent
+        {
+            ActionId = "clap_emote",
+            Type = "sub",
+            Data = new Dictionary<string, object>(),
+            EnqueuedAt = 0.0
+        });
+        var worldState = new IslandWorldState();
+        
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 10.0, new Random(42));
+        
+        // Should NOT have clap emote when survival is critical
+        var clapCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "clap_emote");
+        Assert.Null(clapCandidate);
+        
+        // Should have survival actions (fishing should be very high priority)
+        var fishingCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "fish_for_food");
+        Assert.NotNull(fishingCandidate);
+    }
+
+    [Fact]
+    public void IslandOnSignal_SchedulesActionWithinBoundedTime()
+    {
+        // This test proves that Island OnSignal results in a corresponding action 
+        // being scheduled within a bounded time (unless survival critical)
+        var domainPack = new IslandDomainPack();
+        var traceSink = new InMemoryTraceSink();
+        var engine = new JohnnyLike.Engine.Engine(domainPack, 42, traceSink);
+        
+        engine.AddActor(new ActorId("TestActor"), new Dictionary<string, object>
+        {
+            ["hunger"] = 30.0,
+            ["energy"] = 70.0
+        });
+        
+        // Enqueue a chat redeem signal
+        var signal = new Signal(
+            "chat_redeem",
+            0.0,
+            new ActorId("TestActor"),
+            new Dictionary<string, object>
+            {
+                ["redeem_name"] = "write_name_sand",
+                ["viewer_name"] = "TestViewer"
+            }
+        );
+        engine.EnqueueSignal(signal);
+        
+        // Process signal
+        engine.AdvanceTime(0.1);
+        
+        // Create executor and run simulation
+        var executor = new FakeExecutor(engine);
+        var timeStep = 0.5;
+        var elapsed = 0.0;
+        var maxWaitTime = 30.0; // Bounded time limit
+        var actionFound = false;
+        
+        while (elapsed < maxWaitTime && !actionFound)
+        {
+            executor.Update(timeStep);
+            elapsed += timeStep;
+            
+            // Check trace for the write_name_sand action
+            var trace = traceSink.GetEvents();
+            if (trace.Any(e => e.EventType == "ActionAssigned" && 
+                              e.Details.ContainsKey("actionId") && 
+                              e.Details["actionId"].ToString() == "write_name_sand"))
+            {
+                actionFound = true;
+            }
+        }
+        
+        Assert.True(actionFound, $"write_name_sand action should be scheduled within {maxWaitTime} seconds");
+        Assert.True(elapsed <= maxWaitTime, "Action should be scheduled within bounded time");
+    }
+
+    [Fact]
+    public void ApplyActionEffects_CompletingChatAction_DequeuesIntent()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = new IslandActorState { Id = actorId };
+        actorState.PendingChatActions.Enqueue(new PendingIntent
+        {
+            ActionId = "write_name_sand",
+            Type = "chat_redeem",
+            Data = new Dictionary<string, object>(),
+            EnqueuedAt = 0.0
+        });
+        var worldState = new IslandWorldState();
+        
+        var outcome = new ActionOutcome(
+            new ActionId("write_name_sand"),
+            ActionOutcomeType.Success,
+            8.0,
+            null
+        );
+        
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState);
+        
+        // Intent should be dequeued after completion
+        Assert.Equal(0, actorState.PendingChatActions.Count);
+        // Morale should increase
+        Assert.True(actorState.Morale > 50.0);
+    }
+}
+
