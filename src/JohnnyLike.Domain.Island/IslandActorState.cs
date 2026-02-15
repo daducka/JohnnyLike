@@ -24,6 +24,7 @@ public class IslandActorState : ActorState
     public double Boredom { get; set; } = 0.0;
 
     public List<ActiveBuff> ActiveBuffs { get; set; } = new();
+    public Queue<PendingIntent> PendingChatActions { get; set; } = new();
 
     public int GetSkillModifier(string skillId)
     {
@@ -68,7 +69,8 @@ public class IslandActorState : ActorState
             Energy,
             Morale,
             Boredom,
-            ActiveBuffs
+            ActiveBuffs,
+            PendingChatActions = PendingChatActions.ToList()
         });
     }
 
@@ -95,6 +97,12 @@ public class IslandActorState : ActorState
         {
             ActiveBuffs = JsonSerializer.Deserialize<List<ActiveBuff>>(buffs.GetRawText()) ?? new();
         }
+
+        if (data.TryGetValue("PendingChatActions", out var actions))
+        {
+            var list = JsonSerializer.Deserialize<List<PendingIntent>>(actions.GetRawText()) ?? new();
+            PendingChatActions = new Queue<PendingIntent>(list);
+        }
     }
 }
 
@@ -111,4 +119,12 @@ public class ActiveBuff
     public string SkillId { get; set; } = "";
     public int Value { get; set; }
     public double ExpiresAt { get; set; }
+}
+
+public class PendingIntent
+{
+    public string ActionId { get; set; } = "";
+    public string Type { get; set; } = "";
+    public Dictionary<string, object> Data { get; set; } = new();
+    public double EnqueuedAt { get; set; }
 }

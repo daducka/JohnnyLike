@@ -50,6 +50,52 @@ public class IslandDomainPack : IDomainPack
 
         islandState.ActiveBuffs.RemoveAll(b => b.ExpiresAt <= currentTime);
 
+        // Process pending chat actions first (unless survival critical)
+        if (islandState.PendingChatActions.Count > 0)
+        {
+            var isSurvivalCritical = islandState.Hunger > 80.0 || islandState.Energy < 15.0;
+            
+            if (!isSurvivalCritical)
+            {
+                var intent = islandState.PendingChatActions.Peek();
+                
+                if (intent.ActionId == "write_name_sand")
+                {
+                    var name = intent.Data.GetValueOrDefault("viewer_name", "Someone")?.ToString() ?? "Someone";
+                    candidates.Add(new ActionCandidate(
+                        new ActionSpec(
+                            new ActionId("write_name_sand"),
+                            ActionKind.Emote,
+                            new Dictionary<string, object>
+                            {
+                                ["name"] = name,
+                                ["location"] = "beach"
+                            },
+                            8.0
+                        ),
+                        2.0, // High priority
+                        $"Write {name}'s name in sand (chat redeem)"
+                    ));
+                }
+                else if (intent.ActionId == "clap_emote")
+                {
+                    candidates.Add(new ActionCandidate(
+                        new ActionSpec(
+                            new ActionId("clap_emote"),
+                            ActionKind.Emote,
+                            new Dictionary<string, object>
+                            {
+                                ["emote"] = "clap"
+                            },
+                            2.0
+                        ),
+                        2.0, // High priority
+                        "Clap emote (sub/cheer)"
+                    ));
+                }
+            }
+        }
+
         AddFishingCandidate(actorId, islandState, islandWorld, currentTime, rngStream, candidates);
         AddCoconutCandidate(actorId, islandState, islandWorld, currentTime, rngStream, candidates);
         AddSandCastleCandidate(actorId, islandState, islandWorld, currentTime, rngStream, candidates);
@@ -467,6 +513,25 @@ public class IslandDomainPack : IDomainPack
         {
             ApplyMermaidEncounterEffects(actorId, outcome, islandState, islandWorld);
         }
+        else if (actionId == "write_name_sand" || actionId == "clap_emote")
+        {
+            // Dequeue the completed chat action intent
+            if (islandState.PendingChatActions.Count > 0)
+            {
+                islandState.PendingChatActions.Dequeue();
+            }
+            
+            // Apply effects for chat-triggered actions
+            if (actionId == "write_name_sand")
+            {
+                islandState.Morale = Math.Min(100.0, islandState.Morale + 10.0);
+                islandState.Boredom = Math.Max(0.0, islandState.Boredom - 15.0);
+            }
+            else if (actionId == "clap_emote")
+            {
+                islandState.Morale = Math.Min(100.0, islandState.Morale + 5.0);
+            }
+        }
     }
 
     private void ApplyFishingEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
@@ -679,5 +744,74 @@ public class IslandDomainPack : IDomainPack
     {
         errors = new List<string>();
         return true;
+    }
+
+    public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime)
+    {
+        if (targetActor == null)
+        {
+            return;
+        }
+
+        var islandState = targetActor as IslandActorState;
+        if (islandState == null)
+        {
+            return;
+        }
+
+        var islandWorld = worldState as IslandWorldState;
+
+        switch (signal.Type)
+        {
+            case "chat_redeem":
+                HandleChatRedeem(signal, islandState, currentTime);
+                break;
+            case "sub":
+            case "cheer":
+                HandleSubOrCheer(signal, islandState, currentTime);
+                break;
+        }
+    }
+
+    private void HandleChatRedeem(Signal signal, IslandActorState state, double currentTime)
+    {
+        if (signal.Data.TryGetValue("redeem_name", out var redeemName))
+        {
+            var redeemStr = redeemName.ToString();
+            
+            if (redeemStr == "write_name_sand")
+            {
+                // Enqueue intent to write name in sand
+                state.PendingChatActions.Enqueue(new PendingIntent
+                {
+                    ActionId = "write_name_sand",
+                    Type = "chat_redeem",
+                    Data = new Dictionary<string, object>(signal.Data),
+                    EnqueuedAt = currentTime
+                });
+            }
+        }
+    }
+
+    private void HandleSubOrCheer(Signal signal, IslandActorState state, double currentTime)
+    {
+        // Add Inspiration buff for subs/cheers
+        state.ActiveBuffs.Add(new ActiveBuff
+        {
+            Name = "Inspiration",
+            Type = BuffType.SkillBonus,
+            SkillId = "",
+            Value = 1,
+            ExpiresAt = currentTime + 300.0 // 5 minutes
+        });
+
+        // Enqueue clap emote intent
+        state.PendingChatActions.Enqueue(new PendingIntent
+        {
+            ActionId = "clap_emote",
+            Type = signal.Type,
+            Data = new Dictionary<string, object>(signal.Data),
+            EnqueuedAt = currentTime
+        });
     }
 }
