@@ -108,7 +108,7 @@ public class DndMathTests
     [Fact]
     public void EstimateSuccessChanceD20_RespectsCriticalFailureWithAdvantage()
     {
-        // Even with advantage, nat 1 on both rolls should be possible (5% * 5% = 0.25%)
+        // Even with advantage, nat 1 on both rolls should be possible (0.05 * 0.05 = 0.0025 or 0.25%)
         var chance = DndMath.EstimateSuccessChanceD20(1, 10, AdvantageType.Advantage);
         Assert.True(chance <= 0.95, $"Expected chance <= 0.95, got {chance}");
     }
@@ -116,7 +116,7 @@ public class DndMathTests
     [Fact]
     public void EstimateSuccessChanceD20_RespectsCriticalSuccessWithDisadvantage()
     {
-        // Even with disadvantage, nat 20 on both rolls should be possible (5% * 5% = 0.25%)
+        // Even with disadvantage, nat 20 on both rolls should be possible (0.05 * 0.05 = 0.0025 or 0.25%)
         var chance = DndMath.EstimateSuccessChanceD20(25, 0, AdvantageType.Disadvantage);
         Assert.True(chance >= 0.05, $"Expected chance >= 0.05, got {chance}");
     }
