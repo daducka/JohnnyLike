@@ -563,3 +563,63 @@ public class IslandSignalHandlingTests
     }
 }
 
+public class IslandDeterminismTests
+{
+    [Fact]
+    public void SameSeed_ProducesSameTrace_WithSkillChecks()
+    {
+        // Run the same simulation twice with the same seed
+        var hash1 = RunIslandSimulation(42);
+        var hash2 = RunIslandSimulation(42);
+
+        // Verify traces are identical, proving skill checks are deterministic
+        Assert.Equal(hash1, hash2);
+    }
+
+    [Fact]
+    public void DifferentSeed_ProducesDifferentTrace_WithSkillChecks()
+    {
+        // Run simulations with different seeds
+        var hash1 = RunIslandSimulation(42);
+        var hash2 = RunIslandSimulation(43);
+
+        // Verify traces differ, proving RNG affects outcomes
+        Assert.NotEqual(hash1, hash2);
+    }
+
+    private string RunIslandSimulation(int seed)
+    {
+        var domainPack = new IslandDomainPack();
+        var traceSink = new InMemoryTraceSink();
+        var engine = new JohnnyLike.Engine.Engine(domainPack, seed, traceSink);
+
+        // Add an actor with specific attributes that will trigger skill checks
+        engine.AddActor(new ActorId("Survivor"), new Dictionary<string, object>
+        {
+            ["STR"] = 12,
+            ["DEX"] = 14,
+            ["CON"] = 10,
+            ["INT"] = 10,
+            ["WIS"] = 16,
+            ["CHA"] = 8,
+            ["hunger"] = 60.0,
+            ["energy"] = 70.0,
+            ["morale"] = 50.0,
+            ["boredom"] = 30.0
+        });
+
+        var executor = new FakeExecutor(engine);
+        var timeStep = 0.5;
+        var elapsed = 0.0;
+
+        // Run simulation for a short period to ensure skill checks are executed
+        while (elapsed < 60.0)
+        {
+            executor.Update(timeStep);
+            elapsed += timeStep;
+        }
+
+        return TraceHelper.ComputeTraceHash(traceSink.GetEvents());
+    }
+}
+
