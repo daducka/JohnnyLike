@@ -364,7 +364,10 @@ public class ActorStateSnapshotTests
         engine.AddActor(new ActorId("TestActor"));
         
         // Act - Get and complete an action
-        engine.TryGetNextAction(new ActorId("TestActor"), out var action);
+        var success = engine.TryGetNextAction(new ActorId("TestActor"), out var action);
+        Assert.True(success);
+        Assert.NotNull(action);
+        
         engine.ReportActionComplete(
             new ActorId("TestActor"),
             new ActionOutcome(action!.Id, ActionOutcomeType.Success, 1.0, null)
