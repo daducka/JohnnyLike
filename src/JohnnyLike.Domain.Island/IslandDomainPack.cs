@@ -235,7 +235,7 @@ public class IslandDomainPack : IDomainPack
             }
         }
 
-        // NEW: Use dictionary lookup instead of if/else chain
+        // Use dictionary lookup to dispatch to provider
         if (_effectHandlers.TryGetValue(actionId, out var handler))
         {
             var effectCtx = new EffectContext
@@ -248,26 +248,6 @@ public class IslandDomainPack : IDomainPack
             };
             
             handler.ApplyEffects(effectCtx);
-        }
-        // Handle special cases that don't have providers (write_name_sand, clap_emote)
-        else if (actionId == "write_name_sand" || actionId == "clap_emote")
-        {
-            // Dequeue the completed chat action intent
-            if (islandState.PendingChatActions.Count > 0)
-            {
-                islandState.PendingChatActions.Dequeue();
-            }
-            
-            // Apply effects for chat-triggered actions
-            if (actionId == "write_name_sand")
-            {
-                islandState.Morale = Math.Min(100.0, islandState.Morale + 10.0);
-                islandState.Boredom = Math.Max(0.0, islandState.Boredom - 15.0);
-            }
-            else if (actionId == "clap_emote")
-            {
-                islandState.Morale = Math.Min(100.0, islandState.Morale + 5.0);
-            }
         }
     }
 
