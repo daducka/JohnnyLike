@@ -1,4 +1,6 @@
-namespace JohnnyLike.Domain.Island;
+using System.Text.Json;
+
+namespace JohnnyLike.Domain.Island.Items;
 
 public class ShelterItem : MaintainableWorldItem
 {

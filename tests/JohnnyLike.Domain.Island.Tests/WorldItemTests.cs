@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Tests;

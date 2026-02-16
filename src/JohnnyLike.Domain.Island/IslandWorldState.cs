@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Items;
 using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island;
@@ -58,28 +59,12 @@ public class IslandWorldState : WorldState
 
     public override string Serialize()
     {
-        var serializedItems = WorldItems.Select(item =>
+        var serializedItems = WorldItems.Select(item => item.SerializeToDict()).ToList();
+
+        var options = new JsonSerializerOptions
         {
-            var baseProps = new Dictionary<string, object>
-            {
-                ["Id"] = item.Id,
-                ["Type"] = item.Type
-            };
-
-            if (item is MaintainableWorldItem maintainable)
-            {
-                baseProps["Quality"] = maintainable.Quality;
-                baseProps["BaseDecayPerSecond"] = maintainable.BaseDecayPerSecond;
-
-                if (item is CampfireItem campfire)
-                {
-                    baseProps["IsLit"] = campfire.IsLit;
-                    baseProps["FuelSeconds"] = campfire.FuelSeconds;
-                }
-            }
-
-            return baseProps;
-        }).ToList();
+            Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+        };
 
         return JsonSerializer.Serialize(new
         {
@@ -91,7 +76,7 @@ public class IslandWorldState : WorldState
             CoconutsAvailable,
             TideLevel,
             WorldItems = serializedItems
-        });
+        }, options);
     }
 
     public override void Deserialize(string json)
@@ -101,30 +86,11 @@ public class IslandWorldState : WorldState
 
         TimeOfDay = data["TimeOfDay"].GetDouble();
         DayCount = data["DayCount"].GetInt32();
-        
-        // Handle Weather enum - can be string or number
-        if (data["Weather"].ValueKind == JsonValueKind.String)
-        {
-            Weather = Enum.Parse<Weather>(data["Weather"].GetString()!);
-        }
-        else
-        {
-            Weather = (Weather)data["Weather"].GetInt32();
-        }
-        
+        Weather = Enum.Parse<Weather>(data["Weather"].GetString()!);
         FishAvailable = data["FishAvailable"].GetDouble();
         FishRegenRatePerMinute = data["FishRegenRatePerMinute"].GetDouble();
         CoconutsAvailable = data["CoconutsAvailable"].GetInt32();
-        
-        // Handle TideLevel enum - can be string or number
-        if (data["TideLevel"].ValueKind == JsonValueKind.String)
-        {
-            TideLevel = Enum.Parse<TideLevel>(data["TideLevel"].GetString()!);
-        }
-        else
-        {
-            TideLevel = (TideLevel)data["TideLevel"].GetInt32();
-        }
+        TideLevel = Enum.Parse<TideLevel>(data["TideLevel"].GetString()!);
 
         WorldItems.Clear();
         if (data.TryGetValue("WorldItems", out var itemsElement))
@@ -144,17 +110,9 @@ public class IslandWorldState : WorldState
                         _ => null
                     };
 
-                    if (item != null && item is MaintainableWorldItem maintainable)
+                    if (item != null)
                     {
-                        maintainable.Quality = itemData["Quality"].GetDouble();
-                        maintainable.BaseDecayPerSecond = itemData["BaseDecayPerSecond"].GetDouble();
-
-                        if (item is CampfireItem campfire)
-                        {
-                            campfire.IsLit = itemData["IsLit"].GetBoolean();
-                            campfire.FuelSeconds = itemData["FuelSeconds"].GetDouble();
-                        }
-
+                        item.DeserializeFromDict(itemData);
                         WorldItems.Add(item);
                     }
                 }

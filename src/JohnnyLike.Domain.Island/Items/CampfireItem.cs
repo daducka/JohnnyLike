@@ -1,4 +1,6 @@
-namespace JohnnyLike.Domain.Island;
+using System.Text.Json;
+
+namespace JohnnyLike.Domain.Island.Items;
 
 public class CampfireItem : MaintainableWorldItem
 {
@@ -28,5 +30,20 @@ public class CampfireItem : MaintainableWorldItem
         {
             Quality = Math.Max(0.0, Quality - 0.05 * dtSeconds);
         }
+    }
+
+    public override Dictionary<string, object> SerializeToDict()
+    {
+        var dict = base.SerializeToDict();
+        dict["IsLit"] = IsLit;
+        dict["FuelSeconds"] = FuelSeconds;
+        return dict;
+    }
+
+    public override void DeserializeFromDict(Dictionary<string, JsonElement> data)
+    {
+        base.DeserializeFromDict(data);
+        IsLit = data["IsLit"].GetBoolean();
+        FuelSeconds = data["FuelSeconds"].GetDouble();
     }
 }
