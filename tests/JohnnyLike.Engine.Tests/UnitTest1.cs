@@ -350,3 +350,91 @@ public class SignalHandlingTests
         public override void Deserialize(string json) { }
     }
 }
+
+public class ActorStateSnapshotTests
+{
+    [Fact]
+    public void ActionCompleted_IncludesActorStateSnapshot()
+    {
+        // Arrange
+        var domainPack = new TestDomainPackWithSnapshot();
+        var traceSink = new InMemoryTraceSink();
+        var engine = new JohnnyLike.Engine.Engine(domainPack, 42, traceSink);
+        
+        engine.AddActor(new ActorId("TestActor"));
+        
+        // Act - Get and complete an action
+        engine.TryGetNextAction(new ActorId("TestActor"), out var action);
+        engine.ReportActionComplete(
+            new ActorId("TestActor"),
+            new ActionOutcome(action!.Id, ActionOutcomeType.Success, 1.0, null)
+        );
+        
+        // Assert - Check that the trace event contains actor state snapshot
+        var events = traceSink.GetEvents();
+        var actionCompletedEvent = events.FirstOrDefault(e => e.EventType == "ActionCompleted");
+        
+        Assert.NotNull(actionCompletedEvent);
+        Assert.True(actionCompletedEvent.Details.ContainsKey("actor_testValue"));
+        Assert.Equal(42, actionCompletedEvent.Details["actor_testValue"]);
+    }
+
+    private class TestDomainPackWithSnapshot : IDomainPack
+    {
+        public string DomainName => "Test";
+
+        public WorldState CreateInitialWorldState() => new TestWorldState();
+        
+        public ActorState CreateActorState(ActorId actorId, Dictionary<string, object>? initialData = null)
+        {
+            return new TestActorState { Id = actorId };
+        }
+
+        public List<ActionCandidate> GenerateCandidates(ActorId actorId, ActorState actorState, WorldState worldState, double currentTime, Random rng)
+        {
+            return new List<ActionCandidate>
+            {
+                new ActionCandidate(
+                    new ActionSpec(new ActionId("test_action"), ActionKind.Wait, EmptyActionParameters.Instance, 1.0),
+                    1.0
+                )
+            };
+        }
+
+        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng)
+        {
+        }
+
+        public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime)
+        {
+        }
+
+        public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
+        
+        public bool ValidateContent(out List<string> errors)
+        {
+            errors = new List<string>();
+            return true;
+        }
+
+        public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState)
+        {
+            return new Dictionary<string, object>
+            {
+                ["testValue"] = 42
+            };
+        }
+    }
+
+    private class TestActorState : ActorState
+    {
+        public override string Serialize() => "{}";
+        public override void Deserialize(string json) { }
+    }
+
+    private class TestWorldState : WorldState
+    {
+        public override string Serialize() => "{}";
+        public override void Deserialize(string json) { }
+    }
+}
