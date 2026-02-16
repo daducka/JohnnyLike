@@ -475,13 +475,26 @@ public class IslandDomainPack : IDomainPack
                 var request = new SkillCheckRequest(dc, modifier, advantage, skillId);
                 var result = SkillCheckResolver.Resolve(rng, request);
                 tier = result.OutcomeTier;
-            }
 
-            if (outcome.ResultData == null)
-            {
-                outcome = outcome with { ResultData = new Dictionary<string, object>() };
+                if (outcome.ResultData == null)
+                {
+                    outcome = outcome with { ResultData = new Dictionary<string, object>() };
+                }
+                outcome.ResultData["dc"] = dc;
+                outcome.ResultData["modifier"] = modifier;
+                outcome.ResultData["advantage"] = advantage.ToString();
+                outcome.ResultData["roll"] = result.Roll;
+                outcome.ResultData["total"] = result.Total;
+                outcome.ResultData["tier"] = tier.ToString();
             }
-            outcome.ResultData["tier"] = tier.ToString();
+            else
+            {
+                if (outcome.ResultData == null)
+                {
+                    outcome = outcome with { ResultData = new Dictionary<string, object>() };
+                }
+                outcome.ResultData["tier"] = tier.ToString();
+            }
         }
 
         if (actionId == "fish_for_food")
