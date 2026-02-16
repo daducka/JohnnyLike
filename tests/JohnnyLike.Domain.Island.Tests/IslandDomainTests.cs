@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
+using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Kit.Dice;
 using JohnnyLike.Engine;
 using JohnnyLike.SimRunner;
@@ -213,6 +214,41 @@ public class IslandDomainPackTests
         
         // But should have survival actions like fishing
         Assert.Contains(candidates, c => c.Action.Id.Value == "fish_for_food");
+    }
+
+    [Fact]
+    public void Providers_DiscoveredInCorrectOrder()
+    {
+        var domain = new IslandDomainPack();
+        
+        // Get the private _providers field via reflection to inspect order
+        var providersField = typeof(IslandDomainPack).GetField("_providers", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var providers = (List<IIslandCandidateProvider>)providersField!.GetValue(domain)!;
+        
+        // Verify we have all expected providers
+        Assert.Equal(8, providers.Count); // Chat, Sleep, Fishing, Coconut, SandCastle, Swim, Vignette, Idle
+        
+        // Verify order by checking types
+        var providerTypes = providers.Select(p => p.GetType().Name).ToList();
+        
+        // Expected order based on Order attribute values:
+        // ChatCandidateProvider (50)
+        // SleepCandidateProvider (100)
+        // FishingCandidateProvider (200)
+        // CoconutCandidateProvider (210)
+        // SandCastleCandidateProvider (400)
+        // SwimCandidateProvider (410)
+        // VignetteCandidateProvider (800)
+        // IdleCandidateProvider (9999)
+        
+        Assert.Equal("ChatCandidateProvider", providerTypes[0]);
+        Assert.Equal("SleepCandidateProvider", providerTypes[1]);
+        Assert.Equal("FishingCandidateProvider", providerTypes[2]);
+        Assert.Equal("CoconutCandidateProvider", providerTypes[3]);
+        Assert.Equal("SandCastleCandidateProvider", providerTypes[4]);
+        Assert.Equal("SwimCandidateProvider", providerTypes[5]);
+        Assert.Equal("VignetteCandidateProvider", providerTypes[6]);
+        Assert.Equal("IdleCandidateProvider", providerTypes[7]);
     }
 }
 
