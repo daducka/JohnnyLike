@@ -275,7 +275,7 @@ public class IslandDomainPack : IDomainPack
     {
         if (outcome.ResultData?.TryGetValue("tier", out var tierObj) == true)
         {
-            // Try direct cast first (if already enum), fallback to parse (for string values)
+            // Check if already enum, fallback to parse for string values
             if (tierObj is RollOutcomeTier tier)
                 return tier;
             
