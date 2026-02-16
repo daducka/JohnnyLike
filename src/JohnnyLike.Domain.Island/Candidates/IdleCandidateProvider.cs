@@ -19,4 +19,9 @@ public class IdleCandidateProvider : IIslandCandidateProvider
             "Idle"
         ));
     }
+
+    public void ApplyEffects(EffectContext ctx)
+    {
+        // Idle has no effects to apply
+    }
 }

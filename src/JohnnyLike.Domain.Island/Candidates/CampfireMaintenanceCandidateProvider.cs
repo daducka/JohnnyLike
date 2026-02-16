@@ -4,7 +4,7 @@ using JohnnyLike.Domain.Island.Items;
 
 namespace JohnnyLike.Domain.Island.Candidates;
 
-[IslandCandidateProvider(150)]
+[IslandCandidateProvider(150, "add_fuel_campfire", "relight_campfire", "repair_campfire", "rebuild_campfire")]
 public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
 {
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -101,6 +101,63 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                 1.0 * foresightMultiplier,
                 "Rebuild campfire from scratch"
             ));
+        }
+    }
+
+    public void ApplyEffects(EffectContext ctx)
+    {
+        var campfire = ctx.World.MainCampfire;
+        if (campfire == null)
+            return;
+
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+        var actionId = ctx.Outcome.ActionId.Value;
+
+        switch (actionId)
+        {
+            case "add_fuel_campfire":
+                if (tier >= RollOutcomeTier.PartialSuccess)
+                {
+                    var fuelAdded = tier == RollOutcomeTier.CriticalSuccess ? 2400.0 : 
+                                    tier == RollOutcomeTier.Success ? 1800.0 : 900.0;
+                    campfire.FuelSeconds = Math.Min(7200.0, campfire.FuelSeconds + fuelAdded);
+                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 5.0);
+                }
+                break;
+
+            case "relight_campfire":
+                if (tier >= RollOutcomeTier.Success)
+                {
+                    campfire.IsLit = true;
+                    campfire.FuelSeconds = tier == RollOutcomeTier.CriticalSuccess ? 1800.0 : 1200.0;
+                    ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 10.0);
+                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 8.0);
+                }
+                break;
+
+            case "repair_campfire":
+                if (tier >= RollOutcomeTier.PartialSuccess)
+                {
+                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 40.0 : 
+                                         tier == RollOutcomeTier.Success ? 25.0 : 15.0;
+                    campfire.Quality = Math.Min(100.0, campfire.Quality + qualityRestored);
+                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 7.0);
+                }
+                break;
+
+            case "rebuild_campfire":
+                if (tier >= RollOutcomeTier.Success)
+                {
+                    campfire.Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 80.0;
+                    campfire.IsLit = true;
+                    campfire.FuelSeconds = 1800.0;
+                    ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 15.0);
+                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 20.0);
+                }
+                break;
         }
     }
 }

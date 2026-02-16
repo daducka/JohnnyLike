@@ -4,5 +4,11 @@ namespace JohnnyLike.Domain.Island.Candidates;
 public sealed class IslandCandidateProviderAttribute : Attribute
 {
     public int Order { get; }
-    public IslandCandidateProviderAttribute(int order = 100) => Order = order;
+    public string[] ActionIds { get; }
+
+    public IslandCandidateProviderAttribute(int order = 100, params string[] actionIds)
+    {
+        Order = order;
+        ActionIds = actionIds;
+    }
 }

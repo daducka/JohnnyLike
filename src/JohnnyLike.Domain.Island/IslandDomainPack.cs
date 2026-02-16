@@ -9,7 +9,9 @@ namespace JohnnyLike.Domain.Island;
 public class IslandDomainPack : IDomainPack
 {
     private readonly List<IIslandCandidateProvider> _providers;
+    private readonly Dictionary<string, IIslandCandidateProvider> _effectHandlers;
     private static List<IIslandCandidateProvider>? _cachedProviders;
+    private static Dictionary<string, IIslandCandidateProvider>? _cachedEffectHandlers;
     private static readonly object _lock = new object();
 
     public string DomainName => "Island";
@@ -23,18 +25,19 @@ public class IslandDomainPack : IDomainPack
             {
                 if (_cachedProviders == null)
                 {
-                    _cachedProviders = DiscoverProviders();
+                    (_cachedProviders, _cachedEffectHandlers) = DiscoverProviders();
                 }
             }
         }
         
         _providers = _cachedProviders;
+        _effectHandlers = _cachedEffectHandlers!;
     }
 
-    private static List<IIslandCandidateProvider> DiscoverProviders()
+    private static (List<IIslandCandidateProvider>, Dictionary<string, IIslandCandidateProvider>) DiscoverProviders()
     {
         // Discover and instantiate providers ONLY by attribute
-        return Assembly.GetExecutingAssembly()
+        var providers = Assembly.GetExecutingAssembly()
             .GetTypes()
             .Where(t => t.GetCustomAttribute<IslandCandidateProviderAttribute>() != null)
             .Where(t => !t.IsAbstract && typeof(IIslandCandidateProvider).IsAssignableFrom(t))
@@ -45,6 +48,23 @@ public class IslandDomainPack : IDomainPack
             .OrderBy(x => x.Attr.Order)
             .Select(x => (IIslandCandidateProvider)Activator.CreateInstance(x.Type)!)
             .ToList();
+
+        // Build action ID -> provider lookup
+        var effectHandlers = new Dictionary<string, IIslandCandidateProvider>();
+        foreach (var type in Assembly.GetExecutingAssembly().GetTypes())
+        {
+            var attr = type.GetCustomAttribute<IslandCandidateProviderAttribute>();
+            if (attr != null && attr.ActionIds.Length > 0)
+            {
+                var provider = (IIslandCandidateProvider)Activator.CreateInstance(type)!;
+                foreach (var actionId in attr.ActionIds)
+                {
+                    effectHandlers[actionId] = provider;
+                }
+            }
+        }
+
+        return (providers, effectHandlers);
     }
 
     public WorldState CreateInitialWorldState()
@@ -215,44 +235,21 @@ public class IslandDomainPack : IDomainPack
             }
         }
 
-        if (actionId == "fish_for_food")
+        // NEW: Use dictionary lookup instead of if/else chain
+        if (_effectHandlers.TryGetValue(actionId, out var handler))
         {
-            ApplyFishingEffects(actorId, outcome, islandState, islandWorld);
+            var effectCtx = new EffectContext
+            {
+                ActorId = actorId,
+                Outcome = outcome,
+                Actor = islandState,
+                World = islandWorld,
+                Tier = GetTierFromOutcome(outcome)
+            };
+            
+            handler.ApplyEffects(effectCtx);
         }
-        else if (actionId == "shake_tree_coconut")
-        {
-            ApplyCoconutEffects(actorId, outcome, islandState, islandWorld);
-        }
-        else if (actionId == "build_sand_castle")
-        {
-            ApplySandCastleEffects(actorId, outcome, islandState, islandWorld);
-        }
-        else if (actionId == "swim")
-        {
-            ApplySwimEffects(actorId, outcome, islandState, islandWorld);
-        }
-        else if (actionId == "sleep_under_tree")
-        {
-            ApplySleepEffects(actorId, outcome, islandState, islandWorld);
-        }
-        else if (actionId == "plane_sighting")
-        {
-            ApplyPlaneSightingEffects(actorId, outcome, islandState, islandWorld);
-        }
-        else if (actionId == "mermaid_encounter")
-        {
-            ApplyMermaidEncounterEffects(actorId, outcome, islandState, islandWorld);
-        }
-        else if (actionId == "add_fuel_campfire" || actionId == "relight_campfire" || 
-                 actionId == "repair_campfire" || actionId == "rebuild_campfire")
-        {
-            ApplyCampfireMaintenanceEffects(actorId, outcome, islandState, islandWorld);
-        }
-        else if (actionId == "repair_shelter" || actionId == "reinforce_shelter" || 
-                 actionId == "rebuild_shelter")
-        {
-            ApplyShelterMaintenanceEffects(actorId, outcome, islandState, islandWorld);
-        }
+        // Handle special cases that don't have providers (write_name_sand, clap_emote)
         else if (actionId == "write_name_sand" || actionId == "clap_emote")
         {
             // Dequeue the completed chat action intent
@@ -274,307 +271,13 @@ public class IslandDomainPack : IDomainPack
         }
     }
 
-    private void ApplyFishingEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
+    private RollOutcomeTier? GetTierFromOutcome(ActionOutcome outcome)
     {
-        if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
-            return;
-
-        var tier = Enum.Parse<RollOutcomeTier>(tierObj.ToString()!);
-
-        switch (tier)
+        if (outcome.ResultData?.TryGetValue("tier", out var tierObj) == true)
         {
-            case RollOutcomeTier.CriticalSuccess:
-                state.Hunger = Math.Max(0.0, state.Hunger - 50.0);
-                world.FishAvailable = Math.Max(0.0, world.FishAvailable - 30.0);
-                state.Morale = Math.Min(100.0, state.Morale + 15.0);
-                break;
-
-            case RollOutcomeTier.Success:
-                state.Hunger = Math.Max(0.0, state.Hunger - 30.0);
-                world.FishAvailable = Math.Max(0.0, world.FishAvailable - 15.0);
-                state.Morale = Math.Min(100.0, state.Morale + 5.0);
-                break;
-
-            case RollOutcomeTier.PartialSuccess:
-                state.Morale = Math.Min(100.0, state.Morale + 5.0);
-                break;
-
-            case RollOutcomeTier.Failure:
-                break;
-
-            case RollOutcomeTier.CriticalFailure:
-                state.Morale = Math.Max(0.0, state.Morale - 10.0);
-                break;
+            return Enum.Parse<RollOutcomeTier>(tierObj.ToString()!);
         }
-
-        state.Boredom = Math.Max(0.0, state.Boredom - 10.0);
-    }
-
-    private void ApplyCoconutEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
-    {
-        if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
-            return;
-
-        var tier = Enum.Parse<RollOutcomeTier>(tierObj.ToString()!);
-
-        switch (tier)
-        {
-            case RollOutcomeTier.CriticalSuccess:
-                state.Hunger = Math.Max(0.0, state.Hunger - 25.0);
-                world.CoconutsAvailable = Math.Max(0, world.CoconutsAvailable - 1);
-                state.Energy = Math.Min(100.0, state.Energy + 15.0);
-                break;
-
-            case RollOutcomeTier.Success:
-                state.Hunger = Math.Max(0.0, state.Hunger - 15.0);
-                world.CoconutsAvailable = Math.Max(0, world.CoconutsAvailable - 1);
-                state.Energy = Math.Min(100.0, state.Energy + 10.0);
-                break;
-
-            case RollOutcomeTier.PartialSuccess:
-                state.Morale = Math.Min(100.0, state.Morale + 2.0);
-                break;
-
-            case RollOutcomeTier.Failure:
-                break;
-
-            case RollOutcomeTier.CriticalFailure:
-                state.Morale = Math.Max(0.0, state.Morale - 5.0);
-                break;
-        }
-    }
-
-    private void ApplySandCastleEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
-    {
-        if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
-            return;
-
-        var tier = Enum.Parse<RollOutcomeTier>(tierObj.ToString()!);
-
-        switch (tier)
-        {
-            case RollOutcomeTier.CriticalSuccess:
-                state.Morale = Math.Min(100.0, state.Morale + 25.0);
-                state.Boredom = Math.Max(0.0, state.Boredom - 30.0);
-                break;
-
-            case RollOutcomeTier.Success:
-                state.Morale = Math.Min(100.0, state.Morale + 15.0);
-                state.Boredom = Math.Max(0.0, state.Boredom - 20.0);
-                break;
-
-            case RollOutcomeTier.PartialSuccess:
-                state.Morale = Math.Min(100.0, state.Morale + 5.0);
-                state.Boredom = Math.Max(0.0, state.Boredom - 10.0);
-                break;
-
-            case RollOutcomeTier.Failure:
-                state.Boredom = Math.Max(0.0, state.Boredom - 5.0);
-                break;
-
-            case RollOutcomeTier.CriticalFailure:
-                state.Morale = Math.Max(0.0, state.Morale - 5.0);
-                break;
-        }
-    }
-
-    private void ApplySwimEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
-    {
-        if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
-            return;
-
-        var tier = Enum.Parse<RollOutcomeTier>(tierObj.ToString()!);
-
-        switch (tier)
-        {
-            case RollOutcomeTier.CriticalSuccess:
-                state.Morale = Math.Min(100.0, state.Morale + 20.0);
-                state.Energy = Math.Max(0.0, state.Energy - 5.0);
-                state.Boredom = Math.Max(0.0, state.Boredom - 15.0);
-                break;
-
-            case RollOutcomeTier.Success:
-                state.Morale = Math.Min(100.0, state.Morale + 10.0);
-                state.Energy = Math.Max(0.0, state.Energy - 10.0);
-                state.Boredom = Math.Max(0.0, state.Boredom - 10.0);
-                break;
-
-            case RollOutcomeTier.PartialSuccess:
-                state.Morale = Math.Min(100.0, state.Morale + 3.0);
-                state.Energy = Math.Max(0.0, state.Energy - 15.0);
-                break;
-
-            case RollOutcomeTier.Failure:
-                state.Energy = Math.Max(0.0, state.Energy - 15.0);
-                break;
-
-            case RollOutcomeTier.CriticalFailure:
-                state.Energy = Math.Max(0.0, state.Energy - 25.0);
-                state.Morale = Math.Max(0.0, state.Morale - 10.0);
-                break;
-        }
-    }
-
-    private void ApplySleepEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
-    {
-        state.Energy = Math.Min(100.0, state.Energy + 40.0);
-        state.Boredom = Math.Max(0.0, state.Boredom - 5.0);
-    }
-
-    private void ApplyPlaneSightingEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
-    {
-        state.LastPlaneSightingTime = world.CurrentTime;
-
-        if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
-            return;
-
-        var tier = Enum.Parse<RollOutcomeTier>(tierObj.ToString()!);
-
-        if (tier >= RollOutcomeTier.Success)
-        {
-            state.Morale = Math.Min(100.0, state.Morale + 30.0);
-        }
-
-        if (tier == RollOutcomeTier.CriticalSuccess)
-        {
-            state.ActiveBuffs.Add(new ActiveBuff
-            {
-                Name = "Luck",
-                Type = BuffType.SkillBonus,
-                SkillId = "",
-                Value = 2,
-                ExpiresAt = world.CurrentTime + 300.0
-            });
-        }
-    }
-
-    private void ApplyMermaidEncounterEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
-    {
-        state.LastMermaidEncounterTime = world.CurrentTime;
-
-        if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
-            return;
-
-        var tier = Enum.Parse<RollOutcomeTier>(tierObj.ToString()!);
-
-        if (tier >= RollOutcomeTier.Success)
-        {
-            state.Morale = Math.Min(100.0, state.Morale + 40.0);
-        }
-
-        if (tier == RollOutcomeTier.CriticalSuccess)
-        {
-            state.ActiveBuffs.Add(new ActiveBuff
-            {
-                Name = "Mermaid's Blessing",
-                Type = BuffType.Advantage,
-                SkillId = "Fishing",
-                Value = 0,
-                ExpiresAt = world.CurrentTime + 600.0
-            });
-        }
-    }
-
-    private void ApplyCampfireMaintenanceEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
-    {
-        var campfire = world.MainCampfire;
-        if (campfire == null)
-            return;
-
-        if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
-            return;
-
-        var tier = Enum.Parse<RollOutcomeTier>(tierObj.ToString()!);
-        var actionId = outcome.ActionId.Value;
-
-        switch (actionId)
-        {
-            case "add_fuel_campfire":
-                if (tier >= RollOutcomeTier.PartialSuccess)
-                {
-                    var fuelAdded = tier == RollOutcomeTier.CriticalSuccess ? 2400.0 : 
-                                    tier == RollOutcomeTier.Success ? 1800.0 : 900.0;
-                    campfire.FuelSeconds = Math.Min(7200.0, campfire.FuelSeconds + fuelAdded);
-                    state.Boredom = Math.Max(0.0, state.Boredom - 5.0);
-                }
-                break;
-
-            case "relight_campfire":
-                if (tier >= RollOutcomeTier.Success)
-                {
-                    campfire.IsLit = true;
-                    campfire.FuelSeconds = tier == RollOutcomeTier.CriticalSuccess ? 1800.0 : 1200.0;
-                    state.Morale = Math.Min(100.0, state.Morale + 10.0);
-                    state.Boredom = Math.Max(0.0, state.Boredom - 8.0);
-                }
-                break;
-
-            case "repair_campfire":
-                if (tier >= RollOutcomeTier.PartialSuccess)
-                {
-                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 40.0 : 
-                                         tier == RollOutcomeTier.Success ? 25.0 : 15.0;
-                    campfire.Quality = Math.Min(100.0, campfire.Quality + qualityRestored);
-                    state.Boredom = Math.Max(0.0, state.Boredom - 7.0);
-                }
-                break;
-
-            case "rebuild_campfire":
-                if (tier >= RollOutcomeTier.Success)
-                {
-                    campfire.Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 80.0;
-                    campfire.IsLit = true;
-                    campfire.FuelSeconds = 1800.0;
-                    state.Morale = Math.Min(100.0, state.Morale + 15.0);
-                    state.Boredom = Math.Max(0.0, state.Boredom - 20.0);
-                }
-                break;
-        }
-    }
-
-    private void ApplyShelterMaintenanceEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
-    {
-        var shelter = world.MainShelter;
-        if (shelter == null)
-            return;
-
-        if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
-            return;
-
-        var tier = Enum.Parse<RollOutcomeTier>(tierObj.ToString()!);
-        var actionId = outcome.ActionId.Value;
-
-        switch (actionId)
-        {
-            case "repair_shelter":
-                if (tier >= RollOutcomeTier.PartialSuccess)
-                {
-                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 35.0 : 
-                                         tier == RollOutcomeTier.Success ? 20.0 : 10.0;
-                    shelter.Quality = Math.Min(100.0, shelter.Quality + qualityRestored);
-                    state.Boredom = Math.Max(0.0, state.Boredom - 6.0);
-                }
-                break;
-
-            case "reinforce_shelter":
-                if (tier >= RollOutcomeTier.Success)
-                {
-                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 45.0 : 30.0;
-                    shelter.Quality = Math.Min(100.0, shelter.Quality + qualityRestored);
-                    state.Morale = Math.Min(100.0, state.Morale + 8.0);
-                    state.Boredom = Math.Max(0.0, state.Boredom - 10.0);
-                }
-                break;
-
-            case "rebuild_shelter":
-                if (tier >= RollOutcomeTier.Success)
-                {
-                    shelter.Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 85.0;
-                    state.Morale = Math.Min(100.0, state.Morale + 20.0);
-                    state.Boredom = Math.Max(0.0, state.Boredom - 25.0);
-                }
-                break;
-        }
+        return null;
     }
 
     public List<SceneTemplate> GetSceneTemplates()

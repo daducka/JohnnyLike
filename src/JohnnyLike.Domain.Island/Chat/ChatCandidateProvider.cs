@@ -47,4 +47,10 @@ public class ChatCandidateProvider : IIslandCandidateProvider
             }
         }
     }
+
+    public void ApplyEffects(EffectContext ctx)
+    {
+        // Chat actions are handled specially in ApplyActionEffects
+        // This provider doesn't apply effects itself
+    }
 }

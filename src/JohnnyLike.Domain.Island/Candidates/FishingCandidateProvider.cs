@@ -3,7 +3,7 @@ using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Candidates;
 
-[IslandCandidateProvider(200)]
+[IslandCandidateProvider(200, "fish_for_food")]
 public class FishingCandidateProvider : IIslandCandidateProvider
 {
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -59,5 +59,41 @@ public class FishingCandidateProvider : IIslandCandidateProvider
             baseScore,
             $"Fishing (DC {baseDC}, {estimatedChance:P0} chance)"
         ));
+    }
+
+    public void ApplyEffects(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        switch (tier)
+        {
+            case RollOutcomeTier.CriticalSuccess:
+                ctx.Actor.Hunger = Math.Max(0.0, ctx.Actor.Hunger - 50.0);
+                ctx.World.FishAvailable = Math.Max(0.0, ctx.World.FishAvailable - 30.0);
+                ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 15.0);
+                break;
+
+            case RollOutcomeTier.Success:
+                ctx.Actor.Hunger = Math.Max(0.0, ctx.Actor.Hunger - 30.0);
+                ctx.World.FishAvailable = Math.Max(0.0, ctx.World.FishAvailable - 15.0);
+                ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 5.0);
+                break;
+
+            case RollOutcomeTier.PartialSuccess:
+                ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 5.0);
+                break;
+
+            case RollOutcomeTier.Failure:
+                break;
+
+            case RollOutcomeTier.CriticalFailure:
+                ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 10.0);
+                break;
+        }
+
+        ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 10.0);
     }
 }
