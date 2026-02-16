@@ -540,4 +540,24 @@ public class IslandDomainPack : IDomainPack
             EnqueuedAt = currentTime
         });
     }
+
+    public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState)
+    {
+        var islandState = (IslandActorState)actorState;
+        var snapshot = new Dictionary<string, object>
+        {
+            ["hunger"] = islandState.Hunger,
+            ["energy"] = islandState.Energy,
+            ["morale"] = islandState.Morale,
+            ["boredom"] = islandState.Boredom
+        };
+        
+        if (islandState.ActiveBuffs.Count > 0)
+        {
+            snapshot["activeBuffs"] = string.Join(", ", 
+                islandState.ActiveBuffs.Select(b => $"{b.Name}({b.ExpiresAt:F1})"));
+        }
+        
+        return snapshot;
+    }
 }

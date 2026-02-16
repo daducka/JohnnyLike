@@ -331,6 +331,11 @@ public class SignalHandlingTests
             errors = new List<string>();
             return true;
         }
+
+        public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState)
+        {
+            return new Dictionary<string, object>();
+        }
     }
 
     private class TestActorState : ActorState

@@ -202,6 +202,17 @@ public class OfficeDomainPack : IDomainPack
         }
     }
 
+    public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState)
+    {
+        var officeState = (OfficeActorState)actorState;
+        return new Dictionary<string, object>
+        {
+            ["hunger"] = officeState.Hunger,
+            ["energy"] = officeState.Energy,
+            ["social"] = officeState.Social
+        };
+    }
+
     private List<SceneTemplate> CreateSceneTemplates()
     {
         var templates = new List<SceneTemplate>();
