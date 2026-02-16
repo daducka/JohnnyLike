@@ -1,11 +1,31 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Kit.Dice;
+using JohnnyLike.Domain.Island.Candidates;
+using System.Reflection;
 
 namespace JohnnyLike.Domain.Island;
 
 public class IslandDomainPack : IDomainPack
 {
+    private readonly List<IIslandCandidateProvider> _providers;
+
     public string DomainName => "Island";
+
+    public IslandDomainPack()
+    {
+        // Discover and instantiate providers ONLY by attribute
+        _providers = Assembly.GetExecutingAssembly()
+            .GetTypes()
+            .Where(t => t.GetCustomAttribute<IslandCandidateProviderAttribute>() != null)
+            .Where(t => !t.IsAbstract && typeof(IIslandCandidateProvider).IsAssignableFrom(t))
+            .Select(t => new {
+                Type = t,
+                Attr = t.GetCustomAttribute<IslandCandidateProviderAttribute>()!
+            })
+            .OrderBy(x => x.Attr.Order)
+            .Select(x => (IIslandCandidateProvider)Activator.CreateInstance(x.Type)!)
+            .ToList();
+    }
 
     public WorldState CreateInitialWorldState()
     {
@@ -38,7 +58,6 @@ public class IslandDomainPack : IDomainPack
         double currentTime,
         Random rng)
     {
-        var candidates = new List<ActionCandidate>();
         var islandState = (IslandActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
         var rngStream = new RandomRngStream(rng);
@@ -47,378 +66,24 @@ public class IslandDomainPack : IDomainPack
 
         islandState.ActiveBuffs.RemoveAll(b => b.ExpiresAt <= currentTime);
 
-        // Process pending chat actions first (unless survival critical)
-        if (islandState.PendingChatActions.Count > 0)
+        // Create context for providers
+        var ctx = new IslandContext(
+            actorId,
+            islandState,
+            islandWorld,
+            currentTime,
+            rngStream,
+            rng
+        );
+
+        // Generate candidates using all registered providers
+        var candidates = new List<ActionCandidate>();
+        foreach (var provider in _providers)
         {
-            var isSurvivalCritical = islandState.Hunger > 80.0 || islandState.Energy < 15.0;
-            
-            if (!isSurvivalCritical)
-            {
-                var intent = islandState.PendingChatActions.Peek();
-                
-                if (intent.ActionId == "write_name_sand")
-                {
-                    var name = intent.Data.GetValueOrDefault("viewer_name", "Someone")?.ToString() ?? "Someone";
-                    candidates.Add(new ActionCandidate(
-                        new ActionSpec(
-                            new ActionId("write_name_sand"),
-                            ActionKind.Emote,
-                            new Dictionary<string, object>
-                            {
-                                ["name"] = name,
-                                ["location"] = "beach"
-                            },
-                            8.0
-                        ),
-                        2.0, // High priority
-                        $"Write {name}'s name in sand (chat redeem)"
-                    ));
-                }
-                else if (intent.ActionId == "clap_emote")
-                {
-                    candidates.Add(new ActionCandidate(
-                        new ActionSpec(
-                            new ActionId("clap_emote"),
-                            ActionKind.Emote,
-                            new Dictionary<string, object>
-                            {
-                                ["emote"] = "clap"
-                            },
-                            2.0
-                        ),
-                        2.0, // High priority
-                        "Clap emote (sub/cheer)"
-                    ));
-                }
-            }
-        }
-
-        AddFishingCandidate(actorId, islandState, islandWorld, currentTime, rngStream, candidates);
-        AddCoconutCandidate(actorId, islandState, islandWorld, currentTime, rngStream, candidates);
-        AddSandCastleCandidate(actorId, islandState, islandWorld, currentTime, rngStream, candidates);
-        AddSwimCandidate(actorId, islandState, islandWorld, currentTime, rngStream, candidates);
-        AddSleepCandidate(actorId, islandState, islandWorld, currentTime, rngStream, candidates);
-
-        AddVignetteEvents(actorId, islandState, islandWorld, currentTime, rngStream, candidates, rng);
-
-        if (candidates.Count == 0)
-        {
-            candidates.Add(new ActionCandidate(
-                new ActionSpec(
-                    new ActionId("idle"),
-                    ActionKind.Wait,
-                    new Dictionary<string, object>(),
-                    5.0
-                ),
-                0.3,
-                "Idle"
-            ));
+            provider.AddCandidates(ctx, candidates);
         }
 
         return candidates;
-    }
-
-    private void AddFishingCandidate(
-        ActorId actorId,
-        IslandActorState state,
-        IslandWorldState world,
-        double currentTime,
-        IRngStream rng,
-        List<ActionCandidate> candidates)
-    {
-        if (world.FishAvailable < 5.0)
-            return;
-
-        var baseDC = 10;
-        
-        // Morning (0.0-0.25) and dusk (0.75-1.0) are better for fishing - LOWER DC
-        var timeOfDay = world.TimeOfDay;
-        if (timeOfDay < 0.25 || timeOfDay > 0.75)
-            baseDC -= 2;  // Easier in morning/dusk
-        else if (timeOfDay >= 0.375 && timeOfDay <= 0.625)
-            baseDC += 1;  // Slightly harder in afternoon
-
-        // Rainy weather is good for fishing - LOWER DC
-        if (world.Weather == Weather.Rainy)
-            baseDC -= 2;  // Easier when rainy
-        else if (world.Weather == Weather.Windy)
-            baseDC += 1;  // Harder when windy
-
-        if (world.FishAvailable < 20.0)
-            baseDC += 3;
-        else if (world.FishAvailable < 50.0)
-            baseDC += 1;
-
-        if (state.Energy < 30.0)
-            baseDC += 2;
-
-        var modifier = state.GetSkillModifier("Fishing");
-        var advantage = state.GetAdvantage("Fishing");
-
-        var request = new SkillCheckRequest(baseDC, modifier, advantage, "Fishing", "Fishing for food");
-        var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
-
-        var baseScore = 0.5 + (state.Hunger / 100.0);
-        if (state.Hunger > 70.0 || state.Energy < 20.0)
-        {
-            baseScore = 1.0;
-        }
-        else
-        {
-            baseScore *= estimatedChance;
-        }
-
-        candidates.Add(new ActionCandidate(
-            new ActionSpec(
-                new ActionId("fish_for_food"),
-                ActionKind.Interact,
-                new Dictionary<string, object>
-                {
-                    ["dc"] = baseDC,
-                    ["modifier"] = modifier,
-                    ["advantage"] = advantage.ToString(),
-                    ["location"] = "shore"
-                },
-                15.0 + rng.NextDouble() * 5.0
-            ),
-            baseScore,
-            $"Fishing (DC {baseDC}, {estimatedChance:P0} chance)"
-        ));
-    }
-
-    private void AddCoconutCandidate(
-        ActorId actorId,
-        IslandActorState state,
-        IslandWorldState world,
-        double currentTime,
-        IRngStream rng,
-        List<ActionCandidate> candidates)
-    {
-        if (world.CoconutsAvailable < 1)
-            return;
-
-        var baseDC = 12;
-
-        if (world.CoconutsAvailable >= 5)
-            baseDC -= 2;
-        else if (world.CoconutsAvailable <= 2)
-            baseDC += 2;
-
-        if (world.Weather == Weather.Windy)
-            baseDC -= 1;
-
-        var modifier = state.GetSkillModifier("Survival");
-        var advantage = state.GetAdvantage("Survival");
-
-        var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
-
-        var baseScore = 0.4 + (state.Hunger / 150.0);
-        if (state.Hunger > 70.0)
-        {
-            baseScore = 0.9;
-        }
-        else
-        {
-            baseScore *= estimatedChance;
-        }
-
-        candidates.Add(new ActionCandidate(
-            new ActionSpec(
-                new ActionId("shake_tree_coconut"),
-                ActionKind.Interact,
-                new Dictionary<string, object>
-                {
-                    ["dc"] = baseDC,
-                    ["modifier"] = modifier,
-                    ["advantage"] = advantage.ToString(),
-                    ["location"] = "palm_tree"
-                },
-                10.0 + rng.NextDouble() * 5.0
-            ),
-            baseScore,
-            $"Get coconut (DC {baseDC}, {estimatedChance:P0} chance)"
-        ));
-    }
-
-    private void AddSandCastleCandidate(
-        ActorId actorId,
-        IslandActorState state,
-        IslandWorldState world,
-        double currentTime,
-        IRngStream rng,
-        List<ActionCandidate> candidates)
-    {
-        var baseDC = 8;
-
-        if (world.TideLevel == TideLevel.High)
-            baseDC += 4;
-
-        var modifier = state.GetSkillModifier("Performance");
-        var advantage = state.GetAdvantage("Performance");
-
-        var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
-
-        var baseScore = 0.3 + (state.Boredom / 100.0);
-        baseScore *= estimatedChance;
-
-        candidates.Add(new ActionCandidate(
-            new ActionSpec(
-                new ActionId("build_sand_castle"),
-                ActionKind.Interact,
-                new Dictionary<string, object>
-                {
-                    ["dc"] = baseDC,
-                    ["modifier"] = modifier,
-                    ["advantage"] = advantage.ToString(),
-                    ["location"] = "beach"
-                },
-                20.0 + rng.NextDouble() * 10.0
-            ),
-            baseScore,
-            $"Build sand castle (DC {baseDC}, {estimatedChance:P0} chance)"
-        ));
-    }
-
-    private void AddSwimCandidate(
-        ActorId actorId,
-        IslandActorState state,
-        IslandWorldState world,
-        double currentTime,
-        IRngStream rng,
-        List<ActionCandidate> candidates)
-    {
-        if (state.Energy < 20.0)
-            return;
-
-        var baseDC = 10;
-
-        if (world.Weather == Weather.Windy)
-            baseDC += 3;
-        else if (world.Weather == Weather.Rainy)
-            baseDC += 1;
-
-        var modifier = state.GetSkillModifier("Survival");
-        var advantage = state.GetAdvantage("Survival");
-
-        var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
-
-        var baseScore = 0.35 + (state.Morale < 30 ? 0.2 : 0.0);
-        baseScore *= estimatedChance;
-
-        candidates.Add(new ActionCandidate(
-            new ActionSpec(
-                new ActionId("swim"),
-                ActionKind.Interact,
-                new Dictionary<string, object>
-                {
-                    ["dc"] = baseDC,
-                    ["modifier"] = modifier,
-                    ["advantage"] = advantage.ToString(),
-                    ["location"] = "water"
-                },
-                15.0 + rng.NextDouble() * 5.0
-            ),
-            baseScore,
-            $"Swim (DC {baseDC}, {estimatedChance:P0} chance)"
-        ));
-    }
-
-    private void AddSleepCandidate(
-        ActorId actorId,
-        IslandActorState state,
-        IslandWorldState world,
-        double currentTime,
-        IRngStream rng,
-        List<ActionCandidate> candidates)
-    {
-        var baseScore = 0.4;
-        if (state.Energy < 30.0)
-            baseScore = 1.2;
-        else if (state.Energy < 50.0)
-            baseScore = 0.8;
-
-        candidates.Add(new ActionCandidate(
-            new ActionSpec(
-                new ActionId("sleep_under_tree"),
-                ActionKind.Interact,
-                new Dictionary<string, object>
-                {
-                    ["location"] = "tree"
-                },
-                30.0 + rng.NextDouble() * 10.0
-            ),
-            baseScore,
-            "Sleep under tree"
-        ));
-    }
-
-    private void AddVignetteEvents(
-        ActorId actorId,
-        IslandActorState state,
-        IslandWorldState world,
-        double currentTime,
-        IRngStream rng,
-        List<ActionCandidate> candidates,
-        Random random)
-    {
-        if (currentTime - state.LastPlaneSightingTime > 600.0)
-        {
-            if (random.NextDouble() < 0.05)
-            {
-                var baseDC = 15;
-                var modifier = state.GetSkillModifier("Perception");
-                var advantage = state.GetAdvantage("Perception");
-                var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
-
-                candidates.Add(new ActionCandidate(
-                    new ActionSpec(
-                        new ActionId("plane_sighting"),
-                        ActionKind.Interact,
-                        new Dictionary<string, object>
-                        {
-                            ["dc"] = baseDC,
-                            ["modifier"] = modifier,
-                            ["advantage"] = advantage.ToString(),
-                            ["vignette"] = true
-                        },
-                        10.0
-                    ),
-                    0.2 * estimatedChance,
-                    "Plane sighting vignette"
-                ));
-            }
-        }
-
-        if (world.TimeOfDay > 0.75 || world.TimeOfDay < 0.25)
-        {
-            if (currentTime - state.LastMermaidEncounterTime > 1200.0)
-            {
-                if (random.NextDouble() < 0.02)
-                {
-                    var baseDC = 18;
-                    var modifier = state.GetSkillModifier("Perception");
-                    var advantage = state.GetAdvantage("Perception");
-                    var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
-
-                    candidates.Add(new ActionCandidate(
-                        new ActionSpec(
-                            new ActionId("mermaid_encounter"),
-                            ActionKind.Interact,
-                            new Dictionary<string, object>
-                            {
-                                ["dc"] = baseDC,
-                                ["modifier"] = modifier,
-                                ["advantage"] = advantage.ToString(),
-                                ["vignette"] = true
-                            },
-                            15.0
-                        ),
-                        0.15 * estimatedChance,
-                        "Mermaid encounter vignette"
-                    ));
-                }
-            }
-        }
     }
 
     public void ApplyActionEffects(
