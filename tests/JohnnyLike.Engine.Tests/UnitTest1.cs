@@ -441,3 +441,180 @@ public class ActorStateSnapshotTests
         public override void Deserialize(string json) { }
     }
 }
+
+public class EventMemoryTests
+{
+    // Basic functionality tests
+    
+    [Fact]
+    public void RecordEvent_SingleEvent_StoresCorrectly()
+    {
+        var memory = new EventMemory();
+        
+        memory.RecordEvent("planeSighting", 100.0);
+        
+        Assert.Equal(100.0, memory.GetLastEventTime("planeSighting"));
+    }
+
+    [Fact]
+    public void GetLastEventTime_ExistingEvent_ReturnsCorrectTime()
+    {
+        var memory = new EventMemory();
+        memory.RecordEvent("mermaidEncounter", 42.5);
+        
+        var result = memory.GetLastEventTime("mermaidEncounter");
+        
+        Assert.Equal(42.5, result);
+    }
+
+    [Fact]
+    public void GetLastEventTime_NonExistentEvent_ReturnsNegativeInfinity()
+    {
+        var memory = new EventMemory();
+        
+        var result = memory.GetLastEventTime("neverHappened");
+        
+        Assert.True(double.IsNegativeInfinity(result));
+    }
+
+    [Fact]
+    public void RecordEvent_UpdatesExistingEvent_OverwritesPreviousTime()
+    {
+        var memory = new EventMemory();
+        memory.RecordEvent("event1", 100.0);
+        
+        memory.RecordEvent("event1", 200.0);
+        
+        Assert.Equal(200.0, memory.GetLastEventTime("event1"));
+    }
+
+    // Time calculation tests
+    
+    [Fact]
+    public void GetTimeSince_ExistingEvent_ReturnsCorrectElapsedTime()
+    {
+        var memory = new EventMemory();
+        memory.RecordEvent("event1", 50.0);
+        
+        var timeSince = memory.GetTimeSince("event1", 150.0);
+        
+        Assert.Equal(100.0, timeSince);
+    }
+
+    [Fact]
+    public void GetTimeSince_NonExistentEvent_ReturnsPositiveInfinity()
+    {
+        var memory = new EventMemory();
+        
+        var timeSince = memory.GetTimeSince("neverHappened", 100.0);
+        
+        Assert.True(double.IsPositiveInfinity(timeSince));
+    }
+
+    // Query tests
+    
+    [Fact]
+    public void HasEventOccurred_ExistingEvent_ReturnsTrue()
+    {
+        var memory = new EventMemory();
+        memory.RecordEvent("event1", 100.0);
+        
+        var result = memory.HasEventOccurred("event1");
+        
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void HasEventOccurred_NonExistentEvent_ReturnsFalse()
+    {
+        var memory = new EventMemory();
+        
+        var result = memory.HasEventOccurred("neverHappened");
+        
+        Assert.False(result);
+    }
+
+    // Serialization tests
+    
+    [Fact]
+    public void GetAllEvents_MultipleEvents_ReturnsAllStoredEvents()
+    {
+        var memory = new EventMemory();
+        memory.RecordEvent("event1", 100.0);
+        memory.RecordEvent("event2", 200.0);
+        memory.RecordEvent("event3", 300.0);
+        
+        var allEvents = memory.GetAllEvents();
+        
+        Assert.Equal(3, allEvents.Count);
+        Assert.Equal(100.0, allEvents["event1"]);
+        Assert.Equal(200.0, allEvents["event2"]);
+        Assert.Equal(300.0, allEvents["event3"]);
+    }
+
+    [Fact]
+    public void RestoreEvents_FromDictionary_RestoresAllEvents()
+    {
+        var memory = new EventMemory();
+        var events = new Dictionary<string, double>
+        {
+            ["event1"] = 10.0,
+            ["event2"] = 20.0,
+            ["event3"] = 30.0
+        };
+        
+        memory.RestoreEvents(events);
+        
+        Assert.Equal(10.0, memory.GetLastEventTime("event1"));
+        Assert.Equal(20.0, memory.GetLastEventTime("event2"));
+        Assert.Equal(30.0, memory.GetLastEventTime("event3"));
+    }
+
+    [Fact]
+    public void RestoreEvents_ClearsPreviousEvents_BeforeRestoring()
+    {
+        var memory = new EventMemory();
+        memory.RecordEvent("oldEvent", 999.0);
+        
+        var newEvents = new Dictionary<string, double>
+        {
+            ["newEvent"] = 100.0
+        };
+        memory.RestoreEvents(newEvents);
+        
+        Assert.False(memory.HasEventOccurred("oldEvent"));
+        Assert.True(memory.HasEventOccurred("newEvent"));
+        Assert.Equal(100.0, memory.GetLastEventTime("newEvent"));
+    }
+
+    // Edge case tests
+    
+    [Fact]
+    public void RecordEvent_MultipleEvents_AllStoreCorrectly()
+    {
+        var memory = new EventMemory();
+        
+        memory.RecordEvent("event1", 10.0);
+        memory.RecordEvent("event2", 20.0);
+        memory.RecordEvent("event3", 30.0);
+        
+        Assert.Equal(10.0, memory.GetLastEventTime("event1"));
+        Assert.Equal(20.0, memory.GetLastEventTime("event2"));
+        Assert.Equal(30.0, memory.GetLastEventTime("event3"));
+    }
+
+    [Fact]
+    public void GetAllEvents_ReturnsCopy_DoesNotExposeInternalState()
+    {
+        var memory = new EventMemory();
+        memory.RecordEvent("event1", 100.0);
+        
+        var allEvents1 = memory.GetAllEvents();
+        allEvents1["event2"] = 200.0;  // Modify the returned dictionary
+        
+        var allEvents2 = memory.GetAllEvents();
+        
+        Assert.Single(allEvents2);  // Should still have only one event
+        Assert.False(allEvents2.ContainsKey("event2"));  // Should not contain the added event
+    }
+}
