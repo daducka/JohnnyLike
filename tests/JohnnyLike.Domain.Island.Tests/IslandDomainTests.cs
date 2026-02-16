@@ -118,6 +118,102 @@ public class IslandDomainPackTests
         Assert.True(isValid);
         Assert.Empty(errors);
     }
+
+    [Fact]
+    public void ProviderDiscovery_FindsAllAttributedProviders()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId);
+        var worldState = domain.CreateInitialWorldState();
+        
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        
+        // Should have candidates from at least these providers:
+        // - ChatCandidateProvider (may or may not add depending on pending chat actions)
+        // - SleepCandidateProvider
+        // - FishingCandidateProvider
+        // - CoconutCandidateProvider
+        // - SandCastleCandidateProvider
+        // - SwimCandidateProvider
+        // - IdleCandidateProvider (always present)
+        
+        // Verify we have multiple candidate types present
+        Assert.Contains(candidates, c => c.Action.Id.Value == "sleep_under_tree");
+        Assert.Contains(candidates, c => c.Action.Id.Value == "fish_for_food");
+        Assert.Contains(candidates, c => c.Action.Id.Value == "idle");
+    }
+
+    [Fact]
+    public void IdleCandidate_AlwaysPresentEvenWhenOtherCandidatesExist()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var worldState = domain.CreateInitialWorldState();
+        
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        
+        // Idle must always be present
+        Assert.Contains(candidates, c => c.Action.Id.Value == "idle");
+        
+        // Other candidates should also be present
+        Assert.True(candidates.Count > 1, "Should have more than just idle candidate");
+        Assert.Contains(candidates, c => c.Action.Id.Value == "fish_for_food");
+    }
+
+    [Fact]
+    public void ChatCandidateProvider_ProcessesPendingChatActions()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId) as IslandActorState;
+        var worldState = domain.CreateInitialWorldState();
+        
+        // Add a pending chat action
+        actorState!.PendingChatActions.Enqueue(new PendingIntent
+        {
+            ActionId = "clap_emote",
+            Type = "sub",
+            Data = new Dictionary<string, object>(),
+            EnqueuedAt = 0.0
+        });
+        
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        
+        // Should have the clap emote candidate
+        Assert.Contains(candidates, c => c.Action.Id.Value == "clap_emote");
+    }
+
+    [Fact]
+    public void ChatCandidateProvider_SkipsChatWhenSurvivalCritical()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> 
+        { 
+            ["hunger"] = 85.0,  // Survival critical
+            ["energy"] = 50.0 
+        }) as IslandActorState;
+        var worldState = domain.CreateInitialWorldState();
+        
+        // Add a pending chat action
+        actorState!.PendingChatActions.Enqueue(new PendingIntent
+        {
+            ActionId = "clap_emote",
+            Type = "sub",
+            Data = new Dictionary<string, object>(),
+            EnqueuedAt = 0.0
+        });
+        
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        
+        // Should NOT have the clap emote candidate because survival is critical
+        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "clap_emote");
+        
+        // But should have survival actions like fishing
+        Assert.Contains(candidates, c => c.Action.Id.Value == "fish_for_food");
+    }
 }
 
 public class IslandWorldStateTests
