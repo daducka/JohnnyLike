@@ -32,4 +32,10 @@ public interface IDomainPack
     List<SceneTemplate> GetSceneTemplates();
     
     bool ValidateContent(out List<string> errors);
+    
+    /// <summary>
+    /// Returns a snapshot of actor state for tracing purposes.
+    /// This is called after action effects are applied to capture the current state.
+    /// </summary>
+    Dictionary<string, object> GetActorStateSnapshot(ActorState actorState);
 }

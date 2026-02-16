@@ -158,6 +158,13 @@ public class Engine
             }
         }
 
+        // Add actor state snapshot from domain pack
+        var actorSnapshot = _domainPack.GetActorStateSnapshot(actorState);
+        foreach (var kvp in actorSnapshot)
+        {
+            details[$"actor_{kvp.Key}"] = kvp.Value;
+        }
+
         _traceSink.Record(new TraceEvent(
             _currentTime,
             actorId,
