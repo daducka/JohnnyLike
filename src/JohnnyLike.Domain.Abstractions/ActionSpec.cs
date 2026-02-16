@@ -14,20 +14,9 @@ public enum ActionKind
 public record ActionSpec(
     ActionId Id,
     ActionKind Kind,
-    Dictionary<string, object> Parameters,
+    ActionParameters Parameters,
     double EstimatedDuration
-)
-{
-    public T? GetParameter<T>(string key) where T : class
-    {
-        return Parameters.TryGetValue(key, out var value) && value is T typed ? typed : null;
-    }
-
-    public T GetParameterValue<T>(string key, T defaultValue = default!) where T : struct
-    {
-        return Parameters.TryGetValue(key, out var value) && value is T typed ? typed : defaultValue;
-    }
-}
+);
 
 public enum ActionOutcomeType
 {

@@ -72,12 +72,11 @@ public class Director
             return new ActionSpec(
                 new ActionId($"join_{assignedScene.Id.Value}_{role}"),
                 ActionKind.JoinScene,
-                new Dictionary<string, object>
-                {
-                    ["sceneId"] = assignedScene.Id.Value,
-                    ["role"] = role,
-                    ["timeout"] = assignedScene.ProposedTime + assignedScene.Template.JoinWindowSeconds
-                },
+                new JoinSceneActionParameters(
+                    assignedScene.Id.Value,
+                    role,
+                    assignedScene.ProposedTime + assignedScene.Template.JoinWindowSeconds
+                ),
                 roleSpec.ActionTemplate.EstimatedDuration
             );
         }

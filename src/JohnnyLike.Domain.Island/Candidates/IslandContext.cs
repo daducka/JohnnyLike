@@ -1,0 +1,41 @@
+using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Kit.Dice;
+
+namespace JohnnyLike.Domain.Island.Candidates;
+
+public class IslandContext
+{
+    public IslandWorldState World { get; }
+    public IslandActorState Actor { get; }
+    public ActorId ActorId { get; }
+    public double NowSeconds { get; }
+    public IRngStream Rng { get; }
+    public Random Random { get; }
+
+    public IslandContext(
+        ActorId actorId,
+        IslandActorState actor,
+        IslandWorldState world,
+        double nowSeconds,
+        IRngStream rng,
+        Random random)
+    {
+        ActorId = actorId;
+        Actor = actor;
+        World = world;
+        NowSeconds = nowSeconds;
+        Rng = rng;
+        Random = random;
+    }
+
+    // Helper methods for scoring
+    public double Clamp(double value, double min, double max)
+    {
+        return Math.Max(min, Math.Min(max, value));
+    }
+
+    public bool IsSurvivalCritical()
+    {
+        return Actor.Hunger > 80.0 || Actor.Energy < 15.0;
+    }
+}

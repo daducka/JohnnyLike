@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
+using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Kit.Dice;
 using JohnnyLike.Engine;
 using JohnnyLike.SimRunner;
@@ -117,6 +118,139 @@ public class IslandDomainPackTests
         
         Assert.True(isValid);
         Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void ProviderDiscovery_FindsAllAttributedProviders()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId);
+        var worldState = domain.CreateInitialWorldState();
+        
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        
+        // Should have candidates from at least these providers:
+        // - ChatCandidateProvider (may or may not add depending on pending chat actions)
+        // - SleepCandidateProvider
+        // - FishingCandidateProvider
+        // - CoconutCandidateProvider
+        // - SandCastleCandidateProvider
+        // - SwimCandidateProvider
+        // - IdleCandidateProvider (always present)
+        
+        // Verify we have multiple candidate types present
+        Assert.Contains(candidates, c => c.Action.Id.Value == "sleep_under_tree");
+        Assert.Contains(candidates, c => c.Action.Id.Value == "fish_for_food");
+        Assert.Contains(candidates, c => c.Action.Id.Value == "idle");
+    }
+
+    [Fact]
+    public void IdleCandidate_AlwaysPresentEvenWhenOtherCandidatesExist()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var worldState = domain.CreateInitialWorldState();
+        
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        
+        // Idle must always be present
+        Assert.Contains(candidates, c => c.Action.Id.Value == "idle");
+        
+        // Other candidates should also be present
+        Assert.True(candidates.Count > 1, "Should have more than just idle candidate");
+        Assert.Contains(candidates, c => c.Action.Id.Value == "fish_for_food");
+    }
+
+    [Fact]
+    public void ChatCandidateProvider_ProcessesPendingChatActions()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId) as IslandActorState;
+        var worldState = domain.CreateInitialWorldState();
+        
+        // Add a pending chat action
+        actorState!.PendingChatActions.Enqueue(new PendingIntent
+        {
+            ActionId = "clap_emote",
+            Type = "sub",
+            Data = new Dictionary<string, object>(),
+            EnqueuedAt = 0.0
+        });
+        
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        
+        // Should have the clap emote candidate
+        Assert.Contains(candidates, c => c.Action.Id.Value == "clap_emote");
+    }
+
+    [Fact]
+    public void ChatCandidateProvider_SkipsChatWhenSurvivalCritical()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> 
+        { 
+            ["hunger"] = 85.0,  // Survival critical
+            ["energy"] = 50.0 
+        }) as IslandActorState;
+        var worldState = domain.CreateInitialWorldState();
+        
+        // Add a pending chat action
+        actorState!.PendingChatActions.Enqueue(new PendingIntent
+        {
+            ActionId = "clap_emote",
+            Type = "sub",
+            Data = new Dictionary<string, object>(),
+            EnqueuedAt = 0.0
+        });
+        
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        
+        // Should NOT have the clap emote candidate because survival is critical
+        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "clap_emote");
+        
+        // But should have survival actions like fishing
+        Assert.Contains(candidates, c => c.Action.Id.Value == "fish_for_food");
+    }
+
+    [Fact]
+    public void Providers_DiscoveredInCorrectOrder()
+    {
+        var domain = new IslandDomainPack();
+        
+        // Get the private _providers field via reflection to inspect order
+        var providersField = typeof(IslandDomainPack).GetField("_providers", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var providers = (List<IIslandCandidateProvider>)providersField!.GetValue(domain)!;
+        
+        // Verify we have all expected providers
+        Assert.Equal(9, providers.Count); // Chat, Sleep, Fishing, Coconut, SandCastle, Swim, PlaneSighting, MermaidEncounter, Idle
+        
+        // Verify order by checking types
+        var providerTypes = providers.Select(p => p.GetType().Name).ToList();
+        
+        // Expected order based on Order attribute values:
+        // ChatCandidateProvider (50)
+        // SleepCandidateProvider (100)
+        // FishingCandidateProvider (200)
+        // CoconutCandidateProvider (210)
+        // SandCastleCandidateProvider (400)
+        // SwimCandidateProvider (410)
+        // PlaneSightingCandidateProvider (800)
+        // MermaidEncounterCandidateProvider (810)
+        // IdleCandidateProvider (9999)
+        
+        Assert.Equal("ChatCandidateProvider", providerTypes[0]);
+        Assert.Equal("SleepCandidateProvider", providerTypes[1]);
+        Assert.Equal("FishingCandidateProvider", providerTypes[2]);
+        Assert.Equal("CoconutCandidateProvider", providerTypes[3]);
+        Assert.Equal("SandCastleCandidateProvider", providerTypes[4]);
+        Assert.Equal("SwimCandidateProvider", providerTypes[5]);
+        Assert.Equal("PlaneSightingCandidateProvider", providerTypes[6]);
+        Assert.Equal("MermaidEncounterCandidateProvider", providerTypes[7]);
+        Assert.Equal("IdleCandidateProvider", providerTypes[8]);
     }
 }
 
@@ -262,12 +396,7 @@ public class IslandActionEffectsTests
             CurrentAction = new ActionSpec(
                 new ActionId("fish_for_food"),
                 ActionKind.Interact,
-                new Dictionary<string, object>
-                {
-                    ["dc"] = 10,
-                    ["modifier"] = 3,
-                    ["advantage"] = "Normal"
-                },
+                new SkillCheckActionParameters(10, 3, AdvantageType.Normal, "shore"),
                 15.0
             )
         };
@@ -301,7 +430,7 @@ public class IslandActionEffectsTests
             CurrentAction = new ActionSpec(
                 new ActionId("sleep_under_tree"),
                 ActionKind.Interact,
-                new Dictionary<string, object>(),
+                new LocationActionParameters("tree"),
                 30.0
             )
         };
@@ -332,12 +461,7 @@ public class IslandActionEffectsTests
             CurrentAction = new ActionSpec(
                 new ActionId("fish_for_food"),
                 ActionKind.Interact,
-                new Dictionary<string, object>
-                {
-                    ["dc"] = 10,
-                    ["modifier"] = 3,
-                    ["advantage"] = "Normal"
-                },
+                new SkillCheckActionParameters(10, 3, AdvantageType.Normal, "shore"),
                 15.0
             )
         };
@@ -704,8 +828,8 @@ public class IslandDCTuningTests
         var morningFishing = morningCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         var afternoonFishing = afternoonCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         
-        var morningDC = (int)morningFishing.Action.Parameters["dc"];
-        var afternoonDC = (int)afternoonFishing.Action.Parameters["dc"];
+        var morningDC = ((SkillCheckActionParameters)morningFishing.Action.Parameters).DC;
+        var afternoonDC = ((SkillCheckActionParameters)afternoonFishing.Action.Parameters).DC;
         
         Assert.True(morningDC < afternoonDC, $"Morning DC ({morningDC}) should be lower than afternoon DC ({afternoonDC})");
     }
@@ -739,8 +863,8 @@ public class IslandDCTuningTests
         var rainyFishing = rainyCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         var clearFishing = clearCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         
-        var rainyDC = (int)rainyFishing.Action.Parameters["dc"];
-        var clearDC = (int)clearFishing.Action.Parameters["dc"];
+        var rainyDC = ((SkillCheckActionParameters)rainyFishing.Action.Parameters).DC;
+        var clearDC = ((SkillCheckActionParameters)clearFishing.Action.Parameters).DC;
         
         Assert.True(rainyDC < clearDC, $"Rainy DC ({rainyDC}) should be lower than clear DC ({clearDC})");
     }
@@ -772,8 +896,8 @@ public class IslandDCTuningTests
         var windyCoconut = windyCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         var clearCoconut = clearCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         
-        var windyDC = (int)windyCoconut.Action.Parameters["dc"];
-        var clearDC = (int)clearCoconut.Action.Parameters["dc"];
+        var windyDC = ((SkillCheckActionParameters)windyCoconut.Action.Parameters).DC;
+        var clearDC = ((SkillCheckActionParameters)clearCoconut.Action.Parameters).DC;
         
         Assert.True(windyDC < clearDC, $"Windy DC ({windyDC}) should be lower than clear DC ({clearDC})");
     }
@@ -805,8 +929,8 @@ public class IslandDCTuningTests
         var manyCoconutAction = manyCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         var fewCoconutAction = fewCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         
-        var manyDC = (int)manyCoconutAction.Action.Parameters["dc"];
-        var fewDC = (int)fewCoconutAction.Action.Parameters["dc"];
+        var manyDC = ((SkillCheckActionParameters)manyCoconutAction.Action.Parameters).DC;
+        var fewDC = ((SkillCheckActionParameters)fewCoconutAction.Action.Parameters).DC;
         
         Assert.True(fewDC > manyDC, $"Few coconuts DC ({fewDC}) should be higher than many coconuts DC ({manyDC})");
     }
