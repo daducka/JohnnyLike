@@ -604,7 +604,7 @@ public class EventMemoryTests
     }
 
     [Fact]
-    public void GetAllEvents_ReturnsNewDictionary_NotDirectReference()
+    public void GetAllEvents_ReturnsCopy_DoesNotExposeInternalState()
     {
         var memory = new EventMemory();
         memory.RecordEvent("event1", 100.0);
