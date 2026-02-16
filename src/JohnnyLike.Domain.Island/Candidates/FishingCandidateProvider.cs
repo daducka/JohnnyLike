@@ -37,7 +37,6 @@ public class FishingCandidateProvider : IIslandCandidateProvider
         var modifier = ctx.Actor.GetSkillModifier("Fishing");
         var advantage = ctx.Actor.GetAdvantage("Fishing");
 
-        var request = new SkillCheckRequest(baseDC, modifier, advantage, "Fishing", "Fishing for food");
         var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
 
         var baseScore = 0.5 + (ctx.Actor.Hunger / 100.0);

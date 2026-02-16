@@ -8,13 +8,32 @@ namespace JohnnyLike.Domain.Island;
 public class IslandDomainPack : IDomainPack
 {
     private readonly List<IIslandCandidateProvider> _providers;
+    private static List<IIslandCandidateProvider>? _cachedProviders;
+    private static readonly object _lock = new object();
 
     public string DomainName => "Island";
 
     public IslandDomainPack()
     {
+        // Use cached providers if available, otherwise discover and cache
+        if (_cachedProviders == null)
+        {
+            lock (_lock)
+            {
+                if (_cachedProviders == null)
+                {
+                    _cachedProviders = DiscoverProviders();
+                }
+            }
+        }
+        
+        _providers = _cachedProviders;
+    }
+
+    private static List<IIslandCandidateProvider> DiscoverProviders()
+    {
         // Discover and instantiate providers ONLY by attribute
-        _providers = Assembly.GetExecutingAssembly()
+        return Assembly.GetExecutingAssembly()
             .GetTypes()
             .Where(t => t.GetCustomAttribute<IslandCandidateProviderAttribute>() != null)
             .Where(t => !t.IsAbstract && typeof(IIslandCandidateProvider).IsAssignableFrom(t))
