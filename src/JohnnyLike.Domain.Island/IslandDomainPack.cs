@@ -554,7 +554,7 @@ public class IslandDomainPack : IDomainPack
         
         if (islandState.ActiveBuffs.Count > 0)
         {
-            snapshot["activeBuffs"] = string.Join(", ", 
+            snapshot["active_buffs"] = string.Join(", ", 
                 islandState.ActiveBuffs.Select(b => $"{b.Name}({b.ExpiresAt:F1})"));
         }
         
