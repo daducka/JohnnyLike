@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Kit.Dice;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Items;
 using System.Reflection;
 
 namespace JohnnyLike.Domain.Island;
@@ -48,7 +49,10 @@ public class IslandDomainPack : IDomainPack
 
     public WorldState CreateInitialWorldState()
     {
-        return new IslandWorldState();
+        var world = new IslandWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
+        world.WorldItems.Add(new ShelterItem("main_shelter"));
+        return world;
     }
 
     public ActorState CreateActorState(ActorId actorId, Dictionary<string, object>? initialData = null)
@@ -238,6 +242,16 @@ public class IslandDomainPack : IDomainPack
         else if (actionId == "mermaid_encounter")
         {
             ApplyMermaidEncounterEffects(actorId, outcome, islandState, islandWorld);
+        }
+        else if (actionId == "add_fuel_campfire" || actionId == "relight_campfire" || 
+                 actionId == "repair_campfire" || actionId == "rebuild_campfire")
+        {
+            ApplyCampfireMaintenanceEffects(actorId, outcome, islandState, islandWorld);
+        }
+        else if (actionId == "repair_shelter" || actionId == "reinforce_shelter" || 
+                 actionId == "rebuild_shelter")
+        {
+            ApplyShelterMaintenanceEffects(actorId, outcome, islandState, islandWorld);
         }
         else if (actionId == "write_name_sand" || actionId == "clap_emote")
         {
@@ -458,6 +472,108 @@ public class IslandDomainPack : IDomainPack
                 Value = 0,
                 ExpiresAt = world.CurrentTime + 600.0
             });
+        }
+    }
+
+    private void ApplyCampfireMaintenanceEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
+    {
+        var campfire = world.MainCampfire;
+        if (campfire == null)
+            return;
+
+        if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
+            return;
+
+        var tier = Enum.Parse<RollOutcomeTier>(tierObj.ToString()!);
+        var actionId = outcome.ActionId.Value;
+
+        switch (actionId)
+        {
+            case "add_fuel_campfire":
+                if (tier >= RollOutcomeTier.PartialSuccess)
+                {
+                    var fuelAdded = tier == RollOutcomeTier.CriticalSuccess ? 2400.0 : 
+                                    tier == RollOutcomeTier.Success ? 1800.0 : 900.0;
+                    campfire.FuelSeconds = Math.Min(7200.0, campfire.FuelSeconds + fuelAdded);
+                    state.Boredom = Math.Max(0.0, state.Boredom - 5.0);
+                }
+                break;
+
+            case "relight_campfire":
+                if (tier >= RollOutcomeTier.Success)
+                {
+                    campfire.IsLit = true;
+                    campfire.FuelSeconds = tier == RollOutcomeTier.CriticalSuccess ? 1800.0 : 1200.0;
+                    state.Morale = Math.Min(100.0, state.Morale + 10.0);
+                    state.Boredom = Math.Max(0.0, state.Boredom - 8.0);
+                }
+                break;
+
+            case "repair_campfire":
+                if (tier >= RollOutcomeTier.PartialSuccess)
+                {
+                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 40.0 : 
+                                         tier == RollOutcomeTier.Success ? 25.0 : 15.0;
+                    campfire.Quality = Math.Min(100.0, campfire.Quality + qualityRestored);
+                    state.Boredom = Math.Max(0.0, state.Boredom - 7.0);
+                }
+                break;
+
+            case "rebuild_campfire":
+                if (tier >= RollOutcomeTier.Success)
+                {
+                    campfire.Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 80.0;
+                    campfire.IsLit = true;
+                    campfire.FuelSeconds = 1800.0;
+                    state.Morale = Math.Min(100.0, state.Morale + 15.0);
+                    state.Boredom = Math.Max(0.0, state.Boredom - 20.0);
+                }
+                break;
+        }
+    }
+
+    private void ApplyShelterMaintenanceEffects(ActorId actorId, ActionOutcome outcome, IslandActorState state, IslandWorldState world)
+    {
+        var shelter = world.MainShelter;
+        if (shelter == null)
+            return;
+
+        if (outcome.ResultData == null || !outcome.ResultData.TryGetValue("tier", out var tierObj))
+            return;
+
+        var tier = Enum.Parse<RollOutcomeTier>(tierObj.ToString()!);
+        var actionId = outcome.ActionId.Value;
+
+        switch (actionId)
+        {
+            case "repair_shelter":
+                if (tier >= RollOutcomeTier.PartialSuccess)
+                {
+                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 35.0 : 
+                                         tier == RollOutcomeTier.Success ? 20.0 : 10.0;
+                    shelter.Quality = Math.Min(100.0, shelter.Quality + qualityRestored);
+                    state.Boredom = Math.Max(0.0, state.Boredom - 6.0);
+                }
+                break;
+
+            case "reinforce_shelter":
+                if (tier >= RollOutcomeTier.Success)
+                {
+                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 45.0 : 30.0;
+                    shelter.Quality = Math.Min(100.0, shelter.Quality + qualityRestored);
+                    state.Morale = Math.Min(100.0, state.Morale + 8.0);
+                    state.Boredom = Math.Max(0.0, state.Boredom - 10.0);
+                }
+                break;
+
+            case "rebuild_shelter":
+                if (tier >= RollOutcomeTier.Success)
+                {
+                    shelter.Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 85.0;
+                    state.Morale = Math.Min(100.0, state.Morale + 20.0);
+                    state.Boredom = Math.Max(0.0, state.Boredom - 25.0);
+                }
+                break;
         }
     }
 

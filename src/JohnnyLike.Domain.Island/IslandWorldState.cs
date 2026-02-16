@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Items;
 using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island;
@@ -28,6 +29,11 @@ public class IslandWorldState : WorldState
 
     public double CurrentTime { get; set; } = 0.0;
 
+    public List<WorldItem> WorldItems { get; set; } = new();
+
+    public CampfireItem? MainCampfire => WorldItems.OfType<CampfireItem>().FirstOrDefault();
+    public ShelterItem? MainShelter => WorldItems.OfType<ShelterItem>().FirstOrDefault();
+
     public void OnTimeAdvanced(double currentTime, double dt)
     {
         CurrentTime = currentTime;
@@ -44,10 +50,22 @@ public class IslandWorldState : WorldState
 
         var tidePhase = (TimeOfDay * 24.0) % 12.0;
         TideLevel = tidePhase >= 6.0 ? TideLevel.High : TideLevel.Low;
+
+        foreach (var item in WorldItems.OfType<MaintainableWorldItem>())
+        {
+            item.Tick(dt, this);
+        }
     }
 
     public override string Serialize()
     {
+        var serializedItems = WorldItems.Select(item => item.SerializeToDict()).ToList();
+
+        var options = new JsonSerializerOptions
+        {
+            Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+        };
+
         return JsonSerializer.Serialize(new
         {
             TimeOfDay,
@@ -56,8 +74,9 @@ public class IslandWorldState : WorldState
             FishAvailable,
             FishRegenRatePerMinute,
             CoconutsAvailable,
-            TideLevel
-        });
+            TideLevel,
+            WorldItems = serializedItems
+        }, options);
     }
 
     public override void Deserialize(string json)
@@ -72,5 +91,32 @@ public class IslandWorldState : WorldState
         FishRegenRatePerMinute = data["FishRegenRatePerMinute"].GetDouble();
         CoconutsAvailable = data["CoconutsAvailable"].GetInt32();
         TideLevel = Enum.Parse<TideLevel>(data["TideLevel"].GetString()!);
+
+        WorldItems.Clear();
+        if (data.TryGetValue("WorldItems", out var itemsElement))
+        {
+            var itemsList = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(itemsElement.GetRawText());
+            if (itemsList != null)
+            {
+                foreach (var itemData in itemsList)
+                {
+                    var type = itemData["Type"].GetString()!;
+                    var id = itemData["Id"].GetString()!;
+
+                    WorldItem? item = type switch
+                    {
+                        "campfire" => new CampfireItem(id),
+                        "shelter" => new ShelterItem(id),
+                        _ => null
+                    };
+
+                    if (item != null)
+                    {
+                        item.DeserializeFromDict(itemData);
+                        WorldItems.Add(item);
+                    }
+                }
+            }
+        }
     }
 }
