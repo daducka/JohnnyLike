@@ -396,12 +396,7 @@ public class IslandActionEffectsTests
             CurrentAction = new ActionSpec(
                 new ActionId("fish_for_food"),
                 ActionKind.Interact,
-                new Dictionary<string, object>
-                {
-                    ["dc"] = 10,
-                    ["modifier"] = 3,
-                    ["advantage"] = "Normal"
-                },
+                new SkillCheckActionParameters(10, 3, AdvantageType.Normal, "shore"),
                 15.0
             )
         };
@@ -435,7 +430,7 @@ public class IslandActionEffectsTests
             CurrentAction = new ActionSpec(
                 new ActionId("sleep_under_tree"),
                 ActionKind.Interact,
-                new Dictionary<string, object>(),
+                new LocationActionParameters("tree"),
                 30.0
             )
         };
@@ -466,12 +461,7 @@ public class IslandActionEffectsTests
             CurrentAction = new ActionSpec(
                 new ActionId("fish_for_food"),
                 ActionKind.Interact,
-                new Dictionary<string, object>
-                {
-                    ["dc"] = 10,
-                    ["modifier"] = 3,
-                    ["advantage"] = "Normal"
-                },
+                new SkillCheckActionParameters(10, 3, AdvantageType.Normal, "shore"),
                 15.0
             )
         };
@@ -838,8 +828,8 @@ public class IslandDCTuningTests
         var morningFishing = morningCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         var afternoonFishing = afternoonCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         
-        var morningDC = (int)morningFishing.Action.Parameters["dc"];
-        var afternoonDC = (int)afternoonFishing.Action.Parameters["dc"];
+        var morningDC = ((SkillCheckActionParameters)morningFishing.Action.Parameters).DC;
+        var afternoonDC = ((SkillCheckActionParameters)afternoonFishing.Action.Parameters).DC;
         
         Assert.True(morningDC < afternoonDC, $"Morning DC ({morningDC}) should be lower than afternoon DC ({afternoonDC})");
     }
@@ -873,8 +863,8 @@ public class IslandDCTuningTests
         var rainyFishing = rainyCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         var clearFishing = clearCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         
-        var rainyDC = (int)rainyFishing.Action.Parameters["dc"];
-        var clearDC = (int)clearFishing.Action.Parameters["dc"];
+        var rainyDC = ((SkillCheckActionParameters)rainyFishing.Action.Parameters).DC;
+        var clearDC = ((SkillCheckActionParameters)clearFishing.Action.Parameters).DC;
         
         Assert.True(rainyDC < clearDC, $"Rainy DC ({rainyDC}) should be lower than clear DC ({clearDC})");
     }
@@ -906,8 +896,8 @@ public class IslandDCTuningTests
         var windyCoconut = windyCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         var clearCoconut = clearCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         
-        var windyDC = (int)windyCoconut.Action.Parameters["dc"];
-        var clearDC = (int)clearCoconut.Action.Parameters["dc"];
+        var windyDC = ((SkillCheckActionParameters)windyCoconut.Action.Parameters).DC;
+        var clearDC = ((SkillCheckActionParameters)clearCoconut.Action.Parameters).DC;
         
         Assert.True(windyDC < clearDC, $"Windy DC ({windyDC}) should be lower than clear DC ({clearDC})");
     }
@@ -939,8 +929,8 @@ public class IslandDCTuningTests
         var manyCoconutAction = manyCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         var fewCoconutAction = fewCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         
-        var manyDC = (int)manyCoconutAction.Action.Parameters["dc"];
-        var fewDC = (int)fewCoconutAction.Action.Parameters["dc"];
+        var manyDC = ((SkillCheckActionParameters)manyCoconutAction.Action.Parameters).DC;
+        var fewDC = ((SkillCheckActionParameters)fewCoconutAction.Action.Parameters).DC;
         
         Assert.True(fewDC > manyDC, $"Few coconuts DC ({fewDC}) should be higher than many coconuts DC ({manyDC})");
     }

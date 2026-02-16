@@ -12,7 +12,7 @@ public class IdleCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("idle"),
                 ActionKind.Wait,
-                new(),
+                EmptyActionParameters.Instance,
                 5.0
             ),
             0.3,

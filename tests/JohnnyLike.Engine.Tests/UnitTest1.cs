@@ -307,7 +307,7 @@ public class SignalHandlingTests
             return new List<ActionCandidate>
             {
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("idle"), ActionKind.Wait, new Dictionary<string, object>(), 1.0),
+                    new ActionSpec(new ActionId("idle"), ActionKind.Wait, EmptyActionParameters.Instance, 1.0),
                     1.0
                 )
             };

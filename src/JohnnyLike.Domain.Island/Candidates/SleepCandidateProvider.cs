@@ -17,10 +17,7 @@ public class SleepCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("sleep_under_tree"),
                 ActionKind.Interact,
-                new()
-                {
-                    ["location"] = "tree"
-                },
+                new LocationActionParameters("tree"),
                 30.0 + ctx.Rng.NextDouble() * 10.0
             ),
             baseScore,

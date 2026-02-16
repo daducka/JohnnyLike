@@ -119,7 +119,7 @@ public class FuzzableFakeExecutor
                 var idleAction = new ActionSpec(
                     new ActionId($"noshow_{actorId.Value}"),
                     ActionKind.Wait,
-                    new Dictionary<string, object> { ["reason"] = "unavailable" },
+                    new ReasonActionParameters("unavailable"),
                     noShowDuration
                 );
 
@@ -136,7 +136,7 @@ public class FuzzableFakeExecutor
                 var busyAction = new ActionSpec(
                     new ActionId($"busylock_{actorId.Value}"),
                     ActionKind.Wait,
-                    new Dictionary<string, object> { ["reason"] = "busy" },
+                    new ReasonActionParameters("busy"),
                     busyDuration
                 );
 

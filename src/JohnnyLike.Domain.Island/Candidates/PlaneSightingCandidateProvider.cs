@@ -26,13 +26,7 @@ public class PlaneSightingCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("plane_sighting"),
                 ActionKind.Interact,
-                new()
-                {
-                    ["dc"] = baseDC,
-                    ["modifier"] = modifier,
-                    ["advantage"] = advantage.ToString(),
-                    ["vignette"] = true
-                },
+                new VignetteActionParameters(baseDC, modifier, advantage),
                 10.0
             ),
             baseScore,

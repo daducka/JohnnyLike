@@ -49,11 +49,7 @@ public class OfficeDomainPack : IDomainPack
                 new ActionSpec(
                     new ActionId("eat_snack"),
                     ActionKind.Interact,
-                    new Dictionary<string, object>
-                    {
-                        ["target"] = "kitchen",
-                        ["action"] = "eat"
-                    },
+                    new OfficeInteractionActionParameters("kitchen", "eat"),
                     10.0
                 ),
                 score,
@@ -66,11 +62,7 @@ public class OfficeDomainPack : IDomainPack
             new ActionSpec(
                 new ActionId("check_email"),
                 ActionKind.Interact,
-                new Dictionary<string, object>
-                {
-                    ["target"] = $"desk_{actorId.Value.ToLower()}",
-                    ["action"] = "type"
-                },
+                new OfficeInteractionActionParameters($"desk_{actorId.Value.ToLower()}", "type"),
                 5.0 + rng.NextDouble() * 5.0
             ),
             0.6,
@@ -82,11 +74,7 @@ public class OfficeDomainPack : IDomainPack
             new ActionSpec(
                 new ActionId("print_doc"),
                 ActionKind.Interact,
-                new Dictionary<string, object>
-                {
-                    ["target"] = "printer",
-                    ["action"] = "print"
-                },
+                new OfficeInteractionActionParameters("printer", "print"),
                 8.0
             ),
             0.5,
@@ -98,7 +86,7 @@ public class OfficeDomainPack : IDomainPack
             new ActionSpec(
                 new ActionId("idle"),
                 ActionKind.Wait,
-                new Dictionary<string, object>(),
+                EmptyActionParameters.Instance,
                 3.0
             ),
             0.3,
@@ -112,10 +100,7 @@ public class OfficeDomainPack : IDomainPack
                 new ActionSpec(
                     new ActionId($"chat_redeem_{officeState.LastChatRedeem}"),
                     ActionKind.Emote,
-                    new Dictionary<string, object>
-                    {
-                        ["emote"] = officeState.LastChatRedeem
-                    },
+                    new OfficeChatRedeemParameters(officeState.LastChatRedeem),
                     2.0
                 ),
                 1.5,
@@ -232,7 +217,7 @@ public class OfficeDomainPack : IDomainPack
                     new ActionSpec(
                         new ActionId("highfive_init"),
                         ActionKind.Interact,
-                        new Dictionary<string, object> { ["action"] = "highfive" },
+                        new OfficeInteractionActionParameters("colleague", "highfive"),
                         3.0
                     )
                 ),
@@ -242,7 +227,7 @@ public class OfficeDomainPack : IDomainPack
                     new ActionSpec(
                         new ActionId("highfive_recv"),
                         ActionKind.Interact,
-                        new Dictionary<string, object> { ["action"] = "highfive" },
+                        new OfficeInteractionActionParameters("colleague", "highfive"),
                         3.0
                     )
                 )

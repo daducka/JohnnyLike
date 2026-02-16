@@ -30,13 +30,7 @@ public class SwimCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("swim"),
                 ActionKind.Interact,
-                new()
-                {
-                    ["dc"] = baseDC,
-                    ["modifier"] = modifier,
-                    ["advantage"] = advantage.ToString(),
-                    ["location"] = "water"
-                },
+                new SkillCheckActionParameters(baseDC, modifier, advantage, "water"),
                 15.0 + ctx.Rng.NextDouble() * 5.0
             ),
             baseScore,

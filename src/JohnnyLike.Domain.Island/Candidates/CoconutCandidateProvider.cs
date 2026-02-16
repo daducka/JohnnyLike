@@ -40,13 +40,7 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("shake_tree_coconut"),
                 ActionKind.Interact,
-                new()
-                {
-                    ["dc"] = baseDC,
-                    ["modifier"] = modifier,
-                    ["advantage"] = advantage.ToString(),
-                    ["location"] = "palm_tree"
-                },
+                new SkillCheckActionParameters(baseDC, modifier, advantage, "palm_tree"),
                 10.0 + ctx.Rng.NextDouble() * 5.0
             ),
             baseScore,

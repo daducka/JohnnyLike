@@ -30,13 +30,7 @@ public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("mermaid_encounter"),
                 ActionKind.Interact,
-                new()
-                {
-                    ["dc"] = baseDC,
-                    ["modifier"] = modifier,
-                    ["advantage"] = advantage.ToString(),
-                    ["vignette"] = true
-                },
+                new VignetteActionParameters(baseDC, modifier, advantage),
                 15.0
             ),
             baseScore,

@@ -24,11 +24,7 @@ public class ChatCandidateProvider : IIslandCandidateProvider
                         new ActionSpec(
                             new ActionId("write_name_sand"),
                             ActionKind.Emote,
-                            new()
-                            {
-                                ["name"] = name,
-                                ["location"] = "beach"
-                            },
+                            new EmoteActionParameters("write_name", name, "beach"),
                             8.0
                         ),
                         2.0, // High priority
@@ -41,10 +37,7 @@ public class ChatCandidateProvider : IIslandCandidateProvider
                         new ActionSpec(
                             new ActionId("clap_emote"),
                             ActionKind.Emote,
-                            new()
-                            {
-                                ["emote"] = "clap"
-                            },
+                            new EmoteActionParameters("clap"),
                             2.0
                         ),
                         2.0, // High priority

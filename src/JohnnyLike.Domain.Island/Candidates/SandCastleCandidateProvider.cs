@@ -25,13 +25,7 @@ public class SandCastleCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("build_sand_castle"),
                 ActionKind.Interact,
-                new()
-                {
-                    ["dc"] = baseDC,
-                    ["modifier"] = modifier,
-                    ["advantage"] = advantage.ToString(),
-                    ["location"] = "beach"
-                },
+                new SkillCheckActionParameters(baseDC, modifier, advantage, "beach"),
                 20.0 + ctx.Rng.NextDouble() * 10.0
             ),
             baseScore,

@@ -153,9 +153,9 @@ public class Engine
         if (actorState.CurrentAction?.Kind == ActionKind.JoinScene)
         {
             if (outcome.Type == ActionOutcomeType.Success &&
-                actorState.CurrentAction.Parameters.TryGetValue("sceneId", out var sceneIdObj))
+                actorState.CurrentAction.Parameters is JoinSceneActionParameters joinParams)
             {
-                var sceneId = new SceneId(sceneIdObj.ToString()!);
+                var sceneId = new SceneId(joinParams.SceneId);
                 _director.HandleSceneJoin(actorId, sceneId, _currentTime);
                 actorState.CurrentScene = sceneId;
             }

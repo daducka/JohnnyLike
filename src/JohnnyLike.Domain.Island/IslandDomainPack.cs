@@ -144,32 +144,62 @@ public class IslandDomainPack : IDomainPack
         {
             var tier = RollOutcomeTier.Success;
             
-            if (actorState.CurrentAction != null && actorState.CurrentAction.Parameters.ContainsKey("dc"))
+            if (actorState.CurrentAction != null)
             {
-                var dc = (int)actorState.CurrentAction.Parameters["dc"];
-                var modifier = (int)actorState.CurrentAction.Parameters["modifier"];
-                var advantage = Enum.Parse<AdvantageType>(actorState.CurrentAction.Parameters["advantage"].ToString()!);
-                var skillId = actionId.Contains("fish") ? "Fishing" :
-                             actionId.Contains("coconut") ? "Survival" :
-                             actionId.Contains("castle") ? "Performance" :
-                             actionId.Contains("swim") ? "Survival" :
-                             actionId.Contains("plane") || actionId.Contains("mermaid") ? "Perception" :
-                             "Unknown";
-
-                var request = new SkillCheckRequest(dc, modifier, advantage, skillId);
-                var result = SkillCheckResolver.Resolve(rng, request);
-                tier = result.OutcomeTier;
-
-                if (outcome.ResultData == null)
+                var parameters = actorState.CurrentAction.Parameters;
+                
+                // Handle skill check actions (SkillCheckActionParameters or VignetteActionParameters)
+                if (parameters is SkillCheckActionParameters skillCheckParams)
                 {
-                    outcome = outcome with { ResultData = new Dictionary<string, object>() };
+                    var skillId = actionId.Contains("fish") ? "Fishing" :
+                                 actionId.Contains("coconut") ? "Survival" :
+                                 actionId.Contains("castle") ? "Performance" :
+                                 actionId.Contains("swim") ? "Survival" :
+                                 "Unknown";
+
+                    var request = new SkillCheckRequest(skillCheckParams.DC, skillCheckParams.Modifier, skillCheckParams.Advantage, skillId);
+                    var result = SkillCheckResolver.Resolve(rng, request);
+                    tier = result.OutcomeTier;
+
+                    if (outcome.ResultData == null)
+                    {
+                        outcome = outcome with { ResultData = new Dictionary<string, object>() };
+                    }
+                    outcome.ResultData["dc"] = skillCheckParams.DC;
+                    outcome.ResultData["modifier"] = skillCheckParams.Modifier;
+                    outcome.ResultData["advantage"] = skillCheckParams.Advantage.ToString();
+                    outcome.ResultData["roll"] = result.Roll;
+                    outcome.ResultData["total"] = result.Total;
+                    outcome.ResultData["tier"] = tier.ToString();
                 }
-                outcome.ResultData["dc"] = dc;
-                outcome.ResultData["modifier"] = modifier;
-                outcome.ResultData["advantage"] = advantage.ToString();
-                outcome.ResultData["roll"] = result.Roll;
-                outcome.ResultData["total"] = result.Total;
-                outcome.ResultData["tier"] = tier.ToString();
+                else if (parameters is VignetteActionParameters vignetteParams)
+                {
+                    var skillId = actionId.Contains("plane") || actionId.Contains("mermaid") ? "Perception" : "Unknown";
+
+                    var request = new SkillCheckRequest(vignetteParams.DC, vignetteParams.Modifier, vignetteParams.Advantage, skillId);
+                    var result = SkillCheckResolver.Resolve(rng, request);
+                    tier = result.OutcomeTier;
+
+                    if (outcome.ResultData == null)
+                    {
+                        outcome = outcome with { ResultData = new Dictionary<string, object>() };
+                    }
+                    outcome.ResultData["dc"] = vignetteParams.DC;
+                    outcome.ResultData["modifier"] = vignetteParams.Modifier;
+                    outcome.ResultData["advantage"] = vignetteParams.Advantage.ToString();
+                    outcome.ResultData["roll"] = result.Roll;
+                    outcome.ResultData["total"] = result.Total;
+                    outcome.ResultData["tier"] = tier.ToString();
+                }
+                else
+                {
+                    // No skill check, just mark as success
+                    if (outcome.ResultData == null)
+                    {
+                        outcome = outcome with { ResultData = new Dictionary<string, object>() };
+                    }
+                    outcome.ResultData["tier"] = tier.ToString();
+                }
             }
             else
             {

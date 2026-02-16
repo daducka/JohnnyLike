@@ -53,13 +53,7 @@ public class FishingCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("fish_for_food"),
                 ActionKind.Interact,
-                new()
-                {
-                    ["dc"] = baseDC,
-                    ["modifier"] = modifier,
-                    ["advantage"] = advantage.ToString(),
-                    ["location"] = "shore"
-                },
+                new SkillCheckActionParameters(baseDC, modifier, advantage, "shore"),
                 15.0 + ctx.Rng.NextDouble() * 5.0
             ),
             baseScore,
