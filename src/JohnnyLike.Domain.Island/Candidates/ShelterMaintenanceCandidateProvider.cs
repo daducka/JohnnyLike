@@ -4,7 +4,7 @@ using JohnnyLike.Domain.Island.Items;
 
 namespace JohnnyLike.Domain.Island.Candidates;
 
-[IslandCandidateProvider(160)]
+[IslandCandidateProvider(160, "repair_shelter", "reinforce_shelter", "rebuild_shelter")]
 public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
 {
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -92,6 +92,51 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
                 1.2 * foresightMultiplier,
                 "Rebuild shelter from scratch"
             ));
+        }
+    }
+
+    public void ApplyEffects(EffectContext ctx)
+    {
+        var shelter = ctx.World.MainShelter;
+        if (shelter == null)
+            return;
+
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+        var actionId = ctx.Outcome.ActionId.Value;
+
+        switch (actionId)
+        {
+            case "repair_shelter":
+                if (tier >= RollOutcomeTier.PartialSuccess)
+                {
+                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 35.0 : 
+                                         tier == RollOutcomeTier.Success ? 20.0 : 10.0;
+                    shelter.Quality = Math.Min(100.0, shelter.Quality + qualityRestored);
+                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 6.0);
+                }
+                break;
+
+            case "reinforce_shelter":
+                if (tier >= RollOutcomeTier.Success)
+                {
+                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 45.0 : 30.0;
+                    shelter.Quality = Math.Min(100.0, shelter.Quality + qualityRestored);
+                    ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 8.0);
+                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 10.0);
+                }
+                break;
+
+            case "rebuild_shelter":
+                if (tier >= RollOutcomeTier.Success)
+                {
+                    shelter.Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 85.0;
+                    ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 20.0);
+                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 25.0);
+                }
+                break;
         }
     }
 }

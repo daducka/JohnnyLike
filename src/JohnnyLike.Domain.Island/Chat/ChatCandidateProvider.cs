@@ -3,7 +3,7 @@ using JohnnyLike.Domain.Island.Candidates;
 
 namespace JohnnyLike.Domain.Island.Chat;
 
-[IslandCandidateProvider(50)]
+[IslandCandidateProvider(50, "write_name_sand", "clap_emote")]
 public class ChatCandidateProvider : IIslandCandidateProvider
 {
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -45,6 +45,28 @@ public class ChatCandidateProvider : IIslandCandidateProvider
                     ));
                 }
             }
+        }
+    }
+
+    public void ApplyEffects(EffectContext ctx)
+    {
+        var actionId = ctx.Outcome.ActionId.Value;
+        
+        // Dequeue the completed chat action intent
+        if (ctx.Actor.PendingChatActions.Count > 0)
+        {
+            ctx.Actor.PendingChatActions.Dequeue();
+        }
+        
+        // Apply effects for chat-triggered actions
+        if (actionId == "write_name_sand")
+        {
+            ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 10.0);
+            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 15.0);
+        }
+        else if (actionId == "clap_emote")
+        {
+            ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 5.0);
         }
     }
 }

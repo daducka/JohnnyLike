@@ -3,7 +3,7 @@ using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Candidates;
 
-[IslandCandidateProvider(410)]
+[IslandCandidateProvider(410, "swim")]
 public class SwimCandidateProvider : IIslandCandidateProvider
 {
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -36,5 +36,42 @@ public class SwimCandidateProvider : IIslandCandidateProvider
             baseScore,
             $"Swim (DC {baseDC}, {estimatedChance:P0} chance)"
         ));
+    }
+
+    public void ApplyEffects(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        switch (tier)
+        {
+            case RollOutcomeTier.CriticalSuccess:
+                ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 20.0);
+                ctx.Actor.Energy = Math.Max(0.0, ctx.Actor.Energy - 5.0);
+                ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 15.0);
+                break;
+
+            case RollOutcomeTier.Success:
+                ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 10.0);
+                ctx.Actor.Energy = Math.Max(0.0, ctx.Actor.Energy - 10.0);
+                ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 10.0);
+                break;
+
+            case RollOutcomeTier.PartialSuccess:
+                ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 3.0);
+                ctx.Actor.Energy = Math.Max(0.0, ctx.Actor.Energy - 15.0);
+                break;
+
+            case RollOutcomeTier.Failure:
+                ctx.Actor.Energy = Math.Max(0.0, ctx.Actor.Energy - 15.0);
+                break;
+
+            case RollOutcomeTier.CriticalFailure:
+                ctx.Actor.Energy = Math.Max(0.0, ctx.Actor.Energy - 25.0);
+                ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 10.0);
+                break;
+        }
     }
 }

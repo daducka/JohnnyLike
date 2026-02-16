@@ -2,7 +2,7 @@ using JohnnyLike.Domain.Abstractions;
 
 namespace JohnnyLike.Domain.Island.Candidates;
 
-[IslandCandidateProvider(100)]
+[IslandCandidateProvider(100, "sleep_under_tree")]
 public class SleepCandidateProvider : IIslandCandidateProvider
 {
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -23,5 +23,11 @@ public class SleepCandidateProvider : IIslandCandidateProvider
             baseScore,
             "Sleep under tree"
         ));
+    }
+
+    public void ApplyEffects(EffectContext ctx)
+    {
+        ctx.Actor.Energy = Math.Min(100.0, ctx.Actor.Energy + 40.0);
+        ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 5.0);
     }
 }

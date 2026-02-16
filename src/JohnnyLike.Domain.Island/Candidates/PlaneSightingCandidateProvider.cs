@@ -3,7 +3,7 @@ using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Candidates;
 
-[IslandCandidateProvider(800)]
+[IslandCandidateProvider(800, "plane_sighting")]
 public class PlaneSightingCandidateProvider : IIslandCandidateProvider
 {
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -32,5 +32,32 @@ public class PlaneSightingCandidateProvider : IIslandCandidateProvider
             baseScore,
             "Plane sighting vignette"
         ));
+    }
+
+    public void ApplyEffects(EffectContext ctx)
+    {
+        ctx.Actor.LastPlaneSightingTime = ctx.World.CurrentTime;
+
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        if (tier >= RollOutcomeTier.Success)
+        {
+            ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 30.0);
+        }
+
+        if (tier == RollOutcomeTier.CriticalSuccess)
+        {
+            ctx.Actor.ActiveBuffs.Add(new ActiveBuff
+            {
+                Name = "Luck",
+                Type = BuffType.SkillBonus,
+                SkillId = "",
+                Value = 2,
+                ExpiresAt = ctx.World.CurrentTime + 300.0
+            });
+        }
     }
 }

@@ -3,7 +3,7 @@ using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Candidates;
 
-[IslandCandidateProvider(210)]
+[IslandCandidateProvider(210, "shake_tree_coconut")]
 public class CoconutCandidateProvider : IIslandCandidateProvider
 {
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -46,5 +46,39 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
             baseScore,
             $"Get coconut (DC {baseDC}, {estimatedChance:P0} chance)"
         ));
+    }
+
+    public void ApplyEffects(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        switch (tier)
+        {
+            case RollOutcomeTier.CriticalSuccess:
+                ctx.Actor.Hunger = Math.Max(0.0, ctx.Actor.Hunger - 25.0);
+                ctx.World.CoconutsAvailable = Math.Max(0, ctx.World.CoconutsAvailable - 1);
+                ctx.Actor.Energy = Math.Min(100.0, ctx.Actor.Energy + 15.0);
+                break;
+
+            case RollOutcomeTier.Success:
+                ctx.Actor.Hunger = Math.Max(0.0, ctx.Actor.Hunger - 15.0);
+                ctx.World.CoconutsAvailable = Math.Max(0, ctx.World.CoconutsAvailable - 1);
+                ctx.Actor.Energy = Math.Min(100.0, ctx.Actor.Energy + 10.0);
+                break;
+
+            case RollOutcomeTier.PartialSuccess:
+                ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 2.0);
+                break;
+
+            case RollOutcomeTier.Failure:
+                break;
+
+            case RollOutcomeTier.CriticalFailure:
+                ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 5.0);
+                break;
+        }
     }
 }

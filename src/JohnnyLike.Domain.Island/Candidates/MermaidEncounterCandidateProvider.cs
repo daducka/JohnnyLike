@@ -3,7 +3,7 @@ using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Candidates;
 
-[IslandCandidateProvider(810)]
+[IslandCandidateProvider(810, "mermaid_encounter")]
 public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
 {
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -36,5 +36,32 @@ public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
             baseScore,
             "Mermaid encounter vignette"
         ));
+    }
+
+    public void ApplyEffects(EffectContext ctx)
+    {
+        ctx.Actor.LastMermaidEncounterTime = ctx.World.CurrentTime;
+
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        if (tier >= RollOutcomeTier.Success)
+        {
+            ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 40.0);
+        }
+
+        if (tier == RollOutcomeTier.CriticalSuccess)
+        {
+            ctx.Actor.ActiveBuffs.Add(new ActiveBuff
+            {
+                Name = "Mermaid's Blessing",
+                Type = BuffType.Advantage,
+                SkillId = "Fishing",
+                Value = 0,
+                ExpiresAt = ctx.World.CurrentTime + 600.0
+            });
+        }
     }
 }
