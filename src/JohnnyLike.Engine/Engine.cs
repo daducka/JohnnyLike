@@ -130,21 +130,39 @@ public class Engine
             return;
         }
 
+        // Ensure ResultData dictionary exists so domain pack can populate it
+        if (outcome.ResultData == null)
+        {
+            outcome = outcome with { ResultData = new Dictionary<string, object>() };
+        }
+
+        // Apply effects (domain pack may populate ResultData)
+        var rngStream = new RandomRngStream(_rng);
+        _domainPack.ApplyActionEffects(actorId, outcome, actorState, _worldState, rngStream);
+
+        // Build details dictionary with all data including ResultData
+        var details = new Dictionary<string, object>
+        {
+            ["actionId"] = outcome.ActionId.Value,
+            ["outcomeType"] = outcome.Type.ToString(),
+            ["actualDuration"] = outcome.ActualDuration
+        };
+
+        // Merge ResultData into details
+        if (outcome.ResultData != null)
+        {
+            foreach (var kvp in outcome.ResultData)
+            {
+                details[kvp.Key] = kvp.Value;
+            }
+        }
+
         _traceSink.Record(new TraceEvent(
             _currentTime,
             actorId,
             "ActionCompleted",
-            new Dictionary<string, object>
-            {
-                ["actionId"] = outcome.ActionId.Value,
-                ["outcomeType"] = outcome.Type.ToString(),
-                ["actualDuration"] = outcome.ActualDuration
-            }
+            details
         ));
-
-        // Apply effects
-        var rngStream = new RandomRngStream(_rng);
-        _domainPack.ApplyActionEffects(actorId, outcome, actorState, _worldState, rngStream);
 
         // Record for variety
         _varietyMemory.RecordAction(actorId.Value, outcome.ActionId.Value, _currentTime);

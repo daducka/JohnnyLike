@@ -10,7 +10,15 @@ public record TraceEvent(
     public override string ToString()
     {
         var actorStr = ActorId.HasValue ? ActorId.Value.ToString() : "SYSTEM";
-        return $"[{Time:F2}] {actorStr} - {EventType}";
+        var baseStr = $"[{Time:F2}] {actorStr} - {EventType}";
+        
+        if (Details.Count > 0)
+        {
+            var detailsStr = string.Join(", ", Details.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+            return $"{baseStr} ({detailsStr})";
+        }
+        
+        return baseStr;
     }
 }
 
