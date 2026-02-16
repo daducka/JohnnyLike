@@ -53,7 +53,7 @@ public class FishingCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("fish_for_food"),
                 ActionKind.Interact,
-                new Dictionary<string, object>
+                new()
                 {
                     ["dc"] = baseDC,
                     ["modifier"] = modifier,

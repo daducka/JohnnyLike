@@ -30,7 +30,7 @@ public class SwimCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("swim"),
                 ActionKind.Interact,
-                new Dictionary<string, object>
+                new()
                 {
                     ["dc"] = baseDC,
                     ["modifier"] = modifier,

@@ -24,7 +24,7 @@ public class ChatCandidateProvider : IIslandCandidateProvider
                         new ActionSpec(
                             new ActionId("write_name_sand"),
                             ActionKind.Emote,
-                            new Dictionary<string, object>
+                            new()
                             {
                                 ["name"] = name,
                                 ["location"] = "beach"
@@ -41,7 +41,7 @@ public class ChatCandidateProvider : IIslandCandidateProvider
                         new ActionSpec(
                             new ActionId("clap_emote"),
                             ActionKind.Emote,
-                            new Dictionary<string, object>
+                            new()
                             {
                                 ["emote"] = "clap"
                             },

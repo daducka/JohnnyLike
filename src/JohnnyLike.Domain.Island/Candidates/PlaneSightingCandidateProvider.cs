@@ -26,7 +26,7 @@ public class PlaneSightingCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("plane_sighting"),
                 ActionKind.Interact,
-                new Dictionary<string, object>
+                new()
                 {
                     ["dc"] = baseDC,
                     ["modifier"] = modifier,

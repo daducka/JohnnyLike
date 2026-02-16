@@ -25,7 +25,7 @@ public class SandCastleCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("build_sand_castle"),
                 ActionKind.Interact,
-                new Dictionary<string, object>
+                new()
                 {
                     ["dc"] = baseDC,
                     ["modifier"] = modifier,

@@ -17,7 +17,7 @@ public class SleepCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("sleep_under_tree"),
                 ActionKind.Interact,
-                new Dictionary<string, object>
+                new()
                 {
                     ["location"] = "tree"
                 },

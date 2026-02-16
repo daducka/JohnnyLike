@@ -40,7 +40,7 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("shake_tree_coconut"),
                 ActionKind.Interact,
-                new Dictionary<string, object>
+                new()
                 {
                     ["dc"] = baseDC,
                     ["modifier"] = modifier,

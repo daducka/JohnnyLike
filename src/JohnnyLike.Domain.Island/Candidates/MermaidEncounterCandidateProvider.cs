@@ -30,7 +30,7 @@ public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("mermaid_encounter"),
                 ActionKind.Interact,
-                new Dictionary<string, object>
+                new()
                 {
                     ["dc"] = baseDC,
                     ["modifier"] = modifier,

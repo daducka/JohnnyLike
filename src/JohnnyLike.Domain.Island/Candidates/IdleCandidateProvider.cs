@@ -12,7 +12,7 @@ public class IdleCandidateProvider : IIslandCandidateProvider
             new ActionSpec(
                 new ActionId("idle"),
                 ActionKind.Wait,
-                new Dictionary<string, object>(),
+                new(),
                 5.0
             ),
             0.3,
