@@ -36,8 +36,8 @@ public class IslandDomainPack : IDomainPack
 
     private static (List<IIslandCandidateProvider>, Dictionary<string, IIslandCandidateProvider>) DiscoverProviders()
     {
-        // Discover and instantiate providers ONLY by attribute
-        var providers = Assembly.GetExecutingAssembly()
+        // Discover types with attributes
+        var typesWithAttrs = Assembly.GetExecutingAssembly()
             .GetTypes()
             .Where(t => t.GetCustomAttribute<IslandCandidateProviderAttribute>() != null)
             .Where(t => !t.IsAbstract && typeof(IIslandCandidateProvider).IsAssignableFrom(t))
@@ -46,21 +46,21 @@ public class IslandDomainPack : IDomainPack
                 Attr = t.GetCustomAttribute<IslandCandidateProviderAttribute>()!
             })
             .OrderBy(x => x.Attr.Order)
-            .Select(x => (IIslandCandidateProvider)Activator.CreateInstance(x.Type)!)
             .ToList();
 
-        // Build action ID -> provider lookup
+        // Create provider instances once
+        var providers = new List<IIslandCandidateProvider>();
         var effectHandlers = new Dictionary<string, IIslandCandidateProvider>();
-        foreach (var type in Assembly.GetExecutingAssembly().GetTypes())
+
+        foreach (var item in typesWithAttrs)
         {
-            var attr = type.GetCustomAttribute<IslandCandidateProviderAttribute>();
-            if (attr != null && attr.ActionIds.Length > 0)
+            var provider = (IIslandCandidateProvider)Activator.CreateInstance(item.Type)!;
+            providers.Add(provider);
+
+            // Build action ID -> provider lookup
+            foreach (var actionId in item.Attr.ActionIds)
             {
-                var provider = (IIslandCandidateProvider)Activator.CreateInstance(type)!;
-                foreach (var actionId in attr.ActionIds)
-                {
-                    effectHandlers[actionId] = provider;
-                }
+                effectHandlers[actionId] = provider;
             }
         }
 
@@ -275,7 +275,12 @@ public class IslandDomainPack : IDomainPack
     {
         if (outcome.ResultData?.TryGetValue("tier", out var tierObj) == true)
         {
-            return Enum.Parse<RollOutcomeTier>(tierObj.ToString()!);
+            // Try direct cast first (if already enum), fallback to parse (for string values)
+            if (tierObj is RollOutcomeTier tier)
+                return tier;
+            
+            if (tierObj is string tierStr && Enum.TryParse<RollOutcomeTier>(tierStr, out var parsedTier))
+                return parsedTier;
         }
         return null;
     }
