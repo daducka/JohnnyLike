@@ -321,6 +321,56 @@ public class IslandActionEffectsTests
     }
 
     [Fact]
+    public void ApplyActionEffects_SkillCheck_StoresDetailedResultData()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = new IslandActorState
+        {
+            Id = actorId,
+            Hunger = 60.0,
+            CurrentAction = new ActionSpec(
+                new ActionId("fish_for_food"),
+                ActionKind.Interact,
+                new Dictionary<string, object>
+                {
+                    ["dc"] = 10,
+                    ["modifier"] = 3,
+                    ["advantage"] = "Normal"
+                },
+                15.0
+            )
+        };
+        var worldState = new IslandWorldState { FishAvailable = 100.0 };
+
+        // Outcome with empty ResultData and no tier pre-set — forces skill check resolution
+        var resultData = new Dictionary<string, object>();
+        var outcome = new ActionOutcome(
+            new ActionId("fish_for_food"),
+            ActionOutcomeType.Success,
+            15.0,
+            resultData
+        );
+
+        var rng = new RandomRngStream(new Random(42));
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng);
+
+        Assert.True(resultData.ContainsKey("dc"));
+        Assert.True(resultData.ContainsKey("modifier"));
+        Assert.True(resultData.ContainsKey("advantage"));
+        Assert.True(resultData.ContainsKey("roll"));
+        Assert.True(resultData.ContainsKey("total"));
+        Assert.True(resultData.ContainsKey("tier"));
+
+        Assert.Equal(10, resultData["dc"]);
+        Assert.Equal(3, resultData["modifier"]);
+        Assert.Equal("Normal", resultData["advantage"]);
+        Assert.IsType<int>(resultData["roll"]);
+        Assert.IsType<int>(resultData["total"]);
+        Assert.IsType<string>(resultData["tier"]);
+    }
+
+    [Fact]
     public void ApplyActionEffects_PassiveStatsDecay()
     {
         var domain = new IslandDomainPack();
