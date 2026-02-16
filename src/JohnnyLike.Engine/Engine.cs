@@ -140,7 +140,7 @@ public class Engine
         var rngStream = new RandomRngStream(_rng);
         _domainPack.ApplyActionEffects(actorId, outcome, actorState, _worldState, rngStream);
 
-        // Build details dictionary with all data including ResultData
+        // Build details dictionary including all data from ResultData
         var details = new Dictionary<string, object>
         {
             ["actionId"] = outcome.ActionId.Value,
@@ -148,7 +148,8 @@ public class Engine
             ["actualDuration"] = outcome.ActualDuration
         };
 
-        // Merge ResultData into details
+        // Merge ResultData (populated by domain pack during ApplyActionEffects)
+        // Note: ResultData is guaranteed non-null after initialization above
         if (outcome.ResultData != null)
         {
             foreach (var kvp in outcome.ResultData)
