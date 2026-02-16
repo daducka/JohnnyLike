@@ -28,6 +28,11 @@ public class IslandWorldState : WorldState
 
     public double CurrentTime { get; set; } = 0.0;
 
+    public List<WorldItem> WorldItems { get; set; } = new();
+
+    public CampfireItem? MainCampfire => WorldItems.OfType<CampfireItem>().FirstOrDefault();
+    public ShelterItem? MainShelter => WorldItems.OfType<ShelterItem>().FirstOrDefault();
+
     public void OnTimeAdvanced(double currentTime, double dt)
     {
         CurrentTime = currentTime;
@@ -44,10 +49,38 @@ public class IslandWorldState : WorldState
 
         var tidePhase = (TimeOfDay * 24.0) % 12.0;
         TideLevel = tidePhase >= 6.0 ? TideLevel.High : TideLevel.Low;
+
+        foreach (var item in WorldItems.OfType<MaintainableWorldItem>())
+        {
+            item.Tick(dt, this);
+        }
     }
 
     public override string Serialize()
     {
+        var serializedItems = WorldItems.Select(item =>
+        {
+            var baseProps = new Dictionary<string, object>
+            {
+                ["Id"] = item.Id,
+                ["Type"] = item.Type
+            };
+
+            if (item is MaintainableWorldItem maintainable)
+            {
+                baseProps["Quality"] = maintainable.Quality;
+                baseProps["BaseDecayPerSecond"] = maintainable.BaseDecayPerSecond;
+
+                if (item is CampfireItem campfire)
+                {
+                    baseProps["IsLit"] = campfire.IsLit;
+                    baseProps["FuelSeconds"] = campfire.FuelSeconds;
+                }
+            }
+
+            return baseProps;
+        }).ToList();
+
         return JsonSerializer.Serialize(new
         {
             TimeOfDay,
@@ -56,7 +89,8 @@ public class IslandWorldState : WorldState
             FishAvailable,
             FishRegenRatePerMinute,
             CoconutsAvailable,
-            TideLevel
+            TideLevel,
+            WorldItems = serializedItems
         });
     }
 
@@ -67,10 +101,64 @@ public class IslandWorldState : WorldState
 
         TimeOfDay = data["TimeOfDay"].GetDouble();
         DayCount = data["DayCount"].GetInt32();
-        Weather = Enum.Parse<Weather>(data["Weather"].GetString()!);
+        
+        // Handle Weather enum - can be string or number
+        if (data["Weather"].ValueKind == JsonValueKind.String)
+        {
+            Weather = Enum.Parse<Weather>(data["Weather"].GetString()!);
+        }
+        else
+        {
+            Weather = (Weather)data["Weather"].GetInt32();
+        }
+        
         FishAvailable = data["FishAvailable"].GetDouble();
         FishRegenRatePerMinute = data["FishRegenRatePerMinute"].GetDouble();
         CoconutsAvailable = data["CoconutsAvailable"].GetInt32();
-        TideLevel = Enum.Parse<TideLevel>(data["TideLevel"].GetString()!);
+        
+        // Handle TideLevel enum - can be string or number
+        if (data["TideLevel"].ValueKind == JsonValueKind.String)
+        {
+            TideLevel = Enum.Parse<TideLevel>(data["TideLevel"].GetString()!);
+        }
+        else
+        {
+            TideLevel = (TideLevel)data["TideLevel"].GetInt32();
+        }
+
+        WorldItems.Clear();
+        if (data.TryGetValue("WorldItems", out var itemsElement))
+        {
+            var itemsList = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(itemsElement.GetRawText());
+            if (itemsList != null)
+            {
+                foreach (var itemData in itemsList)
+                {
+                    var type = itemData["Type"].GetString()!;
+                    var id = itemData["Id"].GetString()!;
+
+                    WorldItem? item = type switch
+                    {
+                        "campfire" => new CampfireItem(id),
+                        "shelter" => new ShelterItem(id),
+                        _ => null
+                    };
+
+                    if (item != null && item is MaintainableWorldItem maintainable)
+                    {
+                        maintainable.Quality = itemData["Quality"].GetDouble();
+                        maintainable.BaseDecayPerSecond = itemData["BaseDecayPerSecond"].GetDouble();
+
+                        if (item is CampfireItem campfire)
+                        {
+                            campfire.IsLit = itemData["IsLit"].GetBoolean();
+                            campfire.FuelSeconds = itemData["FuelSeconds"].GetDouble();
+                        }
+
+                        WorldItems.Add(item);
+                    }
+                }
+            }
+        }
     }
 }
