@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Candidates;
@@ -12,12 +13,14 @@ public class BashTreasureChestCandidateProvider : IIslandCandidateProvider
 
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
+        var chest = ctx.World.TreasureChest;
+        
         // Only emit candidate when chest is present and unopened
-        if (!ctx.World.TreasureChest.IsPresent || ctx.World.TreasureChest.IsOpened)
+        if (chest == null || chest.IsOpened)
             return;
 
         // Calculate DC based on chest health
-        var healthRatio = ctx.World.TreasureChest.Health / 100.0;
+        var healthRatio = chest.Health / 100.0;
         var dc = (int)(DC_MIN + healthRatio * (DC_MAX - DC_MIN));
 
         var modifier = DEFAULT_BASH_MODIFIER;
@@ -45,8 +48,10 @@ public class BashTreasureChestCandidateProvider : IIslandCandidateProvider
         if (ctx.Tier == null)
             return;
 
+        var chest = ctx.World.TreasureChest;
+        
         // Safety check - chest might have been removed
-        if (!ctx.World.TreasureChest.IsPresent)
+        if (chest == null)
             return;
 
         var tier = ctx.Tier.Value;
@@ -57,10 +62,9 @@ public class BashTreasureChestCandidateProvider : IIslandCandidateProvider
         // Success: open and remove chest, grant reward
         if (tier >= RollOutcomeTier.Success)
         {
-            ctx.World.TreasureChest.IsOpened = true;
-            ctx.World.TreasureChest.IsPresent = false;
-            ctx.World.TreasureChest.Health = 0.0;
-            ctx.World.TreasureChest.Position = null;
+            chest.IsOpened = true;
+            chest.Health = 0.0;
+            ctx.World.WorldItems.Remove(chest);
 
             // Placeholder reward
             ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 20.0);
@@ -82,7 +86,7 @@ public class BashTreasureChestCandidateProvider : IIslandCandidateProvider
                 _ => 0.0
             };
 
-            ctx.World.TreasureChest.Health = Math.Max(0.0, ctx.World.TreasureChest.Health - damage);
+            chest.Health = Math.Max(0.0, chest.Health - damage);
 
             // Small morale penalty for failing
             ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 5.0);
@@ -90,7 +94,7 @@ public class BashTreasureChestCandidateProvider : IIslandCandidateProvider
             if (ctx.Outcome.ResultData != null)
             {
                 ctx.Outcome.ResultData["variant_id"] = "bash_chest_failure";
-                ctx.Outcome.ResultData["chest_health_after"] = ctx.World.TreasureChest.Health;
+                ctx.Outcome.ResultData["chest_health_after"] = chest.Health;
             }
         }
     }

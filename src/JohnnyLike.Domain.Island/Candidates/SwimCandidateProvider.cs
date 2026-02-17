@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Candidates;
@@ -14,7 +15,7 @@ public class SwimCandidateProvider : IIslandCandidateProvider
             return;
 
         // Block swimming if shark is present
-        if (ctx.World.Shark.IsPresent)
+        if (ctx.World.Shark != null)
             return;
 
         var baseDC = 10;
@@ -59,12 +60,13 @@ public class SwimCandidateProvider : IIslandCandidateProvider
                 ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 15.0);
                 
                 // Spawn treasure chest if not already present
-                if (!ctx.World.TreasureChest.IsPresent)
+                if (ctx.World.TreasureChest == null)
                 {
-                    ctx.World.TreasureChest.IsPresent = true;
-                    ctx.World.TreasureChest.IsOpened = false;
-                    ctx.World.TreasureChest.Health = 100.0;
-                    ctx.World.TreasureChest.Position = "shore";
+                    var chest = new TreasureChestItem();
+                    chest.IsOpened = false;
+                    chest.Health = 100.0;
+                    chest.Position = "shore";
+                    ctx.World.WorldItems.Add(chest);
                     
                     if (ctx.Outcome.ResultData != null)
                     {
@@ -94,11 +96,12 @@ public class SwimCandidateProvider : IIslandCandidateProvider
                 ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - SHARK_MORALE_PENALTY);
                 
                 // Spawn shark if not already present
-                if (!ctx.World.Shark.IsPresent)
+                if (ctx.World.Shark == null)
                 {
                     var duration = 60.0 + ctx.Rng.NextDouble() * 120.0; // 60-180 seconds
-                    ctx.World.Shark.IsPresent = true;
-                    ctx.World.Shark.ExpiresAt = ctx.World.CurrentTime + duration;
+                    var shark = new SharkItem();
+                    shark.ExpiresAt = ctx.World.CurrentTime + duration;
+                    ctx.World.WorldItems.Add(shark);
                     
                     // Additional morale penalty for shark encounter
                     ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - SHARK_MORALE_PENALTY);

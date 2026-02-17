@@ -265,6 +265,31 @@ The `JohnnyLike.Domain.Island` demonstrates the Dice kit with a castaway surviva
 - **Resources**: Fish population and coconut availability with regeneration
 - **Tide**: Low/High tides affecting activities
 
+### World Items
+
+Persistent objects in the world that track state and can be interacted with:
+
+- **CampfireItem**: Maintainable light source with fuel tracking
+  - Properties: IsLit, FuelSeconds, Quality
+  - Decays when unlit, requires fuel and maintenance
+  
+- **ShelterItem**: Maintainable structure providing protection
+  - Properties: Quality
+  - Decays faster in bad weather (Rainy, Windy)
+  
+- **TreasureChestItem**: Discoverable loot container
+  - Properties: IsOpened, Health (0-100), Position
+  - Spawned by swim critical success
+  - Requires bashing to open, gets easier as health decreases
+  
+- **SharkItem**: Temporary hazard with timed despawn
+  - Properties: ExpiresAt (world time)
+  - Spawned by swim critical failure
+  - Blocks swimming until auto-despawn
+  - Duration: 60-180 seconds (randomized)
+
+All world items are serialized with IslandWorldState and survive across save/load cycles.
+
 ### Actions with Skill Checks
 
 All actions use the Dice kit for resolution:
@@ -273,6 +298,12 @@ All actions use the Dice kit for resolution:
 - **ShakeTreeForCoconut**: Survival skill check, DC based on coconut availability and weather
 - **BuildSandCastle**: Performance skill check for morale/boredom management
 - **Swim**: Survival/athletics check with morale and energy effects
+  - **Critical Success**: Spawns TreasureChestItem at shore
+  - **Critical Failure**: Spawns SharkItem, applies -20 morale penalty
+- **BashOpenTreasureChest**: Strength check to open discovered treasure
+  - DC scales with chest health (DC 10-20)
+  - Failure damages chest, making subsequent attempts easier
+  - Success grants morale reward and removes chest
 - **SleepUnderTree**: No check, restores energy
 
 ### Vignette Events
