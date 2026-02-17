@@ -4,16 +4,16 @@ namespace JohnnyLike.Engine;
 
 public class ReservationTable : IResourceAvailability
 {
-    private readonly Dictionary<ResourceId, (SceneId Scene, ActorId? Actor, double Until)> _reservations = new();
+    private readonly Dictionary<ResourceId, (SceneId Scene, ReservationOwner? Owner, double Until)> _reservations = new();
 
-    public bool TryReserve(ResourceId resourceId, SceneId sceneId, ActorId? actorId, double until)
+    public bool TryReserve(ResourceId resourceId, SceneId sceneId, ReservationOwner? owner, double until)
     {
         if (_reservations.TryGetValue(resourceId, out var existing))
         {
             return false;
         }
 
-        _reservations[resourceId] = (sceneId, actorId, until);
+        _reservations[resourceId] = (sceneId, owner, until);
         return true;
     }
 

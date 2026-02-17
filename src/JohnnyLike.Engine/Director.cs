@@ -288,7 +288,8 @@ public class Director
         foreach (var req in action.ResourceRequirements)
         {
             var until = currentTime + (req.DurationOverride ?? action.EstimatedDuration);
-            if (_reservations.TryReserve(req.ResourceId, sceneId, actorId, until))
+            var owner = ReservationOwner.FromActor(actorId);
+            if (_reservations.TryReserve(req.ResourceId, sceneId, owner, until))
             {
                 reservedResources.Add(req.ResourceId);
             }

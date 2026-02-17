@@ -119,7 +119,7 @@ public class ActionReservationTests
         reservationTable.TryReserve(
             new ResourceId("test:resource:2"),
             new SceneId("external"),
-            new ActorId("External"),
+            ReservationOwner.FromActor(new ActorId("External")),
             100.0
         );
         
