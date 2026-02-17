@@ -145,6 +145,10 @@ public class Engine
             outcome = outcome with { ResultData = new Dictionary<string, object>() };
         }
 
+        // Release action reservations BEFORE applying effects
+        // This allows world items spawned in effects to reserve resources previously held by the actor
+        _director.ReleaseActionReservations(actorId);
+
         // Apply effects (domain pack may populate ResultData)
         var rngStream = new RandomRngStream(_rng);
         _domainPack.ApplyActionEffects(actorId, outcome, actorState, _worldState, rngStream);
@@ -183,9 +187,6 @@ public class Engine
 
         // Record for variety
         _varietyMemory.RecordAction(actorId.Value, outcome.ActionId.Value, _currentTime);
-
-        // Release action reservations
-        _director.ReleaseActionReservations(actorId);
 
         // Handle scene join
         if (actorState.CurrentAction?.Kind == ActionKind.JoinScene)
