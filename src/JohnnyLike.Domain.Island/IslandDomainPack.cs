@@ -302,6 +302,9 @@ public class IslandDomainPack : IDomainPack
         var oldDayCount = islandWorld.DayCount;
         var oldTimeOfDay = islandWorld.TimeOfDay;
         
+        // Update current time first (before ticking items that may check it)
+        islandWorld.CurrentTime = newCurrentTime;
+        
         // Update time of day and day count
         islandWorld.TimeOfDay += dtSeconds / 86400.0;
         if (islandWorld.TimeOfDay >= 1.0)
@@ -419,9 +422,6 @@ public class IslandDomainPack : IDomainPack
             item.PerformExpiration(islandWorld, resourceAvailability);
             islandWorld.WorldItems.Remove(item);
         }
-        
-        // Update current time
-        islandWorld.CurrentTime = newCurrentTime;
         
         return traceEvents;
     }
