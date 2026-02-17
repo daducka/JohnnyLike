@@ -52,6 +52,13 @@ public class Engine
     {
         _currentTime += dtSeconds;
 
+        // Tick world state and record trace events
+        var worldTraceEvents = _domainPack.TickWorldState(_worldState, dtSeconds, _reservations);
+        foreach (var evt in worldTraceEvents)
+        {
+            _traceSink.Record(evt);
+        }
+
         // Process pending signals
         while (_signalQueue.Count > 0 && _signalQueue.Peek().Timestamp <= _currentTime)
         {

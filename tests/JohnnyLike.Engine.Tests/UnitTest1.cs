@@ -335,6 +335,11 @@ public class SignalHandlingTests
         {
             return new Dictionary<string, object>();
         }
+
+        public List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability)
+        {
+            return new List<TraceEvent>();
+        }
     }
 
     private class TestActorState : ActorState
@@ -425,6 +430,11 @@ public class ActorStateSnapshotTests
             {
                 ["testValue"] = 42
             };
+        }
+
+        public List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability)
+        {
+            return new List<TraceEvent>();
         }
     }
 

@@ -40,4 +40,16 @@ public interface IDomainPack
     /// This is called after action effects are applied to capture the current state.
     /// </summary>
     Dictionary<string, object> GetActorStateSnapshot(ActorState actorState);
+    
+    /// <summary>
+    /// Ticks the world state forward by the specified time delta.
+    /// This method handles passive time-based world updates such as weather changes,
+    /// resource regeneration, item decay, tide shifts, etc.
+    /// Returns a list of trace events for significant world state changes.
+    /// </summary>
+    /// <param name="worldState">The world state to update</param>
+    /// <param name="dtSeconds">Time delta in seconds</param>
+    /// <param name="resourceAvailability">Resource availability for checking reservations</param>
+    /// <returns>List of trace events for significant world state changes</returns>
+    List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability);
 }

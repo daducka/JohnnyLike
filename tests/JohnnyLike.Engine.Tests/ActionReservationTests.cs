@@ -212,6 +212,7 @@ public class ActionReservationTests
         public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
         public bool ValidateContent(out List<string> errors) { errors = new List<string>(); return true; }
         public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState) => new Dictionary<string, object>();
+        public List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability) => new List<TraceEvent>();
     }
     
     // Test domain pack that provides actions requiring multiple resources
@@ -278,6 +279,7 @@ public class ActionReservationTests
         public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
         public bool ValidateContent(out List<string> errors) { errors = new List<string>(); return true; }
         public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState) => new Dictionary<string, object>();
+        public List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability) => new List<TraceEvent>();
     }
     
     private class TestActorState : ActorState

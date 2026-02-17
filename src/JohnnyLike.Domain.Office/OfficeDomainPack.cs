@@ -215,6 +215,12 @@ public class OfficeDomainPack : IDomainPack
         };
     }
 
+    public List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability)
+    {
+        // Office domain has no passive world state changes
+        return new List<TraceEvent>();
+    }
+
     private List<SceneTemplate> CreateSceneTemplates()
     {
         var templates = new List<SceneTemplate>();
