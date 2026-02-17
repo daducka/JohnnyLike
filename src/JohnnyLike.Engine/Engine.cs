@@ -10,7 +10,6 @@ public class Engine
     private readonly Dictionary<ActorId, ActorState> _actors;
     private readonly Director _director;
     private readonly ReservationTable _reservations;
-    private readonly IResourceReservationService _reservationService;
     private readonly VarietyMemory _varietyMemory;
     private readonly ITraceSink _traceSink;
     private readonly Random _rng;
@@ -27,7 +26,6 @@ public class Engine
         _worldState = domainPack.CreateInitialWorldState();
         _actors = new Dictionary<ActorId, ActorState>();
         _reservations = new ReservationTable();
-        _reservationService = new ResourceReservationService(_reservations, () => _currentTime);
         _varietyMemory = new VarietyMemory();
         _traceSink = traceSink ?? new InMemoryTraceSink();
         _director = new Director(domainPack, _reservations, _varietyMemory, _traceSink);
@@ -35,11 +33,13 @@ public class Engine
         _signalQueue = new Queue<Signal>();
         _currentTime = 0.0;
         
-        // Set reservation service on world state if it has a ReservationService property
-        var reservationServiceProp = _worldState.GetType().GetProperty("ReservationService");
-        if (reservationServiceProp != null && reservationServiceProp.CanWrite)
+        // Set reservation table on world state if it has a Reservations property
+        // We use reflection here to avoid coupling Engine to specific domain implementations
+        var reservationsProp = _worldState.GetType().GetProperty("Reservations");
+        if (reservationsProp != null && reservationsProp.CanWrite && 
+            typeof(IResourceAvailability).IsAssignableFrom(reservationsProp.PropertyType))
         {
-            reservationServiceProp.SetValue(_worldState, _reservationService);
+            reservationsProp.SetValue(_worldState, _reservations);
         }
     }
 

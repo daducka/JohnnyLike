@@ -21,7 +21,6 @@ public class SharkTests
         {
             if (_rolls.Count > 0)
                 return _rolls.Dequeue();
-            // Throw exception to make exhausted RNG more obvious during testing
             throw new InvalidOperationException("FixedRngStream exhausted - all preset rolls have been consumed");
         }
 
@@ -31,12 +30,12 @@ public class SharkTests
         }
     }
 
-    // Simple test-only implementation of IResourceReservationService
-    private class TestResourceReservationService : IResourceReservationService, IResourceAvailability
+    // Simple test implementation of IResourceAvailability for testing
+    private class TestReservations : IResourceAvailability
     {
         private readonly HashSet<ResourceId> _reservedResources = new();
 
-        public bool TryReserve(ResourceId resourceId, ReservationOwner owner, double until)
+        public bool TryReserve(ResourceId resourceId, double until)
         {
             if (_reservedResources.Contains(resourceId))
                 return false;
@@ -64,8 +63,8 @@ public class SharkTests
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
-        // Set up reservation service for tests
-        world.ReservationService = new TestResourceReservationService();
+        // Set up reservations for tests
+        world.Reservations = new TestReservations();
         
         // Ensure shark is not present initially
         Assert.Null(world.Shark);
@@ -122,9 +121,9 @@ public class SharkTests
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
-        // Set up reservation service
-        var reservationService = new TestResourceReservationService();
-        world.ReservationService = reservationService;
+        // Set up reservations
+        var reservations = new TestReservations();
+        world.Reservations = reservations;
         
         actor.Energy = 50.0; // Ensure actor has enough energy
         
@@ -140,17 +139,16 @@ public class SharkTests
         
         // Manually reserve the water resource to simulate what happens in ApplyEffects
         var waterResource = new ResourceId("island:resource:water");
-        var sharkOwner = ReservationOwner.FromWorldItem(shark.Id);
-        reservationService.TryReserve(waterResource, sharkOwner, shark.ExpiresAt);
+        reservations.TryReserve(waterResource, shark.ExpiresAt);
         shark.ReservedResourceId = waterResource;
         
         // Verify swim candidates are still generated (domain doesn't block them)
         // But the resource availability check will indicate water is reserved
-        candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), reservationService);
+        candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), reservations);
         Assert.Contains(candidates, c => c.Action.Id.Value == "swim");
         
         // Verify that the water resource is indeed reserved
-        Assert.True(reservationService.IsReserved(waterResource));
+        Assert.True(reservations.IsReserved(waterResource));
     }
 
     [Fact]
@@ -161,8 +159,8 @@ public class SharkTests
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
-        // Set up reservation service for tests
-        world.ReservationService = new TestResourceReservationService();
+        // Set up reservations for tests
+        world.Reservations = new TestReservations();
         
         // Spawn a shark
         var shark = new SharkItem();
@@ -191,9 +189,9 @@ public class SharkTests
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
-        // Set up reservation service
-        var reservationService = new TestResourceReservationService();
-        world.ReservationService = reservationService;
+        // Set up reservations
+        var reservations = new TestReservations();
+        world.Reservations = reservations;
         
         var currentTime = 100.0;
         world.CurrentTime = currentTime;
@@ -201,7 +199,7 @@ public class SharkTests
         var waterResource = new ResourceId("island:resource:water");
         
         // Verify water resource is not reserved initially
-        Assert.False(reservationService.IsReserved(waterResource));
+        Assert.False(reservations.IsReserved(waterResource));
         
         // Simulate swim critical failure that spawns a shark
         var resultData = new Dictionary<string, object>
@@ -220,7 +218,7 @@ public class SharkTests
         
         // Verify shark was spawned and reserved the water resource
         Assert.NotNull(world.Shark);
-        Assert.True(reservationService.IsReserved(waterResource));
+        Assert.True(reservations.IsReserved(waterResource));
         Assert.Equal(waterResource, world.Shark.ReservedResourceId);
         
         // Advance time past shark expiration
@@ -228,7 +226,7 @@ public class SharkTests
         
         // Verify shark despawned and released the water resource
         Assert.Null(world.Shark);
-        Assert.False(reservationService.IsReserved(waterResource));
+        Assert.False(reservations.IsReserved(waterResource));
     }
 
     [Fact]

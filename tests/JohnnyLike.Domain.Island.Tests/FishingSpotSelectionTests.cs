@@ -193,5 +193,18 @@ public class FishingSpotSelectionTests
         {
             return _reservedResources.Contains(resourceId);
         }
+        
+        public bool TryReserve(ResourceId resourceId, double until)
+        {
+            if (_reservedResources.Contains(resourceId))
+                return false;
+            _reservedResources.Add(resourceId);
+            return true;
+        }
+        
+        public void Release(ResourceId resourceId)
+        {
+            _reservedResources.Remove(resourceId);
+        }
     }
 }

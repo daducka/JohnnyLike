@@ -116,7 +116,7 @@ public class ActionReservationTests
         var reservationTable = GetReservationTable(engine);
         
         // Pre-reserve one of the resources externally
-        reservationTable.TryReserve(
+        reservationTable.TryReserveForScene(
             new ResourceId("test:resource:2"),
             new SceneId("external"),
             ReservationOwner.FromActor(new ActorId("External")),

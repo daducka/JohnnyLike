@@ -32,10 +32,10 @@ public class IslandWorldState : WorldState
     public List<WorldItem> WorldItems { get; set; } = new();
 
     /// <summary>
-    /// Resource reservation service for world items to reserve/release resources.
+    /// Resource reservation table from the engine.
     /// This is set by the engine and is not serialized.
     /// </summary>
-    public IResourceReservationService? ReservationService { get; set; }
+    public IResourceAvailability? Reservations { get; set; }
 
     public CampfireItem? MainCampfire => WorldItems.OfType<CampfireItem>().FirstOrDefault();
     public ShelterItem? MainShelter => WorldItems.OfType<ShelterItem>().FirstOrDefault();

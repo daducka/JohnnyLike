@@ -9,7 +9,7 @@ public class ReservationTableTests
     public void TryReserve_NewResource_ReturnsTrue()
     {
         var table = new ReservationTable();
-        var result = table.TryReserve(
+        var result = table.TryReserveForScene(
             new ResourceId("printer"),
             new SceneId("scene1"),
             ReservationOwner.FromActor(new ActorId("Jim")),
@@ -26,8 +26,8 @@ public class ReservationTableTests
         var table = new ReservationTable();
         var resourceId = new ResourceId("printer");
         
-        table.TryReserve(resourceId, new SceneId("scene1"), ReservationOwner.FromActor(new ActorId("Jim")), 100.0);
-        var result = table.TryReserve(resourceId, new SceneId("scene2"), ReservationOwner.FromActor(new ActorId("Pam")), 100.0);
+        table.TryReserveForScene(resourceId, new SceneId("scene1"), ReservationOwner.FromActor(new ActorId("Jim")), 100.0);
+        var result = table.TryReserveForScene(resourceId, new SceneId("scene2"), ReservationOwner.FromActor(new ActorId("Pam")), 100.0);
 
         Assert.False(result);
     }
@@ -38,7 +38,7 @@ public class ReservationTableTests
         var table = new ReservationTable();
         var resourceId = new ResourceId("printer");
         
-        table.TryReserve(resourceId, new SceneId("scene1"), ReservationOwner.FromActor(new ActorId("Jim")), 100.0);
+        table.TryReserveForScene(resourceId, new SceneId("scene1"), ReservationOwner.FromActor(new ActorId("Jim")), 100.0);
         table.Release(resourceId);
 
         Assert.False(table.IsReserved(resourceId));
@@ -52,8 +52,8 @@ public class ReservationTableTests
         var res1 = new ResourceId("printer");
         var res2 = new ResourceId("desk");
 
-        table.TryReserve(res1, sceneId, ReservationOwner.FromActor(new ActorId("Jim")), 100.0);
-        table.TryReserve(res2, sceneId, ReservationOwner.FromActor(new ActorId("Jim")), 100.0);
+        table.TryReserveForScene(res1, sceneId, ReservationOwner.FromActor(new ActorId("Jim")), 100.0);
+        table.TryReserveForScene(res2, sceneId, ReservationOwner.FromActor(new ActorId("Jim")), 100.0);
 
         table.ReleaseByScene(sceneId);
 
@@ -67,7 +67,7 @@ public class ReservationTableTests
         var table = new ReservationTable();
         var resourceId = new ResourceId("printer");
         
-        table.TryReserve(resourceId, new SceneId("scene1"), ReservationOwner.FromActor(new ActorId("Jim")), 50.0);
+        table.TryReserveForScene(resourceId, new SceneId("scene1"), ReservationOwner.FromActor(new ActorId("Jim")), 50.0);
         table.CleanupExpired(100.0);
 
         Assert.False(table.IsReserved(resourceId));
@@ -81,8 +81,8 @@ public class ReservationTableTests
         var res1 = new ResourceId("printer");
         var res2 = new ResourceId("desk");
 
-        table.TryReserve(res1, sceneId, null, 100.0);
-        table.TryReserve(res2, sceneId, null, 100.0);
+        table.TryReserveForScene(res1, sceneId, ReservationOwner.FromWorldItem("item1"), 100.0);
+        table.TryReserveForScene(res2, sceneId, ReservationOwner.FromWorldItem("item2"), 100.0);
 
         table.ReleaseByScene(sceneId);
 
@@ -100,9 +100,9 @@ public class ReservationTableTests
         var res2 = new ResourceId("desk");
         var res3 = new ResourceId("phone");
 
-        table.TryReserve(res1, scene1, ReservationOwner.FromActor(new ActorId("Jim")), 100.0);
-        table.TryReserve(res2, scene1, ReservationOwner.FromActor(new ActorId("Pam")), 100.0);
-        table.TryReserve(res3, scene2, ReservationOwner.FromActor(new ActorId("Dwight")), 100.0);
+        table.TryReserveForScene(res1, scene1, ReservationOwner.FromActor(new ActorId("Jim")), 100.0);
+        table.TryReserveForScene(res2, scene1, ReservationOwner.FromActor(new ActorId("Pam")), 100.0);
+        table.TryReserveForScene(res3, scene2, ReservationOwner.FromActor(new ActorId("Dwight")), 100.0);
 
         table.ReleaseByScene(scene1);
 
@@ -120,9 +120,9 @@ public class ReservationTableTests
         var res2 = new ResourceId("desk");
         var res3 = new ResourceId("phone");
 
-        table.TryReserve(res1, sceneId, ReservationOwner.FromActor(new ActorId("Jim")), 100.0);
-        table.TryReserve(res2, sceneId, null, 100.0);
-        table.TryReserve(res3, sceneId, ReservationOwner.FromActor(new ActorId("Pam")), 100.0);
+        table.TryReserveForScene(res1, sceneId, ReservationOwner.FromActor(new ActorId("Jim")), 100.0);
+        table.TryReserveForScene(res2, sceneId, ReservationOwner.FromWorldItem("desk_item"), 100.0);
+        table.TryReserveForScene(res3, sceneId, ReservationOwner.FromActor(new ActorId("Pam")), 100.0);
 
         table.ReleaseByScene(sceneId);
 

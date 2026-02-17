@@ -34,9 +34,9 @@ public class SharkItem : MaintainableWorldItem
         base.PerformExpiration(world);
         
         // Release the water resource when the shark expires
-        if (ReservedResourceId.HasValue && world.ReservationService != null)
+        if (ReservedResourceId.HasValue && world.Reservations != null)
         {
-            world.ReservationService.Release(ReservedResourceId.Value);
+            world.Reservations.Release(ReservedResourceId.Value);
         }
     }
 
@@ -44,7 +44,7 @@ public class SharkItem : MaintainableWorldItem
     {
         var dict = base.SerializeToDict();
         dict["ExpiresAt"] = ExpiresAt;
-        // Don't serialize ReservedResourceId as it's runtime-only state
+        // ReservedResourceId is not serialized - it will be re-reserved if needed on deserialization
         return dict;
     }
 

@@ -1,4 +1,6 @@
-namespace JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Abstractions;
+
+namespace JohnnyLike.Engine;
 
 /// <summary>
 /// Represents an entity that can own a resource reservation.
@@ -29,11 +31,6 @@ public readonly record struct ReservationOwner
     public static ReservationOwner FromWorldItem(string worldItemId)
     {
         return new ReservationOwner(OwnerType.WorldItem, worldItemId);
-    }
-
-    public ActorId? AsActorId()
-    {
-        return Type == OwnerType.Actor ? new ActorId(Id) : null;
     }
 
     public override string ToString()

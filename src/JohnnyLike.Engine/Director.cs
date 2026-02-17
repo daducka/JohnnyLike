@@ -154,8 +154,8 @@ public class Director
                     var deadline = currentTime + template.JoinWindowSeconds + template.MaxDurationSeconds;
                     foreach (var rid in resourceIds)
                     {
-                        // Reserve under sceneId with no specific actor during proposal stage
-                        _reservations.TryReserve(rid, sceneId, null, deadline);
+                        // Reserve for scene duration (simple reservation, no owner needed)
+                        _reservations.TryReserve(rid, deadline);
                     }
 
                     _scenes[sceneId] = scene;
@@ -289,7 +289,7 @@ public class Director
         {
             var until = currentTime + (req.DurationOverride ?? action.EstimatedDuration);
             var owner = ReservationOwner.FromActor(actorId);
-            if (_reservations.TryReserve(req.ResourceId, sceneId, owner, until))
+            if (_reservations.TryReserveForScene(req.ResourceId, sceneId, owner, until))
             {
                 reservedResources.Add(req.ResourceId);
             }

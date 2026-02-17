@@ -159,10 +159,9 @@ public class IslandDomainPack : IDomainPack
         // Use dictionary lookup to dispatch to provider
         if (_effectHandlers.TryGetValue(actionId, out var handler))
         {
-            // Get reservation service from world state (set by Engine)
-            // If not set (e.g., in tests), use a null implementation
-            var reservationService = islandWorld.ReservationService 
-                ?? NullResourceReservationService.Instance;
+            // Get reservations from world state (set by Engine)
+            // If not set (e.g., in standalone tests), create a no-op implementation
+            var reservations = islandWorld.Reservations ?? new NoOpReservations();
             
             var effectCtx = new EffectContext
             {
@@ -172,7 +171,7 @@ public class IslandDomainPack : IDomainPack
                 World = islandWorld,
                 Tier = GetTierFromOutcome(outcome),
                 Rng = rng,
-                ReservationService = reservationService
+                Reservations = reservations
             };
             
             handler.ApplyEffects(effectCtx);
@@ -292,4 +291,14 @@ public class IslandDomainPack : IDomainPack
         
         return snapshot;
     }
+}
+
+/// <summary>
+/// No-op implementation of IResourceAvailability for standalone tests.
+/// </summary>
+internal class NoOpReservations : IResourceAvailability
+{
+    public bool IsReserved(ResourceId resourceId) => false;
+    public bool TryReserve(ResourceId resourceId, double until) => true;
+    public void Release(ResourceId resourceId) { }
 }
