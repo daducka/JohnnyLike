@@ -20,7 +20,7 @@ public class PlaneSightingCandidateProvider : IIslandCandidateProvider
         // Calculate base score with cooldown factored in
         var timeSinceLastSighting = ctx.NowSeconds - ctx.Actor.LastPlaneSightingTime;
         var cooldownFactor = Math.Min(1.0, timeSinceLastSighting / 600.0); // 600 second cooldown
-        var baseScore = 0.2 * (result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.3) * cooldownFactor;
+        var baseScore = 0.2 * cooldownFactor;
 
         output.Add(new ActionCandidate(
             new ActionSpec(

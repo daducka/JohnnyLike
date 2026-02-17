@@ -17,8 +17,6 @@ public class SandCastleCandidateProvider : IIslandCandidateProvider
         var (parameters, resultData, result) = ctx.RollSkillCheck("Performance", baseDC, "beach");
 
         var baseScore = 0.3 + (ctx.Actor.Boredom / 100.0);
-        // Score based on actual outcome tier
-        baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.3;
 
         output.Add(new ActionCandidate(
             new ActionSpec(

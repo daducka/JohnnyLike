@@ -24,7 +24,7 @@ public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
         // Calculate base score with cooldown factored in
         var timeSinceLastEncounter = ctx.NowSeconds - ctx.Actor.LastMermaidEncounterTime;
         var cooldownFactor = Math.Min(1.0, timeSinceLastEncounter / 1200.0); // 1200 second cooldown
-        var baseScore = 0.15 * (result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.3) * cooldownFactor;
+        var baseScore = 0.15 * cooldownFactor;
 
         output.Add(new ActionCandidate(
             new ActionSpec(

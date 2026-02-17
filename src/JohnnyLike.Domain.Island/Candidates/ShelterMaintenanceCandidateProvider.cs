@@ -40,8 +40,6 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "shelter");
 
             var baseScore = 0.25 + (urgency * 0.5 * weatherMultiplier * foresightMultiplier);
-            // Score based on actual outcome tier
-            baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.5;
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -65,8 +63,6 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "shelter");
 
             var baseScore = 0.4 + (urgency * 0.5 * foresightMultiplier);
-            // Score based on actual outcome tier
-            baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.5;
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -89,8 +85,6 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "shelter");
 
             var baseScore = 1.2 * foresightMultiplier;
-            // Score based on actual outcome tier
-            baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.5;
 
             output.Add(new ActionCandidate(
                 new ActionSpec(

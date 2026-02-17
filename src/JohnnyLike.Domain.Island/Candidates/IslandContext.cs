@@ -55,18 +55,7 @@ public class IslandContext
         var result = SkillCheckResolver.Resolve(Rng, request);
 
         var parameters = new SkillCheckActionParameters(baseDC, modifier, advantage, location, skillId);
-        
-        var resultData = new Dictionary<string, object>
-        {
-            ["dc"] = baseDC,
-            ["modifier"] = modifier,
-            ["advantage"] = advantage.ToString(),
-            ["skillId"] = skillId,
-            ["roll"] = result.Roll,
-            ["total"] = result.Total,
-            ["tier"] = result.OutcomeTier.ToString()
-        };
 
-        return (parameters, resultData, result);
+        return (parameters, result.ResultData!, result);
     }
 }

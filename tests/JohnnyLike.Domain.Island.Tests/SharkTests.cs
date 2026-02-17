@@ -49,14 +49,17 @@ public class SharkTests
         var swimAction = new ActionSpec(
             new ActionId("swim"),
             ActionKind.Interact,
-            new SkillCheckActionParameters(10, 0, AdvantageType.Normal, "water"),
+            new SkillCheckActionParameters(10, 0, AdvantageType.Normal, "water", "Survival"),
             15.0
         );
         
         // Set current action on actor
         actor.CurrentAction = swimAction;
         
-        var resultData = new Dictionary<string, object>();
+        var resultData = new Dictionary<string, object>
+        {
+            ["tier"] = "CriticalFailure"
+        };
         var outcome = new ActionOutcome(
             new ActionId("swim"),
             ActionOutcomeType.Success,
@@ -64,8 +67,7 @@ public class SharkTests
             resultData
         );
         
-        // Use a fixed RNG to force critical failure
-        // A roll of 1 with DC 10 is always a critical failure
+        // No longer need RNG since tier is pre-populated
         var rng = new FixedRngStream(1);
         
         domain.ApplyActionEffects(actorId, outcome, actor, world, rng);

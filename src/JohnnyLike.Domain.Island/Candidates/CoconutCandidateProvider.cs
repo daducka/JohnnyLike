@@ -29,11 +29,6 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
         {
             baseScore = 0.9;
         }
-        else
-        {
-            // Score based on actual outcome tier
-            baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.3;
-        }
 
         output.Add(new ActionCandidate(
             new ActionSpec(

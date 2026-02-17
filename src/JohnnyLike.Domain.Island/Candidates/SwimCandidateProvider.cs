@@ -27,8 +27,6 @@ public class SwimCandidateProvider : IIslandCandidateProvider
         var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "water");
 
         var baseScore = 0.35 + (ctx.Actor.Morale < 30 ? 0.2 : 0.0);
-        // Score based on actual outcome tier
-        baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.3;
 
         output.Add(new ActionCandidate(
             new ActionSpec(
