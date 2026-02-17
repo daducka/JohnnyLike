@@ -8,6 +8,7 @@ public class BashTreasureChestCandidateProvider : IIslandCandidateProvider
 {
     private const double DC_MIN = 10.0;
     private const double DC_MAX = 20.0;
+    private const int DEFAULT_BASH_MODIFIER = 0; // TODO: Could be derived from strength/fitness stat later
 
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
@@ -19,7 +20,7 @@ public class BashTreasureChestCandidateProvider : IIslandCandidateProvider
         var healthRatio = ctx.World.TreasureChest.Health / 100.0;
         var dc = (int)(DC_MIN + healthRatio * (DC_MAX - DC_MIN));
 
-        var modifier = 0; // Could be derived from strength/fitness stat later
+        var modifier = DEFAULT_BASH_MODIFIER;
         var advantage = AdvantageType.Normal;
 
         var estimatedChance = DndMath.EstimateSuccessChanceD20(dc, modifier, advantage);

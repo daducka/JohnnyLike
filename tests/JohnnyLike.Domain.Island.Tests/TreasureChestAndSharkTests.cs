@@ -20,7 +20,8 @@ public class TreasureChestAndSharkTests
         {
             if (_rolls.Count > 0)
                 return _rolls.Dequeue();
-            return minValue; // Default if queue is empty
+            // Throw exception to make exhausted RNG more obvious during testing
+            throw new InvalidOperationException("FixedRngStream exhausted - all preset rolls have been consumed");
         }
 
         public double NextDouble()
