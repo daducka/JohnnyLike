@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -39,7 +40,7 @@ public class TreasureChestAndSharkTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         // Ensure chest is not present initially
-        Assert.False(world.TreasureChest.IsPresent);
+        Assert.Null(world.TreasureChest);
         
         // Create a swim action
         var swimAction = new ActionSpec(
@@ -67,7 +68,7 @@ public class TreasureChestAndSharkTests
         domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
         
         // Verify chest is spawned
-        Assert.True(world.TreasureChest.IsPresent);
+        Assert.NotNull(world.TreasureChest);
         Assert.False(world.TreasureChest.IsOpened);
         Assert.Equal(100.0, world.TreasureChest.Health);
         Assert.NotNull(world.TreasureChest.Position);
@@ -87,7 +88,7 @@ public class TreasureChestAndSharkTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         // Ensure shark is not present initially
-        Assert.False(world.Shark.IsPresent);
+        Assert.Null(world.Shark);
         
         var currentTime = 100.0;
         world.CurrentTime = currentTime;
@@ -118,7 +119,7 @@ public class TreasureChestAndSharkTests
         domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
         
         // Verify shark is spawned
-        Assert.True(world.Shark.IsPresent);
+        Assert.NotNull(world.Shark);
         Assert.True(world.Shark.ExpiresAt > currentTime);
         Assert.True(world.Shark.ExpiresAt <= currentTime + 180.0); // max duration
         
@@ -144,8 +145,9 @@ public class TreasureChestAndSharkTests
         Assert.Contains(candidates, c => c.Action.Id.Value == "swim");
         
         // Spawn a shark
-        world.Shark.IsPresent = true;
-        world.Shark.ExpiresAt = 100.0;
+        var shark = new SharkItem();
+        shark.ExpiresAt = 100.0;
+        world.WorldItems.Add(shark);
         
         // Verify no swim candidates are generated while shark is present
         candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
@@ -161,16 +163,17 @@ public class TreasureChestAndSharkTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         // Spawn a shark
-        world.Shark.IsPresent = true;
-        world.Shark.ExpiresAt = 100.0;
+        var shark = new SharkItem();
+        shark.ExpiresAt = 100.0;
+        world.WorldItems.Add(shark);
         
         // Advance time before expiration
         world.OnTimeAdvanced(50.0, 50.0);
-        Assert.True(world.Shark.IsPresent, "Shark should still be present before expiration");
+        Assert.NotNull(world.Shark); // Shark should still be present before expiration
         
         // Advance time past expiration
         world.OnTimeAdvanced(150.0, 100.0);
-        Assert.False(world.Shark.IsPresent, "Shark should despawn after expiration");
+        Assert.Null(world.Shark); // Shark should despawn after expiration
         
         // Verify swim candidates reappear
         actor.Energy = 50.0;
@@ -191,16 +194,17 @@ public class TreasureChestAndSharkTests
         Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "bash_open_treasure_chest");
         
         // Spawn chest
-        world.TreasureChest.IsPresent = true;
-        world.TreasureChest.IsOpened = false;
-        world.TreasureChest.Health = 100.0;
+        var chest = new TreasureChestItem();
+        chest.IsOpened = false;
+        chest.Health = 100.0;
+        world.WorldItems.Add(chest);
         
         // Bash candidate should appear
         candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
         Assert.Contains(candidates, c => c.Action.Id.Value == "bash_open_treasure_chest");
         
         // Open chest - bash candidate should disappear
-        world.TreasureChest.IsOpened = true;
+        world.TreasureChest!.IsOpened = true;
         candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
         Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "bash_open_treasure_chest");
     }
@@ -214,9 +218,10 @@ public class TreasureChestAndSharkTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         // Spawn chest
-        world.TreasureChest.IsPresent = true;
-        world.TreasureChest.IsOpened = false;
-        world.TreasureChest.Health = 100.0;
+        var chest = new TreasureChestItem();
+        chest.IsOpened = false;
+        chest.Health = 100.0;
+        world.WorldItems.Add(chest);
         
         // Create bash action with high DC to force failure
         var bashAction = new ActionSpec(
@@ -243,7 +248,7 @@ public class TreasureChestAndSharkTests
         domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
         
         // Chest should still be present but damaged
-        Assert.True(world.TreasureChest.IsPresent);
+        Assert.NotNull(world.TreasureChest);
         Assert.False(world.TreasureChest.IsOpened);
         Assert.True(world.TreasureChest.Health < 100.0, "Health should decrease on failure");
         
@@ -264,10 +269,11 @@ public class TreasureChestAndSharkTests
         var initialMorale = actor.Morale;
         
         // Spawn chest
-        world.TreasureChest.IsPresent = true;
-        world.TreasureChest.IsOpened = false;
-        world.TreasureChest.Health = 100.0;
-        world.TreasureChest.Position = "shore";
+        var chest = new TreasureChestItem();
+        chest.IsOpened = false;
+        chest.Health = 100.0;
+        chest.Position = "shore";
+        world.WorldItems.Add(chest);
         
         // Create bash action
         var bashAction = new ActionSpec(
@@ -294,10 +300,7 @@ public class TreasureChestAndSharkTests
         domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
         
         // Chest should be removed
-        Assert.False(world.TreasureChest.IsPresent);
-        Assert.True(world.TreasureChest.IsOpened);
-        Assert.Equal(0.0, world.TreasureChest.Health);
-        Assert.Null(world.TreasureChest.Position);
+        Assert.Null(world.TreasureChest);
         
         // Actor should get morale reward
         Assert.True(actor.Morale > initialMorale, "Morale should increase on success");
@@ -317,11 +320,12 @@ public class TreasureChestAndSharkTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         // Spawn chest
-        world.TreasureChest.IsPresent = true;
-        world.TreasureChest.IsOpened = false;
-        world.TreasureChest.Health = 100.0;
+        var chest = new TreasureChestItem();
+        chest.IsOpened = false;
+        chest.Health = 100.0;
+        world.WorldItems.Add(chest);
         
-        var initialHealth = world.TreasureChest.Health;
+        var initialHealth = world.TreasureChest!.Health;
         
         // First failed bash
         var bashAction = new ActionSpec(
@@ -345,9 +349,9 @@ public class TreasureChestAndSharkTests
         
         domain.ApplyActionEffects(actorId, outcome1, actor, world, rng1);
         
-        var healthAfterFirst = world.TreasureChest.Health;
+        var healthAfterFirst = world.TreasureChest!.Health;
         Assert.True(healthAfterFirst < initialHealth);
-        Assert.True(world.TreasureChest.IsPresent);
+        Assert.NotNull(world.TreasureChest);
         
         // Second failed bash on weakened chest
         // Reset current action for second bash
@@ -364,9 +368,9 @@ public class TreasureChestAndSharkTests
         
         domain.ApplyActionEffects(actorId, outcome2, actor, world, rng2);
         
-        var healthAfterSecond = world.TreasureChest.Health;
+        var healthAfterSecond = world.TreasureChest!.Health;
         Assert.True(healthAfterSecond < healthAfterFirst);
-        Assert.True(world.TreasureChest.IsPresent);
+        Assert.NotNull(world.TreasureChest);
     }
 
     [Fact]
@@ -378,16 +382,17 @@ public class TreasureChestAndSharkTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         // High health chest
-        world.TreasureChest.IsPresent = true;
-        world.TreasureChest.IsOpened = false;
-        world.TreasureChest.Health = 100.0;
+        var chest = new TreasureChestItem();
+        chest.IsOpened = false;
+        chest.Health = 100.0;
+        world.WorldItems.Add(chest);
         
         var candidatesHigh = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
         var bashCandidateHigh = candidatesHigh.First(c => c.Action.Id.Value == "bash_open_treasure_chest");
         var paramsHigh = (SkillCheckActionParameters)bashCandidateHigh.Action.Parameters;
         
         // Low health chest
-        world.TreasureChest.Health = 10.0;
+        world.TreasureChest!.Health = 10.0;
         
         var candidatesLow = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
         var bashCandidateLow = candidatesLow.First(c => c.Action.Id.Value == "bash_open_treasure_chest");
@@ -404,14 +409,16 @@ public class TreasureChestAndSharkTests
         var world = new IslandWorldState();
         
         // Set up treasure chest
-        world.TreasureChest.IsPresent = true;
-        world.TreasureChest.IsOpened = false;
-        world.TreasureChest.Health = 75.5;
-        world.TreasureChest.Position = "beach";
+        var chest = new TreasureChestItem();
+        chest.IsOpened = false;
+        chest.Health = 75.5;
+        chest.Position = "beach";
+        world.WorldItems.Add(chest);
         
         // Set up shark
-        world.Shark.IsPresent = true;
-        world.Shark.ExpiresAt = 123.456;
+        var shark = new SharkItem();
+        shark.ExpiresAt = 123.456;
+        world.WorldItems.Add(shark);
         
         // Serialize
         var serialized = world.Serialize();
@@ -420,14 +427,14 @@ public class TreasureChestAndSharkTests
         var newWorld = new IslandWorldState();
         newWorld.Deserialize(serialized);
         
-        // Verify treasure chest
-        Assert.Equal(world.TreasureChest.IsPresent, newWorld.TreasureChest.IsPresent);
-        Assert.Equal(world.TreasureChest.IsOpened, newWorld.TreasureChest.IsOpened);
+        // Verify treasure chest exists and properties are preserved
+        Assert.NotNull(newWorld.TreasureChest);
+        Assert.Equal(world.TreasureChest!.IsOpened, newWorld.TreasureChest.IsOpened);
         Assert.Equal(world.TreasureChest.Health, newWorld.TreasureChest.Health);
         Assert.Equal(world.TreasureChest.Position, newWorld.TreasureChest.Position);
         
-        // Verify shark
-        Assert.Equal(world.Shark.IsPresent, newWorld.Shark.IsPresent);
-        Assert.Equal(world.Shark.ExpiresAt, newWorld.Shark.ExpiresAt);
+        // Verify shark exists and properties are preserved
+        Assert.NotNull(newWorld.Shark);
+        Assert.Equal(world.Shark!.ExpiresAt, newWorld.Shark.ExpiresAt);
     }
 }
