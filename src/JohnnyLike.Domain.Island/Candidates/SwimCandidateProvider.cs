@@ -7,8 +7,6 @@ namespace JohnnyLike.Domain.Island.Candidates;
 [IslandCandidateProvider(410, "swim")]
 public class SwimCandidateProvider : IIslandCandidateProvider
 {
-    private const double SHARK_MORALE_PENALTY = 10.0;
-
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
         if (ctx.Actor.Energy < 20.0)
@@ -93,7 +91,7 @@ public class SwimCandidateProvider : IIslandCandidateProvider
 
             case RollOutcomeTier.CriticalFailure:
                 ctx.Actor.Energy = Math.Max(0.0, ctx.Actor.Energy - 25.0);
-                ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - SHARK_MORALE_PENALTY);
+                ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 15.0);
                 
                 // Spawn shark if not already present
                 if (ctx.World.Shark == null)
@@ -104,7 +102,7 @@ public class SwimCandidateProvider : IIslandCandidateProvider
                     ctx.World.WorldItems.Add(shark);
                     
                     // Additional morale penalty for shark encounter
-                    ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - SHARK_MORALE_PENALTY);
+                    ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 15.0);
                     
                     if (ctx.Outcome.ResultData != null)
                     {

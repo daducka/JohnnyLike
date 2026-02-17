@@ -3,23 +3,28 @@ using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island.Items;
 
-public class SharkItem : WorldItem
+public class SharkItem : MaintainableWorldItem
 {
     public double ExpiresAt { get; set; } = 0.0;
+    private bool _shouldRemove = false;
 
     public SharkItem(string id = "shark") 
-        : base(id, "shark")
+        : base(id, "shark", baseDecayPerSecond: 0.0)
     {
     }
 
-    public void Tick(double currentTime, IslandWorldState world)
+    public override void Tick(double dtSeconds, IslandWorldState world)
     {
-        // Auto-despawn when expired
-        if (currentTime >= ExpiresAt)
+        base.Tick(dtSeconds, world);
+        
+        // Mark for removal when expired (will be removed after tick cycle)
+        if (world.CurrentTime >= ExpiresAt)
         {
-            world.WorldItems.Remove(this);
+            _shouldRemove = true;
         }
     }
+
+    public bool ShouldRemove() => _shouldRemove;
 
     public override Dictionary<string, object> SerializeToDict()
     {
