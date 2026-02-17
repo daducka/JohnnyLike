@@ -160,8 +160,9 @@ public class IslandDomainPack : IDomainPack
         if (_effectHandlers.TryGetValue(actionId, out var handler))
         {
             // Get reservation service from world state (set by Engine)
+            // If not set (e.g., in tests), use a null implementation
             var reservationService = islandWorld.ReservationService 
-                ?? throw new InvalidOperationException("ReservationService not set on IslandWorldState");
+                ?? NullResourceReservationService.Instance;
             
             var effectCtx = new EffectContext
             {

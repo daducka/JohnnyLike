@@ -184,6 +184,54 @@ public class SharkTests
     }
 
     [Fact]
+    public void Shark_ReservesAndReleasesWaterResource()
+    {
+        var domain = new IslandDomainPack();
+        var world = (IslandWorldState)domain.CreateInitialWorldState();
+        var actorId = new ActorId("TestActor");
+        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        
+        // Set up reservation service
+        var reservationService = new TestResourceReservationService();
+        world.ReservationService = reservationService;
+        
+        var currentTime = 100.0;
+        world.CurrentTime = currentTime;
+        
+        var waterResource = new ResourceId("island:resource:water");
+        
+        // Verify water resource is not reserved initially
+        Assert.False(reservationService.IsReserved(waterResource));
+        
+        // Simulate swim critical failure that spawns a shark
+        var resultData = new Dictionary<string, object>
+        {
+            ["tier"] = "CriticalFailure"
+        };
+        var outcome = new ActionOutcome(
+            new ActionId("swim"),
+            ActionOutcomeType.Success,
+            15.0,
+            resultData
+        );
+        
+        var rng = new FixedRngStream(1);
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
+        
+        // Verify shark was spawned and reserved the water resource
+        Assert.NotNull(world.Shark);
+        Assert.True(reservationService.IsReserved(waterResource));
+        Assert.Equal(waterResource, world.Shark.ReservedResourceId);
+        
+        // Advance time past shark expiration
+        world.OnTimeAdvanced(world.Shark.ExpiresAt + 1.0, world.Shark.ExpiresAt + 1.0 - currentTime);
+        
+        // Verify shark despawned and released the water resource
+        Assert.Null(world.Shark);
+        Assert.False(reservationService.IsReserved(waterResource));
+    }
+
+    [Fact]
     public void WorldState_Serialization_PreservesShark()
     {
         var world = new IslandWorldState();
