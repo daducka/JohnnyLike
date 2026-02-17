@@ -9,7 +9,7 @@ public class Director
     private readonly VarietyMemory _varietyMemory;
     private readonly ITraceSink _traceSink;
     private readonly Dictionary<SceneId, SceneInstance> _scenes = new();
-    private readonly Dictionary<ActorId, SceneId> _actionReservations = new();
+    private readonly Dictionary<ActorId, SceneId> _actorReservationScenes = new(); // Tracks synthetic scene IDs for action reservations
     private int _sceneCounter = 0;
 
     public Director(IDomainPack domainPack, ReservationTable reservations, VarietyMemory varietyMemory, ITraceSink traceSink)
@@ -59,7 +59,7 @@ public class Director
                 // Successfully reserved resources for this action
                 if (reservationSceneId.HasValue)
                 {
-                    _actionReservations[actorId] = reservationSceneId.Value;
+                    _actorReservationScenes[actorId] = reservationSceneId.Value;
                 }
                 return candidate.Action;
             }
@@ -312,10 +312,10 @@ public class Director
     /// </summary>
     public void ReleaseActionReservations(ActorId actorId)
     {
-        if (_actionReservations.TryGetValue(actorId, out var sceneId))
+        if (_actorReservationScenes.TryGetValue(actorId, out var sceneId))
         {
             _reservations.ReleaseByScene(sceneId);
-            _actionReservations.Remove(actorId);
+            _actorReservationScenes.Remove(actorId);
         }
     }
 }
