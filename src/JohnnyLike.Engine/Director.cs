@@ -154,8 +154,8 @@ public class Director
                     var deadline = currentTime + template.JoinWindowSeconds + template.MaxDurationSeconds;
                     foreach (var rid in resourceIds)
                     {
-                        // Reserve for scene duration (simple reservation, no owner needed)
-                        _reservations.TryReserve(rid, deadline);
+                        // Reserve for scene duration
+                        _reservations.TryReserve(rid, $"scene:{sceneId.Value}", deadline);
                     }
 
                     _scenes[sceneId] = scene;
@@ -288,8 +288,8 @@ public class Director
         foreach (var req in action.ResourceRequirements)
         {
             var until = currentTime + (req.DurationOverride ?? action.EstimatedDuration);
-            var owner = ReservationOwner.FromActor(actorId);
-            if (_reservations.TryReserveForScene(req.ResourceId, sceneId, owner, until))
+            var utilityId = $"scene:{sceneId.Value}:actor:{actorId.Value}:action:{action.Id.Value}";
+            if (_reservations.TryReserve(req.ResourceId, utilityId, until))
             {
                 reservedResources.Add(req.ResourceId);
             }
@@ -315,7 +315,7 @@ public class Director
     {
         if (_actorReservationScenes.TryGetValue(actorId, out var sceneId))
         {
-            _reservations.ReleaseByScene(sceneId);
+            _reservations.ReleaseByPrefix($"scene:{sceneId.Value}:");
             _actorReservationScenes.Remove(actorId);
         }
     }

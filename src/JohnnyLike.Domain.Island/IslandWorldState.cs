@@ -31,18 +31,12 @@ public class IslandWorldState : WorldState
 
     public List<WorldItem> WorldItems { get; set; } = new();
 
-    /// <summary>
-    /// Resource reservation table from the engine.
-    /// This is set by the engine and is not serialized.
-    /// </summary>
-    public IResourceAvailability? Reservations { get; set; }
-
     public CampfireItem? MainCampfire => WorldItems.OfType<CampfireItem>().FirstOrDefault();
     public ShelterItem? MainShelter => WorldItems.OfType<ShelterItem>().FirstOrDefault();
     public TreasureChestItem? TreasureChest => WorldItems.OfType<TreasureChestItem>().FirstOrDefault();
     public SharkItem? Shark => WorldItems.OfType<SharkItem>().FirstOrDefault();
 
-    public void OnTimeAdvanced(double currentTime, double dt)
+    public void OnTimeAdvanced(double currentTime, double dt, IResourceAvailability? resourceAvailability = null)
     {
         CurrentTime = currentTime;
 
@@ -62,14 +56,14 @@ public class IslandWorldState : WorldState
         // Tick maintainable items
         foreach (var item in WorldItems.OfType<MaintainableWorldItem>())
         {
-            item.Tick(dt, this);
+            item.Tick(dt, this, resourceAvailability);
         }
 
         // Remove expired maintainable items after tick cycle to avoid collection modification during iteration
         var expiredItems = WorldItems.OfType<MaintainableWorldItem>().Where(item => item.IsExpired).ToList();
         foreach (var item in expiredItems)
         {
-            item.PerformExpiration(this);
+            item.PerformExpiration(this, resourceAvailability);
             WorldItems.Remove(item);
         }
     }

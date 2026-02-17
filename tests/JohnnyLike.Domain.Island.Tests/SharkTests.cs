@@ -35,7 +35,7 @@ public class SharkTests
     {
         private readonly HashSet<ResourceId> _reservedResources = new();
 
-        public bool TryReserve(ResourceId resourceId, double until)
+        public bool TryReserve(ResourceId resourceId, string utilityId, double until)
         {
             if (_reservedResources.Contains(resourceId))
                 return false;
@@ -64,7 +64,7 @@ public class SharkTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         // Set up reservations for tests
-        world.Reservations = new TestReservations();
+        var reservations = new TestReservations();
         
         // Ensure shark is not present initially
         Assert.Null(world.Shark);
@@ -99,7 +99,7 @@ public class SharkTests
         // No longer need RNG since tier is pre-populated
         var rng = new FixedRngStream(1);
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, reservations);
         
         // Verify shark is spawned
         Assert.NotNull(world.Shark);

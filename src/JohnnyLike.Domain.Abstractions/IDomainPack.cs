@@ -26,7 +26,8 @@ public interface IDomainPack
         ActionOutcome outcome,
         ActorState actorState,
         WorldState worldState,
-        IRngStream rng);
+        IRngStream rng,
+        IResourceAvailability resourceAvailability);
     
     void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime);
     

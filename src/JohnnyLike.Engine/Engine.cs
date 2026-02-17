@@ -32,15 +32,6 @@ public class Engine
         _rng = new Random(seed);
         _signalQueue = new Queue<Signal>();
         _currentTime = 0.0;
-        
-        // Set reservation table on world state if it has a Reservations property
-        // We use reflection here to avoid coupling Engine to specific domain implementations
-        var reservationsProp = _worldState.GetType().GetProperty("Reservations");
-        if (reservationsProp != null && reservationsProp.CanWrite && 
-            typeof(IResourceAvailability).IsAssignableFrom(reservationsProp.PropertyType))
-        {
-            reservationsProp.SetValue(_worldState, _reservations);
-        }
     }
 
     public void AddActor(ActorId actorId, Dictionary<string, object>? initialData = null)
@@ -160,7 +151,7 @@ public class Engine
 
         // Apply effects (domain pack may populate ResultData)
         var rngStream = new RandomRngStream(_rng);
-        _domainPack.ApplyActionEffects(actorId, outcome, actorState, _worldState, rngStream);
+        _domainPack.ApplyActionEffects(actorId, outcome, actorState, _worldState, rngStream, _reservations);
 
         // Build details dictionary including all data from ResultData
         var details = new Dictionary<string, object>

@@ -4,84 +4,59 @@ namespace JohnnyLike.Engine;
 
 public class ReservationTable : IResourceAvailability
 {
-    // Simple resource -> expiry time mapping for world items and simple reservations
-    private readonly Dictionary<ResourceId, double> _simpleReservations = new();
-    
-    // Scene-grouped reservations for actor actions (allows batch release)
-    private readonly Dictionary<ResourceId, (SceneId Scene, ReservationOwner Owner, double Until)> _sceneReservations = new();
+    private readonly Dictionary<ResourceId, (string UtilityId, double Until)> _reservations = new();
 
     /// <summary>
-    /// Simple reserve for world items - no scene grouping needed.
+    /// Reserve a resource with a utility ID for debugging/tracking.
     /// </summary>
-    public bool TryReserve(ResourceId resourceId, double until)
+    public bool TryReserve(ResourceId resourceId, string utilityId, double until)
     {
-        if (_simpleReservations.ContainsKey(resourceId) || _sceneReservations.ContainsKey(resourceId))
+        if (_reservations.ContainsKey(resourceId))
         {
             return false;
         }
 
-        _simpleReservations[resourceId] = until;
-        return true;
-    }
-
-    /// <summary>
-    /// Reserve with scene grouping for actor actions.
-    /// </summary>
-    public bool TryReserveForScene(ResourceId resourceId, SceneId sceneId, ReservationOwner owner, double until)
-    {
-        if (_simpleReservations.ContainsKey(resourceId) || _sceneReservations.ContainsKey(resourceId))
-        {
-            return false;
-        }
-
-        _sceneReservations[resourceId] = (sceneId, owner, until);
+        _reservations[resourceId] = (utilityId, until);
         return true;
     }
 
     public void Release(ResourceId resourceId)
     {
-        _simpleReservations.Remove(resourceId);
-        _sceneReservations.Remove(resourceId);
+        _reservations.Remove(resourceId);
     }
 
-    public void ReleaseByScene(SceneId sceneId)
+    /// <summary>
+    /// Releases all resources that have a utilityId starting with the given prefix.
+    /// Used for batch release (e.g., all resources for a scene or actor).
+    /// </summary>
+    public void ReleaseByPrefix(string utilityIdPrefix)
     {
-        var toRelease = _sceneReservations
-            .Where(kvp => kvp.Value.Scene == sceneId)
+        var toRelease = _reservations
+            .Where(kvp => kvp.Value.UtilityId.StartsWith(utilityIdPrefix))
             .Select(kvp => kvp.Key)
             .ToList();
 
         foreach (var rid in toRelease)
         {
-            _sceneReservations.Remove(rid);
+            _reservations.Remove(rid);
         }
     }
 
     public bool IsReserved(ResourceId resourceId)
     {
-        return _simpleReservations.ContainsKey(resourceId) || _sceneReservations.ContainsKey(resourceId);
+        return _reservations.ContainsKey(resourceId);
     }
 
     public void CleanupExpired(double currentTime)
     {
-        var expiredSimple = _simpleReservations
-            .Where(kvp => kvp.Value < currentTime)
-            .Select(kvp => kvp.Key)
-            .ToList();
-
-        foreach (var rid in expiredSimple)
-        {
-            _simpleReservations.Remove(rid);
-        }
-
-        var expiredScene = _sceneReservations
+        var expired = _reservations
             .Where(kvp => kvp.Value.Until < currentTime)
             .Select(kvp => kvp.Key)
             .ToList();
 
-        foreach (var rid in expiredScene)
+        foreach (var rid in expired)
         {
-            _sceneReservations.Remove(rid);
+            _reservations.Remove(rid);
         }
     }
 }

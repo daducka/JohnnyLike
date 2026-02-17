@@ -194,7 +194,7 @@ public class FishingSpotSelectionTests
             return _reservedResources.Contains(resourceId);
         }
         
-        public bool TryReserve(ResourceId resourceId, double until)
+        public bool TryReserve(ResourceId resourceId, string utilityId, double until)
         {
             if (_reservedResources.Contains(resourceId))
                 return false;

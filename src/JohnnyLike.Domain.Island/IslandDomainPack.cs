@@ -136,13 +136,14 @@ public class IslandDomainPack : IDomainPack
         ActionOutcome outcome,
         ActorState actorState,
         WorldState worldState,
-        IRngStream rng)
+        IRngStream rng,
+        IResourceAvailability resourceAvailability)
     {
         var islandState = (IslandActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
 
         var newCurrentTime = islandWorld.CurrentTime + outcome.ActualDuration;
-        islandWorld.OnTimeAdvanced(newCurrentTime, outcome.ActualDuration);
+        islandWorld.OnTimeAdvanced(newCurrentTime, outcome.ActualDuration, resourceAvailability);
 
         // Apply passive decay
         islandState.Hunger = Math.Min(100.0, islandState.Hunger + outcome.ActualDuration * 0.5);
@@ -159,10 +160,6 @@ public class IslandDomainPack : IDomainPack
         // Use dictionary lookup to dispatch to provider
         if (_effectHandlers.TryGetValue(actionId, out var handler))
         {
-            // Get reservations from world state (set by Engine)
-            // If not set (e.g., in standalone tests), create a no-op implementation
-            var reservations = islandWorld.Reservations ?? new NoOpReservations();
-            
             var effectCtx = new EffectContext
             {
                 ActorId = actorId,
@@ -171,7 +168,7 @@ public class IslandDomainPack : IDomainPack
                 World = islandWorld,
                 Tier = GetTierFromOutcome(outcome),
                 Rng = rng,
-                Reservations = reservations
+                Reservations = resourceAvailability
             };
             
             handler.ApplyEffects(effectCtx);
@@ -291,14 +288,4 @@ public class IslandDomainPack : IDomainPack
         
         return snapshot;
     }
-}
-
-/// <summary>
-/// No-op implementation of IResourceAvailability for standalone tests.
-/// </summary>
-internal class NoOpReservations : IResourceAvailability
-{
-    public bool IsReserved(ResourceId resourceId) => false;
-    public bool TryReserve(ResourceId resourceId, double until) => true;
-    public void Release(ResourceId resourceId) { }
 }

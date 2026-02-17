@@ -10,6 +10,6 @@ namespace JohnnyLike.Domain.Office.Tests;
 public class EmptyResourceAvailability : IResourceAvailability
 {
     public bool IsReserved(ResourceId resourceId) => false;
-    public bool TryReserve(ResourceId resourceId, double until) => true;
+    public bool TryReserve(ResourceId resourceId, string utilityId, double until) => true;
     public void Release(ResourceId resourceId) { }
 }

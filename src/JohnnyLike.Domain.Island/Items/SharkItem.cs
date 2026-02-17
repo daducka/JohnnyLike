@@ -18,26 +18,28 @@ public class SharkItem : MaintainableWorldItem
     {
     }
 
-    public override void Tick(double dtSeconds, IslandWorldState world)
+    public override void Tick(double dtSeconds, IslandWorldState world, IResourceAvailability? resourceAvailability)
     {
-        base.Tick(dtSeconds, world);
+        base.Tick(dtSeconds, world, resourceAvailability);
         
-        // Mark as expired when time is up
-        if (world.CurrentTime >= ExpiresAt)
+        // Mark as expired and release reservation when time is up
+        if (world.CurrentTime >= ExpiresAt && !IsExpired)
         {
             IsExpired = true;
+            
+            // Release the water resource immediately when expiring
+            if (ReservedResourceId.HasValue && resourceAvailability != null)
+            {
+                resourceAvailability.Release(ReservedResourceId.Value);
+            }
         }
     }
 
-    public override void PerformExpiration(IslandWorldState world)
+    public override void PerformExpiration(IslandWorldState world, IResourceAvailability? resourceAvailability)
     {
-        base.PerformExpiration(world);
+        base.PerformExpiration(world, resourceAvailability);
         
-        // Release the water resource when the shark expires
-        if (ReservedResourceId.HasValue && world.Reservations != null)
-        {
-            world.Reservations.Release(ReservedResourceId.Value);
-        }
+        // Resource already released in Tick when IsExpired was set
     }
 
     public override Dictionary<string, object> SerializeToDict()
