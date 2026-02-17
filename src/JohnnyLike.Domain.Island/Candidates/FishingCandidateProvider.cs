@@ -35,7 +35,7 @@ public class FishingCandidateProvider : IIslandCandidateProvider
             baseDC += 2;
 
         // Roll skill check at candidate generation time
-        var (parameters, resultData, result) = ctx.RollSkillCheck("Fishing", baseDC, "shore");
+        var parameters = ctx.RollSkillCheck("Fishing", baseDC, "shore");
 
         var baseScore = 0.5 + (ctx.Actor.Hunger / 100.0);
         if (ctx.Actor.Hunger > 70.0 || ctx.Actor.Energy < 20.0)
@@ -49,10 +49,10 @@ public class FishingCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 15.0 + ctx.Random.NextDouble() * 5.0,
-                resultData
+                parameters.Result.ToDictionary()
             ),
             baseScore,
-            $"Fishing (DC {baseDC}, rolled {result.Total}, {result.OutcomeTier})"
+            $"Fishing (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
         ));
     }
 

@@ -22,7 +22,7 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
             baseDC -= 1;
 
         // Roll skill check at candidate generation time
-        var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "palm_tree");
+        var parameters = ctx.RollSkillCheck("Survival", baseDC, "palm_tree");
 
         var baseScore = 0.4 + (ctx.Actor.Hunger / 150.0);
         if (ctx.Actor.Hunger > 70.0)
@@ -36,10 +36,10 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 10.0 + ctx.Random.NextDouble() * 5.0,
-                resultData
+                parameters.Result.ToDictionary()
             ),
             baseScore,
-            $"Get coconut (DC {baseDC}, rolled {result.Total}, {result.OutcomeTier})"
+            $"Get coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
         ));
     }
 

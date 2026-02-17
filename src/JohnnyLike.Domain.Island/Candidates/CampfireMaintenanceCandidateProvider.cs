@@ -24,7 +24,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.1);
 
             var baseDC = 10;
-            var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "campfire");
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "campfire");
 
             var baseScore = 0.3 + (urgency * 0.5 * foresightMultiplier);
 
@@ -34,10 +34,10 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     20.0 + ctx.Random.NextDouble() * 5.0,
-                    resultData
+                    parameters.Result.ToDictionary()
                 ),
                 baseScore,
-                $"Add fuel to campfire (fuel: {campfire.FuelSeconds:F0}s, rolled {result.Total}, {result.OutcomeTier})"
+                $"Add fuel to campfire (fuel: {campfire.FuelSeconds:F0}s, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
 
@@ -47,7 +47,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.15);
 
             var baseDC = 12;
-            var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "campfire");
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "campfire");
 
             var baseScore = urgency * foresightMultiplier;
 
@@ -57,10 +57,10 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     30.0 + ctx.Random.NextDouble() * 10.0,
-                    resultData
+                    parameters.Result.ToDictionary()
                 ),
                 baseScore,
-                $"Relight campfire (quality: {campfire.Quality:F0}%, rolled {result.Total}, {result.OutcomeTier})"
+                $"Relight campfire (quality: {campfire.Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
 
@@ -70,7 +70,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.12);
 
             var baseDC = 11;
-            var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "campfire");
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "campfire");
 
             var baseScore = 0.2 + (urgency * 0.4 * foresightMultiplier);
 
@@ -80,10 +80,10 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     25.0 + ctx.Random.NextDouble() * 5.0,
-                    resultData
+                    parameters.Result.ToDictionary()
                 ),
                 baseScore,
-                $"Repair campfire (quality: {campfire.Quality:F0}%, rolled {result.Total}, {result.OutcomeTier})"
+                $"Repair campfire (quality: {campfire.Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
 
@@ -92,7 +92,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var baseDC = 15;
             var foresightMultiplier = 1.0 + (foresightBonus * 0.2);
 
-            var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "campfire");
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "campfire");
 
             var baseScore = 1.0 * foresightMultiplier;
 
@@ -102,10 +102,10 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     60.0 + ctx.Random.NextDouble() * 20.0,
-                    resultData
+                    parameters.Result.ToDictionary()
                 ),
                 baseScore,
-                $"Rebuild campfire from scratch (rolled {result.Total}, {result.OutcomeTier})"
+                $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
     }

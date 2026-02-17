@@ -7,19 +7,15 @@ namespace JohnnyLike.Domain.Kit.Dice;
 /// Generic and reusable across all domain packs.
 /// </summary>
 public record SkillCheckActionParameters(
-    int DC,
-    int Modifier,
-    AdvantageType Advantage,
-    string Location,
-    string SkillId
+    SkillCheckRequest Request,
+    SkillCheckResult Result,
+    string Location
 ) : ActionParameters
 {
     public override Dictionary<string, object> ToDictionary() => new()
     {
-        ["dc"] = DC,
-        ["modifier"] = Modifier,
-        ["advantage"] = Advantage.ToString(),
-        ["location"] = Location,
-        ["skillId"] = SkillId
+        ["request"] = Request.ToDictionary(),
+        ["result"] = Result.ToDictionary(),
+        ["location"] = Location
     };
 }

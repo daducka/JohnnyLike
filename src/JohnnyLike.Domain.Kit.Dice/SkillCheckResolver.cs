@@ -29,11 +29,7 @@ public static class SkillCheckResolver
             total,
             outcomeTier,
             isSuccess,
-            estimatedSuccessChance,
-            request.DC,
-            request.Modifier,
-            request.Advantage,
-            request.SkillId
+            estimatedSuccessChance
         );
     }
 
