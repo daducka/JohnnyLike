@@ -11,12 +11,21 @@ public enum ActionKind
     JoinScene
 }
 
+/// <summary>
+/// Represents a resource requirement for an action.
+/// </summary>
+public sealed record ResourceRequirement(
+    ResourceId ResourceId,
+    double? DurationOverride = null
+);
+
 public record ActionSpec(
     ActionId Id,
     ActionKind Kind,
     ActionParameters Parameters,
     double EstimatedDuration,
-    Dictionary<string, object>? ResultData = null
+    Dictionary<string, object>? ResultData = null,
+    IReadOnlyList<ResourceRequirement>? ResourceRequirements = null
 );
 
 public enum ActionOutcomeType

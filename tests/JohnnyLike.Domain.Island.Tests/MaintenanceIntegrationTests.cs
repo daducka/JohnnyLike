@@ -37,7 +37,7 @@ public class MaintenanceIntegrationTests
         Assert.True(shelter.Quality < initialShelterQuality, "Shelter quality should decay");
         Assert.True(campfire.FuelSeconds < initialFuel, "Fuel should be consumed");
         
-        var candidates = domain.GenerateCandidates(actorId, actor, world, currentTime, new Random(42));
+        var candidates = domain.GenerateCandidates(actorId, actor, world, currentTime, new Random(42), new EmptyResourceAvailability());
         
         var hasMaintenanceAction = candidates.Any(c => 
             c.Action.Id.Value.Contains("campfire") || c.Action.Id.Value.Contains("shelter"));
@@ -60,7 +60,7 @@ public class MaintenanceIntegrationTests
         
         Assert.False(campfire.IsLit, "Campfire should go out");
         
-        var candidates = domain.GenerateCandidates(actorId, actor, world, 20.0, new Random(42));
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 20.0, new Random(42), new EmptyResourceAvailability());
         
         Assert.Contains(candidates, c => c.Action.Id.Value == "relight_campfire");
     }
@@ -173,9 +173,9 @@ public class MaintenanceIntegrationTests
         );
         
         var candidatesLow = domain.GenerateCandidates(
-            new ActorId("LowSkill"), lowSkillActor, world, 0.0, new Random(42));
+            new ActorId("LowSkill"), lowSkillActor, world, 0.0, new Random(42), new EmptyResourceAvailability());
         var candidatesHigh = domain.GenerateCandidates(
-            new ActorId("HighSkill"), highSkillActor, world, 0.0, new Random(42));
+            new ActorId("HighSkill"), highSkillActor, world, 0.0, new Random(42), new EmptyResourceAvailability());
         
         var lowFuelCandidate = candidatesLow.FirstOrDefault(c => c.Action.Id.Value == "add_fuel_campfire");
         var highFuelCandidate = candidatesHigh.FirstOrDefault(c => c.Action.Id.Value == "add_fuel_campfire");

@@ -56,7 +56,8 @@ public class ScoringTests
             actorState!,
             worldState,
             10.0,
-            new Random(42)
+            new Random(42),
+            new EmptyResourceAvailability()
         );
 
         var eatSnack = candidates.FirstOrDefault(c => c.Action.Id.Value.Contains("eat"));
@@ -77,7 +78,8 @@ public class ScoringTests
             actorState,
             worldState,
             10.0,
-            new Random(42)
+            new Random(42),
+            new EmptyResourceAvailability()
         );
 
         var chatRedeem = candidates.FirstOrDefault(c => c.Action.Id.Value.Contains("chat_redeem"));

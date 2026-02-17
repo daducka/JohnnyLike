@@ -99,7 +99,8 @@ public class IslandDomainPack : IDomainPack
         ActorState actorState,
         WorldState worldState,
         double currentTime,
-        Random rng)
+        Random rng,
+        IResourceAvailability resourceAvailability)
     {
         var islandState = (IslandActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
@@ -116,7 +117,8 @@ public class IslandDomainPack : IDomainPack
             islandWorld,
             currentTime,
             rngStream,
-            rng
+            rng,
+            resourceAvailability
         );
 
         // Generate candidates using all registered providers

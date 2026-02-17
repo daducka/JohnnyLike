@@ -175,6 +175,9 @@ public class Engine
         // Record for variety
         _varietyMemory.RecordAction(actorId.Value, outcome.ActionId.Value, _currentTime);
 
+        // Release action reservations
+        _director.ReleaseActionReservations(actorId);
+
         // Handle scene join
         if (actorState.CurrentAction?.Kind == ActionKind.JoinScene)
         {

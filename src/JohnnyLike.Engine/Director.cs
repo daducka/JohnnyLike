@@ -9,6 +9,7 @@ public class Director
     private readonly VarietyMemory _varietyMemory;
     private readonly ITraceSink _traceSink;
     private readonly Dictionary<SceneId, SceneInstance> _scenes = new();
+    private readonly Dictionary<ActorId, SceneId> _actionReservations = new();
     private int _sceneCounter = 0;
 
     public Director(IDomainPack domainPack, ReservationTable reservations, VarietyMemory varietyMemory, ITraceSink traceSink)
@@ -34,8 +35,8 @@ public class Director
             return sceneAction;
         }
 
-        // Get candidates from domain pack
-        var candidates = _domainPack.GenerateCandidates(actorId, actorState, worldState, currentTime, rng);
+        // Get candidates from domain pack, passing resource availability
+        var candidates = _domainPack.GenerateCandidates(actorId, actorState, worldState, currentTime, rng, _reservations);
 
         // Apply variety penalty
         var adjustedCandidates = new List<ActionCandidate>();
@@ -49,9 +50,23 @@ public class Director
         // Try to propose scenes
         TryProposeScenes(allActors, worldState, currentTime, rng);
 
-        // Pick best candidate
-        var best = candidates.OrderByDescending(c => c.Score).FirstOrDefault();
-        return best?.Action;
+        // Pick best candidate and try to reserve resources
+        var sortedCandidates = candidates.OrderByDescending(c => c.Score).ToList();
+        foreach (var candidate in sortedCandidates)
+        {
+            if (TryReserveActionResources(actorId, candidate.Action, currentTime, out var reservationSceneId))
+            {
+                // Successfully reserved resources for this action
+                if (reservationSceneId.HasValue)
+                {
+                    _actionReservations[actorId] = reservationSceneId.Value;
+                }
+                return candidate.Action;
+            }
+        }
+
+        // No candidate could be reserved (or no candidates at all)
+        return null;
     }
 
     private ActionSpec? CheckForSceneJoin(ActorId actorId, ActorState actorState, double currentTime)
@@ -249,4 +264,58 @@ public class Director
     }
 
     public IReadOnlyDictionary<SceneId, SceneInstance> GetScenes() => _scenes;
+
+    /// <summary>
+    /// Attempts to reserve resources for an action.
+    /// </summary>
+    /// <returns>True if reservation succeeded (or no resources needed), false otherwise.</returns>
+    private bool TryReserveActionResources(ActorId actorId, ActionSpec action, double currentTime, out SceneId? reservationSceneId)
+    {
+        reservationSceneId = null;
+
+        // If no resources required, always succeed
+        if (action.ResourceRequirements == null || action.ResourceRequirements.Count == 0)
+        {
+            return true;
+        }
+
+        // Create a synthetic SceneId to group these reservations
+        var sceneId = new SceneId($"action:{actorId.Value}:{action.Id.Value}:{currentTime}");
+        reservationSceneId = sceneId;
+
+        // Try to reserve all resources
+        var reservedResources = new List<ResourceId>();
+        foreach (var req in action.ResourceRequirements)
+        {
+            var until = currentTime + (req.DurationOverride ?? action.EstimatedDuration);
+            if (_reservations.TryReserve(req.ResourceId, sceneId, actorId, until))
+            {
+                reservedResources.Add(req.ResourceId);
+            }
+            else
+            {
+                // Reservation failed, rollback
+                foreach (var rid in reservedResources)
+                {
+                    _reservations.Release(rid);
+                }
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Releases resources reserved for an actor's action.
+    /// Should be called when an action completes or is cancelled.
+    /// </summary>
+    public void ReleaseActionReservations(ActorId actorId)
+    {
+        if (_actionReservations.TryGetValue(actorId, out var sceneId))
+        {
+            _reservations.ReleaseByScene(sceneId);
+            _actionReservations.Remove(actorId);
+        }
+    }
 }

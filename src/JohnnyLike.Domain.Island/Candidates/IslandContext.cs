@@ -11,6 +11,7 @@ public class IslandContext
     public double NowSeconds { get; }
     public IRngStream Rng { get; }
     public Random Random { get; }
+    public IResourceAvailability ResourceAvailability { get; }
 
     public IslandContext(
         ActorId actorId,
@@ -18,7 +19,8 @@ public class IslandContext
         IslandWorldState world,
         double nowSeconds,
         IRngStream rng,
-        Random random)
+        Random random,
+        IResourceAvailability resourceAvailability)
     {
         ActorId = actorId;
         Actor = actor;
@@ -26,6 +28,7 @@ public class IslandContext
         NowSeconds = nowSeconds;
         Rng = rng;
         Random = random;
+        ResourceAvailability = resourceAvailability;
     }
 
     // Helper methods for scoring

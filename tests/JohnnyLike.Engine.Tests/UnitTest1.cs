@@ -302,7 +302,7 @@ public class SignalHandlingTests
             return new TestActorState { Id = actorId };
         }
 
-        public List<ActionCandidate> GenerateCandidates(ActorId actorId, ActorState actorState, WorldState worldState, double currentTime, Random rng)
+        public List<ActionCandidate> GenerateCandidates(ActorId actorId, ActorState actorState, WorldState worldState, double currentTime, Random rng, IResourceAvailability resourceAvailability)
         {
             return new List<ActionCandidate>
             {
@@ -393,7 +393,7 @@ public class ActorStateSnapshotTests
             return new TestActorState { Id = actorId };
         }
 
-        public List<ActionCandidate> GenerateCandidates(ActorId actorId, ActorState actorState, WorldState worldState, double currentTime, Random rng)
+        public List<ActionCandidate> GenerateCandidates(ActorId actorId, ActorState actorState, WorldState worldState, double currentTime, Random rng, IResourceAvailability resourceAvailability)
         {
             return new List<ActionCandidate>
             {
