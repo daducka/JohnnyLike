@@ -6,6 +6,8 @@ namespace JohnnyLike.Domain.Island.Candidates;
 [IslandCandidateProvider(210, "shake_tree_coconut")]
 public class CoconutCandidateProvider : IIslandCandidateProvider
 {
+    private static readonly ResourceId PalmTreeResource = new("island:resource:palm_tree");
+
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
         if (ctx.World.CoconutsAvailable < 1)
@@ -22,7 +24,7 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
             baseDC -= 1;
 
         // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "palm_tree");
+        var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
 
         var baseScore = 0.4 + (ctx.Actor.Hunger / 150.0);
         if (ctx.Actor.Hunger > 70.0)
@@ -36,7 +38,8 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 10.0 + ctx.Random.NextDouble() * 5.0,
-                parameters.ToResultData()
+                parameters.ToResultData(),
+                new List<ResourceRequirement> { new ResourceRequirement(PalmTreeResource) }
             ),
             baseScore,
             $"Get coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"

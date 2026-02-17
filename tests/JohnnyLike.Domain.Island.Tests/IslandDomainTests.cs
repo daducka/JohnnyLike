@@ -404,8 +404,7 @@ public class IslandActionEffectsTests
                 ActionKind.Interact,
                 new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 3, AdvantageType.Normal, "Fishing"),
-                    new SkillCheckResult(10, 10 + 3, RollOutcomeTier.Success, true, 0.5),
-                    "shore"),
+                    new SkillCheckResult(10, 10 + 3, RollOutcomeTier.Success, true, 0.5)),
                 15.0
             )
         };

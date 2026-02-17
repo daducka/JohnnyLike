@@ -48,8 +48,7 @@ public class IslandContext
     /// </summary>
     public SkillCheckActionParameters RollSkillCheck(
         SkillType skillType,
-        int baseDC,
-        string? location = null)
+        int baseDC)
     {
         var modifier = Actor.GetSkillModifier(skillType);
         var advantage = Actor.GetAdvantage(skillType);
@@ -57,7 +56,7 @@ public class IslandContext
         var request = new SkillCheckRequest(baseDC, modifier, advantage, skillType.ToString());
         var result = SkillCheckResolver.Resolve(Rng, request);
 
-        var parameters = new SkillCheckActionParameters(request, result, location);
+        var parameters = new SkillCheckActionParameters(request, result);
 
         return parameters;
     }

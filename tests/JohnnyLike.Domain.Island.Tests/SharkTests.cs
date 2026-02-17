@@ -51,8 +51,7 @@ public class SharkTests
             ActionKind.Interact,
             new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 0, AdvantageType.Normal, "Survival"),
-                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
-                    "water"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
             15.0
         );
         

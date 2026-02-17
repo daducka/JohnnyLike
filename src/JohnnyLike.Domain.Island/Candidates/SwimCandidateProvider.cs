@@ -7,6 +7,8 @@ namespace JohnnyLike.Domain.Island.Candidates;
 [IslandCandidateProvider(410, "swim")]
 public class SwimCandidateProvider : IIslandCandidateProvider
 {
+    private static readonly ResourceId WaterResource = new("island:resource:water");
+
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
         if (ctx.Actor.Energy < 20.0)
@@ -24,7 +26,7 @@ public class SwimCandidateProvider : IIslandCandidateProvider
             baseDC += 1;
 
         // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "water");
+        var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
 
         var baseScore = 0.35 + (ctx.Actor.Morale < 30 ? 0.2 : 0.0);
 
@@ -34,7 +36,8 @@ public class SwimCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 15.0 + ctx.Random.NextDouble() * 5.0,
-                parameters.ToResultData()
+                parameters.ToResultData(),
+                new List<ResourceRequirement> { new ResourceRequirement(WaterResource) }
             ),
             baseScore,
             $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"

@@ -6,6 +6,8 @@ namespace JohnnyLike.Domain.Island.Candidates;
 [IslandCandidateProvider(810, "mermaid_encounter")]
 public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
 {
+    private static readonly ResourceId ShoreEastEnd = new("island:resource:shore:east_end");
+
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
         // Only during night/dawn/dusk
@@ -19,7 +21,7 @@ public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
         var baseDC = 18;
 
         // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck(SkillType.Perception, baseDC, "shore");
+        var parameters = ctx.RollSkillCheck(SkillType.Perception, baseDC);
 
         // Calculate base score with cooldown factored in
         var timeSinceLastEncounter = ctx.NowSeconds - ctx.Actor.LastMermaidEncounterTime;
@@ -32,7 +34,8 @@ public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 15.0,
-                parameters.ToResultData()
+                parameters.ToResultData(),
+                new List<ResourceRequirement> { new ResourceRequirement(ShoreEastEnd) }
             ),
             baseScore,
             $"Mermaid encounter (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"

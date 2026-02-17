@@ -8,24 +8,16 @@ namespace JohnnyLike.Domain.Kit.Dice;
 /// </summary>
 public record SkillCheckActionParameters(
     SkillCheckRequest Request,
-    SkillCheckResult Result,
-    string? Location = null
+    SkillCheckResult Result
 ) : ActionParameters
 {
     public override Dictionary<string, object> ToDictionary()
     {
-        var dict = new Dictionary<string, object>
+        return new Dictionary<string, object>
         {
             ["request"] = Request.ToDictionary(),
             ["result"] = Result.ToDictionary()
         };
-        
-        if (Location != null)
-        {
-            dict["location"] = Location;
-        }
-        
-        return dict;
     }
     
     /// <summary>

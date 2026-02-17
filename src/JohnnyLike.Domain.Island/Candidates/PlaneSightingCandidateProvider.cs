@@ -6,6 +6,8 @@ namespace JohnnyLike.Domain.Island.Candidates;
 [IslandCandidateProvider(800, "plane_sighting")]
 public class PlaneSightingCandidateProvider : IIslandCandidateProvider
 {
+    private static readonly ResourceId BeachOpenArea = new("island:resource:beach:open_area");
+
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
         // Only add if random chance triggers
@@ -15,7 +17,7 @@ public class PlaneSightingCandidateProvider : IIslandCandidateProvider
         var baseDC = 15;
 
         // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck(SkillType.Perception, baseDC, "beach");
+        var parameters = ctx.RollSkillCheck(SkillType.Perception, baseDC);
 
         // Calculate base score with cooldown factored in
         var timeSinceLastSighting = ctx.NowSeconds - ctx.Actor.LastPlaneSightingTime;
@@ -28,7 +30,8 @@ public class PlaneSightingCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 10.0,
-                parameters.ToResultData()
+                parameters.ToResultData(),
+                new List<ResourceRequirement> { new ResourceRequirement(BeachOpenArea) }
             ),
             baseScore,
             $"Plane sighting (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"

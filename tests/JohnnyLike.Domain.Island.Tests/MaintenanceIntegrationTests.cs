@@ -101,8 +101,7 @@ public class MaintenanceIntegrationTests
             ActionKind.Interact,
             new SkillCheckActionParameters(
                     new SkillCheckRequest(11, 2, AdvantageType.Normal, "Survival"),
-                    new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5),
-                    "campfire"),
+                    new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5)),
             25.0
         );
         
@@ -137,8 +136,7 @@ public class MaintenanceIntegrationTests
             ActionKind.Interact,
             new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 2, AdvantageType.Normal, "Survival"),
-                    new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5),
-                    "campfire"),
+                    new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5)),
             20.0
         );
         
@@ -205,8 +203,7 @@ public class MaintenanceIntegrationTests
             ActionKind.Interact,
             new SkillCheckActionParameters(
                     new SkillCheckRequest(14, 2, AdvantageType.Normal, "Survival"),
-                    new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5),
-                    "shelter"),
+                    new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5)),
             90.0
         );
         
