@@ -404,6 +404,7 @@ public class IslandDomainPack : IDomainPack
         }
         
         // Remove expired maintainable items and log their expiration
+        // Note: ToList() is necessary here because we're removing items from WorldItems during iteration
         var expiredItems = islandWorld.WorldItems.OfType<MaintainableWorldItem>().Where(item => item.IsExpired).ToList();
         foreach (var item in expiredItems)
         {
