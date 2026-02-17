@@ -179,6 +179,7 @@ public class IslandDomainPack : IDomainPack
                                  actionId.Contains("coconut") ? "Survival" :
                                  actionId.Contains("castle") ? "Performance" :
                                  actionId.Contains("swim") ? "Survival" :
+                                 actionId.Contains("bash") || actionId.Contains("treasure_chest") ? "Strength" :
                                  "Unknown";
 
                     var request = new SkillCheckRequest(skillCheckParams.DC, skillCheckParams.Modifier, skillCheckParams.Advantage, skillId);
@@ -244,7 +245,8 @@ public class IslandDomainPack : IDomainPack
                 Outcome = outcome,
                 Actor = islandState,
                 World = islandWorld,
-                Tier = GetTierFromOutcome(outcome)
+                Tier = GetTierFromOutcome(outcome),
+                Rng = rng
             };
             
             handler.ApplyEffects(effectCtx);
