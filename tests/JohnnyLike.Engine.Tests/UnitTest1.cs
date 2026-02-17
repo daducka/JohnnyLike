@@ -11,8 +11,7 @@ public class ReservationTableTests
         var table = new ReservationTable();
         var result = table.TryReserve(
             new ResourceId("printer"),
-            new SceneId("scene1"),
-            new ActorId("Jim"),
+            "actor:Jim",
             100.0
         );
 
@@ -26,8 +25,8 @@ public class ReservationTableTests
         var table = new ReservationTable();
         var resourceId = new ResourceId("printer");
         
-        table.TryReserve(resourceId, new SceneId("scene1"), new ActorId("Jim"), 100.0);
-        var result = table.TryReserve(resourceId, new SceneId("scene2"), new ActorId("Pam"), 100.0);
+        table.TryReserve(resourceId, "actor:Jim", 100.0);
+        var result = table.TryReserve(resourceId, "actor:Pam", 100.0);
 
         Assert.False(result);
     }
@@ -38,7 +37,7 @@ public class ReservationTableTests
         var table = new ReservationTable();
         var resourceId = new ResourceId("printer");
         
-        table.TryReserve(resourceId, new SceneId("scene1"), new ActorId("Jim"), 100.0);
+        table.TryReserve(resourceId, "actor:Jim", 100.0);
         table.Release(resourceId);
 
         Assert.False(table.IsReserved(resourceId));
@@ -52,10 +51,10 @@ public class ReservationTableTests
         var res1 = new ResourceId("printer");
         var res2 = new ResourceId("desk");
 
-        table.TryReserve(res1, sceneId, new ActorId("Jim"), 100.0);
-        table.TryReserve(res2, sceneId, new ActorId("Jim"), 100.0);
+        table.TryReserve(res1, "scene:" + sceneId.Value + ":actor:Jim", 100.0);
+        table.TryReserve(res2, "scene:" + sceneId.Value + ":actor:Jim", 100.0);
 
-        table.ReleaseByScene(sceneId);
+        table.ReleaseByPrefix("scene:" + sceneId.Value + ":");
 
         Assert.False(table.IsReserved(res1));
         Assert.False(table.IsReserved(res2));
@@ -67,7 +66,7 @@ public class ReservationTableTests
         var table = new ReservationTable();
         var resourceId = new ResourceId("printer");
         
-        table.TryReserve(resourceId, new SceneId("scene1"), new ActorId("Jim"), 50.0);
+        table.TryReserve(resourceId, "actor:Jim", 50.0);
         table.CleanupExpired(100.0);
 
         Assert.False(table.IsReserved(resourceId));
@@ -81,10 +80,10 @@ public class ReservationTableTests
         var res1 = new ResourceId("printer");
         var res2 = new ResourceId("desk");
 
-        table.TryReserve(res1, sceneId, null, 100.0);
-        table.TryReserve(res2, sceneId, null, 100.0);
+        table.TryReserve(res1, "scene:" + sceneId.Value + ":world_item:item1", 100.0);
+        table.TryReserve(res2, "scene:" + sceneId.Value + ":world_item:item2", 100.0);
 
-        table.ReleaseByScene(sceneId);
+        table.ReleaseByPrefix("scene:" + sceneId.Value + ":");
 
         Assert.False(table.IsReserved(res1));
         Assert.False(table.IsReserved(res2));
@@ -100,11 +99,11 @@ public class ReservationTableTests
         var res2 = new ResourceId("desk");
         var res3 = new ResourceId("phone");
 
-        table.TryReserve(res1, scene1, new ActorId("Jim"), 100.0);
-        table.TryReserve(res2, scene1, new ActorId("Pam"), 100.0);
-        table.TryReserve(res3, scene2, new ActorId("Dwight"), 100.0);
+        table.TryReserve(res1, "scene:scene1:actor:Jim", 100.0);
+        table.TryReserve(res2, "scene:scene1:actor:Pam", 100.0);
+        table.TryReserve(res3, "scene:scene2:actor:Dwight", 100.0);
 
-        table.ReleaseByScene(scene1);
+        table.ReleaseByPrefix("scene:" + scene1.Value + ":");
 
         Assert.False(table.IsReserved(res1));
         Assert.False(table.IsReserved(res2));
@@ -120,11 +119,11 @@ public class ReservationTableTests
         var res2 = new ResourceId("desk");
         var res3 = new ResourceId("phone");
 
-        table.TryReserve(res1, sceneId, new ActorId("Jim"), 100.0);
-        table.TryReserve(res2, sceneId, null, 100.0);
-        table.TryReserve(res3, sceneId, new ActorId("Pam"), 100.0);
+        table.TryReserve(res1, "scene:" + sceneId.Value + ":actor:Jim", 100.0);
+        table.TryReserve(res2, "scene:" + sceneId.Value + ":world_item:desk_item", 100.0);
+        table.TryReserve(res3, "scene:" + sceneId.Value + ":actor:Pam", 100.0);
 
-        table.ReleaseByScene(sceneId);
+        table.ReleaseByPrefix("scene:" + sceneId.Value + ":");
 
         Assert.False(table.IsReserved(res1));
         Assert.False(table.IsReserved(res2));
@@ -313,7 +312,7 @@ public class SignalHandlingTests
             };
         }
 
-        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng)
+        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability)
         {
         }
 
@@ -404,7 +403,7 @@ public class ActorStateSnapshotTests
             };
         }
 
-        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng)
+        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability)
         {
         }
 

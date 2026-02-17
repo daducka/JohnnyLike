@@ -69,7 +69,7 @@ public class TreasureChestTests
         // No longer need RNG since tier is pre-populated
         var rng = new FixedRngStream(20);
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
         
         // Verify chest is spawned
         Assert.NotNull(world.TreasureChest);
@@ -152,7 +152,7 @@ public class TreasureChestTests
         // No longer need RNG since tier is pre-populated
         var rng = new FixedRngStream(8);
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
         
         // Chest should still be present but damaged
         Assert.NotNull(world.TreasureChest);
@@ -209,7 +209,7 @@ public class TreasureChestTests
         // No longer need RNG since tier is pre-populated
         var rng = new FixedRngStream(15);
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
         
         // Chest should be removed
         Assert.Null(world.TreasureChest);
@@ -264,7 +264,7 @@ public class TreasureChestTests
         );
         var rng1 = new FixedRngStream(8); // No longer used
         
-        domain.ApplyActionEffects(actorId, outcome1, actor, world, rng1);
+        domain.ApplyActionEffects(actorId, outcome1, actor, world, rng1, new EmptyResourceAvailability());
         
         var healthAfterFirst = world.TreasureChest!.Health;
         Assert.True(healthAfterFirst < initialHealth);
@@ -286,7 +286,7 @@ public class TreasureChestTests
         );
         var rng2 = new FixedRngStream(8); // No longer used
         
-        domain.ApplyActionEffects(actorId, outcome2, actor, world, rng2);
+        domain.ApplyActionEffects(actorId, outcome2, actor, world, rng2, new EmptyResourceAvailability());
         
         var healthAfterSecond = world.TreasureChest!.Health;
         Assert.True(healthAfterSecond < healthAfterFirst);

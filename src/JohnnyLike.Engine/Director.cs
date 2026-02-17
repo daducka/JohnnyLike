@@ -154,8 +154,8 @@ public class Director
                     var deadline = currentTime + template.JoinWindowSeconds + template.MaxDurationSeconds;
                     foreach (var rid in resourceIds)
                     {
-                        // Reserve under sceneId with no specific actor during proposal stage
-                        _reservations.TryReserve(rid, sceneId, null, deadline);
+                        // Reserve for scene duration
+                        _reservations.TryReserve(rid, $"scene:{sceneId.Value}", deadline);
                     }
 
                     _scenes[sceneId] = scene;
@@ -222,7 +222,7 @@ public class Director
             scene.Status = SceneStatus.Complete;
             scene.EndTime = currentTime;
 
-            _reservations.ReleaseByScene(sceneId);
+            _reservations.ReleaseByPrefix($"scene:{sceneId.Value}:");
 
             _traceSink.Record(new TraceEvent(
                 currentTime,
@@ -248,7 +248,7 @@ public class Director
         {
             scene.Status = SceneStatus.Aborted;
             scene.EndTime = currentTime;
-            _reservations.ReleaseByScene(scene.Id);
+            _reservations.ReleaseByPrefix($"scene:{scene.Id.Value}:");
 
             _traceSink.Record(new TraceEvent(
                 currentTime,
@@ -288,7 +288,8 @@ public class Director
         foreach (var req in action.ResourceRequirements)
         {
             var until = currentTime + (req.DurationOverride ?? action.EstimatedDuration);
-            if (_reservations.TryReserve(req.ResourceId, sceneId, actorId, until))
+            var utilityId = $"scene:{sceneId.Value}:actor:{actorId.Value}:action:{action.Id.Value}";
+            if (_reservations.TryReserve(req.ResourceId, utilityId, until))
             {
                 reservedResources.Add(req.ResourceId);
             }
@@ -314,7 +315,7 @@ public class Director
     {
         if (_actorReservationScenes.TryGetValue(actorId, out var sceneId))
         {
-            _reservations.ReleaseByScene(sceneId);
+            _reservations.ReleaseByPrefix($"scene:{sceneId.Value}:");
             _actorReservationScenes.Remove(actorId);
         }
     }

@@ -4,16 +4,19 @@ namespace JohnnyLike.Engine;
 
 public class ReservationTable : IResourceAvailability
 {
-    private readonly Dictionary<ResourceId, (SceneId Scene, ActorId? Actor, double Until)> _reservations = new();
+    private readonly Dictionary<ResourceId, (string UtilityId, double Until)> _reservations = new();
 
-    public bool TryReserve(ResourceId resourceId, SceneId sceneId, ActorId? actorId, double until)
+    /// <summary>
+    /// Reserve a resource with a utility ID for debugging/tracking.
+    /// </summary>
+    public bool TryReserve(ResourceId resourceId, string utilityId, double until)
     {
-        if (_reservations.TryGetValue(resourceId, out var existing))
+        if (_reservations.ContainsKey(resourceId))
         {
             return false;
         }
 
-        _reservations[resourceId] = (sceneId, actorId, until);
+        _reservations[resourceId] = (utilityId, until);
         return true;
     }
 
@@ -22,10 +25,14 @@ public class ReservationTable : IResourceAvailability
         _reservations.Remove(resourceId);
     }
 
-    public void ReleaseByScene(SceneId sceneId)
+    /// <summary>
+    /// Releases all resources that have a utilityId starting with the given prefix.
+    /// Used for batch release (e.g., all resources for a scene or actor).
+    /// </summary>
+    public void ReleaseByPrefix(string utilityIdPrefix)
     {
         var toRelease = _reservations
-            .Where(kvp => kvp.Value.Scene == sceneId)
+            .Where(kvp => kvp.Value.UtilityId.StartsWith(utilityIdPrefix))
             .Select(kvp => kvp.Key)
             .ToList();
 

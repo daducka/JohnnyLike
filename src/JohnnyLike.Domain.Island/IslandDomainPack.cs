@@ -136,13 +136,14 @@ public class IslandDomainPack : IDomainPack
         ActionOutcome outcome,
         ActorState actorState,
         WorldState worldState,
-        IRngStream rng)
+        IRngStream rng,
+        IResourceAvailability resourceAvailability)
     {
         var islandState = (IslandActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
 
         var newCurrentTime = islandWorld.CurrentTime + outcome.ActualDuration;
-        islandWorld.OnTimeAdvanced(newCurrentTime, outcome.ActualDuration);
+        islandWorld.OnTimeAdvanced(newCurrentTime, outcome.ActualDuration, resourceAvailability);
 
         // Apply passive decay
         islandState.Hunger = Math.Min(100.0, islandState.Hunger + outcome.ActualDuration * 0.5);
@@ -166,7 +167,8 @@ public class IslandDomainPack : IDomainPack
                 Actor = islandState,
                 World = islandWorld,
                 Tier = GetTierFromOutcome(outcome),
-                Rng = rng
+                Rng = rng,
+                Reservations = resourceAvailability
             };
             
             handler.ApplyEffects(effectCtx);

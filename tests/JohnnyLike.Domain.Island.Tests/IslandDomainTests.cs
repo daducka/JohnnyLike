@@ -421,7 +421,7 @@ public class IslandActionEffectsTests
         );
         
         var rng = new RandomRngStream(new Random(42));
-        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng);
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
         
         Assert.True(actorState.Hunger < 60.0);
     }
@@ -452,7 +452,7 @@ public class IslandActionEffectsTests
         );
         
         var rng = new RandomRngStream(new Random(42));
-        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng);
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
         
         Assert.True(actorState.Energy > 30.0);
     }
@@ -512,7 +512,7 @@ public class IslandActionEffectsTests
         );
         
         var rng = new RandomRngStream(new Random(42));
-        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng);
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
         
         Assert.True(actorState.Hunger > 30.0);
         Assert.True(actorState.Energy < 80.0);
@@ -724,7 +724,7 @@ public class IslandSignalHandlingTests
         );
         
         var rng = new RandomRngStream(new Random(42));
-        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng);
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
         
         // Intent should be dequeued after completion
         Assert.Empty(actorState.PendingChatActions);

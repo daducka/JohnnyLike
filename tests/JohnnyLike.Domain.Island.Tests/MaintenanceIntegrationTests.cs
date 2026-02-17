@@ -112,7 +112,7 @@ public class MaintenanceIntegrationTests
             new Dictionary<string, object> { ["tier"] = "Success" }
         );
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
         
         Assert.True(campfire.Quality > 50.0, "Campfire quality should increase after repair");
     }
@@ -147,7 +147,7 @@ public class MaintenanceIntegrationTests
             new Dictionary<string, object> { ["tier"] = "Success" }
         );
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
         
         Assert.True(campfire.FuelSeconds > initialFuel, "Fuel should increase after adding fuel");
     }
@@ -214,7 +214,7 @@ public class MaintenanceIntegrationTests
             new Dictionary<string, object> { ["tier"] = "Success" }
         );
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
         
         Assert.True(shelter.Quality >= 80.0, "Shelter quality should be significantly restored after rebuild");
     }

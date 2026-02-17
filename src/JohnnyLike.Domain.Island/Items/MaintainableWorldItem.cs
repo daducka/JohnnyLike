@@ -24,7 +24,7 @@ public abstract class MaintainableWorldItem : WorldItem
     /// Called when the item expires and is about to be removed from the world.
     /// Override this to perform custom expiration logic (e.g., spawn effects, update world state).
     /// </summary>
-    public virtual void PerformExpiration(IslandWorldState world)
+    public virtual void PerformExpiration(IslandWorldState world, IResourceAvailability? resourceAvailability)
     {
         // Default implementation does nothing
         // Subclasses can override to add custom expiration behavior

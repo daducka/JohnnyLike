@@ -36,7 +36,7 @@ public class IslandWorldState : WorldState
     public TreasureChestItem? TreasureChest => WorldItems.OfType<TreasureChestItem>().FirstOrDefault();
     public SharkItem? Shark => WorldItems.OfType<SharkItem>().FirstOrDefault();
 
-    public void OnTimeAdvanced(double currentTime, double dt)
+    public void OnTimeAdvanced(double currentTime, double dt, IResourceAvailability? resourceAvailability = null)
     {
         CurrentTime = currentTime;
 
@@ -63,7 +63,7 @@ public class IslandWorldState : WorldState
         var expiredItems = WorldItems.OfType<MaintainableWorldItem>().Where(item => item.IsExpired).ToList();
         foreach (var item in expiredItems)
         {
-            item.PerformExpiration(this);
+            item.PerformExpiration(this, resourceAvailability);
             WorldItems.Remove(item);
         }
     }

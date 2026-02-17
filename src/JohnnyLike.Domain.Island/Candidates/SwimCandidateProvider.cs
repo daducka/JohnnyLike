@@ -14,10 +14,6 @@ public class SwimCandidateProvider : IIslandCandidateProvider
         if (ctx.Actor.Energy < 20.0)
             return;
 
-        // Block swimming if shark is present
-        if (ctx.World.Shark != null)
-            return;
-
         var baseDC = 10;
 
         if (ctx.World.Weather == Weather.Windy)
@@ -100,17 +96,29 @@ public class SwimCandidateProvider : IIslandCandidateProvider
                     var duration = 60.0 + ctx.Rng.NextDouble() * 120.0; // 60-180 seconds
                     var shark = new SharkItem();
                     shark.ExpiresAt = ctx.World.CurrentTime + duration;
-                    ctx.World.WorldItems.Add(shark);
                     
-                    // Additional morale penalty for shark encounter
-                    ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 15.0);
+                    // Try to reserve the water resource for the shark's lifetime
+                    var utilityId = $"world_item:shark:{shark.Id}";
+                    var reserved = ctx.Reservations.TryReserve(WaterResource, utilityId, shark.ExpiresAt);
                     
-                    if (ctx.Outcome.ResultData != null)
+                    if (reserved)
                     {
-                        ctx.Outcome.ResultData["variant_id"] = "swim_crit_failure_shark";
-                        ctx.Outcome.ResultData["encounter_type"] = "shark";
-                        ctx.Outcome.ResultData["shark_duration"] = duration;
+                        // Successfully reserved - add shark to world
+                        shark.ReservedResourceId = WaterResource;
+                        ctx.World.WorldItems.Add(shark);
+                        
+                        // Additional morale penalty for shark encounter
+                        ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 15.0);
+                        
+                        if (ctx.Outcome.ResultData != null)
+                        {
+                            ctx.Outcome.ResultData["variant_id"] = "swim_crit_failure_shark";
+                            ctx.Outcome.ResultData["encounter_type"] = "shark";
+                            ctx.Outcome.ResultData["shark_duration"] = duration;
+                        }
                     }
+                    // If reservation failed (water already reserved), shark is not spawned
+                    // This could happen if multiple actors fail swimming simultaneously
                 }
                 break;
         }

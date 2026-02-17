@@ -1,8 +1,8 @@
 namespace JohnnyLike.Domain.Abstractions;
 
 /// <summary>
-/// Provides read-only access to resource reservation status.
-/// Used by domain candidate providers to check if resources are available.
+/// Provides access to resource reservations.
+/// Used by domains to check availability and manage reservations.
 /// </summary>
 public interface IResourceAvailability
 {
@@ -12,4 +12,19 @@ public interface IResourceAvailability
     /// <param name="resourceId">The resource to check.</param>
     /// <returns>True if the resource is reserved, false otherwise.</returns>
     bool IsReserved(ResourceId resourceId);
+
+    /// <summary>
+    /// Attempts to reserve a resource until a specific time.
+    /// </summary>
+    /// <param name="resourceId">The resource to reserve.</param>
+    /// <param name="utilityId">Unique identifier for the entity reserving (for debugging).</param>
+    /// <param name="until">Time until which the resource should be reserved.</param>
+    /// <returns>True if reservation succeeded, false if resource is already reserved.</returns>
+    bool TryReserve(ResourceId resourceId, string utilityId, double until);
+
+    /// <summary>
+    /// Releases a resource reservation.
+    /// </summary>
+    /// <param name="resourceId">The resource to release.</param>
+    void Release(ResourceId resourceId);
 }

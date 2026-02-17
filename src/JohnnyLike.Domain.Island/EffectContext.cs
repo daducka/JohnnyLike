@@ -11,4 +11,5 @@ public class EffectContext
     public required IslandWorldState World { get; init; }
     public RollOutcomeTier? Tier { get; init; }
     public required IRngStream Rng { get; init; }
+    public required IResourceAvailability Reservations { get; init; }
 }
