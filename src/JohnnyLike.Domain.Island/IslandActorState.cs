@@ -26,6 +26,7 @@ public class IslandActorState : ActorState
     public int SurvivalSkill => DndMath.AbilityModifier(WIS) + DndMath.AbilityModifier(STR);
     public int PerceptionSkill => DndMath.AbilityModifier(WIS);
     public int PerformanceSkill => DndMath.AbilityModifier(CHA);
+    public int AthleticsSkill => DndMath.AbilityModifier(STR);
 
     public double Hunger { get; set; } = 0.0;
     public double Energy { get; set; } = 100.0;
@@ -46,7 +47,7 @@ public class IslandActorState : ActorState
             SkillType.Survival => SurvivalSkill,
             SkillType.Perception => PerceptionSkill,
             SkillType.Performance => PerformanceSkill,
-            SkillType.Athletics => 0, // TODO: Could be derived from STR later
+            SkillType.Athletics => AthleticsSkill,
             _ => 0
         };
 

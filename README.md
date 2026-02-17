@@ -256,7 +256,12 @@ The `JohnnyLike.Domain.Island` demonstrates the Dice kit with a castaway surviva
 ### Actor State
 - **Attributes**: STR, DEX, CON, INT, WIS, CHA (D&D-style stats)
 - **Skill Types**: Five skill types defined as enum: `Fishing`, `Survival`, `Perception`, `Performance`, `Athletics`
-- **Derived Skills**: FishingSkill, SurvivalSkill, PerceptionSkill, PerformanceSkill (Athletics uses base modifier)
+- **Derived Skills**: 
+  - FishingSkill (DEX + WIS)
+  - SurvivalSkill (WIS + STR)
+  - PerceptionSkill (WIS)
+  - PerformanceSkill (CHA)
+  - AthleticsSkill (STR)
 - **Needs**: Hunger (0-100), Energy (0-100), Morale (0-100), Boredom (0-100)
 - **Buff System**: Temporary modifiers and advantage grants tied to specific skill types
 
