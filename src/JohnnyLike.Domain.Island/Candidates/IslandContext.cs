@@ -49,7 +49,7 @@ public class IslandContext
     public SkillCheckActionParameters RollSkillCheck(
         SkillType skillType,
         int baseDC,
-        string location)
+        string? location = null)
     {
         var modifier = Actor.GetSkillModifier(skillType);
         var advantage = Actor.GetAdvantage(skillType);

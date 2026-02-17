@@ -55,20 +55,17 @@ public class FishingCandidateProvider : IIslandCandidateProvider
 
         // Prefer primary spot if available
         ResourceId chosenSpot;
-        string location;
         if (primaryAvailable)
         {
             chosenSpot = PrimaryFishingSpot;
-            location = "shore";
         }
         else
         {
             chosenSpot = SecondaryFishingSpot;
-            location = "shore_secondary";
         }
 
         // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck(SkillType.Fishing, baseDC, location);
+        var parameters = ctx.RollSkillCheck(SkillType.Fishing, baseDC);
 
         output.Add(new ActionCandidate(
             new ActionSpec(

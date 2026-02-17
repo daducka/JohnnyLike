@@ -110,7 +110,7 @@ public class FishingSpotSelectionTests
     }
     
     [Fact]
-    public void Fishing_SecondarySpot_UsesCorrectLocation()
+    public void Fishing_SecondarySpot_UsesSecondaryResource()
     {
         // Arrange
         var domain = new IslandDomainPack();
@@ -137,14 +137,14 @@ public class FishingSpotSelectionTests
         var fishingCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "fish_for_food");
         Assert.NotNull(fishingCandidate);
         
-        // Check that the location parameter is set to secondary
-        var parameters = fishingCandidate.Action.Parameters as SkillCheckActionParameters;
-        Assert.NotNull(parameters);
-        Assert.Equal("shore_secondary", parameters.Location);
+        // Check that the resource requirement uses secondary spot
+        Assert.NotNull(fishingCandidate.Action.ResourceRequirements);
+        Assert.Single(fishingCandidate.Action.ResourceRequirements);
+        Assert.Equal(SecondaryFishingSpot, fishingCandidate.Action.ResourceRequirements[0].ResourceId);
     }
     
     [Fact]
-    public void Fishing_PrimarySpot_UsesShoreLocation()
+    public void Fishing_PrimarySpot_UsesPrimaryResource()
     {
         // Arrange
         var domain = new IslandDomainPack();
@@ -171,10 +171,10 @@ public class FishingSpotSelectionTests
         var fishingCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "fish_for_food");
         Assert.NotNull(fishingCandidate);
         
-        // Check that the location parameter is set to shore (primary)
-        var parameters = fishingCandidate.Action.Parameters as SkillCheckActionParameters;
-        Assert.NotNull(parameters);
-        Assert.Equal("shore", parameters.Location);
+        // Check that the resource requirement uses primary spot
+        Assert.NotNull(fishingCandidate.Action.ResourceRequirements);
+        Assert.Single(fishingCandidate.Action.ResourceRequirements);
+        Assert.Equal(PrimaryFishingSpot, fishingCandidate.Action.ResourceRequirements[0].ResourceId);
     }
     
     /// <summary>
