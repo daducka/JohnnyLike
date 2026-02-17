@@ -255,9 +255,20 @@ The `JohnnyLike.Domain.Island` demonstrates the Dice kit with a castaway surviva
 
 ### Actor State
 - **Attributes**: STR, DEX, CON, INT, WIS, CHA (D&D-style stats)
-- **Derived Skills**: FishingSkill, SurvivalSkill, PerceptionSkill, PerformanceSkill
+- **Skill Types**: Five skill types defined as enum: `Fishing`, `Survival`, `Perception`, `Performance`, `Athletics`
+- **Derived Skills**: 
+  - FishingSkill (DEX + WIS)
+  - SurvivalSkill (WIS + STR)
+  - PerceptionSkill (WIS)
+  - PerformanceSkill (CHA)
+  - AthleticsSkill (STR)
 - **Needs**: Hunger (0-100), Energy (0-100), Morale (0-100), Boredom (0-100)
-- **Buff System**: Temporary modifiers and advantage grants
+- **Buff System**: Temporary modifiers and advantage grants tied to specific skill types
+
+**Adding New Skill Types**: To add a new skill type to the Island domain:
+1. Add the new skill to the `SkillType` enum in `IslandActorState.cs`
+2. Update `GetSkillModifier()` to return the appropriate modifier for the new skill
+3. Use the new `SkillType` enum value when calling `RollSkillCheck()` in candidate providers
 
 ### World State
 - **Time**: Day/night cycle with timeOfDay (0-1) and dayCount
@@ -292,15 +303,15 @@ All world items are serialized with IslandWorldState and survive across save/loa
 
 ### Actions with Skill Checks
 
-All actions use the Dice kit for resolution:
+All actions use the Dice kit for resolution with type-safe `SkillType` enums:
 
-- **FishForFood**: Fishing skill check, DC varies by time of day, weather, fish availability, and energy
-- **ShakeTreeForCoconut**: Survival skill check, DC based on coconut availability and weather
-- **BuildSandCastle**: Performance skill check for morale/boredom management
-- **Swim**: Survival/athletics check with morale and energy effects
+- **FishForFood**: `SkillType.Fishing` skill check, DC varies by time of day, weather, fish availability, and energy
+- **ShakeTreeForCoconut**: `SkillType.Survival` skill check, DC based on coconut availability and weather
+- **BuildSandCastle**: `SkillType.Performance` skill check for morale/boredom management
+- **Swim**: `SkillType.Survival` check with morale and energy effects
   - **Critical Success**: Spawns TreasureChestItem at shore
   - **Critical Failure**: Spawns SharkItem, applies -20 morale penalty
-- **BashOpenTreasureChest**: Strength check to open discovered treasure
+- **BashOpenTreasureChest**: `SkillType.Athletics` check to open discovered treasure
   - DC scales with chest health (DC 10-20)
   - Failure damages chest, making subsequent attempts easier
   - Success grants morale reward and removes chest
@@ -308,9 +319,9 @@ All actions use the Dice kit for resolution:
 
 ### Vignette Events
 
-Rare, special events with perception checks:
+Rare, special events with `SkillType.Perception` checks:
 - **PLANE_SIGHTING** (DC 15): Grants morale boost, critical success adds temporary Luck buff
-- **MERMAID_ENCOUNTER** (DC 18, night only): Grants strong morale boost, critical success adds fishing advantage
+- **MERMAID_ENCOUNTER** (DC 18, night only): Grants strong morale boost, critical success adds `SkillType.Fishing` advantage
 
 ### Dynamic Scoring
 

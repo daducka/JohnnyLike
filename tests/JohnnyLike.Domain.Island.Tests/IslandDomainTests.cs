@@ -325,7 +325,7 @@ public class IslandActorStateTests
             WIS = 16
         };
         
-        var modifier = state.GetSkillModifier("Fishing");
+        var modifier = state.GetSkillModifier(SkillType.Fishing);
         
         Assert.Equal(2 + 3, modifier);
     }
@@ -339,7 +339,7 @@ public class IslandActorStateTests
             WIS = 14
         };
         
-        var modifier = state.GetSkillModifier("Survival");
+        var modifier = state.GetSkillModifier(SkillType.Survival);
         
         Assert.Equal(3 + 2, modifier);
     }
@@ -352,11 +352,11 @@ public class IslandActorStateTests
             WIS = 14,
             ActiveBuffs = new List<ActiveBuff>
             {
-                new ActiveBuff { SkillId = "Perception", Type = BuffType.SkillBonus, Value = 2, ExpiresAt = 100.0 }
+                new ActiveBuff { SkillType = SkillType.Perception, Type = BuffType.SkillBonus, Value = 2, ExpiresAt = 100.0 }
             }
         };
         
-        var modifier = state.GetSkillModifier("Perception");
+        var modifier = state.GetSkillModifier(SkillType.Perception);
         
         Assert.Equal(2 + 2, modifier);
     }
@@ -368,11 +368,11 @@ public class IslandActorStateTests
         {
             ActiveBuffs = new List<ActiveBuff>
             {
-                new ActiveBuff { SkillId = "Fishing", Type = BuffType.Advantage, ExpiresAt = 100.0 }
+                new ActiveBuff { SkillType = SkillType.Fishing, Type = BuffType.Advantage, ExpiresAt = 100.0 }
             }
         };
         
-        var advantage = state.GetAdvantage("Fishing");
+        var advantage = state.GetAdvantage(SkillType.Fishing);
         
         Assert.Equal(AdvantageType.Advantage, advantage);
     }
@@ -382,7 +382,7 @@ public class IslandActorStateTests
     {
         var state = new IslandActorState();
         
-        var advantage = state.GetAdvantage("Fishing");
+        var advantage = state.GetAdvantage(SkillType.Fishing);
         
         Assert.Equal(AdvantageType.Normal, advantage);
     }

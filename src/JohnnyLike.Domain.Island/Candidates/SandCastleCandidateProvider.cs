@@ -14,7 +14,7 @@ public class SandCastleCandidateProvider : IIslandCandidateProvider
             baseDC += 4;
 
         // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck("Performance", baseDC, "beach");
+        var parameters = ctx.RollSkillCheck(SkillType.Performance, baseDC, "beach");
 
         var baseScore = 0.3 + (ctx.Actor.Boredom / 100.0);
 

@@ -24,7 +24,7 @@ public class SwimCandidateProvider : IIslandCandidateProvider
             baseDC += 1;
 
         // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck("Survival", baseDC, "water");
+        var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "water");
 
         var baseScore = 0.35 + (ctx.Actor.Morale < 30 ? 0.2 : 0.0);
 

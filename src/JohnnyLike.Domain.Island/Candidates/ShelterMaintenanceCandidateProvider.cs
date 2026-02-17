@@ -37,7 +37,7 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             else if (ctx.World.Weather == Weather.Windy)
                 baseDC += 1;
 
-            var parameters = ctx.RollSkillCheck("Survival", baseDC, "shelter");
+            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "shelter");
 
             var baseScore = 0.25 + (urgency * 0.5 * weatherMultiplier * foresightMultiplier);
 
@@ -60,7 +60,7 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.2);
 
             var baseDC = 13;
-            var parameters = ctx.RollSkillCheck("Survival", baseDC, "shelter");
+            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "shelter");
 
             var baseScore = 0.4 + (urgency * 0.5 * foresightMultiplier);
 
@@ -82,7 +82,7 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             var baseDC = 14;
             var foresightMultiplier = 1.0 + (foresightBonus * 0.25);
 
-            var parameters = ctx.RollSkillCheck("Survival", baseDC, "shelter");
+            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "shelter");
 
             var baseScore = 1.2 * foresightMultiplier;
 

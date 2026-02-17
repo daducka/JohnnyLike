@@ -19,7 +19,7 @@ public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
         var baseDC = 18;
 
         // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck("Perception", baseDC, "shore");
+        var parameters = ctx.RollSkillCheck(SkillType.Perception, baseDC, "shore");
 
         // Calculate base score with cooldown factored in
         var timeSinceLastEncounter = ctx.NowSeconds - ctx.Actor.LastMermaidEncounterTime;
@@ -59,7 +59,7 @@ public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
             {
                 Name = "Mermaid's Blessing",
                 Type = BuffType.Advantage,
-                SkillId = "Fishing",
+                SkillType = SkillType.Fishing,
                 Value = 0,
                 ExpiresAt = ctx.World.CurrentTime + 600.0
             });

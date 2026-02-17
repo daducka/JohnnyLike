@@ -22,7 +22,7 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
             baseDC -= 1;
 
         // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck("Survival", baseDC, "palm_tree");
+        var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "palm_tree");
 
         var baseScore = 0.4 + (ctx.Actor.Hunger / 150.0);
         if (ctx.Actor.Hunger > 70.0)

@@ -24,7 +24,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.1);
 
             var baseDC = 10;
-            var parameters = ctx.RollSkillCheck("Survival", baseDC, "campfire");
+            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "campfire");
 
             var baseScore = 0.3 + (urgency * 0.5 * foresightMultiplier);
 
@@ -47,7 +47,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.15);
 
             var baseDC = 12;
-            var parameters = ctx.RollSkillCheck("Survival", baseDC, "campfire");
+            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "campfire");
 
             var baseScore = urgency * foresightMultiplier;
 
@@ -70,7 +70,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.12);
 
             var baseDC = 11;
-            var parameters = ctx.RollSkillCheck("Survival", baseDC, "campfire");
+            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "campfire");
 
             var baseScore = 0.2 + (urgency * 0.4 * foresightMultiplier);
 
@@ -92,7 +92,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var baseDC = 15;
             var foresightMultiplier = 1.0 + (foresightBonus * 0.2);
 
-            var parameters = ctx.RollSkillCheck("Survival", baseDC, "campfire");
+            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "campfire");
 
             var baseScore = 1.0 * foresightMultiplier;
 

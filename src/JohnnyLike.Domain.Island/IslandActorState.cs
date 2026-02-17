@@ -4,6 +4,15 @@ using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island;
 
+public enum SkillType
+{
+    Fishing,
+    Survival,
+    Perception,
+    Performance,
+    Athletics
+}
+
 public class IslandActorState : ActorState
 {
     public int STR { get; set; } = 10;
@@ -17,6 +26,7 @@ public class IslandActorState : ActorState
     public int SurvivalSkill => DndMath.AbilityModifier(WIS) + DndMath.AbilityModifier(STR);
     public int PerceptionSkill => DndMath.AbilityModifier(WIS);
     public int PerformanceSkill => DndMath.AbilityModifier(CHA);
+    public int AthleticsSkill => DndMath.AbilityModifier(STR);
 
     public double Hunger { get; set; } = 0.0;
     public double Energy { get; set; } = 100.0;
@@ -29,27 +39,28 @@ public class IslandActorState : ActorState
     public List<ActiveBuff> ActiveBuffs { get; set; } = new();
     public Queue<PendingIntent> PendingChatActions { get; set; } = new();
 
-    public int GetSkillModifier(string skillId)
+    public int GetSkillModifier(SkillType skillType)
     {
-        var baseModifier = skillId switch
+        var baseModifier = skillType switch
         {
-            "Fishing" => FishingSkill,
-            "Survival" => SurvivalSkill,
-            "Perception" => PerceptionSkill,
-            "Performance" => PerformanceSkill,
+            SkillType.Fishing => FishingSkill,
+            SkillType.Survival => SurvivalSkill,
+            SkillType.Perception => PerceptionSkill,
+            SkillType.Performance => PerformanceSkill,
+            SkillType.Athletics => AthleticsSkill,
             _ => 0
         };
 
         var buffModifier = ActiveBuffs
-            .Where(b => (b.SkillId == skillId || string.IsNullOrEmpty(b.SkillId)) && b.Type == BuffType.SkillBonus)
+            .Where(b => (b.SkillType == skillType || b.SkillType == null) && b.Type == BuffType.SkillBonus)
             .Sum(b => b.Value);
 
         return baseModifier + buffModifier;
     }
 
-    public AdvantageType GetAdvantage(string skillId)
+    public AdvantageType GetAdvantage(SkillType skillType)
     {
-        var hasBuff = ActiveBuffs.Any(b => b.SkillId == skillId && b.Type == BuffType.Advantage);
+        var hasBuff = ActiveBuffs.Any(b => b.SkillType == skillType && b.Type == BuffType.Advantage);
         return hasBuff ? AdvantageType.Advantage : AdvantageType.Normal;
     }
 
@@ -181,7 +192,7 @@ public class ActiveBuff
 {
     public string Name { get; set; } = "";
     public BuffType Type { get; set; }
-    public string SkillId { get; set; } = "";
+    public SkillType? SkillType { get; set; }
     public int Value { get; set; }
     public double ExpiresAt { get; set; }
 }
