@@ -56,6 +56,6 @@ public class IslandContext
 
         var parameters = new SkillCheckActionParameters(baseDC, modifier, advantage, location, skillId);
 
-        return (parameters, result.ResultData!, result);
+        return (parameters, result.ToResultData(), result);
     }
 }

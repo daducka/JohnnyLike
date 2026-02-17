@@ -24,27 +24,17 @@ public static class SkillCheckResolver
             request.Advantage
         );
 
-        var resultData = new Dictionary<string, object>
-        {
-            ["dc"] = request.DC,
-            ["modifier"] = request.Modifier,
-            ["advantage"] = request.Advantage.ToString(),
-            ["skillId"] = request.SkillId,
-            ["roll"] = roll,
-            ["total"] = total,
-            ["tier"] = outcomeTier.ToString()
-        };
-
         return new SkillCheckResult(
             roll,
             total,
             outcomeTier,
             isSuccess,
-            estimatedSuccessChance
-        )
-        {
-            ResultData = resultData
-        };
+            estimatedSuccessChance,
+            request.DC,
+            request.Modifier,
+            request.Advantage,
+            request.SkillId
+        );
     }
 
     private static RollOutcomeTier DetermineOutcomeTier(int roll, int total, int dc)
