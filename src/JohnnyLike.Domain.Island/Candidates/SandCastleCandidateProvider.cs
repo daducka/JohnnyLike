@@ -13,23 +13,21 @@ public class SandCastleCandidateProvider : IIslandCandidateProvider
         if (ctx.World.TideLevel == TideLevel.High)
             baseDC += 4;
 
-        var modifier = ctx.Actor.GetSkillModifier("Performance");
-        var advantage = ctx.Actor.GetAdvantage("Performance");
-
-        var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
+        // Roll skill check at candidate generation time
+        var parameters = ctx.RollSkillCheck("Performance", baseDC, "beach");
 
         var baseScore = 0.3 + (ctx.Actor.Boredom / 100.0);
-        baseScore *= estimatedChance;
 
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("build_sand_castle"),
                 ActionKind.Interact,
-                new SkillCheckActionParameters(baseDC, modifier, advantage, "beach"),
-                20.0 + ctx.Rng.NextDouble() * 10.0
+                parameters,
+                20.0 + ctx.Random.NextDouble() * 10.0,
+                parameters.ToResultData()
             ),
             baseScore,
-            $"Build sand castle (DC {baseDC}, {estimatedChance:P0} chance)"
+            $"Build sand castle (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
         ));
     }
 

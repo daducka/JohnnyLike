@@ -13,24 +13,25 @@ public class PlaneSightingCandidateProvider : IIslandCandidateProvider
             return;
 
         var baseDC = 15;
-        var modifier = ctx.Actor.GetSkillModifier("Perception");
-        var advantage = ctx.Actor.GetAdvantage("Perception");
-        var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
+
+        // Roll skill check at candidate generation time
+        var parameters = ctx.RollSkillCheck("Perception", baseDC, "beach");
 
         // Calculate base score with cooldown factored in
         var timeSinceLastSighting = ctx.NowSeconds - ctx.Actor.LastPlaneSightingTime;
         var cooldownFactor = Math.Min(1.0, timeSinceLastSighting / 600.0); // 600 second cooldown
-        var baseScore = 0.2 * estimatedChance * cooldownFactor;
+        var baseScore = 0.2 * cooldownFactor;
 
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("plane_sighting"),
                 ActionKind.Interact,
-                new VignetteActionParameters(baseDC, modifier, advantage),
-                10.0
+                parameters,
+                10.0,
+                parameters.ToResultData()
             ),
             baseScore,
-            "Plane sighting vignette"
+            $"Plane sighting (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
         ));
     }
 

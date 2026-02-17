@@ -22,21 +22,22 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
         {
             var urgency = 1.0 - (campfire.FuelSeconds / 1800.0);
             var foresightMultiplier = 1.0 + (foresightBonus * 0.1);
-            var baseScore = 0.3 + (urgency * 0.5 * foresightMultiplier);
 
             var baseDC = 10;
-            var modifier = ctx.Actor.GetSkillModifier("Survival");
-            var advantage = ctx.Actor.GetAdvantage("Survival");
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "campfire");
+
+            var baseScore = 0.3 + (urgency * 0.5 * foresightMultiplier);
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("add_fuel_campfire"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "campfire"),
-                    20.0 + ctx.Rng.NextDouble() * 5.0
+                    parameters,
+                    20.0 + ctx.Random.NextDouble() * 5.0,
+                    parameters.ToResultData()
                 ),
                 baseScore,
-                $"Add fuel to campfire (fuel: {campfire.FuelSeconds:F0}s)"
+                $"Add fuel to campfire (fuel: {campfire.FuelSeconds:F0}s, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
 
@@ -44,21 +45,22 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
         {
             var urgency = 0.8;
             var foresightMultiplier = 1.0 + (foresightBonus * 0.15);
-            var baseScore = urgency * foresightMultiplier;
 
             var baseDC = 12;
-            var modifier = ctx.Actor.GetSkillModifier("Survival");
-            var advantage = ctx.Actor.GetAdvantage("Survival");
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "campfire");
+
+            var baseScore = urgency * foresightMultiplier;
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("relight_campfire"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "campfire"),
-                    30.0 + ctx.Rng.NextDouble() * 10.0
+                    parameters,
+                    30.0 + ctx.Random.NextDouble() * 10.0,
+                    parameters.ToResultData()
                 ),
                 baseScore,
-                $"Relight campfire (quality: {campfire.Quality:F0}%)"
+                $"Relight campfire (quality: {campfire.Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
 
@@ -66,40 +68,44 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
         {
             var urgency = (70.0 - campfire.Quality) / 70.0;
             var foresightMultiplier = 1.0 + (foresightBonus * 0.12);
-            var baseScore = 0.2 + (urgency * 0.4 * foresightMultiplier);
 
             var baseDC = 11;
-            var modifier = ctx.Actor.GetSkillModifier("Survival");
-            var advantage = ctx.Actor.GetAdvantage("Survival");
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "campfire");
+
+            var baseScore = 0.2 + (urgency * 0.4 * foresightMultiplier);
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("repair_campfire"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "campfire"),
-                    25.0 + ctx.Rng.NextDouble() * 5.0
+                    parameters,
+                    25.0 + ctx.Random.NextDouble() * 5.0,
+                    parameters.ToResultData()
                 ),
                 baseScore,
-                $"Repair campfire (quality: {campfire.Quality:F0}%)"
+                $"Repair campfire (quality: {campfire.Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
 
         if (campfire.Quality < 10.0)
         {
             var baseDC = 15;
-            var modifier = ctx.Actor.GetSkillModifier("Survival");
-            var advantage = ctx.Actor.GetAdvantage("Survival");
             var foresightMultiplier = 1.0 + (foresightBonus * 0.2);
+
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "campfire");
+
+            var baseScore = 1.0 * foresightMultiplier;
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("rebuild_campfire"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "campfire"),
-                    60.0 + ctx.Rng.NextDouble() * 20.0
+                    parameters,
+                    60.0 + ctx.Random.NextDouble() * 20.0,
+                    parameters.ToResultData()
                 ),
-                1.0 * foresightMultiplier,
-                "Rebuild campfire from scratch"
+                baseScore,
+                $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
     }

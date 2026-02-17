@@ -17,24 +17,25 @@ public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
             return;
 
         var baseDC = 18;
-        var modifier = ctx.Actor.GetSkillModifier("Perception");
-        var advantage = ctx.Actor.GetAdvantage("Perception");
-        var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
+
+        // Roll skill check at candidate generation time
+        var parameters = ctx.RollSkillCheck("Perception", baseDC, "shore");
 
         // Calculate base score with cooldown factored in
         var timeSinceLastEncounter = ctx.NowSeconds - ctx.Actor.LastMermaidEncounterTime;
         var cooldownFactor = Math.Min(1.0, timeSinceLastEncounter / 1200.0); // 1200 second cooldown
-        var baseScore = 0.15 * estimatedChance * cooldownFactor;
+        var baseScore = 0.15 * cooldownFactor;
 
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("mermaid_encounter"),
                 ActionKind.Interact,
-                new VignetteActionParameters(baseDC, modifier, advantage),
-                15.0
+                parameters,
+                15.0,
+                parameters.ToResultData()
             ),
             baseScore,
-            "Mermaid encounter vignette"
+            $"Mermaid encounter (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
         ));
     }
 

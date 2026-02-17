@@ -30,7 +30,6 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             };
 
             var foresightMultiplier = 1.0 + (foresightBonus * 0.15);
-            var baseScore = 0.25 + (urgency * 0.5 * weatherMultiplier * foresightMultiplier);
 
             var baseDC = 12;
             if (ctx.World.Weather == Weather.Rainy)
@@ -38,18 +37,20 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             else if (ctx.World.Weather == Weather.Windy)
                 baseDC += 1;
 
-            var modifier = ctx.Actor.GetSkillModifier("Survival");
-            var advantage = ctx.Actor.GetAdvantage("Survival");
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "shelter");
+
+            var baseScore = 0.25 + (urgency * 0.5 * weatherMultiplier * foresightMultiplier);
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("repair_shelter"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "shelter"),
-                    30.0 + ctx.Rng.NextDouble() * 10.0
+                    parameters,
+                    30.0 + ctx.Random.NextDouble() * 10.0,
+                    parameters.ToResultData()
                 ),
                 baseScore,
-                $"Repair shelter (quality: {shelter.Quality:F0}%, {ctx.World.Weather})"
+                $"Repair shelter (quality: {shelter.Quality:F0}%, {ctx.World.Weather}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
 
@@ -57,40 +58,44 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
         {
             var urgency = (50.0 - shelter.Quality) / 50.0;
             var foresightMultiplier = 1.0 + (foresightBonus * 0.2);
-            var baseScore = 0.4 + (urgency * 0.5 * foresightMultiplier);
 
             var baseDC = 13;
-            var modifier = ctx.Actor.GetSkillModifier("Survival");
-            var advantage = ctx.Actor.GetAdvantage("Survival");
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "shelter");
+
+            var baseScore = 0.4 + (urgency * 0.5 * foresightMultiplier);
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("reinforce_shelter"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "shelter"),
-                    40.0 + ctx.Rng.NextDouble() * 10.0
+                    parameters,
+                    40.0 + ctx.Random.NextDouble() * 10.0,
+                    parameters.ToResultData()
                 ),
                 baseScore,
-                $"Reinforce shelter (quality: {shelter.Quality:F0}%)"
+                $"Reinforce shelter (quality: {shelter.Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
 
         if (shelter.Quality < 15.0)
         {
             var baseDC = 14;
-            var modifier = ctx.Actor.GetSkillModifier("Survival");
-            var advantage = ctx.Actor.GetAdvantage("Survival");
             var foresightMultiplier = 1.0 + (foresightBonus * 0.25);
+
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "shelter");
+
+            var baseScore = 1.2 * foresightMultiplier;
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("rebuild_shelter"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "shelter"),
-                    90.0 + ctx.Rng.NextDouble() * 30.0
+                    parameters,
+                    90.0 + ctx.Random.NextDouble() * 30.0,
+                    parameters.ToResultData()
                 ),
-                1.2 * foresightMultiplier,
-                "Rebuild shelter from scratch"
+                baseScore,
+                $"Rebuild shelter from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
     }

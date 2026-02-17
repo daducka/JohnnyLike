@@ -402,7 +402,10 @@ public class IslandActionEffectsTests
             CurrentAction = new ActionSpec(
                 new ActionId("fish_for_food"),
                 ActionKind.Interact,
-                new SkillCheckActionParameters(10, 3, AdvantageType.Normal, "shore"),
+                new SkillCheckActionParameters(
+                    new SkillCheckRequest(10, 3, AdvantageType.Normal, "Fishing"),
+                    new SkillCheckResult(10, 10 + 3, RollOutcomeTier.Success, true, 0.5),
+                    "shore"),
                 15.0
             )
         };
@@ -456,45 +459,33 @@ public class IslandActionEffectsTests
     }
 
     [Fact]
-    public void ApplyActionEffects_SkillCheck_StoresDetailedResultData()
+    public void GenerateCandidates_SkillCheck_PopulatesResultData()
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = new IslandActorState
-        {
-            Id = actorId,
-            Hunger = 60.0,
-            CurrentAction = new ActionSpec(
-                new ActionId("fish_for_food"),
-                ActionKind.Interact,
-                new SkillCheckActionParameters(10, 3, AdvantageType.Normal, "shore"),
-                15.0
-            )
-        };
-        var worldState = new IslandWorldState { FishAvailable = 100.0 };
-
-        // Outcome with empty ResultData and no tier pre-set — forces skill check resolution
-        var resultData = new Dictionary<string, object>();
-        var outcome = new ActionOutcome(
-            new ActionId("fish_for_food"),
-            ActionOutcomeType.Success,
-            15.0,
-            resultData
-        );
-
-        var rng = new RandomRngStream(new Random(42));
-        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng);
-
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var worldState = domain.CreateInitialWorldState();
+        
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        
+        var fishingCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "fish_for_food");
+        Assert.NotNull(fishingCandidate);
+        
+        // Verify ResultData is populated in the candidate
+        var resultData = fishingCandidate.Action.ResultData;
+        Assert.NotNull(resultData);
         Assert.True(resultData.ContainsKey("dc"));
         Assert.True(resultData.ContainsKey("modifier"));
         Assert.True(resultData.ContainsKey("advantage"));
+        Assert.True(resultData.ContainsKey("skillId"));
         Assert.True(resultData.ContainsKey("roll"));
         Assert.True(resultData.ContainsKey("total"));
         Assert.True(resultData.ContainsKey("tier"));
 
-        Assert.Equal(10, resultData["dc"]);
-        Assert.Equal(3, resultData["modifier"]);
-        Assert.Equal("Normal", resultData["advantage"]);
+        Assert.IsType<int>(resultData["dc"]);
+        Assert.IsType<int>(resultData["modifier"]);
+        Assert.IsType<string>(resultData["advantage"]);
+        Assert.Equal("Fishing", resultData["skillId"]);
         Assert.IsType<int>(resultData["roll"]);
         Assert.IsType<int>(resultData["total"]);
         Assert.IsType<string>(resultData["tier"]);
@@ -834,8 +825,8 @@ public class IslandDCTuningTests
         var morningFishing = morningCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         var afternoonFishing = afternoonCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         
-        var morningDC = ((SkillCheckActionParameters)morningFishing.Action.Parameters).DC;
-        var afternoonDC = ((SkillCheckActionParameters)afternoonFishing.Action.Parameters).DC;
+        var morningDC = ((SkillCheckActionParameters)morningFishing.Action.Parameters).Request.DC;
+        var afternoonDC = ((SkillCheckActionParameters)afternoonFishing.Action.Parameters).Request.DC;
         
         Assert.True(morningDC < afternoonDC, $"Morning DC ({morningDC}) should be lower than afternoon DC ({afternoonDC})");
     }
@@ -869,8 +860,8 @@ public class IslandDCTuningTests
         var rainyFishing = rainyCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         var clearFishing = clearCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         
-        var rainyDC = ((SkillCheckActionParameters)rainyFishing.Action.Parameters).DC;
-        var clearDC = ((SkillCheckActionParameters)clearFishing.Action.Parameters).DC;
+        var rainyDC = ((SkillCheckActionParameters)rainyFishing.Action.Parameters).Request.DC;
+        var clearDC = ((SkillCheckActionParameters)clearFishing.Action.Parameters).Request.DC;
         
         Assert.True(rainyDC < clearDC, $"Rainy DC ({rainyDC}) should be lower than clear DC ({clearDC})");
     }
@@ -902,8 +893,8 @@ public class IslandDCTuningTests
         var windyCoconut = windyCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         var clearCoconut = clearCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         
-        var windyDC = ((SkillCheckActionParameters)windyCoconut.Action.Parameters).DC;
-        var clearDC = ((SkillCheckActionParameters)clearCoconut.Action.Parameters).DC;
+        var windyDC = ((SkillCheckActionParameters)windyCoconut.Action.Parameters).Request.DC;
+        var clearDC = ((SkillCheckActionParameters)clearCoconut.Action.Parameters).Request.DC;
         
         Assert.True(windyDC < clearDC, $"Windy DC ({windyDC}) should be lower than clear DC ({clearDC})");
     }
@@ -935,8 +926,8 @@ public class IslandDCTuningTests
         var manyCoconutAction = manyCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         var fewCoconutAction = fewCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         
-        var manyDC = ((SkillCheckActionParameters)manyCoconutAction.Action.Parameters).DC;
-        var fewDC = ((SkillCheckActionParameters)fewCoconutAction.Action.Parameters).DC;
+        var manyDC = ((SkillCheckActionParameters)manyCoconutAction.Action.Parameters).Request.DC;
+        var fewDC = ((SkillCheckActionParameters)fewCoconutAction.Action.Parameters).Request.DC;
         
         Assert.True(fewDC > manyDC, $"Few coconuts DC ({fewDC}) should be higher than many coconuts DC ({manyDC})");
     }

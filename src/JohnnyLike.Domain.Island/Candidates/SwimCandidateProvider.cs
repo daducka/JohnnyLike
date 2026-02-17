@@ -23,23 +23,21 @@ public class SwimCandidateProvider : IIslandCandidateProvider
         else if (ctx.World.Weather == Weather.Rainy)
             baseDC += 1;
 
-        var modifier = ctx.Actor.GetSkillModifier("Survival");
-        var advantage = ctx.Actor.GetAdvantage("Survival");
-
-        var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
+        // Roll skill check at candidate generation time
+        var parameters = ctx.RollSkillCheck("Survival", baseDC, "water");
 
         var baseScore = 0.35 + (ctx.Actor.Morale < 30 ? 0.2 : 0.0);
-        baseScore *= estimatedChance;
 
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("swim"),
                 ActionKind.Interact,
-                new SkillCheckActionParameters(baseDC, modifier, advantage, "water"),
-                15.0 + ctx.Rng.NextDouble() * 5.0
+                parameters,
+                15.0 + ctx.Random.NextDouble() * 5.0,
+                parameters.ToResultData()
             ),
             baseScore,
-            $"Swim (DC {baseDC}, {estimatedChance:P0} chance)"
+            $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
         ));
     }
 

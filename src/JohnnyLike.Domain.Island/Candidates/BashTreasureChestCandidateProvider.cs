@@ -21,25 +21,23 @@ public class BashTreasureChestCandidateProvider : IIslandCandidateProvider
 
         // Calculate DC based on chest health
         var healthRatio = chest.Health / 100.0;
-        var dc = (int)(DC_MIN + healthRatio * (DC_MAX - DC_MIN));
+        var baseDC = (int)(DC_MIN + healthRatio * (DC_MAX - DC_MIN));
 
-        var modifier = DEFAULT_BASH_MODIFIER;
-        var advantage = AdvantageType.Normal;
-
-        var estimatedChance = DndMath.EstimateSuccessChanceD20(dc, modifier, advantage);
+        // Roll skill check at candidate generation time
+        var parameters = ctx.RollSkillCheck("Athletics", baseDC, "treasure_chest");
 
         var baseScore = 0.6; // High priority for treasure
-        baseScore *= estimatedChance;
 
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("bash_open_treasure_chest"),
                 ActionKind.Interact,
-                new SkillCheckActionParameters(dc, modifier, advantage, "treasure_chest"),
-                20.0 + ctx.Rng.NextDouble() * 5.0
+                parameters,
+                20.0 + ctx.Random.NextDouble() * 5.0,
+                parameters.ToResultData()
             ),
             baseScore,
-            $"Bash open treasure chest (DC {dc}, {estimatedChance:P0} chance)"
+            $"Bash open treasure chest (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
         ));
     }
 

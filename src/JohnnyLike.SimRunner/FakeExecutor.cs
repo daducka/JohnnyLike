@@ -34,7 +34,8 @@ public class FakeExecutor
             _engine.ReportActionComplete(actorId, new ActionOutcome(
                 action.Id,
                 ActionOutcomeType.Success,
-                actualDuration
+                actualDuration,
+                action.ResultData
             ));
             _runningActions.Remove(actorId);
         }

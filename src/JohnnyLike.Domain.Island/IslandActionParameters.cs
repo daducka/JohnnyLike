@@ -1,44 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
-using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island;
-
-/// <summary>
-/// Parameters for actions that require a skill check.
-/// </summary>
-public record SkillCheckActionParameters(
-    int DC,
-    int Modifier,
-    AdvantageType Advantage,
-    string Location
-) : ActionParameters
-{
-    public override Dictionary<string, object> ToDictionary() => new()
-    {
-        ["dc"] = DC,
-        ["modifier"] = Modifier,
-        ["advantage"] = Advantage.ToString(),
-        ["location"] = Location
-    };
-}
-
-/// <summary>
-/// Parameters for vignette actions (special events).
-/// </summary>
-public record VignetteActionParameters(
-    int DC,
-    int Modifier,
-    AdvantageType Advantage
-) : ActionParameters
-{
-    public override Dictionary<string, object> ToDictionary() => new()
-    {
-        ["dc"] = DC,
-        ["modifier"] = Modifier,
-        ["advantage"] = Advantage.ToString(),
-        ["vignette"] = true
-    };
-}
 
 /// <summary>
 /// Parameters for location-based actions without skill checks.

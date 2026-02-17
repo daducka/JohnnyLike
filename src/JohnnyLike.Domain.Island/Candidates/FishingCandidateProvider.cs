@@ -34,30 +34,25 @@ public class FishingCandidateProvider : IIslandCandidateProvider
         if (ctx.Actor.Energy < 30.0)
             baseDC += 2;
 
-        var modifier = ctx.Actor.GetSkillModifier("Fishing");
-        var advantage = ctx.Actor.GetAdvantage("Fishing");
-
-        var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
+        // Roll skill check at candidate generation time
+        var parameters = ctx.RollSkillCheck("Fishing", baseDC, "shore");
 
         var baseScore = 0.5 + (ctx.Actor.Hunger / 100.0);
         if (ctx.Actor.Hunger > 70.0 || ctx.Actor.Energy < 20.0)
         {
             baseScore = 1.0;
         }
-        else
-        {
-            baseScore *= estimatedChance;
-        }
 
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("fish_for_food"),
                 ActionKind.Interact,
-                new SkillCheckActionParameters(baseDC, modifier, advantage, "shore"),
-                15.0 + ctx.Rng.NextDouble() * 5.0
+                parameters,
+                15.0 + ctx.Random.NextDouble() * 5.0,
+                parameters.ToResultData()
             ),
             baseScore,
-            $"Fishing (DC {baseDC}, {estimatedChance:P0} chance)"
+            $"Fishing (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
         ));
     }
 

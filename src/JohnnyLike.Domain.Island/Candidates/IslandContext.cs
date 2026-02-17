@@ -38,4 +38,24 @@ public class IslandContext
     {
         return Actor.Hunger > 80.0 || Actor.Energy < 15.0;
     }
+
+    /// <summary>
+    /// Helper to roll a skill check and return both parameters and result data.
+    /// Encapsulates the common pattern of skill check resolution at candidate generation time.
+    /// </summary>
+    public SkillCheckActionParameters RollSkillCheck(
+        string skillId,
+        int baseDC,
+        string location)
+    {
+        var modifier = Actor.GetSkillModifier(skillId);
+        var advantage = Actor.GetAdvantage(skillId);
+
+        var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
+        var result = SkillCheckResolver.Resolve(Rng, request);
+
+        var parameters = new SkillCheckActionParameters(request, result, location);
+
+        return parameters;
+    }
 }

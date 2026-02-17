@@ -21,30 +21,25 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
         if (ctx.World.Weather == Weather.Windy)
             baseDC -= 1;
 
-        var modifier = ctx.Actor.GetSkillModifier("Survival");
-        var advantage = ctx.Actor.GetAdvantage("Survival");
-
-        var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
+        // Roll skill check at candidate generation time
+        var parameters = ctx.RollSkillCheck("Survival", baseDC, "palm_tree");
 
         var baseScore = 0.4 + (ctx.Actor.Hunger / 150.0);
         if (ctx.Actor.Hunger > 70.0)
         {
             baseScore = 0.9;
         }
-        else
-        {
-            baseScore *= estimatedChance;
-        }
 
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("shake_tree_coconut"),
                 ActionKind.Interact,
-                new SkillCheckActionParameters(baseDC, modifier, advantage, "palm_tree"),
-                10.0 + ctx.Rng.NextDouble() * 5.0
+                parameters,
+                10.0 + ctx.Random.NextDouble() * 5.0,
+                parameters.ToResultData()
             ),
             baseScore,
-            $"Get coconut (DC {baseDC}, {estimatedChance:P0} chance)"
+            $"Get coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
         ));
     }
 

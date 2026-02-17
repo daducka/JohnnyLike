@@ -46,14 +46,20 @@ public class TreasureChestTests
         var swimAction = new ActionSpec(
             new ActionId("swim"),
             ActionKind.Interact,
-            new SkillCheckActionParameters(10, 0, AdvantageType.Normal, "water"),
+            new SkillCheckActionParameters(
+                    new SkillCheckRequest(10, 0, AdvantageType.Normal, "Survival"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
+                    "water"),
             15.0
         );
         
         // Set current action on actor
         actor.CurrentAction = swimAction;
         
-        var resultData = new Dictionary<string, object>();
+        var resultData = new Dictionary<string, object>
+        {
+            ["tier"] = "CriticalSuccess"
+        };
         var outcome = new ActionOutcome(
             new ActionId("swim"),
             ActionOutcomeType.Success,
@@ -61,8 +67,7 @@ public class TreasureChestTests
             resultData
         );
         
-        // Use a fixed RNG to force critical success
-        // A roll of 20 is always a critical success
+        // No longer need RNG since tier is pre-populated
         var rng = new FixedRngStream(20);
         
         domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
@@ -125,14 +130,20 @@ public class TreasureChestTests
         var bashAction = new ActionSpec(
             new ActionId("bash_open_treasure_chest"),
             ActionKind.Interact,
-            new SkillCheckActionParameters(20, 0, AdvantageType.Normal, "treasure_chest"),
+            new SkillCheckActionParameters(
+                    new SkillCheckRequest(20, 0, AdvantageType.Normal, "Athletics"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
+                    "treasure_chest"),
             20.0
         );
         
         // Set current action on actor
         actor.CurrentAction = bashAction;
         
-        var resultData = new Dictionary<string, object>();
+        var resultData = new Dictionary<string, object>
+        {
+            ["tier"] = "Failure"
+        };
         var outcome = new ActionOutcome(
             new ActionId("bash_open_treasure_chest"),
             ActionOutcomeType.Success,
@@ -140,7 +151,7 @@ public class TreasureChestTests
             resultData
         );
         
-        // Use fixed RNG for regular failure (roll 8, DC 20 = failure)
+        // No longer need RNG since tier is pre-populated
         var rng = new FixedRngStream(8);
         
         domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
@@ -177,14 +188,20 @@ public class TreasureChestTests
         var bashAction = new ActionSpec(
             new ActionId("bash_open_treasure_chest"),
             ActionKind.Interact,
-            new SkillCheckActionParameters(10, 0, AdvantageType.Normal, "treasure_chest"),
+            new SkillCheckActionParameters(
+                    new SkillCheckRequest(10, 0, AdvantageType.Normal, "Athletics"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
+                    "treasure_chest"),
             20.0
         );
         
         // Set current action on actor
         actor.CurrentAction = bashAction;
         
-        var resultData = new Dictionary<string, object>();
+        var resultData = new Dictionary<string, object>
+        {
+            ["tier"] = "Success"
+        };
         var outcome = new ActionOutcome(
             new ActionId("bash_open_treasure_chest"),
             ActionOutcomeType.Success,
@@ -192,7 +209,7 @@ public class TreasureChestTests
             resultData
         );
         
-        // Use fixed RNG for success (roll 15, DC 10 = success)
+        // No longer need RNG since tier is pre-populated
         var rng = new FixedRngStream(15);
         
         domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
@@ -229,21 +246,27 @@ public class TreasureChestTests
         var bashAction = new ActionSpec(
             new ActionId("bash_open_treasure_chest"),
             ActionKind.Interact,
-            new SkillCheckActionParameters(20, 0, AdvantageType.Normal, "treasure_chest"),
+            new SkillCheckActionParameters(
+                    new SkillCheckRequest(20, 0, AdvantageType.Normal, "Athletics"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
+                    "treasure_chest"),
             20.0
         );
         
         // Set current action on actor
         actor.CurrentAction = bashAction;
         
-        var resultData1 = new Dictionary<string, object>();
+        var resultData1 = new Dictionary<string, object>
+        {
+            ["tier"] = "Failure"
+        };
         var outcome1 = new ActionOutcome(
             new ActionId("bash_open_treasure_chest"),
             ActionOutcomeType.Success,
             20.0,
             resultData1
         );
-        var rng1 = new FixedRngStream(8); // Regular failure
+        var rng1 = new FixedRngStream(8); // No longer used
         
         domain.ApplyActionEffects(actorId, outcome1, actor, world, rng1);
         
@@ -255,14 +278,17 @@ public class TreasureChestTests
         // Reset current action for second bash
         actor.CurrentAction = bashAction;
         
-        var resultData2 = new Dictionary<string, object>();
+        var resultData2 = new Dictionary<string, object>
+        {
+            ["tier"] = "Failure"
+        };
         var outcome2 = new ActionOutcome(
             new ActionId("bash_open_treasure_chest"),
             ActionOutcomeType.Success,
             20.0,
             resultData2
         );
-        var rng2 = new FixedRngStream(8); // Regular failure
+        var rng2 = new FixedRngStream(8); // No longer used
         
         domain.ApplyActionEffects(actorId, outcome2, actor, world, rng2);
         
@@ -297,8 +323,8 @@ public class TreasureChestTests
         var paramsLow = (SkillCheckActionParameters)bashCandidateLow.Action.Parameters;
         
         // DC should be lower for damaged chest
-        Assert.True(paramsLow.DC < paramsHigh.DC, 
-            $"Damaged chest DC ({paramsLow.DC}) should be lower than full health DC ({paramsHigh.DC})");
+        Assert.True(paramsLow.Request.DC < paramsHigh.Request.DC, 
+            $"Damaged chest DC ({paramsLow.Request.DC}) should be lower than full health DC ({paramsHigh.Request.DC})");
     }
 
     [Fact]
