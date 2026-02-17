@@ -6,6 +6,9 @@ namespace JohnnyLike.Domain.Island.Candidates;
 [IslandCandidateProvider(200, "fish_for_food")]
 public class FishingCandidateProvider : IIslandCandidateProvider
 {
+    private static readonly ResourceId PrimaryFishingSpot = new("island:fishing:spot:primary");
+    private static readonly ResourceId SecondaryFishingSpot = new("island:fishing:spot:secondary");
+
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
         if (ctx.World.FishAvailable < 5.0)
@@ -34,14 +37,35 @@ public class FishingCandidateProvider : IIslandCandidateProvider
         if (ctx.Actor.Energy < 30.0)
             baseDC += 2;
 
-        // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck(SkillType.Fishing, baseDC, "shore");
-
         var baseScore = 0.5 + (ctx.Actor.Hunger / 100.0);
         if (ctx.Actor.Hunger > 70.0 || ctx.Actor.Energy < 20.0)
         {
             baseScore = 1.0;
         }
+
+        // Check fishing spot availability and prefer primary
+        bool primaryAvailable = !ctx.ResourceAvailability.IsReserved(PrimaryFishingSpot);
+        bool secondaryAvailable = !ctx.ResourceAvailability.IsReserved(SecondaryFishingSpot);
+
+        if (!primaryAvailable && !secondaryAvailable)
+        {
+            // Both spots reserved, no fishing candidate
+            return;
+        }
+
+        // Prefer primary spot if available
+        ResourceId chosenSpot;
+        if (primaryAvailable)
+        {
+            chosenSpot = PrimaryFishingSpot;
+        }
+        else
+        {
+            chosenSpot = SecondaryFishingSpot;
+        }
+
+        // Roll skill check at candidate generation time
+        var parameters = ctx.RollSkillCheck(SkillType.Fishing, baseDC);
 
         output.Add(new ActionCandidate(
             new ActionSpec(
@@ -49,7 +73,8 @@ public class FishingCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 15.0 + ctx.Random.NextDouble() * 5.0,
-                parameters.ToResultData()
+                parameters.ToResultData(),
+                new List<ResourceRequirement> { new ResourceRequirement(chosenSpot) }
             ),
             baseScore,
             $"Fishing (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"

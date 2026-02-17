@@ -18,7 +18,8 @@ public interface IDomainPack
         ActorState actorState,
         WorldState worldState,
         double currentTime,
-        Random rng);
+        Random rng,
+        IResourceAvailability resourceAvailability);
     
     void ApplyActionEffects(
         ActorId actorId,

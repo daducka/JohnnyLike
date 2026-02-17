@@ -6,6 +6,8 @@ namespace JohnnyLike.Domain.Island.Candidates;
 [IslandCandidateProvider(400, "build_sand_castle")]
 public class SandCastleCandidateProvider : IIslandCandidateProvider
 {
+    private static readonly ResourceId BeachSandcastleSpot = new("island:resource:beach:sandcastle_spot");
+
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
         var baseDC = 8;
@@ -14,7 +16,7 @@ public class SandCastleCandidateProvider : IIslandCandidateProvider
             baseDC += 4;
 
         // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck(SkillType.Performance, baseDC, "beach");
+        var parameters = ctx.RollSkillCheck(SkillType.Performance, baseDC);
 
         var baseScore = 0.3 + (ctx.Actor.Boredom / 100.0);
 
@@ -24,7 +26,8 @@ public class SandCastleCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 20.0 + ctx.Random.NextDouble() * 10.0,
-                parameters.ToResultData()
+                parameters.ToResultData(),
+                new List<ResourceRequirement> { new ResourceRequirement(BeachSandcastleSpot) }
             ),
             baseScore,
             $"Build sand castle (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"

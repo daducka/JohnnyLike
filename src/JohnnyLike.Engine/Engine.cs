@@ -105,16 +105,25 @@ public class Engine
             actorState.CurrentAction = action;
             actorState.LastDecisionTime = _currentTime;
 
+            var details = new Dictionary<string, object>
+            {
+                ["actionId"] = action.Id.Value,
+                ["actionKind"] = action.Kind.ToString(),
+                ["estimatedDuration"] = action.EstimatedDuration
+            };
+            
+            // Include resource requirements if present
+            if (action.ResourceRequirements != null && action.ResourceRequirements.Count > 0)
+            {
+                details["resourceRequirements"] = string.Join(", ", 
+                    action.ResourceRequirements.Select(r => r.ResourceId.Value));
+            }
+
             _traceSink.Record(new TraceEvent(
                 _currentTime,
                 actorId,
                 "ActionAssigned",
-                new Dictionary<string, object>
-                {
-                    ["actionId"] = action.Id.Value,
-                    ["actionKind"] = action.Kind.ToString(),
-                    ["estimatedDuration"] = action.EstimatedDuration
-                }
+                details
             ));
 
             return true;
@@ -174,6 +183,9 @@ public class Engine
 
         // Record for variety
         _varietyMemory.RecordAction(actorId.Value, outcome.ActionId.Value, _currentTime);
+
+        // Release action reservations
+        _director.ReleaseActionReservations(actorId);
 
         // Handle scene join
         if (actorState.CurrentAction?.Kind == ActionKind.JoinScene)

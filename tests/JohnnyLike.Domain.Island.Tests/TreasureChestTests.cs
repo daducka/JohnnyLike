@@ -48,8 +48,7 @@ public class TreasureChestTests
             ActionKind.Interact,
             new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 0, AdvantageType.Normal, "Survival"),
-                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
-                    "water"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
             15.0
         );
         
@@ -93,7 +92,7 @@ public class TreasureChestTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         // No chest present - no bash candidate
-        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
         Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "bash_open_treasure_chest");
         
         // Spawn chest
@@ -103,12 +102,12 @@ public class TreasureChestTests
         world.WorldItems.Add(chest);
         
         // Bash candidate should appear
-        candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
+        candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
         Assert.Contains(candidates, c => c.Action.Id.Value == "bash_open_treasure_chest");
         
         // Open chest - bash candidate should disappear
         world.TreasureChest!.IsOpened = true;
-        candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
+        candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
         Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "bash_open_treasure_chest");
     }
 
@@ -132,8 +131,7 @@ public class TreasureChestTests
             ActionKind.Interact,
             new SkillCheckActionParameters(
                     new SkillCheckRequest(20, 0, AdvantageType.Normal, "Athletics"),
-                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
-                    "treasure_chest"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
             20.0
         );
         
@@ -190,8 +188,7 @@ public class TreasureChestTests
             ActionKind.Interact,
             new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 0, AdvantageType.Normal, "Athletics"),
-                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
-                    "treasure_chest"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
             20.0
         );
         
@@ -248,8 +245,7 @@ public class TreasureChestTests
             ActionKind.Interact,
             new SkillCheckActionParameters(
                     new SkillCheckRequest(20, 0, AdvantageType.Normal, "Athletics"),
-                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
-                    "treasure_chest"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
             20.0
         );
         
@@ -311,14 +307,14 @@ public class TreasureChestTests
         chest.Health = 100.0;
         world.WorldItems.Add(chest);
         
-        var candidatesHigh = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
+        var candidatesHigh = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
         var bashCandidateHigh = candidatesHigh.First(c => c.Action.Id.Value == "bash_open_treasure_chest");
         var paramsHigh = (SkillCheckActionParameters)bashCandidateHigh.Action.Parameters;
         
         // Low health chest
         world.TreasureChest!.Health = 10.0;
         
-        var candidatesLow = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
+        var candidatesLow = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
         var bashCandidateLow = candidatesLow.First(c => c.Action.Id.Value == "bash_open_treasure_chest");
         var paramsLow = (SkillCheckActionParameters)bashCandidateLow.Action.Parameters;
         

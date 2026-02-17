@@ -51,8 +51,7 @@ public class SharkTests
             ActionKind.Interact,
             new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 0, AdvantageType.Normal, "Survival"),
-                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
-                    "water"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
             15.0
         );
         
@@ -98,7 +97,7 @@ public class SharkTests
         actor.Energy = 50.0; // Ensure actor has enough energy
         
         // First, verify swim candidates are generated when no shark
-        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
         Assert.Contains(candidates, c => c.Action.Id.Value == "swim");
         
         // Spawn a shark
@@ -107,7 +106,7 @@ public class SharkTests
         world.WorldItems.Add(shark);
         
         // Verify no swim candidates are generated while shark is present
-        candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
+        candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
         Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "swim");
     }
 
@@ -134,7 +133,7 @@ public class SharkTests
         
         // Verify swim candidates reappear
         actor.Energy = 50.0;
-        var candidates = domain.GenerateCandidates(actorId, actor, world, 150.0, new Random(42));
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 150.0, new Random(42), new EmptyResourceAvailability());
         Assert.Contains(candidates, c => c.Action.Id.Value == "swim");
     }
 

@@ -10,6 +10,8 @@ public class BashTreasureChestCandidateProvider : IIslandCandidateProvider
     private const double DC_MIN = 10.0;
     private const double DC_MAX = 20.0;
     private const int DEFAULT_BASH_MODIFIER = 0; // TODO: Could be derived from strength/fitness stat later
+    
+    private static readonly ResourceId TreasureChestResource = new("island:resource:treasure_chest");
 
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
@@ -24,7 +26,7 @@ public class BashTreasureChestCandidateProvider : IIslandCandidateProvider
         var baseDC = (int)(DC_MIN + healthRatio * (DC_MAX - DC_MIN));
 
         // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck(SkillType.Athletics, baseDC, "treasure_chest");
+        var parameters = ctx.RollSkillCheck(SkillType.Athletics, baseDC);
 
         var baseScore = 0.6; // High priority for treasure
 
@@ -34,7 +36,8 @@ public class BashTreasureChestCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 20.0 + ctx.Random.NextDouble() * 5.0,
-                parameters.ToResultData()
+                parameters.ToResultData(),
+                new List<ResourceRequirement> { new ResourceRequirement(TreasureChestResource) }
             ),
             baseScore,
             $"Bash open treasure chest (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"

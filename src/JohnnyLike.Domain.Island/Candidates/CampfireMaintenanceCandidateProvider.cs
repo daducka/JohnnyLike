@@ -7,6 +7,8 @@ namespace JohnnyLike.Domain.Island.Candidates;
 [IslandCandidateProvider(150, "add_fuel_campfire", "relight_campfire", "repair_campfire", "rebuild_campfire")]
 public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
 {
+    private static readonly ResourceId CampfireResource = new("island:resource:campfire");
+
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
         var campfire = ctx.World.MainCampfire;
@@ -24,7 +26,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.1);
 
             var baseDC = 10;
-            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "campfire");
+            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
 
             var baseScore = 0.3 + (urgency * 0.5 * foresightMultiplier);
 
@@ -34,7 +36,8 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     20.0 + ctx.Random.NextDouble() * 5.0,
-                    parameters.ToResultData()
+                    parameters.ToResultData(),
+                    new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
                 $"Add fuel to campfire (fuel: {campfire.FuelSeconds:F0}s, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
@@ -47,7 +50,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.15);
 
             var baseDC = 12;
-            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "campfire");
+            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
 
             var baseScore = urgency * foresightMultiplier;
 
@@ -57,7 +60,8 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     30.0 + ctx.Random.NextDouble() * 10.0,
-                    parameters.ToResultData()
+                    parameters.ToResultData(),
+                    new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
                 $"Relight campfire (quality: {campfire.Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
@@ -70,7 +74,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.12);
 
             var baseDC = 11;
-            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "campfire");
+            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
 
             var baseScore = 0.2 + (urgency * 0.4 * foresightMultiplier);
 
@@ -80,7 +84,8 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     25.0 + ctx.Random.NextDouble() * 5.0,
-                    parameters.ToResultData()
+                    parameters.ToResultData(),
+                    new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
                 $"Repair campfire (quality: {campfire.Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
@@ -92,7 +97,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var baseDC = 15;
             var foresightMultiplier = 1.0 + (foresightBonus * 0.2);
 
-            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC, "campfire");
+            var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
 
             var baseScore = 1.0 * foresightMultiplier;
 
@@ -102,7 +107,8 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     60.0 + ctx.Random.NextDouble() * 20.0,
-                    parameters.ToResultData()
+                    parameters.ToResultData(),
+                    new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
                 $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"

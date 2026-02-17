@@ -8,16 +8,17 @@ namespace JohnnyLike.Domain.Kit.Dice;
 /// </summary>
 public record SkillCheckActionParameters(
     SkillCheckRequest Request,
-    SkillCheckResult Result,
-    string Location
+    SkillCheckResult Result
 ) : ActionParameters
 {
-    public override Dictionary<string, object> ToDictionary() => new()
+    public override Dictionary<string, object> ToDictionary()
     {
-        ["request"] = Request.ToDictionary(),
-        ["result"] = Result.ToDictionary(),
-        ["location"] = Location
-    };
+        return new Dictionary<string, object>
+        {
+            ["request"] = Request.ToDictionary(),
+            ["result"] = Result.ToDictionary()
+        };
+    }
     
     /// <summary>
     /// Creates a combined dictionary with all skill check data for ActionSpec.ResultData.

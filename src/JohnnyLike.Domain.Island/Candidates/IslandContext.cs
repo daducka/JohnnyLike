@@ -11,6 +11,7 @@ public class IslandContext
     public double NowSeconds { get; }
     public IRngStream Rng { get; }
     public Random Random { get; }
+    public IResourceAvailability ResourceAvailability { get; }
 
     public IslandContext(
         ActorId actorId,
@@ -18,7 +19,8 @@ public class IslandContext
         IslandWorldState world,
         double nowSeconds,
         IRngStream rng,
-        Random random)
+        Random random,
+        IResourceAvailability resourceAvailability)
     {
         ActorId = actorId;
         Actor = actor;
@@ -26,6 +28,7 @@ public class IslandContext
         NowSeconds = nowSeconds;
         Rng = rng;
         Random = random;
+        ResourceAvailability = resourceAvailability;
     }
 
     // Helper methods for scoring
@@ -45,8 +48,7 @@ public class IslandContext
     /// </summary>
     public SkillCheckActionParameters RollSkillCheck(
         SkillType skillType,
-        int baseDC,
-        string location)
+        int baseDC)
     {
         var modifier = Actor.GetSkillModifier(skillType);
         var advantage = Actor.GetAdvantage(skillType);
@@ -54,7 +56,7 @@ public class IslandContext
         var request = new SkillCheckRequest(baseDC, modifier, advantage, skillType.ToString());
         var result = SkillCheckResolver.Resolve(Rng, request);
 
-        var parameters = new SkillCheckActionParameters(request, result, location);
+        var parameters = new SkillCheckActionParameters(request, result);
 
         return parameters;
     }

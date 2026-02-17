@@ -2,7 +2,7 @@ using JohnnyLike.Domain.Abstractions;
 
 namespace JohnnyLike.Engine;
 
-public class ReservationTable
+public class ReservationTable : IResourceAvailability
 {
     private readonly Dictionary<ResourceId, (SceneId Scene, ActorId? Actor, double Until)> _reservations = new();
 

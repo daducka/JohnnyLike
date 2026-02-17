@@ -67,7 +67,7 @@ public class IslandDomainPackTests
         var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
         var worldState = domain.CreateInitialWorldState();
         
-        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         
         Assert.Contains(candidates, c => c.Action.Id.Value == "fish_for_food");
     }
@@ -82,8 +82,8 @@ public class IslandDomainPackTests
         var highHungerState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 80.0 });
         var worldState = domain.CreateInitialWorldState();
         
-        var lowHungerCandidates = domain.GenerateCandidates(actorId, lowHungerState, worldState, 0.0, new Random(42));
-        var highHungerCandidates = domain.GenerateCandidates(actorId, highHungerState, worldState, 0.0, new Random(42));
+        var lowHungerCandidates = domain.GenerateCandidates(actorId, lowHungerState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
+        var highHungerCandidates = domain.GenerateCandidates(actorId, highHungerState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         
         var lowFishingScore = lowHungerCandidates.First(c => c.Action.Id.Value == "fish_for_food").Score;
         var highFishingScore = highHungerCandidates.First(c => c.Action.Id.Value == "fish_for_food").Score;
@@ -101,8 +101,8 @@ public class IslandDomainPackTests
         var lowEnergyState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["energy"] = 20.0 });
         var worldState = domain.CreateInitialWorldState();
         
-        var highEnergyCandidates = domain.GenerateCandidates(actorId, highEnergyState, worldState, 0.0, new Random(42));
-        var lowEnergyCandidates = domain.GenerateCandidates(actorId, lowEnergyState, worldState, 0.0, new Random(42));
+        var highEnergyCandidates = domain.GenerateCandidates(actorId, highEnergyState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
+        var lowEnergyCandidates = domain.GenerateCandidates(actorId, lowEnergyState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         
         var highSleepScore = highEnergyCandidates.First(c => c.Action.Id.Value == "sleep_under_tree").Score;
         var lowSleepScore = lowEnergyCandidates.First(c => c.Action.Id.Value == "sleep_under_tree").Score;
@@ -128,7 +128,7 @@ public class IslandDomainPackTests
         var actorState = domain.CreateActorState(actorId);
         var worldState = domain.CreateInitialWorldState();
         
-        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         
         // Should have candidates from at least these providers:
         // - ChatCandidateProvider (may or may not add depending on pending chat actions)
@@ -153,7 +153,7 @@ public class IslandDomainPackTests
         var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
         var worldState = domain.CreateInitialWorldState();
         
-        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         
         // Idle must always be present
         Assert.Contains(candidates, c => c.Action.Id.Value == "idle");
@@ -180,7 +180,7 @@ public class IslandDomainPackTests
             EnqueuedAt = 0.0
         });
         
-        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         
         // Should have the clap emote candidate
         Assert.Contains(candidates, c => c.Action.Id.Value == "clap_emote");
@@ -207,7 +207,7 @@ public class IslandDomainPackTests
             EnqueuedAt = 0.0
         });
         
-        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         
         // Should NOT have the clap emote candidate because survival is critical
         Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "clap_emote");
@@ -404,8 +404,7 @@ public class IslandActionEffectsTests
                 ActionKind.Interact,
                 new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 3, AdvantageType.Normal, "Fishing"),
-                    new SkillCheckResult(10, 10 + 3, RollOutcomeTier.Success, true, 0.5),
-                    "shore"),
+                    new SkillCheckResult(10, 10 + 3, RollOutcomeTier.Success, true, 0.5)),
                 15.0
             )
         };
@@ -466,7 +465,7 @@ public class IslandActionEffectsTests
         var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
         var worldState = domain.CreateInitialWorldState();
         
-        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         
         var fishingCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "fish_for_food");
         Assert.NotNull(fishingCandidate);
@@ -601,7 +600,7 @@ public class IslandSignalHandlingTests
         });
         var worldState = new IslandWorldState();
         
-        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 10.0, new Random(42));
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 10.0, new Random(42), new EmptyResourceAvailability());
         
         // Should have a write_name_sand candidate with high priority
         var writeSandCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "write_name_sand");
@@ -630,7 +629,7 @@ public class IslandSignalHandlingTests
         });
         var worldState = new IslandWorldState();
         
-        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 10.0, new Random(42));
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 10.0, new Random(42), new EmptyResourceAvailability());
         
         // Should NOT have clap emote when survival is critical
         var clapCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "clap_emote");
@@ -819,8 +818,8 @@ public class IslandDCTuningTests
             FishAvailable = 100.0
         };
         
-        var morningCandidates = domain.GenerateCandidates(actorId, actorState, morningWorld, 0.0, new Random(42));
-        var afternoonCandidates = domain.GenerateCandidates(actorId, actorState, afternoonWorld, 0.0, new Random(42));
+        var morningCandidates = domain.GenerateCandidates(actorId, actorState, morningWorld, 0.0, new Random(42), new EmptyResourceAvailability());
+        var afternoonCandidates = domain.GenerateCandidates(actorId, actorState, afternoonWorld, 0.0, new Random(42), new EmptyResourceAvailability());
         
         var morningFishing = morningCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         var afternoonFishing = afternoonCandidates.First(c => c.Action.Id.Value == "fish_for_food");
@@ -854,8 +853,8 @@ public class IslandDCTuningTests
             FishAvailable = 100.0
         };
         
-        var rainyCandidates = domain.GenerateCandidates(actorId, actorState, rainyWorld, 0.0, new Random(42));
-        var clearCandidates = domain.GenerateCandidates(actorId, actorState, clearWorld, 0.0, new Random(42));
+        var rainyCandidates = domain.GenerateCandidates(actorId, actorState, rainyWorld, 0.0, new Random(42), new EmptyResourceAvailability());
+        var clearCandidates = domain.GenerateCandidates(actorId, actorState, clearWorld, 0.0, new Random(42), new EmptyResourceAvailability());
         
         var rainyFishing = rainyCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         var clearFishing = clearCandidates.First(c => c.Action.Id.Value == "fish_for_food");
@@ -887,8 +886,8 @@ public class IslandDCTuningTests
             CoconutsAvailable = 5
         };
         
-        var windyCandidates = domain.GenerateCandidates(actorId, actorState, windyWorld, 0.0, new Random(42));
-        var clearCandidates = domain.GenerateCandidates(actorId, actorState, clearWorld, 0.0, new Random(42));
+        var windyCandidates = domain.GenerateCandidates(actorId, actorState, windyWorld, 0.0, new Random(42), new EmptyResourceAvailability());
+        var clearCandidates = domain.GenerateCandidates(actorId, actorState, clearWorld, 0.0, new Random(42), new EmptyResourceAvailability());
         
         var windyCoconut = windyCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         var clearCoconut = clearCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
@@ -920,8 +919,8 @@ public class IslandDCTuningTests
             CoconutsAvailable = 2
         };
         
-        var manyCandidates = domain.GenerateCandidates(actorId, actorState, manyCoconutsWorld, 0.0, new Random(42));
-        var fewCandidates = domain.GenerateCandidates(actorId, actorState, fewCoconutsWorld, 0.0, new Random(42));
+        var manyCandidates = domain.GenerateCandidates(actorId, actorState, manyCoconutsWorld, 0.0, new Random(42), new EmptyResourceAvailability());
+        var fewCandidates = domain.GenerateCandidates(actorId, actorState, fewCoconutsWorld, 0.0, new Random(42), new EmptyResourceAvailability());
         
         var manyCoconutAction = manyCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         var fewCoconutAction = fewCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
@@ -1007,11 +1006,11 @@ public class IslandCooldownSerializationTests
         var worldState = new IslandWorldState();
         
         // At time 100, cooldown is not expired (only 50 seconds elapsed, need 600)
-        var candidatesEarly = domain.GenerateCandidates(actorId, actorState, worldState, 100.0, new Random(42));
+        var candidatesEarly = domain.GenerateCandidates(actorId, actorState, worldState, 100.0, new Random(42), new EmptyResourceAvailability());
         var hasPlaneEarly = candidatesEarly.Any(c => c.Action.Id.Value == "plane_sighting");
         
         // At time 700, cooldown is expired (650 seconds elapsed, exceeds 600)
-        var candidatesLate = domain.GenerateCandidates(actorId, actorState, worldState, 700.0, new Random(42));
+        var candidatesLate = domain.GenerateCandidates(actorId, actorState, worldState, 700.0, new Random(42), new EmptyResourceAvailability());
         // Note: This might not always have plane_sighting due to random chance, but cooldown is no longer preventing it
         
         Assert.False(hasPlaneEarly, "Plane sighting should not appear when cooldown is active");
