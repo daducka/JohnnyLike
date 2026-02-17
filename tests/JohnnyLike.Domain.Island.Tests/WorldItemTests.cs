@@ -126,7 +126,8 @@ public class ShelterItemTests
     public void ShelterItem_DecaysInNormalWeather()
     {
         var shelter = new ShelterItem();
-        var world = new IslandWorldState { Weather = Weather.Clear };
+        var world = new IslandWorldState();
+        world.WorldStats.Add(new WeatherStat { Weather = Weather.Clear });
         
         var initialQuality = shelter.Quality;
         shelter.Tick(100.0, world);

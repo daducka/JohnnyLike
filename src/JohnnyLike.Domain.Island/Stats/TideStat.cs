@@ -23,16 +23,36 @@ public class TideStat : WorldStat
         yield return "time_of_day";
     }
 
-    public override void Tick(double dtSeconds, WorldState worldState)
+    public override List<TraceEvent> Tick(double dtSeconds, WorldState worldState, double currentTime)
     {
+        var events = new List<TraceEvent>();
         var island = (IslandWorldState)worldState;
         var timeOfDayStat = island.GetStat<TimeOfDayStat>("time_of_day");
         
         if (timeOfDayStat != null)
         {
+            var oldTideLevel = TideLevel;
             var tidePhase = (timeOfDayStat.TimeOfDay * 24.0) % 12.0;
             TideLevel = tidePhase >= 6.0 ? TideLevel.High : TideLevel.Low;
+            
+            // Log tide changes
+            if (TideLevel != oldTideLevel)
+            {
+                events.Add(new TraceEvent(
+                    currentTime,
+                    null,
+                    "TideChanged",
+                    new Dictionary<string, object>
+                    {
+                        ["oldTide"] = oldTideLevel.ToString(),
+                        ["newTide"] = TideLevel.ToString(),
+                        ["timeOfDay"] = Math.Round(timeOfDayStat.TimeOfDay * 24.0, 2)
+                    }
+                ));
+            }
         }
+        
+        return events;
     }
 
     public override Dictionary<string, object> SerializeToDict()

@@ -18,8 +18,8 @@ public class IslandDomainPackTests
         
         Assert.IsType<IslandWorldState>(world);
         var islandWorld = (IslandWorldState)world;
-        Assert.Equal(0, islandWorld.DayCount);
-        Assert.InRange(islandWorld.FishAvailable, 0, 100);
+        Assert.Equal(0, islandWorld.GetStat<TimeOfDayStat>("time_of_day")!.DayCount);
+        Assert.InRange(islandWorld.GetStat<FishPopulationStat>("fish_population")!.FishAvailable, 0, 100);
     }
 
     [Fact]
@@ -271,7 +271,7 @@ public class IslandWorldStateTests
         
         world.OnTimeAdvanced(0.0, 21600.0);
         
-        Assert.InRange(world.TimeOfDay, 0.74, 0.76);
+        Assert.InRange(world.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay, 0.74, 0.76);
     }
 
     [Fact]
@@ -283,8 +283,8 @@ public class IslandWorldStateTests
         
         world.OnTimeAdvanced(0.0, 8640.0);
         
-        Assert.Equal(1, world.DayCount);
-        Assert.InRange(world.TimeOfDay, 0.0, 0.1);
+        Assert.Equal(1, world.GetStat<TimeOfDayStat>("time_of_day")!.DayCount);
+        Assert.InRange(world.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay, 0.0, 0.1);
     }
 
     [Fact]
@@ -295,7 +295,7 @@ public class IslandWorldStateTests
         
         world.OnTimeAdvanced(0.0, 60.0);
         
-        Assert.Equal(55.0, world.FishAvailable, 1);
+        Assert.Equal(55.0, world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable, 1);
     }
 
     [Fact]
@@ -307,7 +307,7 @@ public class IslandWorldStateTests
         
         world.OnTimeAdvanced(0.0, 10000.0);
         
-        Assert.Equal(5, world.CoconutsAvailable);
+        Assert.Equal(5, world.GetStat<CoconutAvailabilityStat>("coconut_availability")!.CoconutsAvailable);
     }
 
     [Fact]
@@ -319,7 +319,7 @@ public class IslandWorldStateTests
         
         world.OnTimeAdvanced(0.0, 0.0);
         
-        Assert.True(world.TideLevel == TideLevel.Low || world.TideLevel == TideLevel.High);
+        Assert.True(world.GetStat<TideStat>("tide")!.TideLevel == TideLevel.Low || world.GetStat<TideStat>("tide")!.TideLevel == TideLevel.High);
     }
 }
 
@@ -417,7 +417,8 @@ public class IslandActionEffectsTests
                 15.0
             )
         };
-        var worldState = new IslandWorldState { FishAvailable = 100.0 };
+        var worldState = new IslandWorldState();
+        worldState.WorldStats.Add(new FishPopulationStat { FishAvailable = 100.0 });
         
         var outcome = new ActionOutcome(
             new ActionId("fish_for_food"),
@@ -637,6 +638,7 @@ public class IslandSignalHandlingTests
             EnqueuedAt = 0.0
         });
         var worldState = new IslandWorldState();
+        worldState.WorldStats.Add(new FishPopulationStat { FishAvailable = 100.0 });
         
         var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 10.0, new Random(42), new EmptyResourceAvailability());
         

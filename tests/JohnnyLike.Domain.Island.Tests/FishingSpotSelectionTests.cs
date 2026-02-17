@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -23,7 +24,7 @@ public class FishingSpotSelectionTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         actor.Hunger = 50.0;
-        world.FishAvailable = 100.0;
+        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         var resourceAvailability = new EmptyResourceAvailability();
         
@@ -55,7 +56,7 @@ public class FishingSpotSelectionTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         actor.Hunger = 50.0;
-        world.FishAvailable = 100.0;
+        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         var resourceAvailability = new MockResourceAvailability(PrimaryFishingSpot);
         
@@ -87,7 +88,7 @@ public class FishingSpotSelectionTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         actor.Hunger = 50.0;
-        world.FishAvailable = 100.0;
+        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         var resourceAvailability = new MockResourceAvailability(PrimaryFishingSpot, SecondaryFishingSpot);
         
@@ -119,7 +120,7 @@ public class FishingSpotSelectionTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         actor.Hunger = 50.0;
-        world.FishAvailable = 100.0;
+        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         var resourceAvailability = new MockResourceAvailability(PrimaryFishingSpot);
         
@@ -153,7 +154,7 @@ public class FishingSpotSelectionTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         actor.Hunger = 50.0;
-        world.FishAvailable = 100.0;
+        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         var resourceAvailability = new EmptyResourceAvailability();
         

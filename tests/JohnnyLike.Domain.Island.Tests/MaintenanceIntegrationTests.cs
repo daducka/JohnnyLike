@@ -2,6 +2,7 @@ using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -72,8 +73,8 @@ public class MaintenanceIntegrationTests
         var worldClear = (IslandWorldState)domain.CreateInitialWorldState();
         var worldRainy = (IslandWorldState)domain.CreateInitialWorldState();
         
-        worldClear.Weather = Weather.Clear;
-        worldRainy.Weather = Weather.Rainy;
+        worldClear.GetStat<WeatherStat>("weather")!.Weather = Weather.Clear;
+        worldRainy.GetStat<WeatherStat>("weather")!.Weather = Weather.Rainy;
         
         var duration = 3600.0;
         worldClear.OnTimeAdvanced(duration, duration);

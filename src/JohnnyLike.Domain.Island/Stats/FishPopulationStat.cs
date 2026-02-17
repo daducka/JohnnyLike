@@ -29,16 +29,39 @@ public class FishPopulationStat : WorldStat
         yield return "time_of_day";
     }
 
-    public override void Tick(double dtSeconds, WorldState worldState)
+    public override List<TraceEvent> Tick(double dtSeconds, WorldState worldState, double currentTime)
     {
+        var events = new List<TraceEvent>();
+        
+        // Track old value for trace event
+        var oldFish = FishAvailable;
+        
         // Regenerate fish over time
         var regenAmount = FishRegenRatePerMinute * (dtSeconds / 60.0);
         FishAvailable = Math.Min(100.0, FishAvailable + regenAmount);
+        
+        // Log fish regeneration if significant (at least 1 fish worth)
+        if (FishAvailable - oldFish >= 1.0)
+        {
+            events.Add(new TraceEvent(
+                currentTime,
+                null,
+                "FishRegenerated",
+                new Dictionary<string, object>
+                {
+                    ["oldAvailable"] = Math.Round(oldFish, 2),
+                    ["newAvailable"] = Math.Round(FishAvailable, 2),
+                    ["regenerated"] = Math.Round(FishAvailable - oldFish, 2)
+                }
+            ));
+        }
         
         // Future: could add weather-based modifiers
         // var island = (IslandWorldState)worldState;
         // var weatherStat = island.GetStat<WeatherStat>("weather");
         // if (weatherStat?.Weather == Weather.Rainy) { ... }
+        
+        return events;
     }
 
     public override Dictionary<string, object> SerializeToDict()

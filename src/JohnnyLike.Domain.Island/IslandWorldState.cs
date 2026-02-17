@@ -25,77 +25,6 @@ public class IslandWorldState : WorldState
     public List<WorldItem> WorldItems { get; set; } = new();
     public List<WorldStat> WorldStats { get; set; } = new();
 
-    // Helper properties for backward-compatible access to stat values
-    public double TimeOfDay
-    {
-        get => GetStat<TimeOfDayStat>("time_of_day")?.TimeOfDay ?? 0.5;
-        set
-        {
-            var stat = GetStat<TimeOfDayStat>("time_of_day");
-            if (stat != null) stat.TimeOfDay = value;
-        }
-    }
-
-    public int DayCount
-    {
-        get => GetStat<TimeOfDayStat>("time_of_day")?.DayCount ?? 0;
-        set
-        {
-            var stat = GetStat<TimeOfDayStat>("time_of_day");
-            if (stat != null) stat.DayCount = value;
-        }
-    }
-
-    public Weather Weather
-    {
-        get => GetStat<WeatherStat>("weather")?.Weather ?? Weather.Clear;
-        set
-        {
-            var stat = GetStat<WeatherStat>("weather");
-            if (stat != null) stat.Weather = value;
-        }
-    }
-
-    public double FishAvailable
-    {
-        get => GetStat<FishPopulationStat>("fish_population")?.FishAvailable ?? 100.0;
-        set
-        {
-            var stat = GetStat<FishPopulationStat>("fish_population");
-            if (stat != null) stat.FishAvailable = value;
-        }
-    }
-
-    public double FishRegenRatePerMinute
-    {
-        get => GetStat<FishPopulationStat>("fish_population")?.FishRegenRatePerMinute ?? 5.0;
-        set
-        {
-            var stat = GetStat<FishPopulationStat>("fish_population");
-            if (stat != null) stat.FishRegenRatePerMinute = value;
-        }
-    }
-
-    public int CoconutsAvailable
-    {
-        get => GetStat<CoconutAvailabilityStat>("coconut_availability")?.CoconutsAvailable ?? 5;
-        set
-        {
-            var stat = GetStat<CoconutAvailabilityStat>("coconut_availability");
-            if (stat != null) stat.CoconutsAvailable = value;
-        }
-    }
-
-    public TideLevel TideLevel
-    {
-        get => GetStat<TideStat>("tide")?.TideLevel ?? TideLevel.Low;
-        set
-        {
-            var stat = GetStat<TideStat>("tide");
-            if (stat != null) stat.TideLevel = value;
-        }
-    }
-
     public CampfireItem? MainCampfire => WorldItems.OfType<CampfireItem>().FirstOrDefault();
     public ShelterItem? MainShelter => WorldItems.OfType<ShelterItem>().FirstOrDefault();
     public TreasureChestItem? TreasureChest => WorldItems.OfType<TreasureChestItem>().FirstOrDefault();
@@ -159,16 +88,24 @@ public class IslandWorldState : WorldState
         return sorted;
     }
 
-    public void OnTimeAdvanced(double currentTime, double dt, IResourceAvailability? resourceAvailability = null)
+    public List<TraceEvent> OnTimeAdvanced(double currentTime, double dt, IResourceAvailability? resourceAvailability = null)
     {
         CurrentTime = currentTime;
+        var traceEvents = new List<TraceEvent>();
 
-        // Tick all stats in dependency order
+        // Tick all stats in dependency order and collect trace events
         var sortedStats = TopologicalSortStats();
         foreach (var stat in sortedStats)
         {
-            stat.Tick(dt, this);
+            var statEvents = stat.Tick(dt, this, currentTime);
+            traceEvents.AddRange(statEvents);
         }
+
+        // Track campfire state before ticking items
+        var campfireLitBeforeTick = MainCampfire?.IsLit ?? false;
+        
+        // Track which items exist before ticking (for expiration detection)
+        var itemsBeforeTick = WorldItems.OfType<MaintainableWorldItem>().ToList();
 
         // Tick maintainable items
         foreach (var item in WorldItems.OfType<MaintainableWorldItem>())
@@ -176,13 +113,43 @@ public class IslandWorldState : WorldState
             item.Tick(dt, this);
         }
 
+        // Campfire extinguished trace event
+        var campfire = MainCampfire;
+        if (campfireLitBeforeTick && campfire != null && !campfire.IsLit)
+        {
+            traceEvents.Add(new TraceEvent(
+                currentTime,
+                null,
+                "CampfireExtinguished",
+                new Dictionary<string, object>
+                {
+                    ["itemId"] = campfire.Id,
+                    ["quality"] = Math.Round(campfire.Quality, 2)
+                }
+            ));
+        }
+
         // Remove expired maintainable items after tick cycle to avoid collection modification during iteration
         var expiredItems = WorldItems.OfType<MaintainableWorldItem>().Where(item => item.IsExpired).ToList();
         foreach (var item in expiredItems)
         {
+            traceEvents.Add(new TraceEvent(
+                currentTime,
+                null,
+                "WorldItemExpired",
+                new Dictionary<string, object>
+                {
+                    ["itemId"] = item.Id,
+                    ["itemType"] = item.Type,
+                    ["quality"] = Math.Round(item.Quality, 2)
+                }
+            ));
+            
             item.PerformExpiration(this, resourceAvailability);
             WorldItems.Remove(item);
         }
+        
+        return traceEvents;
     }
 
     public override string Serialize()

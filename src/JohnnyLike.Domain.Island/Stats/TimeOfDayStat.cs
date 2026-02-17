@@ -23,8 +23,10 @@ public class TimeOfDayStat : WorldStat
     {
     }
 
-    public override void Tick(double dtSeconds, WorldState worldState)
+    public override List<TraceEvent> Tick(double dtSeconds, WorldState worldState, double currentTime)
     {
+        var events = new List<TraceEvent>();
+        
         TimeOfDay += dtSeconds / 86400.0; // 86400 seconds in a day
         
         if (TimeOfDay >= 1.0)
@@ -32,6 +34,8 @@ public class TimeOfDayStat : WorldStat
             TimeOfDay -= 1.0;
             DayCount++;
         }
+        
+        return events;
     }
 
     public override Dictionary<string, object> SerializeToDict()

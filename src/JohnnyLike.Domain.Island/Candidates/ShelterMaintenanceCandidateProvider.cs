@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Kit.Dice;
 using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Stats;
 
 namespace JohnnyLike.Domain.Island.Candidates;
 
@@ -20,11 +21,14 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
         
         var foresightBonus = (survivalMod + wisdomMod) / 2.0;
 
+        var weatherStat = ctx.World.GetStat<WeatherStat>("weather");
+        var weather = weatherStat?.Weather ?? Weather.Clear;
+
         if (shelter.Quality < 70.0)
         {
             var urgency = (70.0 - shelter.Quality) / 70.0;
             
-            var weatherMultiplier = ctx.World.Weather switch
+            var weatherMultiplier = weather switch
             {
                 Weather.Rainy => 1.5,
                 Weather.Windy => 1.3,
@@ -34,9 +38,9 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.15);
 
             var baseDC = 12;
-            if (ctx.World.Weather == Weather.Rainy)
+            if (weather == Weather.Rainy)
                 baseDC += 2;
-            else if (ctx.World.Weather == Weather.Windy)
+            else if (weather == Weather.Windy)
                 baseDC += 1;
 
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
@@ -53,7 +57,7 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 baseScore,
-                $"Repair shelter (quality: {shelter.Quality:F0}%, {ctx.World.Weather}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Repair shelter (quality: {shelter.Quality:F0}%, {weather}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
 

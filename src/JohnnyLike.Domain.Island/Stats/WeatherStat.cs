@@ -23,11 +23,15 @@ public class WeatherStat : WorldStat
         yield return "time_of_day";
     }
 
-    public override void Tick(double dtSeconds, WorldState worldState)
+    public override List<TraceEvent> Tick(double dtSeconds, WorldState worldState, double currentTime)
     {
+        var events = new List<TraceEvent>();
+        
         // Weather logic can be expanded here
         // For now, maintaining existing behavior (weather doesn't auto-change)
         // Future: could add time-based weather patterns, random changes, etc.
+        
+        return events;
     }
 
     public override Dictionary<string, object> SerializeToDict()

@@ -12,7 +12,7 @@ public class WorldStatTests
         var stat = new TimeOfDayStat { TimeOfDay = 0.5 };
         var world = new IslandWorldState();
         
-        stat.Tick(21600.0, world); // 6 hours
+        stat.Tick(21600.0, world, 0.0); // 6 hours
         
         Assert.InRange(stat.TimeOfDay, 0.74, 0.76);
     }
@@ -23,7 +23,7 @@ public class WorldStatTests
         var stat = new TimeOfDayStat { TimeOfDay = 0.9, DayCount = 0 };
         var world = new IslandWorldState();
         
-        stat.Tick(8640.0, world); // 2.4 hours
+        stat.Tick(8640.0, world, 0.0); // 2.4 hours
         
         Assert.Equal(1, stat.DayCount);
         Assert.InRange(stat.TimeOfDay, 0.0, 0.1);
@@ -35,7 +35,7 @@ public class WorldStatTests
         var stat = new FishPopulationStat { FishAvailable = 50.0, FishRegenRatePerMinute = 5.0 };
         var world = new IslandWorldState();
         
-        stat.Tick(60.0, world); // 1 minute
+        stat.Tick(60.0, world, 0.0); // 1 minute
         
         Assert.Equal(55.0, stat.FishAvailable, 1);
     }
@@ -46,7 +46,7 @@ public class WorldStatTests
         var stat = new FishPopulationStat { FishAvailable = 95.0, FishRegenRatePerMinute = 10.0 };
         var world = new IslandWorldState();
         
-        stat.Tick(60.0, world); // 1 minute
+        stat.Tick(60.0, world, 0.0); // 1 minute
         
         Assert.Equal(100.0, stat.FishAvailable);
     }
@@ -58,7 +58,7 @@ public class WorldStatTests
         world.WorldStats.Add(new TimeOfDayStat { TimeOfDay = 0.0 }); // Midnight
         var tideStat = new TideStat();
         
-        tideStat.Tick(0.0, world);
+        tideStat.Tick(0.0, world, 0.0);
         
         Assert.Equal(TideLevel.Low, tideStat.TideLevel);
     }
@@ -70,7 +70,7 @@ public class WorldStatTests
         world.WorldStats.Add(new TimeOfDayStat { TimeOfDay = 0.375 }); // 9am - should be high tide
         var tideStat = new TideStat();
         
-        tideStat.Tick(0.0, world);
+        tideStat.Tick(0.0, world, 0.0);
         
         Assert.Equal(TideLevel.High, tideStat.TideLevel);
     }
@@ -85,8 +85,8 @@ public class WorldStatTests
         var coconutStat = new CoconutAvailabilityStat { CoconutsAvailable = 2 };
         
         // Advance time to trigger new day
-        timeOfDay.Tick(10000.0, world); // More than 2.4 hours
-        coconutStat.Tick(0.0, world); // Coconut stat checks for day change
+        timeOfDay.Tick(10000.0, world, 0.0); // More than 2.4 hours
+        coconutStat.Tick(0.0, world, 0.0); // Coconut stat checks for day change
         
         Assert.Equal(5, coconutStat.CoconutsAvailable);
     }
@@ -101,8 +101,8 @@ public class WorldStatTests
         var coconutStat = new CoconutAvailabilityStat { CoconutsAvailable = 8 };
         
         // Advance time to trigger new day
-        timeOfDay.Tick(10000.0, world);
-        coconutStat.Tick(0.0, world);
+        timeOfDay.Tick(10000.0, world, 0.0);
+        coconutStat.Tick(0.0, world, 0.0);
         
         Assert.Equal(10, coconutStat.CoconutsAvailable); // Capped at 10
     }
@@ -216,9 +216,9 @@ public class WorldStatIntegrationTests
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         
         // Modify some stat values
-        world.TimeOfDay = 0.75;
-        world.DayCount = 3;
-        world.FishAvailable = 42.0;
+        world.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.75;
+        world.GetStat<TimeOfDayStat>("time_of_day")!.DayCount = 3;
+        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 42.0;
         
         var json = world.Serialize();
         
@@ -234,22 +234,22 @@ public class WorldStatIntegrationTests
         var world1 = (IslandWorldState)domain.CreateInitialWorldState();
         
         // Modify some stat values
-        world1.TimeOfDay = 0.75;
-        world1.DayCount = 3;
-        world1.FishAvailable = 42.0;
-        world1.CoconutsAvailable = 7;
-        world1.Weather = Weather.Rainy;
+        world1.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.75;
+        world1.GetStat<TimeOfDayStat>("time_of_day")!.DayCount = 3;
+        world1.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 42.0;
+        world1.GetStat<CoconutAvailabilityStat>("coconut_availability")!.CoconutsAvailable = 7;
+        world1.GetStat<WeatherStat>("weather")!.Weather = Weather.Rainy;
         
         var json = world1.Serialize();
         
         var world2 = (IslandWorldState)domain.CreateInitialWorldState();
         world2.Deserialize(json);
         
-        Assert.Equal(0.75, world2.TimeOfDay, 2);
-        Assert.Equal(3, world2.DayCount);
-        Assert.Equal(42.0, world2.FishAvailable, 1);
-        Assert.Equal(7, world2.CoconutsAvailable);
-        Assert.Equal(Weather.Rainy, world2.Weather);
+        Assert.Equal(0.75, world2.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay, 2);
+        Assert.Equal(3, world2.GetStat<TimeOfDayStat>("time_of_day")!.DayCount);
+        Assert.Equal(42.0, world2.GetStat<FishPopulationStat>("fish_population")!.FishAvailable, 1);
+        Assert.Equal(7, world2.GetStat<CoconutAvailabilityStat>("coconut_availability")!.CoconutsAvailable);
+        Assert.Equal(Weather.Rainy, world2.GetStat<WeatherStat>("weather")!.Weather);
     }
 
     [Fact]
@@ -258,23 +258,23 @@ public class WorldStatIntegrationTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         
-        world.TimeOfDay = 0.9;
-        world.DayCount = 0;
-        world.FishAvailable = 50.0;
-        world.CoconutsAvailable = 2;
+        world.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.9;
+        world.GetStat<TimeOfDayStat>("time_of_day")!.DayCount = 0;
+        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 50.0;
+        world.GetStat<CoconutAvailabilityStat>("coconut_availability")!.CoconutsAvailable = 2;
         
         // Advance time by ~2.4 hours to trigger a new day
         world.OnTimeAdvanced(0.0, 8640.0);
         
         // TimeOfDay should have advanced and wrapped
-        Assert.InRange(world.TimeOfDay, 0.0, 0.1);
-        Assert.Equal(1, world.DayCount);
+        Assert.InRange(world.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay, 0.0, 0.1);
+        Assert.Equal(1, world.GetStat<TimeOfDayStat>("time_of_day")!.DayCount);
         
         // Fish should have regenerated
-        Assert.True(world.FishAvailable > 50.0);
+        Assert.True(world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable > 50.0);
         
         // Coconuts should have regenerated on new day
-        Assert.Equal(5, world.CoconutsAvailable);
+        Assert.Equal(5, world.GetStat<CoconutAvailabilityStat>("coconut_availability")!.CoconutsAvailable);
     }
 
     [Fact]

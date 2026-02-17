@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
+using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Engine;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -32,7 +33,7 @@ public class FishingContentionIntegrationTests
         
         // Set up world with plenty of fish
         var world = (IslandWorldState)engine.WorldState;
-        world.FishAvailable = 100.0;
+        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         // Act - Plan actions for both actors
         var success1 = engine.TryGetNextAction(new ActorId("Actor1"), out var action1);
@@ -80,7 +81,7 @@ public class FishingContentionIntegrationTests
         
         // Set up world with plenty of fish
         var world = (IslandWorldState)engine.WorldState;
-        world.FishAvailable = 100.0;
+        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         // Act - Plan actions for all three actors
         var success1 = engine.TryGetNextAction(new ActorId("Actor1"), out var action1);
@@ -129,7 +130,7 @@ public class FishingContentionIntegrationTests
         });
         
         var world = (IslandWorldState)engine.WorldState;
-        world.FishAvailable = 100.0;
+        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         // Act - Actor1 starts fishing
         var success1 = engine.TryGetNextAction(new ActorId("Actor1"), out var action1);
@@ -189,7 +190,7 @@ public class FishingContentionIntegrationTests
         
         // Set up world with low fish (but above threshold to allow fishing)
         var world = (IslandWorldState)engine.WorldState;
-        world.FishAvailable = 10.0;
+        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 10.0;
         
         // Act - Plan actions for both actors
         var success1 = engine.TryGetNextAction(new ActorId("Actor1"), out var action1);

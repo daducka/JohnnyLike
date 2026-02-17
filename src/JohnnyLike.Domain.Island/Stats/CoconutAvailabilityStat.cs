@@ -25,17 +25,38 @@ public class CoconutAvailabilityStat : WorldStat
         yield return "time_of_day";
     }
 
-    public override void Tick(double dtSeconds, WorldState worldState)
+    public override List<TraceEvent> Tick(double dtSeconds, WorldState worldState, double currentTime)
     {
+        var events = new List<TraceEvent>();
         var island = (IslandWorldState)worldState;
         var timeOfDayStat = island.GetStat<TimeOfDayStat>("time_of_day");
         
         if (timeOfDayStat != null && timeOfDayStat.DayCount > _lastDayCount)
         {
             // New day - regenerate coconuts
+            var oldCount = CoconutsAvailable;
             CoconutsAvailable = Math.Min(10, CoconutsAvailable + 3);
             _lastDayCount = timeOfDayStat.DayCount;
+            
+            // Log coconut regeneration
+            if (CoconutsAvailable > oldCount)
+            {
+                events.Add(new TraceEvent(
+                    currentTime,
+                    null,
+                    "CoconutsRegenerated",
+                    new Dictionary<string, object>
+                    {
+                        ["oldCount"] = oldCount,
+                        ["newCount"] = CoconutsAvailable,
+                        ["added"] = CoconutsAvailable - oldCount,
+                        ["dayCount"] = timeOfDayStat.DayCount
+                    }
+                ));
+            }
         }
+        
+        return events;
     }
 
     public override Dictionary<string, object> SerializeToDict()
