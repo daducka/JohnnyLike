@@ -116,10 +116,9 @@ public class ActionReservationTests
         var reservationTable = GetReservationTable(engine);
         
         // Pre-reserve one of the resources externally
-        reservationTable.TryReserveForScene(
+        reservationTable.TryReserve(
             new ResourceId("test:resource:2"),
-            new SceneId("external"),
-            ReservationOwner.FromActor(new ActorId("External")),
+            "actor:External",
             100.0
         );
         
@@ -208,7 +207,7 @@ public class ActionReservationTests
             return candidates;
         }
         
-        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng) { }
+        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability) { }
         public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime) { }
         public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
         public bool ValidateContent(out List<string> errors) { errors = new List<string>(); return true; }
@@ -274,7 +273,7 @@ public class ActionReservationTests
             return candidates;
         }
         
-        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng) { }
+        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability) { }
         public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime) { }
         public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
         public bool ValidateContent(out List<string> errors) { errors = new List<string>(); return true; }

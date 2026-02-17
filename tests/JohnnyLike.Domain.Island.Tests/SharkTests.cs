@@ -123,7 +123,6 @@ public class SharkTests
         
         // Set up reservations
         var reservations = new TestReservations();
-        world.Reservations = reservations;
         
         actor.Energy = 50.0; // Ensure actor has enough energy
         
@@ -139,7 +138,7 @@ public class SharkTests
         
         // Manually reserve the water resource to simulate what happens in ApplyEffects
         var waterResource = new ResourceId("island:resource:water");
-        reservations.TryReserve(waterResource, shark.ExpiresAt);
+        reservations.TryReserve(waterResource, $"world_item:shark:{shark.Id}", shark.ExpiresAt);
         shark.ReservedResourceId = waterResource;
         
         // Verify swim candidates are still generated (domain doesn't block them)
@@ -160,7 +159,7 @@ public class SharkTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         // Set up reservations for tests
-        world.Reservations = new TestReservations();
+        var reservations = new TestReservations();
         
         // Spawn a shark
         var shark = new SharkItem();
@@ -168,11 +167,11 @@ public class SharkTests
         world.WorldItems.Add(shark);
         
         // Advance time before expiration
-        world.OnTimeAdvanced(50.0, 50.0);
+        world.OnTimeAdvanced(50.0, 50.0, reservations);
         Assert.NotNull(world.Shark); // Shark should still be present before expiration
         
         // Advance time past expiration
-        world.OnTimeAdvanced(150.0, 100.0);
+        world.OnTimeAdvanced(150.0, 100.0, reservations);
         Assert.Null(world.Shark); // Shark should despawn after expiration
         
         // Verify swim candidates reappear
@@ -191,7 +190,6 @@ public class SharkTests
         
         // Set up reservations
         var reservations = new TestReservations();
-        world.Reservations = reservations;
         
         var currentTime = 100.0;
         world.CurrentTime = currentTime;
@@ -214,7 +212,7 @@ public class SharkTests
         );
         
         var rng = new FixedRngStream(1);
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, reservations);
         
         // Verify shark was spawned and reserved the water resource
         Assert.NotNull(world.Shark);
@@ -222,7 +220,7 @@ public class SharkTests
         Assert.Equal(waterResource, world.Shark.ReservedResourceId);
         
         // Advance time past shark expiration
-        world.OnTimeAdvanced(world.Shark.ExpiresAt + 1.0, world.Shark.ExpiresAt + 1.0 - currentTime);
+        world.OnTimeAdvanced(world.Shark.ExpiresAt + 1.0, world.Shark.ExpiresAt + 1.0 - currentTime, reservations);
         
         // Verify shark despawned and released the water resource
         Assert.Null(world.Shark);

@@ -222,7 +222,7 @@ public class Director
             scene.Status = SceneStatus.Complete;
             scene.EndTime = currentTime;
 
-            _reservations.ReleaseByScene(sceneId);
+            _reservations.ReleaseByPrefix($"scene:{sceneId.Value}:");
 
             _traceSink.Record(new TraceEvent(
                 currentTime,
@@ -248,7 +248,7 @@ public class Director
         {
             scene.Status = SceneStatus.Aborted;
             scene.EndTime = currentTime;
-            _reservations.ReleaseByScene(scene.Id);
+            _reservations.ReleaseByPrefix($"scene:{scene.Id.Value}:");
 
             _traceSink.Record(new TraceEvent(
                 currentTime,

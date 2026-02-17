@@ -109,7 +109,8 @@ public class ScoringTests
             ),
             actorState,
             worldState,
-            rng
+            rng,
+            new EmptyResourceAvailability()
         );
 
         Assert.True(actorState.Hunger < initialHunger);
@@ -134,7 +135,8 @@ public class ScoringTests
             ),
             actorState,
             worldState,
-            rng
+            rng,
+            new EmptyResourceAvailability()
         );
 
         Assert.Null(actorState.LastChatRedeem);

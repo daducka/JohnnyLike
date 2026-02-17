@@ -1,3 +1,4 @@
+using JohnnyLike.Domain.Abstractions;
 using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island.Items;
@@ -9,9 +10,9 @@ public class ShelterItem : MaintainableWorldItem
     {
     }
 
-    public override void Tick(double dtSeconds, IslandWorldState world)
+    public override void Tick(double dtSeconds, IslandWorldState world, IResourceAvailability? resourceAvailability)
     {
-        base.Tick(dtSeconds, world);
+        base.Tick(dtSeconds, world, resourceAvailability);
 
         if (world.Weather == Weather.Rainy)
         {
