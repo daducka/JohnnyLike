@@ -6,7 +6,7 @@ using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Tests;
 
-public class TreasureChestAndSharkTests
+public class TreasureChestTests
 {
     private class FixedRngStream : IRngStream
     {
@@ -77,108 +77,6 @@ public class TreasureChestAndSharkTests
         Assert.NotNull(resultData);
         Assert.Equal("swim_crit_success_treasure", resultData["variant_id"]);
         Assert.Equal("treasure_chest", resultData["encounter_type"]);
-    }
-
-    [Fact]
-    public void SwimCriticalFailure_SpawnsShark()
-    {
-        var domain = new IslandDomainPack();
-        var world = (IslandWorldState)domain.CreateInitialWorldState();
-        var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
-        
-        // Ensure shark is not present initially
-        Assert.Null(world.Shark);
-        
-        var currentTime = 100.0;
-        world.CurrentTime = currentTime;
-        
-        // Create a swim action
-        var swimAction = new ActionSpec(
-            new ActionId("swim"),
-            ActionKind.Interact,
-            new SkillCheckActionParameters(10, 0, AdvantageType.Normal, "water"),
-            15.0
-        );
-        
-        // Set current action on actor
-        actor.CurrentAction = swimAction;
-        
-        var resultData = new Dictionary<string, object>();
-        var outcome = new ActionOutcome(
-            new ActionId("swim"),
-            ActionOutcomeType.Success,
-            15.0,
-            resultData
-        );
-        
-        // Use a fixed RNG to force critical failure
-        // A roll of 1 with DC 10 is always a critical failure
-        var rng = new FixedRngStream(1);
-        
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng);
-        
-        // Verify shark is spawned
-        Assert.NotNull(world.Shark);
-        Assert.True(world.Shark.ExpiresAt > currentTime);
-        Assert.True(world.Shark.ExpiresAt <= currentTime + 180.0); // max duration
-        
-        // Verify ResultData annotations
-        Assert.NotNull(resultData);
-        Assert.Equal("swim_crit_failure_shark", resultData["variant_id"]);
-        Assert.Equal("shark", resultData["encounter_type"]);
-        Assert.True(resultData.ContainsKey("shark_duration"));
-    }
-
-    [Fact]
-    public void Shark_BlocksSwimming_WhilePresent()
-    {
-        var domain = new IslandDomainPack();
-        var world = (IslandWorldState)domain.CreateInitialWorldState();
-        var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
-        
-        actor.Energy = 50.0; // Ensure actor has enough energy
-        
-        // First, verify swim candidates are generated when no shark
-        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
-        Assert.Contains(candidates, c => c.Action.Id.Value == "swim");
-        
-        // Spawn a shark
-        var shark = new SharkItem();
-        shark.ExpiresAt = 100.0;
-        world.WorldItems.Add(shark);
-        
-        // Verify no swim candidates are generated while shark is present
-        candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42));
-        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "swim");
-    }
-
-    [Fact]
-    public void Shark_AutoDespawns_AfterTimeExpires()
-    {
-        var domain = new IslandDomainPack();
-        var world = (IslandWorldState)domain.CreateInitialWorldState();
-        var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
-        
-        // Spawn a shark
-        var shark = new SharkItem();
-        shark.ExpiresAt = 100.0;
-        world.WorldItems.Add(shark);
-        
-        // Advance time before expiration
-        world.OnTimeAdvanced(50.0, 50.0);
-        Assert.NotNull(world.Shark); // Shark should still be present before expiration
-        
-        // Advance time past expiration
-        world.OnTimeAdvanced(150.0, 100.0);
-        Assert.Null(world.Shark); // Shark should despawn after expiration
-        
-        // Verify swim candidates reappear
-        actor.Energy = 50.0;
-        var candidates = domain.GenerateCandidates(actorId, actor, world, 150.0, new Random(42));
-        Assert.Contains(candidates, c => c.Action.Id.Value == "swim");
     }
 
     [Fact]
@@ -404,7 +302,7 @@ public class TreasureChestAndSharkTests
     }
 
     [Fact]
-    public void WorldState_Serialization_PreservesChestAndShark()
+    public void WorldState_Serialization_PreservesTreasureChest()
     {
         var world = new IslandWorldState();
         
@@ -414,11 +312,6 @@ public class TreasureChestAndSharkTests
         chest.Health = 75.5;
         chest.Position = "beach";
         world.WorldItems.Add(chest);
-        
-        // Set up shark
-        var shark = new SharkItem();
-        shark.ExpiresAt = 123.456;
-        world.WorldItems.Add(shark);
         
         // Serialize
         var serialized = world.Serialize();
@@ -432,9 +325,5 @@ public class TreasureChestAndSharkTests
         Assert.Equal(world.TreasureChest!.IsOpened, newWorld.TreasureChest.IsOpened);
         Assert.Equal(world.TreasureChest.Health, newWorld.TreasureChest.Health);
         Assert.Equal(world.TreasureChest.Position, newWorld.TreasureChest.Position);
-        
-        // Verify shark exists and properties are preserved
-        Assert.NotNull(newWorld.Shark);
-        Assert.Equal(world.Shark!.ExpiresAt, newWorld.Shark.ExpiresAt);
     }
 }
