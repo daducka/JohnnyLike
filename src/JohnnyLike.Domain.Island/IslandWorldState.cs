@@ -53,17 +53,18 @@ public class IslandWorldState : WorldState
         var tidePhase = (TimeOfDay * 24.0) % 12.0;
         TideLevel = tidePhase >= 6.0 ? TideLevel.High : TideLevel.Low;
 
-        // Tick maintainable items (includes shark)
+        // Tick maintainable items
         foreach (var item in WorldItems.OfType<MaintainableWorldItem>())
         {
             item.Tick(dt, this);
         }
 
-        // Remove expired sharks after tick cycle to avoid collection modification during iteration
-        var expiredSharks = WorldItems.OfType<SharkItem>().Where(s => s.ShouldRemove()).ToList();
-        foreach (var shark in expiredSharks)
+        // Remove expired maintainable items after tick cycle to avoid collection modification during iteration
+        var expiredItems = WorldItems.OfType<MaintainableWorldItem>().Where(item => item.IsExpired).ToList();
+        foreach (var item in expiredItems)
         {
-            WorldItems.Remove(shark);
+            item.PerformExpiration(this);
+            WorldItems.Remove(item);
         }
     }
 
