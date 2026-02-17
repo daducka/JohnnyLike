@@ -15,7 +15,7 @@ public class PlaneSightingCandidateProvider : IIslandCandidateProvider
         var baseDC = 15;
 
         // Roll skill check at candidate generation time
-        var (parameters, resultData, result) = ctx.RollSkillCheck("Perception", baseDC, "beach");
+        var parameters = ctx.RollSkillCheck("Perception", baseDC, "beach");
 
         // Calculate base score with cooldown factored in
         var timeSinceLastSighting = ctx.NowSeconds - ctx.Actor.LastPlaneSightingTime;
@@ -28,10 +28,10 @@ public class PlaneSightingCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 10.0,
-                resultData
+                parameters.ToResultData()
             ),
             baseScore,
-            $"Plane sighting (DC {baseDC}, rolled {result.Total}, {result.OutcomeTier})"
+            $"Plane sighting (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
         ));
     }
 

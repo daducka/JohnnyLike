@@ -34,7 +34,7 @@ public class BashTreasureChestCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 20.0 + ctx.Random.NextDouble() * 5.0,
-                parameters.Result.ToDictionary()
+                parameters.ToResultData()
             ),
             baseScore,
             $"Bash open treasure chest (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"

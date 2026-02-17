@@ -49,7 +49,7 @@ public class FishingCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 15.0 + ctx.Random.NextDouble() * 5.0,
-                parameters.Result.ToDictionary()
+                parameters.ToResultData()
             ),
             baseScore,
             $"Fishing (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"

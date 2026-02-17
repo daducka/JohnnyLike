@@ -37,7 +37,7 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             else if (ctx.World.Weather == Weather.Windy)
                 baseDC += 1;
 
-            var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "shelter");
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "shelter");
 
             var baseScore = 0.25 + (urgency * 0.5 * weatherMultiplier * foresightMultiplier);
 
@@ -47,10 +47,10 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     30.0 + ctx.Random.NextDouble() * 10.0,
-                    resultData
+                    parameters.ToResultData()
                 ),
                 baseScore,
-                $"Repair shelter (quality: {shelter.Quality:F0}%, {ctx.World.Weather}, rolled {result.Total}, {result.OutcomeTier})"
+                $"Repair shelter (quality: {shelter.Quality:F0}%, {ctx.World.Weather}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
 
@@ -60,7 +60,7 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.2);
 
             var baseDC = 13;
-            var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "shelter");
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "shelter");
 
             var baseScore = 0.4 + (urgency * 0.5 * foresightMultiplier);
 
@@ -70,10 +70,10 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     40.0 + ctx.Random.NextDouble() * 10.0,
-                    resultData
+                    parameters.ToResultData()
                 ),
                 baseScore,
-                $"Reinforce shelter (quality: {shelter.Quality:F0}%, rolled {result.Total}, {result.OutcomeTier})"
+                $"Reinforce shelter (quality: {shelter.Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
 
@@ -82,7 +82,7 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             var baseDC = 14;
             var foresightMultiplier = 1.0 + (foresightBonus * 0.25);
 
-            var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "shelter");
+            var parameters = ctx.RollSkillCheck("Survival", baseDC, "shelter");
 
             var baseScore = 1.2 * foresightMultiplier;
 
@@ -92,10 +92,10 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     90.0 + ctx.Random.NextDouble() * 30.0,
-                    resultData
+                    parameters.ToResultData()
                 ),
                 baseScore,
-                $"Rebuild shelter from scratch (rolled {result.Total}, {result.OutcomeTier})"
+                $"Rebuild shelter from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
     }

@@ -14,7 +14,7 @@ public class SandCastleCandidateProvider : IIslandCandidateProvider
             baseDC += 4;
 
         // Roll skill check at candidate generation time
-        var (parameters, resultData, result) = ctx.RollSkillCheck("Performance", baseDC, "beach");
+        var parameters = ctx.RollSkillCheck("Performance", baseDC, "beach");
 
         var baseScore = 0.3 + (ctx.Actor.Boredom / 100.0);
 
@@ -24,10 +24,10 @@ public class SandCastleCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 20.0 + ctx.Random.NextDouble() * 10.0,
-                resultData
+                parameters.ToResultData()
             ),
             baseScore,
-            $"Build sand castle (DC {baseDC}, rolled {result.Total}, {result.OutcomeTier})"
+            $"Build sand castle (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
         ));
     }
 

@@ -24,7 +24,7 @@ public class SwimCandidateProvider : IIslandCandidateProvider
             baseDC += 1;
 
         // Roll skill check at candidate generation time
-        var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "water");
+        var parameters = ctx.RollSkillCheck("Survival", baseDC, "water");
 
         var baseScore = 0.35 + (ctx.Actor.Morale < 30 ? 0.2 : 0.0);
 
@@ -34,10 +34,10 @@ public class SwimCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 15.0 + ctx.Random.NextDouble() * 5.0,
-                resultData
+                parameters.ToResultData()
             ),
             baseScore,
-            $"Swim (DC {baseDC}, rolled {result.Total}, {result.OutcomeTier})"
+            $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
         ));
     }
 

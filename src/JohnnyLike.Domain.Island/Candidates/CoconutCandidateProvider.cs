@@ -36,7 +36,7 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 10.0 + ctx.Random.NextDouble() * 5.0,
-                parameters.Result.ToDictionary()
+                parameters.ToResultData()
             ),
             baseScore,
             $"Get coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"

@@ -19,7 +19,7 @@ public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
         var baseDC = 18;
 
         // Roll skill check at candidate generation time
-        var (parameters, resultData, result) = ctx.RollSkillCheck("Perception", baseDC, "shore");
+        var parameters = ctx.RollSkillCheck("Perception", baseDC, "shore");
 
         // Calculate base score with cooldown factored in
         var timeSinceLastEncounter = ctx.NowSeconds - ctx.Actor.LastMermaidEncounterTime;
@@ -32,10 +32,10 @@ public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
                 ActionKind.Interact,
                 parameters,
                 15.0,
-                resultData
+                parameters.ToResultData()
             ),
             baseScore,
-            $"Mermaid encounter (DC {baseDC}, rolled {result.Total}, {result.OutcomeTier})"
+            $"Mermaid encounter (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
         ));
     }
 

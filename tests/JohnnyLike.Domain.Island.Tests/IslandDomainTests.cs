@@ -402,7 +402,10 @@ public class IslandActionEffectsTests
             CurrentAction = new ActionSpec(
                 new ActionId("fish_for_food"),
                 ActionKind.Interact,
-                new SkillCheckActionParameters(10, 3, AdvantageType.Normal, "shore", "Fishing"),
+                new SkillCheckActionParameters(
+                    new SkillCheckRequest(10, 3, AdvantageType.Normal, "Fishing"),
+                    new SkillCheckResult(10, 10 + 3, RollOutcomeTier.Success, true, 0.5),
+                    "shore"),
                 15.0
             )
         };
@@ -822,8 +825,8 @@ public class IslandDCTuningTests
         var morningFishing = morningCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         var afternoonFishing = afternoonCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         
-        var morningDC = ((SkillCheckActionParameters)morningFishing.Action.Parameters).DC;
-        var afternoonDC = ((SkillCheckActionParameters)afternoonFishing.Action.Parameters).DC;
+        var morningDC = ((SkillCheckActionParameters)morningFishing.Action.Parameters).Request.DC;
+        var afternoonDC = ((SkillCheckActionParameters)afternoonFishing.Action.Parameters).Request.DC;
         
         Assert.True(morningDC < afternoonDC, $"Morning DC ({morningDC}) should be lower than afternoon DC ({afternoonDC})");
     }
@@ -857,8 +860,8 @@ public class IslandDCTuningTests
         var rainyFishing = rainyCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         var clearFishing = clearCandidates.First(c => c.Action.Id.Value == "fish_for_food");
         
-        var rainyDC = ((SkillCheckActionParameters)rainyFishing.Action.Parameters).DC;
-        var clearDC = ((SkillCheckActionParameters)clearFishing.Action.Parameters).DC;
+        var rainyDC = ((SkillCheckActionParameters)rainyFishing.Action.Parameters).Request.DC;
+        var clearDC = ((SkillCheckActionParameters)clearFishing.Action.Parameters).Request.DC;
         
         Assert.True(rainyDC < clearDC, $"Rainy DC ({rainyDC}) should be lower than clear DC ({clearDC})");
     }
@@ -890,8 +893,8 @@ public class IslandDCTuningTests
         var windyCoconut = windyCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         var clearCoconut = clearCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         
-        var windyDC = ((SkillCheckActionParameters)windyCoconut.Action.Parameters).DC;
-        var clearDC = ((SkillCheckActionParameters)clearCoconut.Action.Parameters).DC;
+        var windyDC = ((SkillCheckActionParameters)windyCoconut.Action.Parameters).Request.DC;
+        var clearDC = ((SkillCheckActionParameters)clearCoconut.Action.Parameters).Request.DC;
         
         Assert.True(windyDC < clearDC, $"Windy DC ({windyDC}) should be lower than clear DC ({clearDC})");
     }
@@ -923,8 +926,8 @@ public class IslandDCTuningTests
         var manyCoconutAction = manyCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         var fewCoconutAction = fewCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
         
-        var manyDC = ((SkillCheckActionParameters)manyCoconutAction.Action.Parameters).DC;
-        var fewDC = ((SkillCheckActionParameters)fewCoconutAction.Action.Parameters).DC;
+        var manyDC = ((SkillCheckActionParameters)manyCoconutAction.Action.Parameters).Request.DC;
+        var fewDC = ((SkillCheckActionParameters)fewCoconutAction.Action.Parameters).Request.DC;
         
         Assert.True(fewDC > manyDC, $"Few coconuts DC ({fewDC}) should be higher than many coconuts DC ({manyDC})");
     }

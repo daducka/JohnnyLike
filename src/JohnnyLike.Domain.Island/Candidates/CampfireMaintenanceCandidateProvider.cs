@@ -34,7 +34,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     20.0 + ctx.Random.NextDouble() * 5.0,
-                    parameters.Result.ToDictionary()
+                    parameters.ToResultData()
                 ),
                 baseScore,
                 $"Add fuel to campfire (fuel: {campfire.FuelSeconds:F0}s, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
@@ -57,7 +57,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     30.0 + ctx.Random.NextDouble() * 10.0,
-                    parameters.Result.ToDictionary()
+                    parameters.ToResultData()
                 ),
                 baseScore,
                 $"Relight campfire (quality: {campfire.Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
@@ -80,7 +80,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     25.0 + ctx.Random.NextDouble() * 5.0,
-                    parameters.Result.ToDictionary()
+                    parameters.ToResultData()
                 ),
                 baseScore,
                 $"Repair campfire (quality: {campfire.Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
@@ -102,7 +102,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                     ActionKind.Interact,
                     parameters,
                     60.0 + ctx.Random.NextDouble() * 20.0,
-                    parameters.Result.ToDictionary()
+                    parameters.ToResultData()
                 ),
                 baseScore,
                 $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"

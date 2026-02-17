@@ -49,7 +49,10 @@ public class SharkTests
         var swimAction = new ActionSpec(
             new ActionId("swim"),
             ActionKind.Interact,
-            new SkillCheckActionParameters(10, 0, AdvantageType.Normal, "water", "Survival"),
+            new SkillCheckActionParameters(
+                    new SkillCheckRequest(10, 0, AdvantageType.Normal, "Survival"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
+                    "water"),
             15.0
         );
         

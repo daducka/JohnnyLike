@@ -18,4 +18,23 @@ public record SkillCheckActionParameters(
         ["result"] = Result.ToDictionary(),
         ["location"] = Location
     };
+    
+    /// <summary>
+    /// Creates a combined dictionary with all skill check data for ActionSpec.ResultData.
+    /// Merges request and result data into a flat structure.
+    /// </summary>
+    public Dictionary<string, object> ToResultData()
+    {
+        var dict = new Dictionary<string, object>
+        {
+            ["dc"] = Request.DC,
+            ["modifier"] = Request.Modifier,
+            ["advantage"] = Request.Advantage.ToString(),
+            ["skillId"] = Request.SkillId,
+            ["roll"] = Result.Roll,
+            ["total"] = Result.Total,
+            ["tier"] = Result.OutcomeTier.ToString()
+        };
+        return dict;
+    }
 }

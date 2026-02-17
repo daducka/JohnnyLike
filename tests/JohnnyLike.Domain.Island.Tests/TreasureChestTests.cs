@@ -46,7 +46,10 @@ public class TreasureChestTests
         var swimAction = new ActionSpec(
             new ActionId("swim"),
             ActionKind.Interact,
-            new SkillCheckActionParameters(10, 0, AdvantageType.Normal, "water", "Survival"),
+            new SkillCheckActionParameters(
+                    new SkillCheckRequest(10, 0, AdvantageType.Normal, "Survival"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
+                    "water"),
             15.0
         );
         
@@ -127,7 +130,10 @@ public class TreasureChestTests
         var bashAction = new ActionSpec(
             new ActionId("bash_open_treasure_chest"),
             ActionKind.Interact,
-            new SkillCheckActionParameters(20, 0, AdvantageType.Normal, "treasure_chest", "Athletics"),
+            new SkillCheckActionParameters(
+                    new SkillCheckRequest(20, 0, AdvantageType.Normal, "Athletics"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
+                    "treasure_chest"),
             20.0
         );
         
@@ -182,7 +188,10 @@ public class TreasureChestTests
         var bashAction = new ActionSpec(
             new ActionId("bash_open_treasure_chest"),
             ActionKind.Interact,
-            new SkillCheckActionParameters(10, 0, AdvantageType.Normal, "treasure_chest", "Athletics"),
+            new SkillCheckActionParameters(
+                    new SkillCheckRequest(10, 0, AdvantageType.Normal, "Athletics"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
+                    "treasure_chest"),
             20.0
         );
         
@@ -237,7 +246,10 @@ public class TreasureChestTests
         var bashAction = new ActionSpec(
             new ActionId("bash_open_treasure_chest"),
             ActionKind.Interact,
-            new SkillCheckActionParameters(20, 0, AdvantageType.Normal, "treasure_chest", "Athletics"),
+            new SkillCheckActionParameters(
+                    new SkillCheckRequest(20, 0, AdvantageType.Normal, "Athletics"),
+                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5),
+                    "treasure_chest"),
             20.0
         );
         
@@ -311,8 +323,8 @@ public class TreasureChestTests
         var paramsLow = (SkillCheckActionParameters)bashCandidateLow.Action.Parameters;
         
         // DC should be lower for damaged chest
-        Assert.True(paramsLow.DC < paramsHigh.DC, 
-            $"Damaged chest DC ({paramsLow.DC}) should be lower than full health DC ({paramsHigh.DC})");
+        Assert.True(paramsLow.Request.DC < paramsHigh.Request.DC, 
+            $"Damaged chest DC ({paramsLow.Request.DC}) should be lower than full health DC ({paramsHigh.Request.DC})");
     }
 
     [Fact]
