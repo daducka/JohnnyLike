@@ -24,7 +24,7 @@ public class WorldItemTests
         var world = new IslandWorldState();
         
         shelter.Quality = 100.0;
-        shelter.Tick(100.0, world, null);
+        shelter.Tick(100.0, world);
         
         Assert.True(shelter.Quality < 100.0);
         Assert.True(shelter.Quality >= 0.0);
@@ -37,7 +37,7 @@ public class WorldItemTests
         var world = new IslandWorldState();
         
         shelter.Quality = 5.0;
-        shelter.Tick(10000.0, world, null);
+        shelter.Tick(10000.0, world);
         
         Assert.Equal(0.0, shelter.Quality);
     }
@@ -61,7 +61,7 @@ public class CampfireItemTests
         var world = new IslandWorldState();
         
         var initialFuel = campfire.FuelSeconds;
-        campfire.Tick(60.0, world, null);
+        campfire.Tick(60.0, world);
         
         Assert.True(campfire.FuelSeconds < initialFuel);
     }
@@ -73,7 +73,7 @@ public class CampfireItemTests
         var world = new IslandWorldState();
         
         campfire.FuelSeconds = 10.0;
-        campfire.Tick(20.0, world, null);
+        campfire.Tick(20.0, world);
         
         Assert.False(campfire.IsLit);
         Assert.Equal(0.0, campfire.FuelSeconds);
@@ -90,8 +90,8 @@ public class CampfireItemTests
         campfireLit.FuelSeconds = 1000.0;
         campfireUnlit.IsLit = false;
         
-        campfireLit.Tick(100.0, world, null);
-        campfireUnlit.Tick(100.0, world, null);
+        campfireLit.Tick(100.0, world);
+        campfireUnlit.Tick(100.0, world);
         
         Assert.True(campfireUnlit.Quality < campfireLit.Quality);
     }
@@ -104,7 +104,7 @@ public class CampfireItemTests
         
         campfire.FuelSeconds = 0.0;
         campfire.IsLit = true;
-        campfire.Tick(1.0, world, null);
+        campfire.Tick(1.0, world);
         
         Assert.False(campfire.IsLit);
         Assert.Equal(0.0, campfire.FuelSeconds);
@@ -128,7 +128,7 @@ public class ShelterItemTests
         var world = new IslandWorldState { Weather = Weather.Clear };
         
         var initialQuality = shelter.Quality;
-        shelter.Tick(100.0, world, null);
+        shelter.Tick(100.0, world);
         
         Assert.True(shelter.Quality < initialQuality);
     }
@@ -141,8 +141,8 @@ public class ShelterItemTests
         var worldClear = new IslandWorldState { Weather = Weather.Clear };
         var worldRainy = new IslandWorldState { Weather = Weather.Rainy };
         
-        shelterClear.Tick(100.0, worldClear, null);
-        shelterRainy.Tick(100.0, worldRainy, null);
+        shelterClear.Tick(100.0, worldClear);
+        shelterRainy.Tick(100.0, worldRainy);
         
         Assert.True(shelterRainy.Quality < shelterClear.Quality);
     }
@@ -155,8 +155,8 @@ public class ShelterItemTests
         var worldClear = new IslandWorldState { Weather = Weather.Clear };
         var worldWindy = new IslandWorldState { Weather = Weather.Windy };
         
-        shelterClear.Tick(100.0, worldClear, null);
-        shelterWindy.Tick(100.0, worldWindy, null);
+        shelterClear.Tick(100.0, worldClear);
+        shelterWindy.Tick(100.0, worldWindy);
         
         Assert.True(shelterWindy.Quality < shelterClear.Quality);
     }
@@ -169,8 +169,8 @@ public class ShelterItemTests
         var worldWindy = new IslandWorldState { Weather = Weather.Windy };
         var worldRainy = new IslandWorldState { Weather = Weather.Rainy };
         
-        shelterWindy.Tick(100.0, worldWindy, null);
-        shelterRainy.Tick(100.0, worldRainy, null);
+        shelterWindy.Tick(100.0, worldWindy);
+        shelterRainy.Tick(100.0, worldRainy);
         
         Assert.True(shelterRainy.Quality < shelterWindy.Quality);
     }

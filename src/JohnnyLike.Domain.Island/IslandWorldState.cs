@@ -56,7 +56,7 @@ public class IslandWorldState : WorldState
         // Tick maintainable items
         foreach (var item in WorldItems.OfType<MaintainableWorldItem>())
         {
-            item.Tick(dt, this, resourceAvailability);
+            item.Tick(dt, this);
         }
 
         // Remove expired maintainable items after tick cycle to avoid collection modification during iteration

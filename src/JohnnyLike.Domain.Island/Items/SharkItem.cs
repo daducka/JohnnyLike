@@ -18,9 +18,9 @@ public class SharkItem : MaintainableWorldItem
     {
     }
 
-    public override void Tick(double dtSeconds, IslandWorldState world, IResourceAvailability? resourceAvailability)
+    public override void Tick(double dtSeconds, IslandWorldState world)
     {
-        base.Tick(dtSeconds, world, resourceAvailability);
+        base.Tick(dtSeconds, world);
         
         // Mark as expired when time is up
         if (world.CurrentTime >= ExpiresAt)

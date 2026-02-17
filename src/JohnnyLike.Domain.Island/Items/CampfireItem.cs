@@ -13,9 +13,9 @@ public class CampfireItem : MaintainableWorldItem
     {
     }
 
-    public override void Tick(double dtSeconds, IslandWorldState world, IResourceAvailability? resourceAvailability)
+    public override void Tick(double dtSeconds, IslandWorldState world)
     {
-        base.Tick(dtSeconds, world, resourceAvailability);
+        base.Tick(dtSeconds, world);
 
         if (IsLit)
         {

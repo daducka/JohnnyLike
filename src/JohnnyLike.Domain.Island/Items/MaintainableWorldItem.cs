@@ -15,7 +15,7 @@ public abstract class MaintainableWorldItem : WorldItem
         BaseDecayPerSecond = baseDecayPerSecond;
     }
 
-    public virtual void Tick(double dtSeconds, IslandWorldState world, IResourceAvailability? resourceAvailability)
+    public virtual void Tick(double dtSeconds, IslandWorldState world)
     {
         Quality = Math.Max(0.0, Quality - BaseDecayPerSecond * dtSeconds);
     }
