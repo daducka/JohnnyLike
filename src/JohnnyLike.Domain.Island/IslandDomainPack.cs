@@ -159,6 +159,10 @@ public class IslandDomainPack : IDomainPack
         // Use dictionary lookup to dispatch to provider
         if (_effectHandlers.TryGetValue(actionId, out var handler))
         {
+            // Get reservation service from world state (set by Engine)
+            var reservationService = islandWorld.ReservationService 
+                ?? throw new InvalidOperationException("ReservationService not set on IslandWorldState");
+            
             var effectCtx = new EffectContext
             {
                 ActorId = actorId,
@@ -166,7 +170,8 @@ public class IslandDomainPack : IDomainPack
                 Actor = islandState,
                 World = islandWorld,
                 Tier = GetTierFromOutcome(outcome),
-                Rng = rng
+                Rng = rng,
+                ReservationService = reservationService
             };
             
             handler.ApplyEffects(effectCtx);

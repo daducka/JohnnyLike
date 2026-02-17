@@ -31,6 +31,31 @@ public class SharkTests
         }
     }
 
+    // Simple test-only implementation of IResourceReservationService
+    private class TestResourceReservationService : IResourceReservationService
+    {
+        private readonly HashSet<ResourceId> _reservedResources = new();
+
+        public bool TryReserve(ResourceId resourceId, ReservationOwner owner, double until)
+        {
+            if (_reservedResources.Contains(resourceId))
+                return false;
+            
+            _reservedResources.Add(resourceId);
+            return true;
+        }
+
+        public void Release(ResourceId resourceId)
+        {
+            _reservedResources.Remove(resourceId);
+        }
+
+        public bool IsReserved(ResourceId resourceId)
+        {
+            return _reservedResources.Contains(resourceId);
+        }
+    }
+
     [Fact]
     public void SwimCriticalFailure_SpawnsShark()
     {
@@ -38,6 +63,9 @@ public class SharkTests
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
+        
+        // Set up reservation service for tests
+        world.ReservationService = new TestResourceReservationService();
         
         // Ensure shark is not present initially
         Assert.Null(world.Shark);
@@ -117,6 +145,9 @@ public class SharkTests
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
+        
+        // Set up reservation service for tests
+        world.ReservationService = new TestResourceReservationService();
         
         // Spawn a shark
         var shark = new SharkItem();

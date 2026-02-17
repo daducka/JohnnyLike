@@ -102,6 +102,14 @@ public class SwimCandidateProvider : IIslandCandidateProvider
                     shark.ExpiresAt = ctx.World.CurrentTime + duration;
                     ctx.World.WorldItems.Add(shark);
                     
+                    // Reserve the water resource for the shark's lifetime
+                    var sharkOwner = ReservationOwner.FromWorldItem(shark.Id);
+                    var reserveUntil = shark.ExpiresAt;
+                    var reserved = ctx.ReservationService.TryReserve(WaterResource, sharkOwner, reserveUntil);
+                    
+                    // Store the resource ID in the shark so it can release it on expiration
+                    shark.ReservedResourceId = reserved ? WaterResource : null;
+                    
                     // Additional morale penalty for shark encounter
                     ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 15.0);
                     
