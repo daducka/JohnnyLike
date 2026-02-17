@@ -14,10 +14,6 @@ public class SwimCandidateProvider : IIslandCandidateProvider
         if (ctx.Actor.Energy < 20.0)
             return;
 
-        // Block swimming if shark is present
-        if (ctx.World.Shark != null)
-            return;
-
         var baseDC = 10;
 
         if (ctx.World.Weather == Weather.Windy)

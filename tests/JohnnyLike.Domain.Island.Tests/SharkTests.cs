@@ -32,7 +32,7 @@ public class SharkTests
     }
 
     // Simple test-only implementation of IResourceReservationService
-    private class TestResourceReservationService : IResourceReservationService
+    private class TestResourceReservationService : IResourceReservationService, IResourceAvailability
     {
         private readonly HashSet<ResourceId> _reservedResources = new();
 
@@ -122,20 +122,35 @@ public class SharkTests
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
+        // Set up reservation service
+        var reservationService = new TestResourceReservationService();
+        world.ReservationService = reservationService;
+        
         actor.Energy = 50.0; // Ensure actor has enough energy
         
-        // First, verify swim candidates are generated when no shark
-        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
+        // First, verify swim candidates are generated when no shark (and resource is available)
+        var emptyAvailability = new EmptyResourceAvailability();
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), emptyAvailability);
         Assert.Contains(candidates, c => c.Action.Id.Value == "swim");
         
-        // Spawn a shark
+        // Spawn a shark and reserve the water resource
         var shark = new SharkItem();
         shark.ExpiresAt = 100.0;
         world.WorldItems.Add(shark);
         
-        // Verify no swim candidates are generated while shark is present
-        candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
-        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "swim");
+        // Manually reserve the water resource to simulate what happens in ApplyEffects
+        var waterResource = new ResourceId("island:resource:water");
+        var sharkOwner = ReservationOwner.FromWorldItem(shark.Id);
+        reservationService.TryReserve(waterResource, sharkOwner, shark.ExpiresAt);
+        shark.ReservedResourceId = waterResource;
+        
+        // Verify swim candidates are still generated (domain doesn't block them)
+        // But the resource availability check will indicate water is reserved
+        candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), reservationService);
+        Assert.Contains(candidates, c => c.Action.Id.Value == "swim");
+        
+        // Verify that the water resource is indeed reserved
+        Assert.True(reservationService.IsReserved(waterResource));
     }
 
     [Fact]
