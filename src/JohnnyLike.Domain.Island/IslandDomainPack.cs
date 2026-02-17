@@ -312,7 +312,7 @@ public class IslandDomainPack : IDomainPack
         var oldFish = islandWorld.FishAvailable;
         
         // Track campfire state before ticking
-        var campfireWasLit = islandWorld.MainCampfire?.IsLit ?? false;
+        var campfireLitBeforeTick = islandWorld.MainCampfire?.IsLit ?? false;
         
         // Track which items exist before ticking (for expiration detection)
         var itemsBeforeTick = islandWorld.WorldItems.OfType<MaintainableWorldItem>().ToList();
@@ -373,7 +373,7 @@ public class IslandDomainPack : IDomainPack
         
         // Campfire extinguished
         var campfire = islandWorld.MainCampfire;
-        if (campfireWasLit && campfire != null && !campfire.IsLit)
+        if (campfireLitBeforeTick && campfire != null && !campfire.IsLit)
         {
             traceEvents.Add(new TraceEvent(
                 newCurrentTime,

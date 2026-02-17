@@ -50,9 +50,9 @@ public class CoconutAvailabilityStat : WorldStat
     {
         base.DeserializeFromDict(data);
         CoconutsAvailable = data["CoconutsAvailable"].GetInt32();
-        if (data.TryGetValue("LastDayCount", out var lastDayElement))
-        {
-            _lastDayCount = lastDayElement.GetInt32();
-        }
+        // LastDayCount is optional for backward compatibility with saves that don't have it
+        _lastDayCount = data.TryGetValue("LastDayCount", out var lastDayElement) 
+            ? lastDayElement.GetInt32() 
+            : 0;
     }
 }

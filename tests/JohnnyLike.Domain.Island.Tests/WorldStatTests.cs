@@ -114,10 +114,16 @@ public class WorldStatTests
         
         var dict = original.SerializeToDict();
         var deserialized = new TimeOfDayStat();
-        deserialized.DeserializeFromDict(dict.ToDictionary(
-            kvp => kvp.Key,
-            kvp => System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(kvp.Value)).RootElement
-        ));
+        
+        // Convert dictionary for deserialization without creating unnecessary JsonDocument instances
+        var jsonDict = new Dictionary<string, System.Text.Json.JsonElement>();
+        foreach (var kvp in dict)
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(kvp.Value));
+            jsonDict[kvp.Key] = doc.RootElement.Clone();
+        }
+        
+        deserialized.DeserializeFromDict(jsonDict);
         
         Assert.Equal(original.TimeOfDay, deserialized.TimeOfDay);
         Assert.Equal(original.DayCount, deserialized.DayCount);

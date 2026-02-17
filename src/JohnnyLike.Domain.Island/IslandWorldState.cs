@@ -118,6 +118,7 @@ public class IslandWorldState : WorldState
         var visited = new HashSet<string>();
         var visiting = new HashSet<string>();
         var statById = WorldStats.ToDictionary(s => s.Id);
+        var path = new List<string>(); // Track current dependency path for better error messages
 
         void Visit(WorldStat stat)
         {
@@ -125,9 +126,16 @@ public class IslandWorldState : WorldState
                 return;
 
             if (visiting.Contains(stat.Id))
-                throw new InvalidOperationException($"Circular dependency detected in WorldStats involving {stat.Id}");
+            {
+                // Build a clear error message showing the cycle
+                var cycleStart = path.IndexOf(stat.Id);
+                var cycle = string.Join(" -> ", path.Skip(cycleStart).Append(stat.Id));
+                throw new InvalidOperationException(
+                    $"Circular dependency detected in WorldStats: {cycle}");
+            }
 
             visiting.Add(stat.Id);
+            path.Add(stat.Id);
 
             foreach (var depId in stat.GetDependencies())
             {
@@ -137,6 +145,7 @@ public class IslandWorldState : WorldState
                 }
             }
 
+            path.RemoveAt(path.Count - 1);
             visiting.Remove(stat.Id);
             visited.Add(stat.Id);
             sorted.Add(stat);
