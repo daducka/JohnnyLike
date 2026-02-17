@@ -24,7 +24,7 @@ public class BashTreasureChestCandidateProvider : IIslandCandidateProvider
         var baseDC = (int)(DC_MIN + healthRatio * (DC_MAX - DC_MIN));
 
         // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck("Athletics", baseDC, "treasure_chest");
+        var parameters = ctx.RollSkillCheck(SkillType.Athletics, baseDC, "treasure_chest");
 
         var baseScore = 0.6; // High priority for treasure
 

@@ -35,7 +35,7 @@ public class FishingCandidateProvider : IIslandCandidateProvider
             baseDC += 2;
 
         // Roll skill check at candidate generation time
-        var parameters = ctx.RollSkillCheck("Fishing", baseDC, "shore");
+        var parameters = ctx.RollSkillCheck(SkillType.Fishing, baseDC, "shore");
 
         var baseScore = 0.5 + (ctx.Actor.Hunger / 100.0);
         if (ctx.Actor.Hunger > 70.0 || ctx.Actor.Energy < 20.0)

@@ -250,7 +250,7 @@ public class IslandDomainPack : IDomainPack
         {
             Name = "Inspiration",
             Type = BuffType.SkillBonus,
-            SkillId = "", // Empty means applies to all skills
+            SkillType = null, // null means applies to all skills
             Value = 1,
             ExpiresAt = currentTime + 300.0 // 5 minutes
         });

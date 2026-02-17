@@ -44,14 +44,14 @@ public class IslandContext
     /// Encapsulates the common pattern of skill check resolution at candidate generation time.
     /// </summary>
     public SkillCheckActionParameters RollSkillCheck(
-        string skillId,
+        SkillType skillType,
         int baseDC,
         string location)
     {
-        var modifier = Actor.GetSkillModifier(skillId);
-        var advantage = Actor.GetAdvantage(skillId);
+        var modifier = Actor.GetSkillModifier(skillType);
+        var advantage = Actor.GetAdvantage(skillType);
 
-        var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
+        var request = new SkillCheckRequest(baseDC, modifier, advantage, skillType.ToString());
         var result = SkillCheckResolver.Resolve(Rng, request);
 
         var parameters = new SkillCheckActionParameters(request, result, location);
