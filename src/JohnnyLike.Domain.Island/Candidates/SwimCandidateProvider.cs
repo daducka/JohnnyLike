@@ -18,35 +18,18 @@ public class SwimCandidateProvider : IIslandCandidateProvider
         else if (ctx.World.Weather == Weather.Rainy)
             baseDC += 1;
 
-        var skillId = "Survival";
-        var modifier = ctx.Actor.GetSkillModifier(skillId);
-        var advantage = ctx.Actor.GetAdvantage(skillId);
-
         // Roll skill check at candidate generation time
-        var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
-        var result = SkillCheckResolver.Resolve(ctx.Rng, request);
+        var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "water");
 
         var baseScore = 0.35 + (ctx.Actor.Morale < 30 ? 0.2 : 0.0);
         // Score based on actual outcome tier
         baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.3;
 
-        // Populate ResultData with skill check outcome
-        var resultData = new Dictionary<string, object>
-        {
-            ["dc"] = baseDC,
-            ["modifier"] = modifier,
-            ["advantage"] = advantage.ToString(),
-            ["skillId"] = skillId,
-            ["roll"] = result.Roll,
-            ["total"] = result.Total,
-            ["tier"] = result.OutcomeTier.ToString()
-        };
-
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("swim"),
                 ActionKind.Interact,
-                new SkillCheckActionParameters(baseDC, modifier, advantage, "water", skillId),
+                parameters,
                 15.0 + ctx.Random.NextDouble() * 5.0,
                 resultData
             ),

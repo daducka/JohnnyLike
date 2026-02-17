@@ -17,36 +17,20 @@ public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
             return;
 
         var baseDC = 18;
-        var skillId = "Perception";
-        var modifier = ctx.Actor.GetSkillModifier(skillId);
-        var advantage = ctx.Actor.GetAdvantage(skillId);
 
         // Roll skill check at candidate generation time
-        var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
-        var result = SkillCheckResolver.Resolve(ctx.Rng, request);
+        var (parameters, resultData, result) = ctx.RollSkillCheck("Perception", baseDC, "shore");
 
         // Calculate base score with cooldown factored in
         var timeSinceLastEncounter = ctx.NowSeconds - ctx.Actor.LastMermaidEncounterTime;
         var cooldownFactor = Math.Min(1.0, timeSinceLastEncounter / 1200.0); // 1200 second cooldown
         var baseScore = 0.15 * (result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.3) * cooldownFactor;
 
-        // Populate ResultData with skill check outcome
-        var resultData = new Dictionary<string, object>
-        {
-            ["dc"] = baseDC,
-            ["modifier"] = modifier,
-            ["advantage"] = advantage.ToString(),
-            ["skillId"] = skillId,
-            ["roll"] = result.Roll,
-            ["total"] = result.Total,
-            ["tier"] = result.OutcomeTier.ToString()
-        };
-
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("mermaid_encounter"),
                 ActionKind.Interact,
-                new SkillCheckActionParameters(baseDC, modifier, advantage, "shore", skillId),
+                parameters,
                 15.0,
                 resultData
             ),

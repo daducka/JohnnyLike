@@ -17,7 +17,6 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
         var wisdomMod = DndMath.AbilityModifier(ctx.Actor.WIS);
         
         var foresightBonus = (survivalMod + wisdomMod) / 2.0;
-        var skillId = "Survival";
 
         if (campfire.IsLit && campfire.FuelSeconds < 1800.0)
         {
@@ -25,34 +24,17 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.1);
 
             var baseDC = 10;
-            var modifier = ctx.Actor.GetSkillModifier(skillId);
-            var advantage = ctx.Actor.GetAdvantage(skillId);
-
-            // Roll skill check at candidate generation time
-            var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
-            var result = SkillCheckResolver.Resolve(ctx.Rng, request);
+            var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "campfire");
 
             var baseScore = 0.3 + (urgency * 0.5 * foresightMultiplier);
             // Score based on actual outcome tier
             baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.5;
 
-            // Populate ResultData with skill check outcome
-            var resultData = new Dictionary<string, object>
-            {
-                ["dc"] = baseDC,
-                ["modifier"] = modifier,
-                ["advantage"] = advantage.ToString(),
-                ["skillId"] = skillId,
-                ["roll"] = result.Roll,
-                ["total"] = result.Total,
-                ["tier"] = result.OutcomeTier.ToString()
-            };
-
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("add_fuel_campfire"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "campfire", skillId),
+                    parameters,
                     20.0 + ctx.Random.NextDouble() * 5.0,
                     resultData
                 ),
@@ -67,34 +49,17 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.15);
 
             var baseDC = 12;
-            var modifier = ctx.Actor.GetSkillModifier(skillId);
-            var advantage = ctx.Actor.GetAdvantage(skillId);
-
-            // Roll skill check at candidate generation time
-            var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
-            var result = SkillCheckResolver.Resolve(ctx.Rng, request);
+            var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "campfire");
 
             var baseScore = urgency * foresightMultiplier;
             // Score based on actual outcome tier
             baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.5;
 
-            // Populate ResultData with skill check outcome
-            var resultData = new Dictionary<string, object>
-            {
-                ["dc"] = baseDC,
-                ["modifier"] = modifier,
-                ["advantage"] = advantage.ToString(),
-                ["skillId"] = skillId,
-                ["roll"] = result.Roll,
-                ["total"] = result.Total,
-                ["tier"] = result.OutcomeTier.ToString()
-            };
-
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("relight_campfire"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "campfire", skillId),
+                    parameters,
                     30.0 + ctx.Random.NextDouble() * 10.0,
                     resultData
                 ),
@@ -109,34 +74,17 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var foresightMultiplier = 1.0 + (foresightBonus * 0.12);
 
             var baseDC = 11;
-            var modifier = ctx.Actor.GetSkillModifier(skillId);
-            var advantage = ctx.Actor.GetAdvantage(skillId);
-
-            // Roll skill check at candidate generation time
-            var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
-            var result = SkillCheckResolver.Resolve(ctx.Rng, request);
+            var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "campfire");
 
             var baseScore = 0.2 + (urgency * 0.4 * foresightMultiplier);
             // Score based on actual outcome tier
             baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.5;
 
-            // Populate ResultData with skill check outcome
-            var resultData = new Dictionary<string, object>
-            {
-                ["dc"] = baseDC,
-                ["modifier"] = modifier,
-                ["advantage"] = advantage.ToString(),
-                ["skillId"] = skillId,
-                ["roll"] = result.Roll,
-                ["total"] = result.Total,
-                ["tier"] = result.OutcomeTier.ToString()
-            };
-
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("repair_campfire"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "campfire", skillId),
+                    parameters,
                     25.0 + ctx.Random.NextDouble() * 5.0,
                     resultData
                 ),
@@ -148,35 +96,19 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
         if (campfire.Quality < 10.0)
         {
             var baseDC = 15;
-            var modifier = ctx.Actor.GetSkillModifier(skillId);
-            var advantage = ctx.Actor.GetAdvantage(skillId);
             var foresightMultiplier = 1.0 + (foresightBonus * 0.2);
 
-            // Roll skill check at candidate generation time
-            var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
-            var result = SkillCheckResolver.Resolve(ctx.Rng, request);
+            var (parameters, resultData, result) = ctx.RollSkillCheck("Survival", baseDC, "campfire");
 
             var baseScore = 1.0 * foresightMultiplier;
             // Score based on actual outcome tier
             baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.5;
 
-            // Populate ResultData with skill check outcome
-            var resultData = new Dictionary<string, object>
-            {
-                ["dc"] = baseDC,
-                ["modifier"] = modifier,
-                ["advantage"] = advantage.ToString(),
-                ["skillId"] = skillId,
-                ["roll"] = result.Roll,
-                ["total"] = result.Total,
-                ["tier"] = result.OutcomeTier.ToString()
-            };
-
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("rebuild_campfire"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "campfire", skillId),
+                    parameters,
                     60.0 + ctx.Random.NextDouble() * 20.0,
                     resultData
                 ),

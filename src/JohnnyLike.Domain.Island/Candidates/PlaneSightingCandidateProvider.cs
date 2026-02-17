@@ -13,36 +13,20 @@ public class PlaneSightingCandidateProvider : IIslandCandidateProvider
             return;
 
         var baseDC = 15;
-        var skillId = "Perception";
-        var modifier = ctx.Actor.GetSkillModifier(skillId);
-        var advantage = ctx.Actor.GetAdvantage(skillId);
 
         // Roll skill check at candidate generation time
-        var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
-        var result = SkillCheckResolver.Resolve(ctx.Rng, request);
+        var (parameters, resultData, result) = ctx.RollSkillCheck("Perception", baseDC, "beach");
 
         // Calculate base score with cooldown factored in
         var timeSinceLastSighting = ctx.NowSeconds - ctx.Actor.LastPlaneSightingTime;
         var cooldownFactor = Math.Min(1.0, timeSinceLastSighting / 600.0); // 600 second cooldown
         var baseScore = 0.2 * (result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.3) * cooldownFactor;
 
-        // Populate ResultData with skill check outcome
-        var resultData = new Dictionary<string, object>
-        {
-            ["dc"] = baseDC,
-            ["modifier"] = modifier,
-            ["advantage"] = advantage.ToString(),
-            ["skillId"] = skillId,
-            ["roll"] = result.Roll,
-            ["total"] = result.Total,
-            ["tier"] = result.OutcomeTier.ToString()
-        };
-
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("plane_sighting"),
                 ActionKind.Interact,
-                new SkillCheckActionParameters(baseDC, modifier, advantage, "beach", skillId),
+                parameters,
                 10.0,
                 resultData
             ),
