@@ -10,4 +10,5 @@ public class EffectContext
     public required IslandActorState Actor { get; init; }
     public required IslandWorldState World { get; init; }
     public RollOutcomeTier? Tier { get; init; }
+    public required IRngStream Rng { get; init; }
 }

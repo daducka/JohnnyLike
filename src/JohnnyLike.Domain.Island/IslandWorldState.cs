@@ -33,6 +33,8 @@ public class IslandWorldState : WorldState
 
     public CampfireItem? MainCampfire => WorldItems.OfType<CampfireItem>().FirstOrDefault();
     public ShelterItem? MainShelter => WorldItems.OfType<ShelterItem>().FirstOrDefault();
+    public TreasureChestItem? TreasureChest => WorldItems.OfType<TreasureChestItem>().FirstOrDefault();
+    public SharkItem? Shark => WorldItems.OfType<SharkItem>().FirstOrDefault();
 
     public void OnTimeAdvanced(double currentTime, double dt)
     {
@@ -51,9 +53,18 @@ public class IslandWorldState : WorldState
         var tidePhase = (TimeOfDay * 24.0) % 12.0;
         TideLevel = tidePhase >= 6.0 ? TideLevel.High : TideLevel.Low;
 
+        // Tick maintainable items
         foreach (var item in WorldItems.OfType<MaintainableWorldItem>())
         {
             item.Tick(dt, this);
+        }
+
+        // Remove expired maintainable items after tick cycle to avoid collection modification during iteration
+        var expiredItems = WorldItems.OfType<MaintainableWorldItem>().Where(item => item.IsExpired).ToList();
+        foreach (var item in expiredItems)
+        {
+            item.PerformExpiration(this);
+            WorldItems.Remove(item);
         }
     }
 
@@ -107,6 +118,8 @@ public class IslandWorldState : WorldState
                     {
                         "campfire" => new CampfireItem(id),
                         "shelter" => new ShelterItem(id),
+                        "treasure_chest" => new TreasureChestItem(id),
+                        "shark" => new SharkItem(id),
                         _ => null
                     };
 

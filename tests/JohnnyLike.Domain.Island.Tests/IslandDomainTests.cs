@@ -226,7 +226,7 @@ public class IslandDomainPackTests
         var providers = (List<IIslandCandidateProvider>)providersField!.GetValue(domain)!;
         
         // Verify we have all expected providers
-        Assert.Equal(11, providers.Count); // Chat, Sleep, CampfireMaintenance, ShelterMaintenance, Fishing, Coconut, SandCastle, Swim, PlaneSighting, MermaidEncounter, Idle
+        Assert.Equal(12, providers.Count); // Chat, Sleep, CampfireMaintenance, ShelterMaintenance, Fishing, Coconut, SandCastle, Swim, BashTreasureChest, PlaneSighting, MermaidEncounter, Idle
         
         // Verify order by checking types
         var providerTypes = providers.Select(p => p.GetType().Name).ToList();
@@ -240,6 +240,7 @@ public class IslandDomainPackTests
         // CoconutCandidateProvider (210)
         // SandCastleCandidateProvider (400)
         // SwimCandidateProvider (410)
+        // BashTreasureChestCandidateProvider (420)
         // PlaneSightingCandidateProvider (800)
         // MermaidEncounterCandidateProvider (810)
         // IdleCandidateProvider (9999)
@@ -252,9 +253,10 @@ public class IslandDomainPackTests
         Assert.Equal("CoconutCandidateProvider", providerTypes[5]);
         Assert.Equal("SandCastleCandidateProvider", providerTypes[6]);
         Assert.Equal("SwimCandidateProvider", providerTypes[7]);
-        Assert.Equal("PlaneSightingCandidateProvider", providerTypes[8]);
-        Assert.Equal("MermaidEncounterCandidateProvider", providerTypes[9]);
-        Assert.Equal("IdleCandidateProvider", providerTypes[10]);
+        Assert.Equal("BashTreasureChestCandidateProvider", providerTypes[8]);
+        Assert.Equal("PlaneSightingCandidateProvider", providerTypes[9]);
+        Assert.Equal("MermaidEncounterCandidateProvider", providerTypes[10]);
+        Assert.Equal("IdleCandidateProvider", providerTypes[11]);
     }
 }
 

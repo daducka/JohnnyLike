@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Candidates;
@@ -9,6 +10,10 @@ public class SwimCandidateProvider : IIslandCandidateProvider
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
         if (ctx.Actor.Energy < 20.0)
+            return;
+
+        // Block swimming if shark is present
+        if (ctx.World.Shark != null)
             return;
 
         var baseDC = 10;
@@ -51,6 +56,22 @@ public class SwimCandidateProvider : IIslandCandidateProvider
                 ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 20.0);
                 ctx.Actor.Energy = Math.Max(0.0, ctx.Actor.Energy - 5.0);
                 ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 15.0);
+                
+                // Spawn treasure chest if not already present
+                if (ctx.World.TreasureChest == null)
+                {
+                    var chest = new TreasureChestItem();
+                    chest.IsOpened = false;
+                    chest.Health = 100.0;
+                    chest.Position = "shore";
+                    ctx.World.WorldItems.Add(chest);
+                    
+                    if (ctx.Outcome.ResultData != null)
+                    {
+                        ctx.Outcome.ResultData["variant_id"] = "swim_crit_success_treasure";
+                        ctx.Outcome.ResultData["encounter_type"] = "treasure_chest";
+                    }
+                }
                 break;
 
             case RollOutcomeTier.Success:
@@ -70,7 +91,26 @@ public class SwimCandidateProvider : IIslandCandidateProvider
 
             case RollOutcomeTier.CriticalFailure:
                 ctx.Actor.Energy = Math.Max(0.0, ctx.Actor.Energy - 25.0);
-                ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 10.0);
+                ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 15.0);
+                
+                // Spawn shark if not already present
+                if (ctx.World.Shark == null)
+                {
+                    var duration = 60.0 + ctx.Rng.NextDouble() * 120.0; // 60-180 seconds
+                    var shark = new SharkItem();
+                    shark.ExpiresAt = ctx.World.CurrentTime + duration;
+                    ctx.World.WorldItems.Add(shark);
+                    
+                    // Additional morale penalty for shark encounter
+                    ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 15.0);
+                    
+                    if (ctx.Outcome.ResultData != null)
+                    {
+                        ctx.Outcome.ResultData["variant_id"] = "swim_crit_failure_shark";
+                        ctx.Outcome.ResultData["encounter_type"] = "shark";
+                        ctx.Outcome.ResultData["shark_duration"] = duration;
+                    }
+                }
                 break;
         }
     }
