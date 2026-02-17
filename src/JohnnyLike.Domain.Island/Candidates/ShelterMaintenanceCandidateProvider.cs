@@ -17,6 +17,7 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
         var wisdomMod = DndMath.AbilityModifier(ctx.Actor.WIS);
         
         var foresightBonus = (survivalMod + wisdomMod) / 2.0;
+        var skillId = "Survival";
 
         if (shelter.Quality < 70.0)
         {
@@ -30,7 +31,6 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             };
 
             var foresightMultiplier = 1.0 + (foresightBonus * 0.15);
-            var baseScore = 0.25 + (urgency * 0.5 * weatherMultiplier * foresightMultiplier);
 
             var baseDC = 12;
             if (ctx.World.Weather == Weather.Rainy)
@@ -38,18 +38,39 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
             else if (ctx.World.Weather == Weather.Windy)
                 baseDC += 1;
 
-            var modifier = ctx.Actor.GetSkillModifier("Survival");
-            var advantage = ctx.Actor.GetAdvantage("Survival");
+            var modifier = ctx.Actor.GetSkillModifier(skillId);
+            var advantage = ctx.Actor.GetAdvantage(skillId);
+
+            // Roll skill check at candidate generation time
+            var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
+            var result = SkillCheckResolver.Resolve(ctx.Rng, request);
+
+            var baseScore = 0.25 + (urgency * 0.5 * weatherMultiplier * foresightMultiplier);
+            // Score based on actual outcome tier
+            baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.5;
+
+            // Populate ResultData with skill check outcome
+            var resultData = new Dictionary<string, object>
+            {
+                ["dc"] = baseDC,
+                ["modifier"] = modifier,
+                ["advantage"] = advantage.ToString(),
+                ["skillId"] = skillId,
+                ["roll"] = result.Roll,
+                ["total"] = result.Total,
+                ["tier"] = result.OutcomeTier.ToString()
+            };
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("repair_shelter"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "shelter"),
-                    30.0 + ctx.Rng.NextDouble() * 10.0
+                    new SkillCheckActionParameters(baseDC, modifier, advantage, "shelter", skillId),
+                    30.0 + ctx.Random.NextDouble() * 10.0,
+                    resultData
                 ),
                 baseScore,
-                $"Repair shelter (quality: {shelter.Quality:F0}%, {ctx.World.Weather})"
+                $"Repair shelter (quality: {shelter.Quality:F0}%, {ctx.World.Weather}, rolled {result.Total}, {result.OutcomeTier})"
             ));
         }
 
@@ -57,40 +78,81 @@ public class ShelterMaintenanceCandidateProvider : IIslandCandidateProvider
         {
             var urgency = (50.0 - shelter.Quality) / 50.0;
             var foresightMultiplier = 1.0 + (foresightBonus * 0.2);
-            var baseScore = 0.4 + (urgency * 0.5 * foresightMultiplier);
 
             var baseDC = 13;
-            var modifier = ctx.Actor.GetSkillModifier("Survival");
-            var advantage = ctx.Actor.GetAdvantage("Survival");
+            var modifier = ctx.Actor.GetSkillModifier(skillId);
+            var advantage = ctx.Actor.GetAdvantage(skillId);
+
+            // Roll skill check at candidate generation time
+            var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
+            var result = SkillCheckResolver.Resolve(ctx.Rng, request);
+
+            var baseScore = 0.4 + (urgency * 0.5 * foresightMultiplier);
+            // Score based on actual outcome tier
+            baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.5;
+
+            // Populate ResultData with skill check outcome
+            var resultData = new Dictionary<string, object>
+            {
+                ["dc"] = baseDC,
+                ["modifier"] = modifier,
+                ["advantage"] = advantage.ToString(),
+                ["skillId"] = skillId,
+                ["roll"] = result.Roll,
+                ["total"] = result.Total,
+                ["tier"] = result.OutcomeTier.ToString()
+            };
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("reinforce_shelter"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "shelter"),
-                    40.0 + ctx.Rng.NextDouble() * 10.0
+                    new SkillCheckActionParameters(baseDC, modifier, advantage, "shelter", skillId),
+                    40.0 + ctx.Random.NextDouble() * 10.0,
+                    resultData
                 ),
                 baseScore,
-                $"Reinforce shelter (quality: {shelter.Quality:F0}%)"
+                $"Reinforce shelter (quality: {shelter.Quality:F0}%, rolled {result.Total}, {result.OutcomeTier})"
             ));
         }
 
         if (shelter.Quality < 15.0)
         {
             var baseDC = 14;
-            var modifier = ctx.Actor.GetSkillModifier("Survival");
-            var advantage = ctx.Actor.GetAdvantage("Survival");
+            var modifier = ctx.Actor.GetSkillModifier(skillId);
+            var advantage = ctx.Actor.GetAdvantage(skillId);
             var foresightMultiplier = 1.0 + (foresightBonus * 0.25);
+
+            // Roll skill check at candidate generation time
+            var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
+            var result = SkillCheckResolver.Resolve(ctx.Rng, request);
+
+            var baseScore = 1.2 * foresightMultiplier;
+            // Score based on actual outcome tier
+            baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.5;
+
+            // Populate ResultData with skill check outcome
+            var resultData = new Dictionary<string, object>
+            {
+                ["dc"] = baseDC,
+                ["modifier"] = modifier,
+                ["advantage"] = advantage.ToString(),
+                ["skillId"] = skillId,
+                ["roll"] = result.Roll,
+                ["total"] = result.Total,
+                ["tier"] = result.OutcomeTier.ToString()
+            };
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("rebuild_shelter"),
                     ActionKind.Interact,
-                    new SkillCheckActionParameters(baseDC, modifier, advantage, "shelter"),
-                    90.0 + ctx.Rng.NextDouble() * 30.0
+                    new SkillCheckActionParameters(baseDC, modifier, advantage, "shelter", skillId),
+                    90.0 + ctx.Random.NextDouble() * 30.0,
+                    resultData
                 ),
-                1.2 * foresightMultiplier,
-                "Rebuild shelter from scratch"
+                baseScore,
+                $"Rebuild shelter from scratch (rolled {result.Total}, {result.OutcomeTier})"
             ));
         }
     }

@@ -15,7 +15,8 @@ public record ActionSpec(
     ActionId Id,
     ActionKind Kind,
     ActionParameters Parameters,
-    double EstimatedDuration
+    double EstimatedDuration,
+    Dictionary<string, object>? ResultData = null
 );
 
 public enum ActionOutcomeType

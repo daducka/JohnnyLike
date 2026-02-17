@@ -99,7 +99,7 @@ public class MaintenanceIntegrationTests
         actor.CurrentAction = new ActionSpec(
             new ActionId("repair_campfire"),
             ActionKind.Interact,
-            new SkillCheckActionParameters(11, 2, AdvantageType.Normal, "campfire"),
+            new SkillCheckActionParameters(11, 2, AdvantageType.Normal, "campfire", "Survival"),
             25.0
         );
         
@@ -132,7 +132,7 @@ public class MaintenanceIntegrationTests
         actor.CurrentAction = new ActionSpec(
             new ActionId("add_fuel_campfire"),
             ActionKind.Interact,
-            new SkillCheckActionParameters(10, 2, AdvantageType.Normal, "campfire"),
+            new SkillCheckActionParameters(10, 2, AdvantageType.Normal, "campfire", "Survival"),
             20.0
         );
         
@@ -197,7 +197,7 @@ public class MaintenanceIntegrationTests
         actor.CurrentAction = new ActionSpec(
             new ActionId("rebuild_shelter"),
             ActionKind.Interact,
-            new SkillCheckActionParameters(14, 2, AdvantageType.Normal, "shelter"),
+            new SkillCheckActionParameters(14, 2, AdvantageType.Normal, "shelter", "Survival"),
             90.0
         );
         

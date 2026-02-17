@@ -400,7 +400,7 @@ public class IslandActionEffectsTests
             CurrentAction = new ActionSpec(
                 new ActionId("fish_for_food"),
                 ActionKind.Interact,
-                new SkillCheckActionParameters(10, 3, AdvantageType.Normal, "shore"),
+                new SkillCheckActionParameters(10, 3, AdvantageType.Normal, "shore", "Fishing"),
                 15.0
             )
         };
@@ -454,45 +454,33 @@ public class IslandActionEffectsTests
     }
 
     [Fact]
-    public void ApplyActionEffects_SkillCheck_StoresDetailedResultData()
+    public void GenerateCandidates_SkillCheck_PopulatesResultData()
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = new IslandActorState
-        {
-            Id = actorId,
-            Hunger = 60.0,
-            CurrentAction = new ActionSpec(
-                new ActionId("fish_for_food"),
-                ActionKind.Interact,
-                new SkillCheckActionParameters(10, 3, AdvantageType.Normal, "shore"),
-                15.0
-            )
-        };
-        var worldState = new IslandWorldState { FishAvailable = 100.0 };
-
-        // Outcome with empty ResultData and no tier pre-set — forces skill check resolution
-        var resultData = new Dictionary<string, object>();
-        var outcome = new ActionOutcome(
-            new ActionId("fish_for_food"),
-            ActionOutcomeType.Success,
-            15.0,
-            resultData
-        );
-
-        var rng = new RandomRngStream(new Random(42));
-        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng);
-
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var worldState = domain.CreateInitialWorldState();
+        
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42));
+        
+        var fishingCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "fish_for_food");
+        Assert.NotNull(fishingCandidate);
+        
+        // Verify ResultData is populated in the candidate
+        var resultData = fishingCandidate.Action.ResultData;
+        Assert.NotNull(resultData);
         Assert.True(resultData.ContainsKey("dc"));
         Assert.True(resultData.ContainsKey("modifier"));
         Assert.True(resultData.ContainsKey("advantage"));
+        Assert.True(resultData.ContainsKey("skillId"));
         Assert.True(resultData.ContainsKey("roll"));
         Assert.True(resultData.ContainsKey("total"));
         Assert.True(resultData.ContainsKey("tier"));
 
-        Assert.Equal(10, resultData["dc"]);
-        Assert.Equal(3, resultData["modifier"]);
-        Assert.Equal("Normal", resultData["advantage"]);
+        Assert.IsType<int>(resultData["dc"]);
+        Assert.IsType<int>(resultData["modifier"]);
+        Assert.IsType<string>(resultData["advantage"]);
+        Assert.Equal("Fishing", resultData["skillId"]);
         Assert.IsType<int>(resultData["roll"]);
         Assert.IsType<int>(resultData["total"]);
         Assert.IsType<string>(resultData["tier"]);

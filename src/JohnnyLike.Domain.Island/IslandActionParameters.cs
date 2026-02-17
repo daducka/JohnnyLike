@@ -10,7 +10,8 @@ public record SkillCheckActionParameters(
     int DC,
     int Modifier,
     AdvantageType Advantage,
-    string Location
+    string Location,
+    string SkillId
 ) : ActionParameters
 {
     public override Dictionary<string, object> ToDictionary() => new()
@@ -18,25 +19,8 @@ public record SkillCheckActionParameters(
         ["dc"] = DC,
         ["modifier"] = Modifier,
         ["advantage"] = Advantage.ToString(),
-        ["location"] = Location
-    };
-}
-
-/// <summary>
-/// Parameters for vignette actions (special events).
-/// </summary>
-public record VignetteActionParameters(
-    int DC,
-    int Modifier,
-    AdvantageType Advantage
-) : ActionParameters
-{
-    public override Dictionary<string, object> ToDictionary() => new()
-    {
-        ["dc"] = DC,
-        ["modifier"] = Modifier,
-        ["advantage"] = Advantage.ToString(),
-        ["vignette"] = true
+        ["location"] = Location,
+        ["skillId"] = SkillId
     };
 }
 

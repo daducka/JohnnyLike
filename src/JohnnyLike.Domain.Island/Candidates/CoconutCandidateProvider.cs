@@ -21,10 +21,13 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
         if (ctx.World.Weather == Weather.Windy)
             baseDC -= 1;
 
-        var modifier = ctx.Actor.GetSkillModifier("Survival");
-        var advantage = ctx.Actor.GetAdvantage("Survival");
+        var skillId = "Survival";
+        var modifier = ctx.Actor.GetSkillModifier(skillId);
+        var advantage = ctx.Actor.GetAdvantage(skillId);
 
-        var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
+        // Roll skill check at candidate generation time
+        var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
+        var result = SkillCheckResolver.Resolve(ctx.Rng, request);
 
         var baseScore = 0.4 + (ctx.Actor.Hunger / 150.0);
         if (ctx.Actor.Hunger > 70.0)
@@ -33,18 +36,32 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
         }
         else
         {
-            baseScore *= estimatedChance;
+            // Score based on actual outcome tier
+            baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.3;
         }
+
+        // Populate ResultData with skill check outcome
+        var resultData = new Dictionary<string, object>
+        {
+            ["dc"] = baseDC,
+            ["modifier"] = modifier,
+            ["advantage"] = advantage.ToString(),
+            ["skillId"] = skillId,
+            ["roll"] = result.Roll,
+            ["total"] = result.Total,
+            ["tier"] = result.OutcomeTier.ToString()
+        };
 
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("shake_tree_coconut"),
                 ActionKind.Interact,
-                new SkillCheckActionParameters(baseDC, modifier, advantage, "palm_tree"),
-                10.0 + ctx.Rng.NextDouble() * 5.0
+                new SkillCheckActionParameters(baseDC, modifier, advantage, "palm_tree", skillId),
+                10.0 + ctx.Random.NextDouble() * 5.0,
+                resultData
             ),
             baseScore,
-            $"Get coconut (DC {baseDC}, {estimatedChance:P0} chance)"
+            $"Get coconut (DC {baseDC}, rolled {result.Total}, {result.OutcomeTier})"
         ));
     }
 

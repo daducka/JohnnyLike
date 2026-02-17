@@ -34,10 +34,13 @@ public class FishingCandidateProvider : IIslandCandidateProvider
         if (ctx.Actor.Energy < 30.0)
             baseDC += 2;
 
-        var modifier = ctx.Actor.GetSkillModifier("Fishing");
-        var advantage = ctx.Actor.GetAdvantage("Fishing");
+        var skillId = "Fishing";
+        var modifier = ctx.Actor.GetSkillModifier(skillId);
+        var advantage = ctx.Actor.GetAdvantage(skillId);
 
-        var estimatedChance = DndMath.EstimateSuccessChanceD20(baseDC, modifier, advantage);
+        // Roll skill check at candidate generation time
+        var request = new SkillCheckRequest(baseDC, modifier, advantage, skillId);
+        var result = SkillCheckResolver.Resolve(ctx.Rng, request);
 
         var baseScore = 0.5 + (ctx.Actor.Hunger / 100.0);
         if (ctx.Actor.Hunger > 70.0 || ctx.Actor.Energy < 20.0)
@@ -46,18 +49,32 @@ public class FishingCandidateProvider : IIslandCandidateProvider
         }
         else
         {
-            baseScore *= estimatedChance;
+            // Score based on actual outcome tier
+            baseScore *= result.OutcomeTier >= RollOutcomeTier.Success ? 1.0 : 0.3;
         }
+
+        // Populate ResultData with skill check outcome
+        var resultData = new Dictionary<string, object>
+        {
+            ["dc"] = baseDC,
+            ["modifier"] = modifier,
+            ["advantage"] = advantage.ToString(),
+            ["skillId"] = skillId,
+            ["roll"] = result.Roll,
+            ["total"] = result.Total,
+            ["tier"] = result.OutcomeTier.ToString()
+        };
 
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("fish_for_food"),
                 ActionKind.Interact,
-                new SkillCheckActionParameters(baseDC, modifier, advantage, "shore"),
-                15.0 + ctx.Rng.NextDouble() * 5.0
+                new SkillCheckActionParameters(baseDC, modifier, advantage, "shore", skillId),
+                15.0 + ctx.Random.NextDouble() * 5.0,
+                resultData
             ),
             baseScore,
-            $"Fishing (DC {baseDC}, {estimatedChance:P0} chance)"
+            $"Fishing (DC {baseDC}, rolled {result.Total}, {result.OutcomeTier})"
         ));
     }
 

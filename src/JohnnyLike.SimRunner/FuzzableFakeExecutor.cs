@@ -48,7 +48,8 @@ public class FuzzableFakeExecutor
             _engine.ReportActionComplete(actorId, new ActionOutcome(
                 action.Id,
                 outcomeType,
-                adjustedDuration
+                adjustedDuration,
+                action.ResultData
             ));
             _runningActions.Remove(actorId);
 
