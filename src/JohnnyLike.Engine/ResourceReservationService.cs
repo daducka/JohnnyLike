@@ -20,7 +20,8 @@ internal class ResourceReservationService : IResourceReservationService
     public bool TryReserve(ResourceId resourceId, ReservationOwner owner, double until)
     {
         // Use a synthetic SceneId for world item reservations
-        var sceneId = new SceneId($"world_item:{owner.Id}:{_getCurrentTime()}");
+        // We use the owner ID to ensure consistent scene IDs for the same world item
+        var sceneId = new SceneId($"world_item:{owner.Id}");
         return _reservationTable.TryReserve(resourceId, sceneId, owner, until);
     }
 
