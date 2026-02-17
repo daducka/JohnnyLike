@@ -244,7 +244,8 @@ public class IslandDomainPack : IDomainPack
                 Outcome = outcome,
                 Actor = islandState,
                 World = islandWorld,
-                Tier = GetTierFromOutcome(outcome)
+                Tier = GetTierFromOutcome(outcome),
+                Rng = rng
             };
             
             handler.ApplyEffects(effectCtx);

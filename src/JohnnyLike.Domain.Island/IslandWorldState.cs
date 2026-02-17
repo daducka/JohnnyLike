@@ -17,6 +17,20 @@ public enum TideLevel
     High
 }
 
+public class TreasureChestState
+{
+    public bool IsPresent { get; set; } = false;
+    public bool IsOpened { get; set; } = false;
+    public double Health { get; set; } = 0.0;
+    public string? Position { get; set; } = null;
+}
+
+public class SharkState
+{
+    public bool IsPresent { get; set; } = false;
+    public double ExpiresAt { get; set; } = 0.0;
+}
+
 public class IslandWorldState : WorldState
 {
     public double TimeOfDay { get; set; } = 0.5;
@@ -30,6 +44,9 @@ public class IslandWorldState : WorldState
     public double CurrentTime { get; set; } = 0.0;
 
     public List<WorldItem> WorldItems { get; set; } = new();
+
+    public TreasureChestState TreasureChest { get; set; } = new();
+    public SharkState Shark { get; set; } = new();
 
     public CampfireItem? MainCampfire => WorldItems.OfType<CampfireItem>().FirstOrDefault();
     public ShelterItem? MainShelter => WorldItems.OfType<ShelterItem>().FirstOrDefault();
@@ -50,6 +67,12 @@ public class IslandWorldState : WorldState
 
         var tidePhase = (TimeOfDay * 24.0) % 12.0;
         TideLevel = tidePhase >= 6.0 ? TideLevel.High : TideLevel.Low;
+
+        // Auto-despawn shark when expired
+        if (Shark.IsPresent && CurrentTime >= Shark.ExpiresAt)
+        {
+            Shark.IsPresent = false;
+        }
 
         foreach (var item in WorldItems.OfType<MaintainableWorldItem>())
         {
@@ -75,7 +98,19 @@ public class IslandWorldState : WorldState
             FishRegenRatePerMinute,
             CoconutsAvailable,
             TideLevel,
-            WorldItems = serializedItems
+            WorldItems = serializedItems,
+            TreasureChest = new
+            {
+                TreasureChest.IsPresent,
+                TreasureChest.IsOpened,
+                TreasureChest.Health,
+                TreasureChest.Position
+            },
+            Shark = new
+            {
+                Shark.IsPresent,
+                Shark.ExpiresAt
+            }
         }, options);
     }
 
@@ -116,6 +151,30 @@ public class IslandWorldState : WorldState
                         WorldItems.Add(item);
                     }
                 }
+            }
+        }
+
+        if (data.TryGetValue("TreasureChest", out var treasureElement))
+        {
+            var treasureData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(treasureElement.GetRawText());
+            if (treasureData != null)
+            {
+                TreasureChest.IsPresent = treasureData["IsPresent"].GetBoolean();
+                TreasureChest.IsOpened = treasureData["IsOpened"].GetBoolean();
+                TreasureChest.Health = treasureData["Health"].GetDouble();
+                TreasureChest.Position = treasureData.TryGetValue("Position", out var posEl) && posEl.ValueKind != JsonValueKind.Null 
+                    ? posEl.GetString() 
+                    : null;
+            }
+        }
+
+        if (data.TryGetValue("Shark", out var sharkElement))
+        {
+            var sharkData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(sharkElement.GetRawText());
+            if (sharkData != null)
+            {
+                Shark.IsPresent = sharkData["IsPresent"].GetBoolean();
+                Shark.ExpiresAt = sharkData["ExpiresAt"].GetDouble();
             }
         }
     }
