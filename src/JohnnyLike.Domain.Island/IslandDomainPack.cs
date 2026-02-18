@@ -108,6 +108,17 @@ public class IslandDomainPack : IDomainPack
         };
         return state;
     }
+    
+    /// <summary>
+    /// Initialize actor-specific items in the world (e.g., exclusive tools like fishing poles).
+    /// This should be called after an actor is added to the engine.
+    /// </summary>
+    public void InitializeActorItems(ActorId actorId, IslandWorldState world)
+    {
+        // Create a fishing pole for this actor
+        var fishingPole = new FishingPoleItem($"fishing_pole_{actorId.Value}", actorId);
+        world.WorldItems.Add(fishingPole);
+    }
 
     public List<ActionCandidate> GenerateCandidates(
         ActorId actorId,
@@ -143,6 +154,12 @@ public class IslandDomainPack : IDomainPack
         {
             provider.AddCandidates(ctx, candidates);
         }
+        
+        // Generate candidates from ToolItems in the world
+        foreach (var item in islandWorld.WorldItems.OfType<ToolItem>())
+        {
+            item.AddCandidates(ctx, candidates);
+        }
 
         return candidates;
     }
@@ -173,20 +190,30 @@ public class IslandDomainPack : IDomainPack
 
         var actionId = outcome.ActionId.Value;
 
-        // Use dictionary lookup to dispatch to provider
-        if (_effectHandlers.TryGetValue(actionId, out var handler))
+        var effectCtx = new EffectContext
         {
-            var effectCtx = new EffectContext
-            {
-                ActorId = actorId,
-                Outcome = outcome,
-                Actor = islandState,
-                World = islandWorld,
-                Tier = GetTierFromOutcome(outcome),
-                Rng = rng,
-                Reservations = resourceAvailability
-            };
-            
+            ActorId = actorId,
+            Outcome = outcome,
+            Actor = islandState,
+            World = islandWorld,
+            Tier = GetTierFromOutcome(outcome),
+            Rng = rng,
+            Reservations = resourceAvailability
+        };
+
+        // First, try to apply effects via ToolItem
+        var toolItemHandled = false;
+        foreach (var item in islandWorld.WorldItems.OfType<ToolItem>())
+        {
+            // Check if this tool handles this action by trying to apply effects
+            // Tools should check the actionId in their ApplyEffects method
+            item.ApplyEffects(effectCtx);
+            toolItemHandled = true; // At least one tool tried to handle it
+        }
+
+        // Fall back to legacy provider-based effect handlers for non-tool actions
+        if (!toolItemHandled && _effectHandlers.TryGetValue(actionId, out var handler))
+        {
             handler.ApplyEffects(effectCtx);
         }
     }
