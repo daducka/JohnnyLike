@@ -54,7 +54,7 @@ public class FishingPoleItem : ToolItem
                 baseScore *= 0.7;
 
             var resultData = parameters.ToResultData();
-            resultData["tool_item_id"] = Id;
+            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyGoFishingEffect);
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -80,7 +80,7 @@ public class FishingPoleItem : ToolItem
             var baseScore = 0.3 + (urgency * 0.4);
 
             var resultData = parameters.ToResultData();
-            resultData["tool_item_id"] = Id;
+            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyMaintainRodEffect);
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -105,7 +105,7 @@ public class FishingPoleItem : ToolItem
             var baseScore = IsBroken ? 1.0 : 0.7;
 
             var resultData = parameters.ToResultData();
-            resultData["tool_item_id"] = Id;
+            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyRepairRodEffect);
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -133,39 +133,69 @@ public class FishingPoleItem : ToolItem
         switch (actionId)
         {
             case "go_fishing":
-                if (tier >= RollOutcomeTier.PartialSuccess)
-                {
-                    // Minor quality degradation from use
-                    Quality = Math.Max(0.0, Quality - 1.0);
-                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 5.0);
-                }
+                ApplyGoFishingEffect(ctx);
                 break;
 
             case "maintain_rod":
-                if (tier >= RollOutcomeTier.PartialSuccess)
-                {
-                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 25.0 : 
-                                         tier == RollOutcomeTier.Success ? 15.0 : 8.0;
-                    Quality = Math.Min(100.0, Quality + qualityRestored);
-                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 3.0);
-                }
+                ApplyMaintainRodEffect(ctx);
                 break;
 
             case "repair_rod":
-                if (tier >= RollOutcomeTier.Success)
-                {
-                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 50.0 : 35.0;
-                    Quality = Math.Min(100.0, Quality + qualityRestored);
-                    
-                    if (IsBroken)
-                    {
-                        IsBroken = false;
-                        ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 10.0);
-                    }
-                    
-                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 8.0);
-                }
+                ApplyRepairRodEffect(ctx);
                 break;
+        }
+    }
+
+    private void ApplyGoFishingEffect(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        if (tier >= RollOutcomeTier.PartialSuccess)
+        {
+            // Minor quality degradation from use
+            Quality = Math.Max(0.0, Quality - 1.0);
+            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 5.0);
+        }
+    }
+
+    private void ApplyMaintainRodEffect(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        if (tier >= RollOutcomeTier.PartialSuccess)
+        {
+            var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 25.0 : 
+                                 tier == RollOutcomeTier.Success ? 15.0 : 8.0;
+            Quality = Math.Min(100.0, Quality + qualityRestored);
+            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 3.0);
+        }
+    }
+
+    private void ApplyRepairRodEffect(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        if (tier >= RollOutcomeTier.Success)
+        {
+            var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 50.0 : 35.0;
+            Quality = Math.Min(100.0, Quality + qualityRestored);
+            
+            if (IsBroken)
+            {
+                IsBroken = false;
+                ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 10.0);
+            }
+            
+            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 8.0);
         }
     }
 

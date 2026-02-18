@@ -61,7 +61,7 @@ public class ShelterItem : ToolItem
             var baseScore = 0.25 + (urgency * 0.5 * weatherMultiplier * foresightMultiplier);
 
             var resultData = parameters.ToResultData();
-            resultData["tool_item_id"] = Id;
+            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyRepairShelterEffect);
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -87,7 +87,7 @@ public class ShelterItem : ToolItem
             var baseScore = 0.4 + (urgency * 0.5 * foresightMultiplier);
 
             var resultData = parameters.ToResultData();
-            resultData["tool_item_id"] = Id;
+            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyReinforceShelterEffect);
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -112,7 +112,7 @@ public class ShelterItem : ToolItem
             var baseScore = 1.2 * foresightMultiplier;
 
             var resultData = parameters.ToResultData();
-            resultData["tool_item_id"] = Id;
+            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyRebuildShelterEffect);
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -140,33 +140,63 @@ public class ShelterItem : ToolItem
         switch (actionId)
         {
             case "repair_shelter":
-                if (tier >= RollOutcomeTier.PartialSuccess)
-                {
-                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 35.0 : 
-                                         tier == RollOutcomeTier.Success ? 20.0 : 10.0;
-                    Quality = Math.Min(100.0, Quality + qualityRestored);
-                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 6.0);
-                }
+                ApplyRepairShelterEffect(ctx);
                 break;
 
             case "reinforce_shelter":
-                if (tier >= RollOutcomeTier.Success)
-                {
-                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 45.0 : 30.0;
-                    Quality = Math.Min(100.0, Quality + qualityRestored);
-                    ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 8.0);
-                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 10.0);
-                }
+                ApplyReinforceShelterEffect(ctx);
                 break;
 
             case "rebuild_shelter":
-                if (tier >= RollOutcomeTier.Success)
-                {
-                    Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 85.0;
-                    ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 20.0);
-                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 25.0);
-                }
+                ApplyRebuildShelterEffect(ctx);
                 break;
+        }
+    }
+
+    private void ApplyRepairShelterEffect(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        if (tier >= RollOutcomeTier.PartialSuccess)
+        {
+            var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 35.0 : 
+                                 tier == RollOutcomeTier.Success ? 20.0 : 10.0;
+            Quality = Math.Min(100.0, Quality + qualityRestored);
+            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 6.0);
+        }
+    }
+
+    private void ApplyReinforceShelterEffect(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        if (tier >= RollOutcomeTier.Success)
+        {
+            var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 45.0 : 30.0;
+            Quality = Math.Min(100.0, Quality + qualityRestored);
+            ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 8.0);
+            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 10.0);
+        }
+    }
+
+    private void ApplyRebuildShelterEffect(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        if (tier >= RollOutcomeTier.Success)
+        {
+            Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 85.0;
+            ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 20.0);
+            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 25.0);
         }
     }
 }

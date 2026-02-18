@@ -113,7 +113,7 @@ public class MaintenanceIntegrationTests
             new Dictionary<string, object> 
             { 
                 ["tier"] = "Success",
-                ["tool_item_id"] = "main_campfire"
+                ["__effect_handler__"] = new Action<EffectContext>(campfire.ApplyEffects)
             }
         );
         
@@ -152,7 +152,7 @@ public class MaintenanceIntegrationTests
             new Dictionary<string, object> 
             { 
                 ["tier"] = "Success",
-                ["tool_item_id"] = "main_campfire"
+                ["__effect_handler__"] = new Action<EffectContext>(campfire.ApplyEffects)
             }
         );
         
@@ -223,7 +223,7 @@ public class MaintenanceIntegrationTests
             new Dictionary<string, object> 
             { 
                 ["tier"] = "Success",
-                ["tool_item_id"] = "main_shelter"
+                ["__effect_handler__"] = new Action<EffectContext>(shelter.ApplyEffects)
             }
         );
         

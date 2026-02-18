@@ -1,9 +1,19 @@
 namespace JohnnyLike.Domain.Abstractions;
 
+/// <summary>
+/// Represents a candidate action that an actor can take.
+/// </summary>
+/// <param name="Action">The action specification including ID, kind, parameters, and resource requirements</param>
+/// <param name="Score">The priority/desirability score (0-1) for this action</param>
+/// <param name="Reason">Optional human-readable explanation for why this action was suggested</param>
+/// <param name="EffectHandler">Optional domain-specific effect handler to execute when this action completes.
+/// This provides explicit binding between the action and its effects, eliminating the need for
+/// string-based actionId lookups. For Island domain, this should be an Action&lt;EffectContext&gt; delegate.</param>
 public record ActionCandidate(
     ActionSpec Action,
     double Score,
-    string? Reason = null
+    string? Reason = null,
+    object? EffectHandler = null
 );
 
 public interface IDomainPack
