@@ -63,19 +63,6 @@ public abstract class ToolItem : MaintainableWorldItem
         // Concrete tool classes override this to provide their specific candidates
     }
 
-    /// <summary>
-    /// [DEPRECATED] Virtual method for tools to apply effects when their actions are executed.
-    /// This method is no longer used for ToolItems as effects are now applied via direct effect handlers
-    /// passed through ActionCandidate.EffectHandler. This method is only kept for backward compatibility
-    /// with provider-based candidate systems.
-    /// </summary>
-    [Obsolete("Use direct effect handlers via ActionCandidate.EffectHandler instead")]
-    public virtual void ApplyEffects(EffectContext ctx)
-    {
-        // Default implementation does nothing
-        // This method is deprecated - use direct effect handlers instead
-    }
-
     public override Dictionary<string, object> SerializeToDict()
     {
         var dict = base.SerializeToDict();

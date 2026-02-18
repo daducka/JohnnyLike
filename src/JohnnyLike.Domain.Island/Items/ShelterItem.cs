@@ -123,31 +123,6 @@ public class ShelterItem : ToolItem
         }
     }
 
-    [Obsolete("ApplyEffects is deprecated for ToolItems. Effects are now applied via direct handlers in ActionCandidate.EffectHandler")]
-    public override void ApplyEffects(EffectContext ctx)
-    {
-        if (ctx.Tier == null)
-            return;
-
-        var tier = ctx.Tier.Value;
-        var actionId = ctx.Outcome.ActionId.Value;
-
-        switch (actionId)
-        {
-            case "repair_shelter":
-                ApplyRepairShelterEffect(ctx);
-                break;
-
-            case "reinforce_shelter":
-                ApplyReinforceShelterEffect(ctx);
-                break;
-
-            case "rebuild_shelter":
-                ApplyRebuildShelterEffect(ctx);
-                break;
-        }
-    }
-
     public void ApplyRepairShelterEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)

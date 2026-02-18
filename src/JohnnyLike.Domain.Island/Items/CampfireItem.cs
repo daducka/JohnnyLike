@@ -151,35 +151,6 @@ public class CampfireItem : ToolItem
         }
     }
 
-    [Obsolete("ApplyEffects is deprecated for ToolItems. Effects are now applied via direct handlers in ActionCandidate.EffectHandler")]
-    public override void ApplyEffects(EffectContext ctx)
-    {
-        if (ctx.Tier == null)
-            return;
-
-        var tier = ctx.Tier.Value;
-        var actionId = ctx.Outcome.ActionId.Value;
-
-        switch (actionId)
-        {
-            case "add_fuel_campfire":
-                ApplyAddFuelEffect(ctx);
-                break;
-
-            case "relight_campfire":
-                ApplyRelightEffect(ctx);
-                break;
-
-            case "repair_campfire":
-                ApplyRepairEffect(ctx);
-                break;
-
-            case "rebuild_campfire":
-                ApplyRebuildEffect(ctx);
-                break;
-        }
-    }
-
     public void ApplyAddFuelEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)

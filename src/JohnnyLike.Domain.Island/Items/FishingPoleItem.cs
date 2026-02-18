@@ -116,31 +116,6 @@ public class FishingPoleItem : ToolItem
         }
     }
 
-    [Obsolete("ApplyEffects is deprecated for ToolItems. Effects are now applied via direct handlers in ActionCandidate.EffectHandler")]
-    public override void ApplyEffects(EffectContext ctx)
-    {
-        if (ctx.Tier == null)
-            return;
-
-        var tier = ctx.Tier.Value;
-        var actionId = ctx.Outcome.ActionId.Value;
-
-        switch (actionId)
-        {
-            case "go_fishing":
-                ApplyGoFishingEffect(ctx);
-                break;
-
-            case "maintain_rod":
-                ApplyMaintainRodEffect(ctx);
-                break;
-
-            case "repair_rod":
-                ApplyRepairRodEffect(ctx);
-                break;
-        }
-    }
-
     public void ApplyGoFishingEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)
