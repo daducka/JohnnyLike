@@ -66,7 +66,8 @@ public class IslandDomainPackTests
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
         var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
-        var worldState = domain.CreateInitialWorldState();
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, worldState);
         
         var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         
@@ -81,7 +82,8 @@ public class IslandDomainPackTests
         
         var lowHungerState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 20.0 });
         var highHungerState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 80.0 });
-        var worldState = domain.CreateInitialWorldState();
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, worldState);
         
         var lowHungerCandidates = domain.GenerateCandidates(actorId, lowHungerState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         var highHungerCandidates = domain.GenerateCandidates(actorId, highHungerState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
@@ -127,18 +129,14 @@ public class IslandDomainPackTests
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
         var actorState = domain.CreateActorState(actorId);
-        var worldState = domain.CreateInitialWorldState();
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, worldState);
         
         var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         
-        // Should have candidates from at least these providers:
-        // - ChatCandidateProvider (may or may not add depending on pending chat actions)
-        // - SleepCandidateProvider
-        // - FishingCandidateProvider
-        // - CoconutCandidateProvider
-        // - SandCastleCandidateProvider
-        // - SwimCandidateProvider
-        // - IdleCandidateProvider (always present)
+        // Should have candidates from various sources:
+        // - Actor (idle, sleep, swim, collect driftwood, chat if pending)
+        // - Items (fishing from FishingPoleItem, coconut from CoconutTreeItem, etc.)
         
         // Verify we have multiple candidate types present
         Assert.Contains(candidates, c => c.Action.Id.Value == "sleep_under_tree");
@@ -152,7 +150,8 @@ public class IslandDomainPackTests
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
         var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
-        var worldState = domain.CreateInitialWorldState();
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, worldState);
         
         var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         
@@ -220,42 +219,30 @@ public class IslandDomainPackTests
     [Fact]
     public void Providers_DiscoveredInCorrectOrder()
     {
+        // This test is obsolete as the old provider discovery system has been removed
+        // Providers are now implemented as IIslandActionCandidate on items and actors
+        // Commenting out this test as it tests the old architecture
+        
+        /*
         var domain = new IslandDomainPack();
         
         // Get the private _providers field via reflection to inspect order
         var providersField = typeof(IslandDomainPack).GetField("_providers", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         var providers = (List<IIslandCandidateProvider>)providersField!.GetValue(domain)!;
+        */
         
-        // Verify we have all expected providers
-        Assert.Equal(11, providers.Count); // Chat, Sleep, CollectDriftwood, Fishing, Coconut, SandCastle, Swim, BashTreasureChest, PlaneSighting, MermaidEncounter, Idle (CampfireMaintenance and ShelterMaintenance moved to ToolItems)
+        // Verify new system still provides candidates
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId);
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, worldState);
         
-        // Verify order by checking types
-        var providerTypes = providers.Select(p => p.GetType().Name).ToList();
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         
-        // Expected order based on Order attribute values:
-        // ChatCandidateProvider (50)
-        // SleepCandidateProvider (100)
-        // CollectDriftwoodCandidateProvider (160)
-        // FishingCandidateProvider (200)
-        // CoconutCandidateProvider (210)
-        // SandCastleCandidateProvider (400)
-        // SwimCandidateProvider (410)
-        // BashTreasureChestCandidateProvider (420)
-        // PlaneSightingCandidateProvider (800)
-        // MermaidEncounterCandidateProvider (810)
-        // IdleCandidateProvider (9999)
-        
-        Assert.Equal("ChatCandidateProvider", providerTypes[0]);
-        Assert.Equal("SleepCandidateProvider", providerTypes[1]);
-        Assert.Equal("CollectDriftwoodCandidateProvider", providerTypes[2]);
-        Assert.Equal("FishingCandidateProvider", providerTypes[3]);
-        Assert.Equal("CoconutCandidateProvider", providerTypes[4]);
-        Assert.Equal("SandCastleCandidateProvider", providerTypes[5]);
-        Assert.Equal("SwimCandidateProvider", providerTypes[6]);
-        Assert.Equal("BashTreasureChestCandidateProvider", providerTypes[7]);
-        Assert.Equal("PlaneSightingCandidateProvider", providerTypes[8]);
-        Assert.Equal("MermaidEncounterCandidateProvider", providerTypes[9]);
-        Assert.Equal("IdleCandidateProvider", providerTypes[10]);
+        // Verify we have candidates from various sources
+        Assert.True(candidates.Count > 0, "Should have candidates from items and actor");
+        Assert.Contains(candidates, c => c.Action.Id.Value == "idle");
     }
 }
 
@@ -442,15 +429,15 @@ public class IslandActionEffectsTests
         var actorState = new IslandActorState
         {
             Id = actorId,
-            Energy = 30.0,
-            CurrentAction = new ActionSpec(
-                new ActionId("sleep_under_tree"),
-                ActionKind.Interact,
-                new LocationActionParameters("tree"),
-                30.0
-            )
+            Energy = 30.0
         };
         var worldState = new IslandWorldState();
+        
+        // Generate candidates to get the sleep action with its effect handler
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
+        var sleepCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "sleep_under_tree");
+        Assert.NotNull(sleepCandidate);
+        Assert.NotNull(sleepCandidate.EffectHandler);
         
         var outcome = new ActionOutcome(
             new ActionId("sleep_under_tree"),
@@ -460,7 +447,7 @@ public class IslandActionEffectsTests
         );
         
         var rng = new RandomRngStream(new Random(42));
-        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability(), sleepCandidate.EffectHandler);
         
         Assert.True(actorState.Energy > 30.0);
     }
@@ -720,10 +707,16 @@ public class IslandSignalHandlingTests
         {
             ActionId = "write_name_sand",
             Type = "chat_redeem",
-            Data = new Dictionary<string, object>(),
+            Data = new Dictionary<string, object> { ["viewer_name"] = "TestViewer" },
             EnqueuedAt = 0.0
         });
         var worldState = new IslandWorldState();
+        
+        // Generate candidates to get the chat action with its effect handler
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
+        var chatCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "write_name_sand");
+        Assert.NotNull(chatCandidate);
+        Assert.NotNull(chatCandidate.EffectHandler);
         
         var outcome = new ActionOutcome(
             new ActionId("write_name_sand"),
@@ -733,7 +726,7 @@ public class IslandSignalHandlingTests
         );
         
         var rng = new RandomRngStream(new Random(42));
-        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability(), chatCandidate.EffectHandler);
         
         // Intent should be dequeued after completion
         Assert.Empty(actorState.PendingChatActions);
