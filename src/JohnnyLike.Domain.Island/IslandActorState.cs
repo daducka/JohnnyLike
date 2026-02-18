@@ -242,8 +242,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                                 effectCtx.Actor.PendingChatActions.Dequeue();
                             }
                             
-                            effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 5.0);
-                            effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 5.0);
+                            effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 10.0);
+                            effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 15.0);
                         })
                     ));
                 }
@@ -337,8 +337,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 {
                     case RollOutcomeTier.CriticalSuccess:
                         effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 20.0);
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 5.0);
                         effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 15.0);
-                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 10.0);
                         
                         // Spawn treasure chest if not already present
                         if (effectCtx.World.TreasureChest == null)
@@ -360,25 +360,25 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                         break;
 
                     case RollOutcomeTier.Success:
-                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 12.0);
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 10.0);
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 10.0);
                         effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 10.0);
-                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 15.0);
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
-                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 5.0);
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 3.0);
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 15.0);
                         effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 5.0);
-                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 20.0);
                         break;
 
                     case RollOutcomeTier.Failure:
-                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 25.0);
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 15.0);
                         effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 5.0);
                         break;
 
                     case RollOutcomeTier.CriticalFailure:
-                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 35.0);
-                        effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 10.0);
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 25.0);
+                        effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 15.0);
                         
                         // Spawn shark if not already present
                         if (effectCtx.World.Shark == null)
@@ -492,9 +492,17 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 {
                     pile.AddSupply("wood", woodGained, id => new Supply.WoodSupply(id));
                     driftStat.DriftwoodAvailable = Math.Max(0.0, driftStat.DriftwoodAvailable - woodGained);
+                    
+                    // Success effects
+                    effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 5.0);
+                    effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 3.0);
+                    effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 8.0);
                 }
-
-                effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 10.0);
+                else
+                {
+                    // Failure effects
+                    effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 5.0);
+                }
 
                 if (tier == RollOutcomeTier.CriticalFailure)
                 {
