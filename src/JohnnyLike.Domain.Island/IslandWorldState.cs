@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Island.Stats;
+using JohnnyLike.Domain.Island.Supply;
 using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island;
@@ -29,6 +30,8 @@ public class IslandWorldState : WorldState
     public ShelterItem? MainShelter => WorldItems.OfType<ShelterItem>().FirstOrDefault();
     public TreasureChestItem? TreasureChest => WorldItems.OfType<TreasureChestItem>().FirstOrDefault();
     public SharkItem? Shark => WorldItems.OfType<SharkItem>().FirstOrDefault();
+    public SupplyPile? SharedSupplyPile => WorldItems.OfType<SupplyPile>()
+        .FirstOrDefault(p => p.AccessControl == "shared");
 
     /// <summary>
     /// Get a stat by its ID and optionally cast to a specific type
@@ -36,6 +39,16 @@ public class IslandWorldState : WorldState
     public T? GetStat<T>(string id) where T : WorldStat
     {
         return WorldStats.FirstOrDefault(s => s.Id == id) as T;
+    }
+
+    /// <summary>
+    /// Get all supply piles that the given actor can access
+    /// </summary>
+    public List<SupplyPile> GetAccessiblePiles(ActorId actorId)
+    {
+        return WorldItems.OfType<SupplyPile>()
+            .Where(p => p.CanAccess(actorId))
+            .ToList();
     }
 
     /// <summary>
@@ -191,6 +204,7 @@ public class IslandWorldState : WorldState
                         "shelter" => new ShelterItem(id),
                         "treasure_chest" => new TreasureChestItem(id),
                         "shark" => new SharkItem(id),
+                        "supply_pile" => new SupplyPile(id),
                         _ => null
                     };
 
@@ -221,6 +235,7 @@ public class IslandWorldState : WorldState
                         "stat_tide" => new TideStat(),
                         "stat_fish_population" => new FishPopulationStat(),
                         "stat_coconut_availability" => new CoconutAvailabilityStat(),
+                        "stat_driftwood" => new DriftwoodAvailabilityStat(),
                         _ => null
                     };
 

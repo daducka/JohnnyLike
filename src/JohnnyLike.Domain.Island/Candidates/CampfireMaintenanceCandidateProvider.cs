@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Kit.Dice;
 using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Supply;
 
 namespace JohnnyLike.Domain.Island.Candidates;
 
@@ -22,6 +23,18 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
 
         if (campfire.IsLit && campfire.FuelSeconds < 1800.0)
         {
+            // Check wood availability
+            var sharedPile = ctx.World.SharedSupplyPile;
+            var currentWood = sharedPile?.GetQuantity<WoodSupply>("wood") ?? 0.0;
+
+            // Reduce score or skip if insufficient wood
+            if (currentWood < 10.0)
+            {
+                // Skip offering this action if very low on wood
+                if (currentWood < 3.0)
+                    return;
+            }
+
             var urgency = 1.0 - (campfire.FuelSeconds / 1800.0);
             var foresightMultiplier = 1.0 + (foresightBonus * 0.1);
 
@@ -29,6 +42,12 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
 
             var baseScore = 0.3 + (urgency * 0.5 * foresightMultiplier);
+
+            // Reduce score if wood is low
+            if (currentWood < 10.0)
+            {
+                baseScore *= 0.5;
+            }
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -40,7 +59,7 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
-                $"Add fuel to campfire (fuel: {campfire.FuelSeconds:F0}s, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Add fuel to campfire (fuel: {campfire.FuelSeconds:F0}s, wood: {currentWood:F1}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
             ));
         }
 
@@ -133,10 +152,28 @@ public class CampfireMaintenanceCandidateProvider : IIslandCandidateProvider
             case "add_fuel_campfire":
                 if (tier >= RollOutcomeTier.PartialSuccess)
                 {
-                    var fuelAdded = tier == RollOutcomeTier.CriticalSuccess ? 2400.0 : 
-                                    tier == RollOutcomeTier.Success ? 1800.0 : 900.0;
-                    campfire.FuelSeconds = Math.Min(7200.0, campfire.FuelSeconds + fuelAdded);
-                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 5.0);
+                    // Calculate wood cost based on tier
+                    var woodCost = tier == RollOutcomeTier.CriticalSuccess ? 3.0 :
+                                   tier == RollOutcomeTier.Success ? 5.0 : 7.0;
+
+                    var sharedPile = ctx.World.SharedSupplyPile;
+                    if (sharedPile != null && sharedPile.TryConsumeSupply<WoodSupply>("wood", woodCost))
+                    {
+                        // Successfully consumed wood, add fuel as normal
+                        var fuelAdded = tier == RollOutcomeTier.CriticalSuccess ? 2400.0 :
+                                        tier == RollOutcomeTier.Success ? 1800.0 : 900.0;
+                        campfire.FuelSeconds = Math.Min(7200.0, campfire.FuelSeconds + fuelAdded);
+                        ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 5.0);
+                    }
+                    else
+                    {
+                        // Insufficient wood - action still succeeds but with reduced effectiveness
+                        var reducedFuel = tier == RollOutcomeTier.CriticalSuccess ? 1200.0 :
+                                          tier == RollOutcomeTier.Success ? 900.0 : 450.0;
+                        campfire.FuelSeconds = Math.Min(7200.0, campfire.FuelSeconds + reducedFuel);
+                        ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 2.0);
+                        ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 3.0); // Frustration from lack of wood
+                    }
                 }
                 break;
 

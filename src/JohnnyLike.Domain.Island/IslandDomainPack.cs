@@ -2,6 +2,7 @@ using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Kit.Dice;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Supply;
 using System.Reflection;
 
 namespace JohnnyLike.Domain.Island;
@@ -73,12 +74,18 @@ public class IslandDomainPack : IDomainPack
         world.WorldItems.Add(new CampfireItem("main_campfire"));
         world.WorldItems.Add(new ShelterItem("main_shelter"));
         
+        // Initialize shared supply pile with some starting wood
+        var sharedSupplies = new SupplyPile("shared_supplies", "shared");
+        sharedSupplies.AddSupply("wood", 20.0, id => new WoodSupply(id));
+        world.WorldItems.Add(sharedSupplies);
+        
         // Initialize WorldStats
         world.WorldStats.Add(new Stats.TimeOfDayStat());
         world.WorldStats.Add(new Stats.WeatherStat());
         world.WorldStats.Add(new Stats.TideStat());
         world.WorldStats.Add(new Stats.FishPopulationStat());
         world.WorldStats.Add(new Stats.CoconutAvailabilityStat());
+        world.WorldStats.Add(new Stats.DriftwoodAvailabilityStat());
         
         return world;
     }
