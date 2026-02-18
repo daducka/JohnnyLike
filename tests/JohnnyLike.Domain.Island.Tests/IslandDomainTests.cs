@@ -227,7 +227,7 @@ public class IslandDomainPackTests
         var providers = (List<IIslandCandidateProvider>)providersField!.GetValue(domain)!;
         
         // Verify we have all expected providers
-        Assert.Equal(12, providers.Count); // Chat, Sleep, CampfireMaintenance, ShelterMaintenance, Fishing, Coconut, SandCastle, Swim, BashTreasureChest, PlaneSighting, MermaidEncounter, Idle
+        Assert.Equal(13, providers.Count); // Chat, Sleep, CampfireMaintenance, CollectDriftwood, ShelterMaintenance, Fishing, Coconut, SandCastle, Swim, BashTreasureChest, PlaneSighting, MermaidEncounter, Idle
         
         // Verify order by checking types
         var providerTypes = providers.Select(p => p.GetType().Name).ToList();
@@ -236,6 +236,7 @@ public class IslandDomainPackTests
         // ChatCandidateProvider (50)
         // SleepCandidateProvider (100)
         // CampfireMaintenanceCandidateProvider (150)
+        // CollectDriftwoodCandidateProvider (160)
         // ShelterMaintenanceCandidateProvider (160)
         // FishingCandidateProvider (200)
         // CoconutCandidateProvider (210)
@@ -249,15 +250,16 @@ public class IslandDomainPackTests
         Assert.Equal("ChatCandidateProvider", providerTypes[0]);
         Assert.Equal("SleepCandidateProvider", providerTypes[1]);
         Assert.Equal("CampfireMaintenanceCandidateProvider", providerTypes[2]);
-        Assert.Equal("ShelterMaintenanceCandidateProvider", providerTypes[3]);
-        Assert.Equal("FishingCandidateProvider", providerTypes[4]);
-        Assert.Equal("CoconutCandidateProvider", providerTypes[5]);
-        Assert.Equal("SandCastleCandidateProvider", providerTypes[6]);
-        Assert.Equal("SwimCandidateProvider", providerTypes[7]);
-        Assert.Equal("BashTreasureChestCandidateProvider", providerTypes[8]);
-        Assert.Equal("PlaneSightingCandidateProvider", providerTypes[9]);
-        Assert.Equal("MermaidEncounterCandidateProvider", providerTypes[10]);
-        Assert.Equal("IdleCandidateProvider", providerTypes[11]);
+        Assert.Equal("CollectDriftwoodCandidateProvider", providerTypes[3]);
+        Assert.Equal("ShelterMaintenanceCandidateProvider", providerTypes[4]);
+        Assert.Equal("FishingCandidateProvider", providerTypes[5]);
+        Assert.Equal("CoconutCandidateProvider", providerTypes[6]);
+        Assert.Equal("SandCastleCandidateProvider", providerTypes[7]);
+        Assert.Equal("SwimCandidateProvider", providerTypes[8]);
+        Assert.Equal("BashTreasureChestCandidateProvider", providerTypes[9]);
+        Assert.Equal("PlaneSightingCandidateProvider", providerTypes[10]);
+        Assert.Equal("MermaidEncounterCandidateProvider", providerTypes[11]);
+        Assert.Equal("IdleCandidateProvider", providerTypes[12]);
     }
 }
 
