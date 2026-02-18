@@ -188,7 +188,7 @@ public class CampfireItem : ToolItem
         }
     }
 
-    private void ApplyAddFuelEffect(EffectContext ctx)
+    public void ApplyAddFuelEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)
             return;
@@ -219,7 +219,7 @@ public class CampfireItem : ToolItem
         }
     }
 
-    private void ApplyRelightEffect(EffectContext ctx)
+    public void ApplyRelightEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)
             return;
@@ -235,7 +235,7 @@ public class CampfireItem : ToolItem
         }
     }
 
-    private void ApplyRepairEffect(EffectContext ctx)
+    public void ApplyRepairEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)
             return;
@@ -251,7 +251,7 @@ public class CampfireItem : ToolItem
         }
     }
 
-    private void ApplyRebuildEffect(EffectContext ctx)
+    public void ApplyRebuildEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)
             return;

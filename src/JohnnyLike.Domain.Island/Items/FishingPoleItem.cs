@@ -146,7 +146,7 @@ public class FishingPoleItem : ToolItem
         }
     }
 
-    private void ApplyGoFishingEffect(EffectContext ctx)
+    public void ApplyGoFishingEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)
             return;
@@ -161,7 +161,7 @@ public class FishingPoleItem : ToolItem
         }
     }
 
-    private void ApplyMaintainRodEffect(EffectContext ctx)
+    public void ApplyMaintainRodEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)
             return;
@@ -177,7 +177,7 @@ public class FishingPoleItem : ToolItem
         }
     }
 
-    private void ApplyRepairRodEffect(EffectContext ctx)
+    public void ApplyRepairRodEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)
             return;

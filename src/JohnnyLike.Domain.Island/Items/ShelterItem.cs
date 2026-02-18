@@ -153,7 +153,7 @@ public class ShelterItem : ToolItem
         }
     }
 
-    private void ApplyRepairShelterEffect(EffectContext ctx)
+    public void ApplyRepairShelterEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)
             return;
@@ -169,7 +169,7 @@ public class ShelterItem : ToolItem
         }
     }
 
-    private void ApplyReinforceShelterEffect(EffectContext ctx)
+    public void ApplyReinforceShelterEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)
             return;
@@ -185,7 +185,7 @@ public class ShelterItem : ToolItem
         }
     }
 
-    private void ApplyRebuildShelterEffect(EffectContext ctx)
+    public void ApplyRebuildShelterEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)
             return;
