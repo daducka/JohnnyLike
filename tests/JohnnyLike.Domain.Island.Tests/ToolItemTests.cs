@@ -223,14 +223,14 @@ public class FishingPoleItemTests
         var fishingPole = new FishingPoleItem("pole1", new ActorId("Owner"));
         var world = new IslandWorldState();
         
-        fishingPole.Quality = 22.0;
+        fishingPole.Quality = FishingPoleItem.BreakageQualityThreshold + 2.0;
         fishingPole.IsBroken = false;
         
-        // Tick enough to drop quality below 20
+        // Tick enough to drop quality below breakage threshold
         fishingPole.Tick(500.0, world);
         
         Assert.True(fishingPole.IsBroken);
-        Assert.True(fishingPole.Quality < 20.0);
+        Assert.True(fishingPole.Quality < FishingPoleItem.BreakageQualityThreshold);
     }
 
     [Fact]

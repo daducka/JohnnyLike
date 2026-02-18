@@ -8,6 +8,7 @@ namespace JohnnyLike.Domain.Island.Items;
 public class FishingPoleItem : ToolItem
 {
     private static readonly ResourceId FishingPoleResource = new("island:resource:fishing_pole");
+    public const double BreakageQualityThreshold = 20.0;
     
     public FishingPoleItem(string id, ActorId? ownerActorId = null) 
         : base(id, "fishing_pole", OwnershipType.Exclusive, baseDecayPerSecond: 0.005, maxOwners: 1)
@@ -20,7 +21,7 @@ public class FishingPoleItem : ToolItem
         base.Tick(dtSeconds, world);
         
         // Fishing poles degrade slower than other tools but can break if quality is too low
-        if (Quality < 20.0 && !IsBroken)
+        if (Quality < BreakageQualityThreshold && !IsBroken)
         {
             IsBroken = true;
         }
