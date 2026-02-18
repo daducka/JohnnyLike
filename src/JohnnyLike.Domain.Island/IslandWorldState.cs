@@ -202,6 +202,7 @@ public class IslandWorldState : WorldState
                     {
                         "campfire" => new CampfireItem(id),
                         "shelter" => new ShelterItem(id),
+                        "fishing_pole" => new FishingPoleItem(id),
                         "treasure_chest" => new TreasureChestItem(id),
                         "shark" => new SharkItem(id),
                         "supply_pile" => new SupplyPile(id),

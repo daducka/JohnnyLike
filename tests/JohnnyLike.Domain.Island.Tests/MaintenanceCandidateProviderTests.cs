@@ -10,7 +10,7 @@ namespace JohnnyLike.Domain.Island.Tests;
 public class CampfireMaintenanceCandidateProviderTests
 {
     [Fact]
-    public void Provider_SuggestsAddFuel_WhenFuelIsLow()
+    public void CampfireItem_SuggestsAddFuel_WhenFuelIsLow()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
@@ -20,16 +20,15 @@ public class CampfireMaintenanceCandidateProviderTests
         world.MainCampfire!.FuelSeconds = 1200.0;
         
         var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var provider = new CampfireMaintenanceCandidateProvider();
         var candidates = new List<ActionCandidate>();
         
-        provider.AddCandidates(ctx, candidates);
+        world.MainCampfire.AddCandidates(ctx, candidates);
         
         Assert.Contains(candidates, c => c.Action.Id.Value == "add_fuel_campfire");
     }
 
     [Fact]
-    public void Provider_SuggestsRelight_WhenCampfireIsOut()
+    public void CampfireItem_SuggestsRelight_WhenCampfireIsOut()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
@@ -40,16 +39,15 @@ public class CampfireMaintenanceCandidateProviderTests
         world.MainCampfire.Quality = 50.0;
         
         var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var provider = new CampfireMaintenanceCandidateProvider();
         var candidates = new List<ActionCandidate>();
         
-        provider.AddCandidates(ctx, candidates);
+        world.MainCampfire.AddCandidates(ctx, candidates);
         
         Assert.Contains(candidates, c => c.Action.Id.Value == "relight_campfire");
     }
 
     [Fact]
-    public void Provider_SuggestsRepair_WhenQualityIsLow()
+    public void CampfireItem_SuggestsRepair_WhenQualityIsLow()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
@@ -59,16 +57,15 @@ public class CampfireMaintenanceCandidateProviderTests
         world.MainCampfire!.Quality = 50.0;
         
         var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var provider = new CampfireMaintenanceCandidateProvider();
         var candidates = new List<ActionCandidate>();
         
-        provider.AddCandidates(ctx, candidates);
+        world.MainCampfire.AddCandidates(ctx, candidates);
         
         Assert.Contains(candidates, c => c.Action.Id.Value == "repair_campfire");
     }
 
     [Fact]
-    public void Provider_SuggestsRebuild_WhenQualityIsCriticallyLow()
+    public void CampfireItem_SuggestsRebuild_WhenQualityIsCriticallyLow()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
@@ -78,16 +75,15 @@ public class CampfireMaintenanceCandidateProviderTests
         world.MainCampfire!.Quality = 5.0;
         
         var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var provider = new CampfireMaintenanceCandidateProvider();
         var candidates = new List<ActionCandidate>();
         
-        provider.AddCandidates(ctx, candidates);
+        world.MainCampfire.AddCandidates(ctx, candidates);
         
         Assert.Contains(candidates, c => c.Action.Id.Value == "rebuild_campfire");
     }
 
     [Fact]
-    public void Provider_HigherSurvivalSkill_IncreasesScore()
+    public void CampfireItem_HigherSurvivalSkill_IncreasesScore()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
@@ -108,12 +104,11 @@ public class CampfireMaintenanceCandidateProviderTests
         var ctxHigh = new IslandContext(new ActorId("HighSkill"), highSkillActor, world, 0.0, 
             new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         
-        var provider = new CampfireMaintenanceCandidateProvider();
         var candidatesLow = new List<ActionCandidate>();
         var candidatesHigh = new List<ActionCandidate>();
         
-        provider.AddCandidates(ctxLow, candidatesLow);
-        provider.AddCandidates(ctxHigh, candidatesHigh);
+        world.MainCampfire.AddCandidates(ctxLow, candidatesLow);
+        world.MainCampfire.AddCandidates(ctxHigh, candidatesHigh);
         
         var scoreLow = candidatesLow.First(c => c.Action.Id.Value == "add_fuel_campfire").Score;
         var scoreHigh = candidatesHigh.First(c => c.Action.Id.Value == "add_fuel_campfire").Score;
@@ -122,7 +117,7 @@ public class CampfireMaintenanceCandidateProviderTests
     }
 
     [Fact]
-    public void Provider_DoesNotSuggestActions_WhenCampfireMissing()
+    public void CampfireItem_DoesNotSuggestActions_WhenCampfireMissing()
     {
         var world = new IslandWorldState();
         var actorId = new ActorId("TestActor");
@@ -130,10 +125,12 @@ public class CampfireMaintenanceCandidateProviderTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var provider = new CampfireMaintenanceCandidateProvider();
         var candidates = new List<ActionCandidate>();
         
-        provider.AddCandidates(ctx, candidates);
+        if (world.MainCampfire != null)
+        {
+            world.MainCampfire.AddCandidates(ctx, candidates);
+        }
         
         Assert.Empty(candidates);
     }
@@ -142,7 +139,7 @@ public class CampfireMaintenanceCandidateProviderTests
 public class ShelterMaintenanceCandidateProviderTests
 {
     [Fact]
-    public void Provider_SuggestsRepair_WhenQualityIsLow()
+    public void ShelterItem_SuggestsRepair_WhenQualityIsLow()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
@@ -152,16 +149,15 @@ public class ShelterMaintenanceCandidateProviderTests
         world.MainShelter!.Quality = 50.0;
         
         var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var provider = new ShelterMaintenanceCandidateProvider();
         var candidates = new List<ActionCandidate>();
         
-        provider.AddCandidates(ctx, candidates);
+        world.MainShelter.AddCandidates(ctx, candidates);
         
         Assert.Contains(candidates, c => c.Action.Id.Value == "repair_shelter");
     }
 
     [Fact]
-    public void Provider_SuggestsReinforce_WhenQualityIsVeryLow()
+    public void ShelterItem_SuggestsReinforce_WhenQualityIsVeryLow()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
@@ -171,16 +167,15 @@ public class ShelterMaintenanceCandidateProviderTests
         world.MainShelter!.Quality = 40.0;
         
         var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var provider = new ShelterMaintenanceCandidateProvider();
         var candidates = new List<ActionCandidate>();
         
-        provider.AddCandidates(ctx, candidates);
+        world.MainShelter.AddCandidates(ctx, candidates);
         
         Assert.Contains(candidates, c => c.Action.Id.Value == "reinforce_shelter");
     }
 
     [Fact]
-    public void Provider_SuggestsRebuild_WhenQualityIsCriticallyLow()
+    public void ShelterItem_SuggestsRebuild_WhenQualityIsCriticallyLow()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
@@ -190,16 +185,15 @@ public class ShelterMaintenanceCandidateProviderTests
         world.MainShelter!.Quality = 10.0;
         
         var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var provider = new ShelterMaintenanceCandidateProvider();
         var candidates = new List<ActionCandidate>();
         
-        provider.AddCandidates(ctx, candidates);
+        world.MainShelter.AddCandidates(ctx, candidates);
         
         Assert.Contains(candidates, c => c.Action.Id.Value == "rebuild_shelter");
     }
 
     [Fact]
-    public void Provider_RainyWeather_IncreasesRepairScore()
+    public void ShelterItem_RainyWeather_IncreasesRepairScore()
     {
         var domain = new IslandDomainPack();
         var worldClear = (IslandWorldState)domain.CreateInitialWorldState();
@@ -219,12 +213,11 @@ public class ShelterMaintenanceCandidateProviderTests
         var ctxRainy = new IslandContext(actorId, actor, worldRainy, 0.0, 
             new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         
-        var provider = new ShelterMaintenanceCandidateProvider();
         var candidatesClear = new List<ActionCandidate>();
         var candidatesRainy = new List<ActionCandidate>();
         
-        provider.AddCandidates(ctxClear, candidatesClear);
-        provider.AddCandidates(ctxRainy, candidatesRainy);
+        worldClear.MainShelter.AddCandidates(ctxClear, candidatesClear);
+        worldRainy.MainShelter.AddCandidates(ctxRainy, candidatesRainy);
         
         var scoreClear = candidatesClear.First(c => c.Action.Id.Value == "repair_shelter").Score;
         var scoreRainy = candidatesRainy.First(c => c.Action.Id.Value == "repair_shelter").Score;
@@ -233,7 +226,7 @@ public class ShelterMaintenanceCandidateProviderTests
     }
 
     [Fact]
-    public void Provider_HigherSurvivalAndWisdom_IncreasesScore()
+    public void ShelterItem_HigherSurvivalAndWisdom_IncreasesScore()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
@@ -254,12 +247,11 @@ public class ShelterMaintenanceCandidateProviderTests
         var ctxHigh = new IslandContext(new ActorId("HighSkill"), highSkillActor, world, 0.0, 
             new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         
-        var provider = new ShelterMaintenanceCandidateProvider();
         var candidatesLow = new List<ActionCandidate>();
         var candidatesHigh = new List<ActionCandidate>();
         
-        provider.AddCandidates(ctxLow, candidatesLow);
-        provider.AddCandidates(ctxHigh, candidatesHigh);
+        world.MainShelter.AddCandidates(ctxLow, candidatesLow);
+        world.MainShelter.AddCandidates(ctxHigh, candidatesHigh);
         
         var scoreLow = candidatesLow.First(c => c.Action.Id.Value == "repair_shelter").Score;
         var scoreHigh = candidatesHigh.First(c => c.Action.Id.Value == "repair_shelter").Score;
@@ -268,7 +260,7 @@ public class ShelterMaintenanceCandidateProviderTests
     }
 
     [Fact]
-    public void Provider_DoesNotSuggestActions_WhenShelterMissing()
+    public void ShelterItem_DoesNotSuggestActions_WhenShelterMissing()
     {
         var world = new IslandWorldState();
         var actorId = new ActorId("TestActor");
@@ -276,10 +268,12 @@ public class ShelterMaintenanceCandidateProviderTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var provider = new ShelterMaintenanceCandidateProvider();
         var candidates = new List<ActionCandidate>();
         
-        provider.AddCandidates(ctx, candidates);
+        if (world.MainShelter != null)
+        {
+            world.MainShelter.AddCandidates(ctx, candidates);
+        }
         
         Assert.Empty(candidates);
     }
