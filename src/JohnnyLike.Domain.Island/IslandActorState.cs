@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Kit.Dice;
 using System.Text.Json;
 
@@ -13,7 +14,7 @@ public enum SkillType
     Athletics
 }
 
-public class IslandActorState : ActorState
+public class IslandActorState : ActorState, IIslandActionCandidate
 {
     public int STR { get; set; } = 10;
     public int DEX { get; set; } = 10;
@@ -179,6 +180,336 @@ public class IslandActorState : ActorState
             var list = JsonSerializer.Deserialize<List<PendingIntent>>(actions.GetRawText(), options) ?? new();
             PendingChatActions = new Queue<PendingIntent>(list);
         }
+    }
+
+    /// <summary>
+    /// Actors can provide their own action candidates including idle, sleep, swim, collect driftwood, and chat actions.
+    /// </summary>
+    public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
+    {
+        // Process pending chat actions first (unless survival critical)
+        AddChatCandidates(ctx, output);
+        
+        // Idle must ALWAYS be a candidate with a low baseline score
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("idle"),
+                ActionKind.Wait,
+                EmptyActionParameters.Instance,
+                5.0
+            ),
+            0.3,
+            "Idle"
+        ));
+        
+        // Sleep under tree
+        AddSleepCandidate(ctx, output);
+        
+        // Swim
+        AddSwimCandidate(ctx, output);
+        
+        // Collect driftwood
+        AddCollectDriftwoodCandidate(ctx, output);
+    }
+
+    private void AddChatCandidates(IslandContext ctx, List<ActionCandidate> output)
+    {
+        if (PendingChatActions.Count > 0)
+        {
+            var isSurvivalCritical = ctx.IsSurvivalCritical();
+            
+            if (!isSurvivalCritical)
+            {
+                var intent = PendingChatActions.Peek();
+                
+                if (intent.ActionId == "write_name_sand")
+                {
+                    var name = intent.Data.GetValueOrDefault("viewer_name", "Someone")?.ToString() ?? "Someone";
+                    output.Add(new ActionCandidate(
+                        new ActionSpec(
+                            new ActionId("write_name_sand"),
+                            ActionKind.Emote,
+                            new EmoteActionParameters("write_name", name, "beach"),
+                            8.0
+                        ),
+                        2.0, // High priority
+                        $"Write {name}'s name in sand (chat redeem)",
+                        EffectHandler: new Action<EffectContext>(effectCtx =>
+                        {
+                            // Dequeue the completed chat action intent
+                            if (effectCtx.Actor.PendingChatActions.Count > 0)
+                            {
+                                effectCtx.Actor.PendingChatActions.Dequeue();
+                            }
+                            
+                            effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 5.0);
+                            effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 5.0);
+                        })
+                    ));
+                }
+                else if (intent.ActionId == "clap_emote")
+                {
+                    output.Add(new ActionCandidate(
+                        new ActionSpec(
+                            new ActionId("clap_emote"),
+                            ActionKind.Emote,
+                            new EmoteActionParameters("clap"),
+                            2.0
+                        ),
+                        2.0, // High priority
+                        "Clap emote (sub/cheer)",
+                        EffectHandler: new Action<EffectContext>(effectCtx =>
+                        {
+                            // Dequeue the completed chat action intent
+                            if (effectCtx.Actor.PendingChatActions.Count > 0)
+                            {
+                                effectCtx.Actor.PendingChatActions.Dequeue();
+                            }
+                            
+                            effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 3.0);
+                        })
+                    ));
+                }
+            }
+        }
+    }
+
+    private void AddSleepCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        var baseScore = 0.4;
+        if (Energy < 30.0)
+            baseScore = 1.2;
+        else if (Energy < 50.0)
+            baseScore = 0.8;
+
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("sleep_under_tree"),
+                ActionKind.Interact,
+                new LocationActionParameters("tree"),
+                30.0 + ctx.Rng.NextDouble() * 10.0
+            ),
+            baseScore,
+            "Sleep under tree",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                effectCtx.Actor.Energy = Math.Min(100.0, effectCtx.Actor.Energy + 40.0);
+                effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 5.0);
+            })
+        ));
+    }
+
+    private void AddSwimCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        if (Energy < 20.0)
+            return;
+
+        var baseDC = 10;
+
+        var weatherStat = ctx.World.GetStat<Stats.WeatherStat>("weather");
+        if (weatherStat?.Weather == Weather.Windy)
+            baseDC += 3;
+        else if (weatherStat?.Weather == Weather.Rainy)
+            baseDC += 1;
+
+        var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
+        var baseScore = 0.35 + (Morale < 30 ? 0.2 : 0.0);
+
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("swim"),
+                ActionKind.Interact,
+                parameters,
+                15.0 + ctx.Random.NextDouble() * 5.0,
+                parameters.ToResultData(),
+                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) }
+            ),
+            baseScore,
+            $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                if (effectCtx.Tier == null)
+                    return;
+
+                var tier = effectCtx.Tier.Value;
+
+                switch (tier)
+                {
+                    case RollOutcomeTier.CriticalSuccess:
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 20.0);
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 15.0);
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 10.0);
+                        
+                        // Spawn treasure chest if not already present
+                        if (effectCtx.World.TreasureChest == null)
+                        {
+                            var chest = new Items.TreasureChestItem
+                            {
+                                IsOpened = false,
+                                Health = 100.0,
+                                Position = "shore"
+                            };
+                            effectCtx.World.WorldItems.Add(chest);
+                            
+                            if (effectCtx.Outcome.ResultData != null)
+                            {
+                                effectCtx.Outcome.ResultData["variant_id"] = "swim_crit_success_treasure";
+                                effectCtx.Outcome.ResultData["encounter_type"] = "treasure_chest";
+                            }
+                        }
+                        break;
+
+                    case RollOutcomeTier.Success:
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 12.0);
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 10.0);
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 15.0);
+                        break;
+
+                    case RollOutcomeTier.PartialSuccess:
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 5.0);
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 5.0);
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 20.0);
+                        break;
+
+                    case RollOutcomeTier.Failure:
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 25.0);
+                        effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 5.0);
+                        break;
+
+                    case RollOutcomeTier.CriticalFailure:
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 35.0);
+                        effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 10.0);
+                        
+                        // Spawn shark if not already present
+                        if (effectCtx.World.Shark == null)
+                        {
+                            var duration = 60.0 + effectCtx.Rng.NextDouble() * 120.0;
+                            var shark = new Items.SharkItem
+                            {
+                                ExpiresAt = effectCtx.World.CurrentTime + duration
+                            };
+                            
+                            // Try to reserve the water resource
+                            var waterResource = new ResourceId("island:resource:water");
+                            var utilityId = $"world_item:shark:{shark.Id}";
+                            var reserved = effectCtx.Reservations.TryReserve(waterResource, utilityId, shark.ExpiresAt);
+                            
+                            if (reserved)
+                            {
+                                shark.ReservedResourceId = waterResource;
+                                effectCtx.World.WorldItems.Add(shark);
+                                effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 15.0);
+                                
+                                if (effectCtx.Outcome.ResultData != null)
+                                {
+                                    effectCtx.Outcome.ResultData["variant_id"] = "swim_crit_failure_shark";
+                                    effectCtx.Outcome.ResultData["encounter_type"] = "shark";
+                                    effectCtx.Outcome.ResultData["shark_duration"] = duration;
+                                }
+                            }
+                        }
+                        break;
+                }
+            })
+        ));
+    }
+
+    private void AddCollectDriftwoodCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        var driftwoodStat = ctx.World.GetStat<Stats.DriftwoodAvailabilityStat>("driftwood_availability");
+        if (driftwoodStat == null || driftwoodStat.DriftwoodAvailable < 5.0)
+            return;
+
+        var sharedPile = ctx.World.SharedSupplyPile;
+        if (sharedPile == null)
+            return;
+
+        var currentWood = sharedPile.GetQuantity<Supply.WoodSupply>("wood");
+
+        // Calculate supply awareness based on Survival skill and WIS modifier
+        var survivalSkill = SurvivalSkill;
+        var wisdomMod = DndMath.AbilityModifier(WIS);
+        var supplyAwareness = (survivalSkill + wisdomMod) / 2.0;
+
+        // Determine base score based on current wood levels
+        double baseScore;
+        if (currentWood < 20.0)
+        {
+            var urgency = (20.0 - currentWood) / 20.0;
+            baseScore = 0.8 + (urgency * 0.4);
+        }
+        else if (currentWood < 50.0)
+        {
+            var concern = (50.0 - currentWood) / 30.0;
+            baseScore = 0.4 + (concern * 0.3);
+        }
+        else
+        {
+            baseScore = 0.3;
+        }
+
+        var foresightMultiplier = 1.0 + (supplyAwareness * 0.15);
+        baseScore *= foresightMultiplier;
+
+        var baseDC = driftwoodStat.DriftwoodAvailable < 20.0 ? 12 : 8;
+        var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
+        var duration = 25.0 + ctx.Random.NextDouble() * 10.0;
+
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("collect_driftwood"),
+                ActionKind.Interact,
+                parameters,
+                duration,
+                parameters.ToResultData(),
+                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach")) }
+            ),
+            baseScore,
+            $"Collect driftwood (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                if (effectCtx.Tier == null)
+                    return;
+
+                var tier = effectCtx.Tier.Value;
+                var driftStat = effectCtx.World.GetStat<Stats.DriftwoodAvailabilityStat>("driftwood_availability");
+                if (driftStat == null)
+                    return;
+
+                var pile = effectCtx.World.SharedSupplyPile;
+                if (pile == null)
+                    return;
+
+                double woodGained = tier switch
+                {
+                    RollOutcomeTier.CriticalSuccess => 15.0,
+                    RollOutcomeTier.Success => 10.0,
+                    RollOutcomeTier.PartialSuccess => 5.0,
+                    _ => 0.0
+                };
+
+                if (woodGained > 0)
+                {
+                    pile.AddSupply("wood", woodGained, id => new Supply.WoodSupply(id));
+                    driftStat.DriftwoodAvailable = Math.Max(0.0, driftStat.DriftwoodAvailable - woodGained);
+                }
+
+                effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 10.0);
+
+                if (tier == RollOutcomeTier.CriticalFailure)
+                {
+                    effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 5.0);
+                }
+            })
+        ));
+    }
+
+    /// <summary>
+    /// Apply effects is not used for actor-level actions since they use inline effect handlers.
+    /// </summary>
+    public void ApplyEffects(EffectContext ctx)
+    {
+        // Not used - actor actions use inline effect handlers in AddCandidates
     }
 }
 

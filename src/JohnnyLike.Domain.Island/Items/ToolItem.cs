@@ -57,7 +57,7 @@ public abstract class ToolItem : MaintainableWorldItem
     /// Virtual method for tools to contribute their own action candidates.
     /// Override in concrete tool implementations to provide tool-specific actions.
     /// </summary>
-    public virtual void AddCandidates(Candidates.IslandContext ctx, List<ActionCandidate> output)
+    public override void AddCandidates(Candidates.IslandContext ctx, List<ActionCandidate> output)
     {
         // Default implementation does nothing
         // Concrete tool classes override this to provide their specific candidates

@@ -813,12 +813,14 @@ public class IslandDCTuningTests
         
         // Morning scenario (timeOfDay = 0.1)
         var morningWorld = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, morningWorld);
         morningWorld.GetStat<Stats.TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.1;
         morningWorld.GetStat<Stats.WeatherStat>("weather")!.Weather = Weather.Clear;
         morningWorld.GetStat<Stats.FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         // Afternoon scenario (timeOfDay = 0.5)
         var afternoonWorld = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, afternoonWorld);
         afternoonWorld.GetStat<Stats.TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.5;
         afternoonWorld.GetStat<Stats.WeatherStat>("weather")!.Weather = Weather.Clear;
         afternoonWorld.GetStat<Stats.FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
@@ -844,12 +846,14 @@ public class IslandDCTuningTests
         
         // Rainy scenario
         var rainyWorld = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, rainyWorld);
         rainyWorld.GetStat<Stats.TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.5;
         rainyWorld.GetStat<Stats.WeatherStat>("weather")!.Weather = Weather.Rainy;
         rainyWorld.GetStat<Stats.FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         // Clear scenario
         var clearWorld = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, clearWorld);
         clearWorld.GetStat<Stats.TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.5;
         clearWorld.GetStat<Stats.WeatherStat>("weather")!.Weather = Weather.Clear;
         clearWorld.GetStat<Stats.FishPopulationStat>("fish_population")!.FishAvailable = 100.0;

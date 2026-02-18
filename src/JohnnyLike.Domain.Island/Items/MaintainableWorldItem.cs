@@ -1,9 +1,10 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Candidates;
 using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island;
 
-public abstract class MaintainableWorldItem : WorldItem
+public abstract class MaintainableWorldItem : WorldItem, IIslandActionCandidate
 {
     public double Quality { get; set; } = 100.0;
     public double BaseDecayPerSecond { get; set; } = 0.01;
@@ -28,6 +29,26 @@ public abstract class MaintainableWorldItem : WorldItem
     {
         // Default implementation does nothing
         // Subclasses can override to add custom expiration behavior
+    }
+
+    /// <summary>
+    /// Add action candidates to the output list. Default implementation does nothing.
+    /// Override to provide item-specific action candidates.
+    /// </summary>
+    public virtual void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
+    {
+        // Default implementation provides no candidates
+        // Concrete items override this to provide their specific candidates
+    }
+
+    /// <summary>
+    /// Apply the effects of a completed action. Default implementation does nothing.
+    /// Override to handle item-specific effect application.
+    /// </summary>
+    public virtual void ApplyEffects(EffectContext ctx)
+    {
+        // Default implementation has no effects to apply
+        // Concrete items override this to apply their specific effects
     }
 
     public override Dictionary<string, object> SerializeToDict()
