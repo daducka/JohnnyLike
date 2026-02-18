@@ -207,7 +207,7 @@ public class ActionReservationTests
             return candidates;
         }
         
-        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability) { }
+        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability, object? effectHandler = null) { }
         public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime) { }
         public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
         public bool ValidateContent(out List<string> errors) { errors = new List<string>(); return true; }
@@ -274,7 +274,7 @@ public class ActionReservationTests
             return candidates;
         }
         
-        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability) { }
+        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability, object? effectHandler = null) { }
         public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime) { }
         public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
         public bool ValidateContent(out List<string> errors) { errors = new List<string>(); return true; }

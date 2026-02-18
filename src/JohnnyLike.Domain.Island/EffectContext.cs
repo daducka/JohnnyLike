@@ -3,13 +3,10 @@ using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island;
 
-public class EffectContext
+/// <summary>
+/// Island domain-specific effect context that extends the base EffectContext with roll outcome tier information.
+/// </summary>
+public class EffectContext : EffectContext<IslandActorState, IslandWorldState>
 {
-    public required ActorId ActorId { get; init; }
-    public required ActionOutcome Outcome { get; init; }
-    public required IslandActorState Actor { get; init; }
-    public required IslandWorldState World { get; init; }
     public RollOutcomeTier? Tier { get; init; }
-    public required IRngStream Rng { get; init; }
-    public required IResourceAvailability Reservations { get; init; }
 }

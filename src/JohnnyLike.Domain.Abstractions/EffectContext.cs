@@ -1,0 +1,19 @@
+namespace JohnnyLike.Domain.Abstractions;
+
+/// <summary>
+/// Base class for effect execution context. Provides common data needed when applying action effects.
+/// Domain-specific implementations should extend this with their own actor and world state types.
+/// </summary>
+/// <typeparam name="TActorState">The domain-specific actor state type</typeparam>
+/// <typeparam name="TWorldState">The domain-specific world state type</typeparam>
+public class EffectContext<TActorState, TWorldState>
+    where TActorState : ActorState
+    where TWorldState : WorldState
+{
+    public required ActorId ActorId { get; init; }
+    public required ActionOutcome Outcome { get; init; }
+    public required TActorState Actor { get; init; }
+    public required TWorldState World { get; init; }
+    public required IRngStream Rng { get; init; }
+    public required IResourceAvailability Reservations { get; init; }
+}

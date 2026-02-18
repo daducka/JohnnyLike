@@ -1,9 +1,20 @@
 namespace JohnnyLike.Domain.Abstractions;
 
+/// <summary>
+/// Represents a candidate action that an actor can take.
+/// </summary>
+/// <param name="Action">The action specification including ID, kind, parameters, and resource requirements</param>
+/// <param name="Score">The priority/desirability score (0-1) for this action</param>
+/// <param name="Reason">Optional human-readable explanation for why this action was suggested</param>
+/// <param name="EffectHandler">Optional effect handler to execute when this action completes.
+/// This provides explicit binding between the action and its effects, eliminating the need for
+/// string-based actionId lookups. Domain implementations can provide a delegate that takes their
+/// specific EffectContext type (e.g., Action&lt;EffectContext&lt;IslandActorState, IslandWorldState&gt;&gt;).</param>
 public record ActionCandidate(
     ActionSpec Action,
     double Score,
-    string? Reason = null
+    string? Reason = null,
+    object? EffectHandler = null
 );
 
 public interface IDomainPack
@@ -27,7 +38,8 @@ public interface IDomainPack
         ActorState actorState,
         WorldState worldState,
         IRngStream rng,
-        IResourceAvailability resourceAvailability);
+        IResourceAvailability resourceAvailability,
+        object? effectHandler = null);
     
     void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime);
     

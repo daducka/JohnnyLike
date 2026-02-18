@@ -20,7 +20,7 @@ public class Director
         _traceSink = traceSink;
     }
 
-    public ActionSpec? PlanNextAction(
+    public (ActionSpec? action, object? effectHandler) PlanNextAction(
         ActorId actorId,
         ActorState actorState,
         WorldState worldState,
@@ -32,7 +32,7 @@ public class Director
         var sceneAction = CheckForSceneJoin(actorId, actorState, currentTime);
         if (sceneAction != null)
         {
-            return sceneAction;
+            return (sceneAction, null);
         }
 
         // Get candidates from domain pack, passing resource availability
@@ -61,12 +61,12 @@ public class Director
                 {
                     _actorReservationScenes[actorId] = reservationSceneId.Value;
                 }
-                return candidate.Action;
+                return (candidate.Action, candidate.EffectHandler);
             }
         }
 
         // No candidate could be reserved (or no candidates at all)
-        return null;
+        return (null, null);
     }
 
     private ActionSpec? CheckForSceneJoin(ActorId actorId, ActorState actorState, double currentTime)

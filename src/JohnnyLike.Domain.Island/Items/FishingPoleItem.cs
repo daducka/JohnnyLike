@@ -53,20 +53,18 @@ public class FishingPoleItem : ToolItem
             if (Quality < 50.0)
                 baseScore *= 0.7;
 
-            var resultData = parameters.ToResultData();
-            resultData["tool_item_id"] = Id;
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("go_fishing"),
                     ActionKind.Interact,
                     parameters,
                     45.0 + ctx.Random.NextDouble() * 15.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
                 baseScore,
-                $"Go fishing with pole (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Go fishing with pole (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: new Action<EffectContext>(ApplyGoFishingEffect)
             ));
         }
 
@@ -79,20 +77,18 @@ public class FishingPoleItem : ToolItem
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = 0.3 + (urgency * 0.4);
 
-            var resultData = parameters.ToResultData();
-            resultData["tool_item_id"] = Id;
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("maintain_rod"),
                     ActionKind.Interact,
                     parameters,
                     20.0 + ctx.Random.NextDouble() * 5.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
                 baseScore,
-                $"Maintain fishing rod (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Maintain fishing rod (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: new Action<EffectContext>(ApplyMaintainRodEffect)
             ));
         }
 
@@ -104,68 +100,72 @@ public class FishingPoleItem : ToolItem
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = IsBroken ? 1.0 : 0.7;
 
-            var resultData = parameters.ToResultData();
-            resultData["tool_item_id"] = Id;
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("repair_rod"),
                     ActionKind.Interact,
                     parameters,
                     40.0 + ctx.Random.NextDouble() * 10.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
                 baseScore,
-                $"Repair fishing rod{(IsBroken ? " (broken)" : "")} (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Repair fishing rod{(IsBroken ? " (broken)" : "")} (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: new Action<EffectContext>(ApplyRepairRodEffect)
             ));
         }
     }
 
-    public override void ApplyEffects(EffectContext ctx)
+    public void ApplyGoFishingEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)
             return;
 
         var tier = ctx.Tier.Value;
-        var actionId = ctx.Outcome.ActionId.Value;
 
-        switch (actionId)
+        if (tier >= RollOutcomeTier.PartialSuccess)
         {
-            case "go_fishing":
-                if (tier >= RollOutcomeTier.PartialSuccess)
-                {
-                    // Minor quality degradation from use
-                    Quality = Math.Max(0.0, Quality - 1.0);
-                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 5.0);
-                }
-                break;
+            // Minor quality degradation from use
+            Quality = Math.Max(0.0, Quality - 1.0);
+            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 5.0);
+        }
+    }
 
-            case "maintain_rod":
-                if (tier >= RollOutcomeTier.PartialSuccess)
-                {
-                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 25.0 : 
-                                         tier == RollOutcomeTier.Success ? 15.0 : 8.0;
-                    Quality = Math.Min(100.0, Quality + qualityRestored);
-                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 3.0);
-                }
-                break;
+    public void ApplyMaintainRodEffect(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
 
-            case "repair_rod":
-                if (tier >= RollOutcomeTier.Success)
-                {
-                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 50.0 : 35.0;
-                    Quality = Math.Min(100.0, Quality + qualityRestored);
-                    
-                    if (IsBroken)
-                    {
-                        IsBroken = false;
-                        ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 10.0);
-                    }
-                    
-                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 8.0);
-                }
-                break;
+        var tier = ctx.Tier.Value;
+
+        if (tier >= RollOutcomeTier.PartialSuccess)
+        {
+            var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 25.0 : 
+                                 tier == RollOutcomeTier.Success ? 15.0 : 8.0;
+            Quality = Math.Min(100.0, Quality + qualityRestored);
+            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 3.0);
+        }
+    }
+
+    public void ApplyRepairRodEffect(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        if (tier >= RollOutcomeTier.Success)
+        {
+            var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 50.0 : 35.0;
+            Quality = Math.Min(100.0, Quality + qualityRestored);
+            
+            if (IsBroken)
+            {
+                IsBroken = false;
+                ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 10.0);
+            }
+            
+            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 8.0);
         }
     }
 

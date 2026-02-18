@@ -14,6 +14,7 @@ public class Engine
     private readonly ITraceSink _traceSink;
     private readonly Random _rng;
     private readonly Queue<Signal> _signalQueue;
+    private readonly Dictionary<ActionId, object?> _effectHandlers; // Maps action IDs to their effect handlers
     private double _currentTime;
 
     public double CurrentTime => _currentTime;
@@ -31,6 +32,7 @@ public class Engine
         _director = new Director(domainPack, _reservations, _varietyMemory, _traceSink);
         _rng = new Random(seed);
         _signalQueue = new Queue<Signal>();
+        _effectHandlers = new Dictionary<ActionId, object?>();
         _currentTime = 0.0;
     }
 
@@ -104,26 +106,32 @@ public class Engine
             return false;
         }
 
-        action = _director.PlanNextAction(actorId, actorState, _worldState, _actors, _currentTime, _rng);
+        var (plannedAction, effectHandler) = _director.PlanNextAction(actorId, actorState, _worldState, _actors, _currentTime, _rng);
 
-        if (action != null)
+        if (plannedAction != null)
         {
             actorState.Status = ActorStatus.Busy;
-            actorState.CurrentAction = action;
+            actorState.CurrentAction = plannedAction;
             actorState.LastDecisionTime = _currentTime;
+
+            // Store the effect handler for this action if present
+            if (effectHandler != null)
+            {
+                _effectHandlers[plannedAction.Id] = effectHandler;
+            }
 
             var details = new Dictionary<string, object>
             {
-                ["actionId"] = action.Id.Value,
-                ["actionKind"] = action.Kind.ToString(),
-                ["estimatedDuration"] = action.EstimatedDuration
+                ["actionId"] = plannedAction.Id.Value,
+                ["actionKind"] = plannedAction.Kind.ToString(),
+                ["estimatedDuration"] = plannedAction.EstimatedDuration
             };
             
             // Include resource requirements if present
-            if (action.ResourceRequirements != null && action.ResourceRequirements.Count > 0)
+            if (plannedAction.ResourceRequirements != null && plannedAction.ResourceRequirements.Count > 0)
             {
                 details["resourceRequirements"] = string.Join(", ", 
-                    action.ResourceRequirements.Select(r => r.ResourceId.Value));
+                    plannedAction.ResourceRequirements.Select(r => r.ResourceId.Value));
             }
 
             _traceSink.Record(new TraceEvent(
@@ -133,6 +141,7 @@ public class Engine
                 details
             ));
 
+            action = plannedAction;
             return true;
         }
 
@@ -156,9 +165,15 @@ public class Engine
         // This allows world items spawned in effects to reserve resources previously held by the actor
         _director.ReleaseActionReservations(actorId);
 
+        // Retrieve the effect handler for this action if one was stored
+        _effectHandlers.TryGetValue(outcome.ActionId, out var effectHandler);
+        
+        // Clean up the handler from our storage after retrieving it
+        _effectHandlers.Remove(outcome.ActionId);
+
         // Apply effects (domain pack may populate ResultData)
         var rngStream = new RandomRngStream(_rng);
-        _domainPack.ApplyActionEffects(actorId, outcome, actorState, _worldState, rngStream, _reservations);
+        _domainPack.ApplyActionEffects(actorId, outcome, actorState, _worldState, rngStream, _reservations, effectHandler);
 
         // Build details dictionary including all data from ResultData
         var details = new Dictionary<string, object>

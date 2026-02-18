@@ -312,7 +312,7 @@ public class SignalHandlingTests
             };
         }
 
-        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability)
+        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability, object? effectHandler = null)
         {
         }
 
@@ -408,7 +408,7 @@ public class ActorStateSnapshotTests
             };
         }
 
-        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability)
+        public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability, object? effectHandler = null)
         {
         }
 

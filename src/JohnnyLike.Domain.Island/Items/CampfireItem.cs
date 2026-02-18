@@ -64,20 +64,18 @@ public class CampfireItem : ToolItem
                 baseScore *= 0.5;
             }
 
-            var resultData = parameters.ToResultData();
-            resultData["tool_item_id"] = Id;
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("add_fuel_campfire"),
                     ActionKind.Interact,
                     parameters,
                     20.0 + ctx.Random.NextDouble() * 5.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
-                $"Add fuel to campfire (fuel: {FuelSeconds:F0}s, wood: {currentWood:F1}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Add fuel to campfire (fuel: {FuelSeconds:F0}s, wood: {currentWood:F1}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: new Action<EffectContext>(ApplyAddFuelEffect)
             ));
         }
 
@@ -90,20 +88,18 @@ public class CampfireItem : ToolItem
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = urgency * foresightMultiplier;
 
-            var resultData = parameters.ToResultData();
-            resultData["tool_item_id"] = Id;
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("relight_campfire"),
                     ActionKind.Interact,
                     parameters,
                     30.0 + ctx.Random.NextDouble() * 10.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
-                $"Relight campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Relight campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: new Action<EffectContext>(ApplyRelightEffect)
             ));
         }
 
@@ -116,20 +112,18 @@ public class CampfireItem : ToolItem
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = 0.2 + (urgency * 0.4 * foresightMultiplier);
 
-            var resultData = parameters.ToResultData();
-            resultData["tool_item_id"] = Id;
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("repair_campfire"),
                     ActionKind.Interact,
                     parameters,
                     25.0 + ctx.Random.NextDouble() * 5.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
-                $"Repair campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Repair campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: new Action<EffectContext>(ApplyRepairEffect)
             ));
         }
 
@@ -141,89 +135,99 @@ public class CampfireItem : ToolItem
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = 1.0 * foresightMultiplier;
 
-            var resultData = parameters.ToResultData();
-            resultData["tool_item_id"] = Id;
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("rebuild_campfire"),
                     ActionKind.Interact,
                     parameters,
                     60.0 + ctx.Random.NextDouble() * 20.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
-                $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: new Action<EffectContext>(ApplyRebuildEffect)
             ));
         }
     }
 
-    public override void ApplyEffects(EffectContext ctx)
+    public void ApplyAddFuelEffect(EffectContext ctx)
     {
         if (ctx.Tier == null)
             return;
 
         var tier = ctx.Tier.Value;
-        var actionId = ctx.Outcome.ActionId.Value;
 
-        switch (actionId)
+        if (tier >= RollOutcomeTier.PartialSuccess)
         {
-            case "add_fuel_campfire":
-                if (tier >= RollOutcomeTier.PartialSuccess)
-                {
-                    var woodCost = tier == RollOutcomeTier.CriticalSuccess ? 3.0 :
-                                   tier == RollOutcomeTier.Success ? 5.0 : 7.0;
+            var woodCost = tier == RollOutcomeTier.CriticalSuccess ? 3.0 :
+                           tier == RollOutcomeTier.Success ? 5.0 : 7.0;
 
-                    var sharedPile = ctx.World.SharedSupplyPile;
-                    if (sharedPile != null && sharedPile.TryConsumeSupply<WoodSupply>("wood", woodCost))
-                    {
-                        var fuelAdded = tier == RollOutcomeTier.CriticalSuccess ? 2400.0 :
-                                        tier == RollOutcomeTier.Success ? 1800.0 : 900.0;
-                        FuelSeconds = Math.Min(7200.0, FuelSeconds + fuelAdded);
-                        ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 5.0);
-                    }
-                    else
-                    {
-                        var reducedFuel = tier == RollOutcomeTier.CriticalSuccess ? 1200.0 :
-                                          tier == RollOutcomeTier.Success ? 900.0 : 450.0;
-                        FuelSeconds = Math.Min(7200.0, FuelSeconds + reducedFuel);
-                        ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 2.0);
-                        ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 3.0);
-                    }
-                }
-                break;
+            var sharedPile = ctx.World.SharedSupplyPile;
+            if (sharedPile != null && sharedPile.TryConsumeSupply<WoodSupply>("wood", woodCost))
+            {
+                var fuelAdded = tier == RollOutcomeTier.CriticalSuccess ? 2400.0 :
+                                tier == RollOutcomeTier.Success ? 1800.0 : 900.0;
+                FuelSeconds = Math.Min(7200.0, FuelSeconds + fuelAdded);
+                ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 5.0);
+            }
+            else
+            {
+                var reducedFuel = tier == RollOutcomeTier.CriticalSuccess ? 1200.0 :
+                                  tier == RollOutcomeTier.Success ? 900.0 : 450.0;
+                FuelSeconds = Math.Min(7200.0, FuelSeconds + reducedFuel);
+                ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 2.0);
+                ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 3.0);
+            }
+        }
+    }
 
-            case "relight_campfire":
-                if (tier >= RollOutcomeTier.Success)
-                {
-                    IsLit = true;
-                    FuelSeconds = tier == RollOutcomeTier.CriticalSuccess ? 1800.0 : 1200.0;
-                    ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 10.0);
-                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 8.0);
-                }
-                break;
+    public void ApplyRelightEffect(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
 
-            case "repair_campfire":
-                if (tier >= RollOutcomeTier.PartialSuccess)
-                {
-                    var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 40.0 : 
-                                         tier == RollOutcomeTier.Success ? 25.0 : 15.0;
-                    Quality = Math.Min(100.0, Quality + qualityRestored);
-                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 7.0);
-                }
-                break;
+        var tier = ctx.Tier.Value;
 
-            case "rebuild_campfire":
-                if (tier >= RollOutcomeTier.Success)
-                {
-                    Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 80.0;
-                    IsLit = true;
-                    FuelSeconds = 1800.0;
-                    ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 15.0);
-                    ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 20.0);
-                }
-                break;
+        if (tier >= RollOutcomeTier.Success)
+        {
+            IsLit = true;
+            FuelSeconds = tier == RollOutcomeTier.CriticalSuccess ? 1800.0 : 1200.0;
+            ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 10.0);
+            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 8.0);
+        }
+    }
+
+    public void ApplyRepairEffect(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        if (tier >= RollOutcomeTier.PartialSuccess)
+        {
+            var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 40.0 : 
+                                 tier == RollOutcomeTier.Success ? 25.0 : 15.0;
+            Quality = Math.Min(100.0, Quality + qualityRestored);
+            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 7.0);
+        }
+    }
+
+    public void ApplyRebuildEffect(EffectContext ctx)
+    {
+        if (ctx.Tier == null)
+            return;
+
+        var tier = ctx.Tier.Value;
+
+        if (tier >= RollOutcomeTier.Success)
+        {
+            Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 80.0;
+            IsLit = true;
+            FuelSeconds = 1800.0;
+            ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 15.0);
+            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 20.0);
         }
     }
 

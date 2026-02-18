@@ -63,16 +63,6 @@ public abstract class ToolItem : MaintainableWorldItem
         // Concrete tool classes override this to provide their specific candidates
     }
 
-    /// <summary>
-    /// Virtual method for tools to apply effects when their actions are executed.
-    /// Override in concrete tool implementations to handle tool-specific action effects.
-    /// </summary>
-    public virtual void ApplyEffects(EffectContext ctx)
-    {
-        // Default implementation does nothing
-        // Concrete tool classes override this to apply their specific effects
-    }
-
     public override Dictionary<string, object> SerializeToDict()
     {
         var dict = base.SerializeToDict();
