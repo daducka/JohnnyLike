@@ -201,18 +201,14 @@ public class IslandDomainPack : IDomainPack
             Reservations = resourceAvailability
         };
 
-        // First, try to apply effects via ToolItem
-        var toolItemHandled = false;
+        // Try to apply effects via ToolItem (they check actionId internally)
         foreach (var item in islandWorld.WorldItems.OfType<ToolItem>())
         {
-            // Check if this tool handles this action by trying to apply effects
-            // Tools should check the actionId in their ApplyEffects method
             item.ApplyEffects(effectCtx);
-            toolItemHandled = true; // At least one tool tried to handle it
         }
 
-        // Fall back to legacy provider-based effect handlers for non-tool actions
-        if (!toolItemHandled && _effectHandlers.TryGetValue(actionId, out var handler))
+        // Also call legacy provider-based effect handlers (for non-tool actions)
+        if (_effectHandlers.TryGetValue(actionId, out var handler))
         {
             handler.ApplyEffects(effectCtx);
         }
