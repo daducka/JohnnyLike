@@ -17,9 +17,10 @@ public class EffectHandlerRefactoringTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         var campfire = world.MainCampfire!;
-        campfire.FuelSeconds = 500.0; // Low fuel to trigger add fuel candidate
+        // Set fuel to 500s which is below the 1800s threshold that triggers add fuel candidate
+        campfire.FuelSeconds = 500.0;
         
-        // Add wood to the shared pile
+        // Add wood to the shared pile (minimum 3.0 required for add fuel action)
         world.SharedSupplyPile!.AddSupply("wood", 20.0, id => new WoodSupply(id));
         
         var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
