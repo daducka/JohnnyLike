@@ -92,7 +92,7 @@ public class SupplySystemTests
     {
         var world = new IslandWorldState();
         var timeStat = new Stats.TimeOfDayStat();
-        timeStat.TimeOfDay = 0.75; // Set time to ensure high tide (tidePhase = 18 % 12 = 6)
+        timeStat.TimeOfDay = 0.75; // Set time to ensure high tide (tidePhase = (0.75 * 24) % 12 = 18 % 12 = 6)
         world.WorldStats.Add(timeStat);
         world.WorldStats.Add(new Stats.WeatherStat());
         world.WorldStats.Add(new Stats.TideStat());
