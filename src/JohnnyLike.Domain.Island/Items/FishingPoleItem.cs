@@ -54,7 +54,8 @@ public class FishingPoleItem : ToolItem
                 baseScore *= 0.7;
 
             var resultData = parameters.ToResultData();
-            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyGoFishingEffect);
+            var effectHandler = new Action<EffectContext>(ApplyGoFishingEffect);
+            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -66,7 +67,8 @@ public class FishingPoleItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
                 baseScore,
-                $"Go fishing with pole (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Go fishing with pole (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: effectHandler
             ));
         }
 
@@ -80,7 +82,8 @@ public class FishingPoleItem : ToolItem
             var baseScore = 0.3 + (urgency * 0.4);
 
             var resultData = parameters.ToResultData();
-            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyMaintainRodEffect);
+            var effectHandler = new Action<EffectContext>(ApplyMaintainRodEffect);
+            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -92,7 +95,8 @@ public class FishingPoleItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
                 baseScore,
-                $"Maintain fishing rod (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Maintain fishing rod (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: effectHandler
             ));
         }
 
@@ -105,7 +109,8 @@ public class FishingPoleItem : ToolItem
             var baseScore = IsBroken ? 1.0 : 0.7;
 
             var resultData = parameters.ToResultData();
-            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyRepairRodEffect);
+            var effectHandler = new Action<EffectContext>(ApplyRepairRodEffect);
+            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -117,11 +122,13 @@ public class FishingPoleItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
                 baseScore,
-                $"Repair fishing rod{(IsBroken ? " (broken)" : "")} (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Repair fishing rod{(IsBroken ? " (broken)" : "")} (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: effectHandler
             ));
         }
     }
 
+    [Obsolete("ApplyEffects is deprecated for ToolItems. Effects are now applied via direct handlers in ActionCandidate.EffectHandler")]
     public override void ApplyEffects(EffectContext ctx)
     {
         if (ctx.Tier == null)

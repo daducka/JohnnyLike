@@ -61,7 +61,8 @@ public class ShelterItem : ToolItem
             var baseScore = 0.25 + (urgency * 0.5 * weatherMultiplier * foresightMultiplier);
 
             var resultData = parameters.ToResultData();
-            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyRepairShelterEffect);
+            var effectHandler = new Action<EffectContext>(ApplyRepairShelterEffect);
+            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -73,7 +74,8 @@ public class ShelterItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 baseScore,
-                $"Repair shelter (quality: {Quality:F0}%, {weather}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Repair shelter (quality: {Quality:F0}%, {weather}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: effectHandler
             ));
         }
 
@@ -87,7 +89,8 @@ public class ShelterItem : ToolItem
             var baseScore = 0.4 + (urgency * 0.5 * foresightMultiplier);
 
             var resultData = parameters.ToResultData();
-            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyReinforceShelterEffect);
+            var effectHandler = new Action<EffectContext>(ApplyReinforceShelterEffect);
+            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -99,7 +102,8 @@ public class ShelterItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 baseScore,
-                $"Reinforce shelter (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Reinforce shelter (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: effectHandler
             ));
         }
 
@@ -112,7 +116,8 @@ public class ShelterItem : ToolItem
             var baseScore = 1.2 * foresightMultiplier;
 
             var resultData = parameters.ToResultData();
-            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyRebuildShelterEffect);
+            var effectHandler = new Action<EffectContext>(ApplyRebuildShelterEffect);
+            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -124,11 +129,13 @@ public class ShelterItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 baseScore,
-                $"Rebuild shelter from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Rebuild shelter from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: effectHandler
             ));
         }
     }
 
+    [Obsolete("ApplyEffects is deprecated for ToolItems. Effects are now applied via direct handlers in ActionCandidate.EffectHandler")]
     public override void ApplyEffects(EffectContext ctx)
     {
         if (ctx.Tier == null)

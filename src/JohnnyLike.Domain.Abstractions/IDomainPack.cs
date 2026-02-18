@@ -6,10 +6,10 @@ namespace JohnnyLike.Domain.Abstractions;
 /// <param name="Action">The action specification including ID, kind, parameters, and resource requirements</param>
 /// <param name="Score">The priority/desirability score (0-1) for this action</param>
 /// <param name="Reason">Optional human-readable explanation for why this action was suggested</param>
-/// <param name="EffectHandler">Optional domain-specific effect handler to execute when this action completes.
+/// <param name="EffectHandler">Optional effect handler to execute when this action completes.
 /// This provides explicit binding between the action and its effects, eliminating the need for
-/// string-based actionId lookups. The type and structure of this handler is determined by each domain.
-/// For example, the Island domain uses Action&lt;EffectContext&gt; delegates stored in ResultData.</param>
+/// string-based actionId lookups. Domain implementations can provide a delegate that takes their
+/// specific EffectContext type (e.g., Action&lt;EffectContext&lt;IslandActorState, IslandWorldState&gt;&gt;).</param>
 public record ActionCandidate(
     ActionSpec Action,
     double Score,

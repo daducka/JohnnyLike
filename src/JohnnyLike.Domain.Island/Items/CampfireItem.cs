@@ -65,8 +65,8 @@ public class CampfireItem : ToolItem
             }
 
             var resultData = parameters.ToResultData();
-            // Add direct effect handler instead of tool_item_id
-            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyAddFuelEffect);
+            var effectHandler = new Action<EffectContext>(ApplyAddFuelEffect);
+            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -78,7 +78,8 @@ public class CampfireItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
-                $"Add fuel to campfire (fuel: {FuelSeconds:F0}s, wood: {currentWood:F1}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Add fuel to campfire (fuel: {FuelSeconds:F0}s, wood: {currentWood:F1}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: effectHandler
             ));
         }
 
@@ -92,7 +93,8 @@ public class CampfireItem : ToolItem
             var baseScore = urgency * foresightMultiplier;
 
             var resultData = parameters.ToResultData();
-            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyRelightEffect);
+            var effectHandler = new Action<EffectContext>(ApplyRelightEffect);
+            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -104,7 +106,8 @@ public class CampfireItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
-                $"Relight campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Relight campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: effectHandler
             ));
         }
 
@@ -118,7 +121,8 @@ public class CampfireItem : ToolItem
             var baseScore = 0.2 + (urgency * 0.4 * foresightMultiplier);
 
             var resultData = parameters.ToResultData();
-            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyRepairEffect);
+            var effectHandler = new Action<EffectContext>(ApplyRepairEffect);
+            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -130,7 +134,8 @@ public class CampfireItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
-                $"Repair campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Repair campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: effectHandler
             ));
         }
 
@@ -143,7 +148,8 @@ public class CampfireItem : ToolItem
             var baseScore = 1.0 * foresightMultiplier;
 
             var resultData = parameters.ToResultData();
-            resultData["__effect_handler__"] = new Action<EffectContext>(ApplyRebuildEffect);
+            var effectHandler = new Action<EffectContext>(ApplyRebuildEffect);
+            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -155,11 +161,13 @@ public class CampfireItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
-                $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})"
+                $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                EffectHandler: effectHandler
             ));
         }
     }
 
+    [Obsolete("ApplyEffects is deprecated for ToolItems. Effects are now applied via direct handlers in ActionCandidate.EffectHandler")]
     public override void ApplyEffects(EffectContext ctx)
     {
         if (ctx.Tier == null)
