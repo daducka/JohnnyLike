@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Stats;
 using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island.Items;
@@ -14,11 +15,12 @@ public class ShelterItem : MaintainableWorldItem
     {
         base.Tick(dtSeconds, world);
 
-        if (world.Weather == Weather.Rainy)
+        var weatherStat = world.GetStat<WeatherStat>("weather");
+        if (weatherStat?.Weather == Weather.Rainy)
         {
             Quality = Math.Max(0.0, Quality - 0.03 * dtSeconds);
         }
-        else if (world.Weather == Weather.Windy)
+        else if (weatherStat?.Weather == Weather.Windy)
         {
             Quality = Math.Max(0.0, Quality - 0.02 * dtSeconds);
         }

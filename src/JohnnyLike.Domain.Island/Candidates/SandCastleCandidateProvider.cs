@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Candidates;
@@ -12,7 +13,8 @@ public class SandCastleCandidateProvider : IIslandCandidateProvider
     {
         var baseDC = 8;
 
-        if (ctx.World.TideLevel == TideLevel.High)
+        var tideStat = ctx.World.GetStat<TideStat>("tide");
+        if (tideStat?.TideLevel == TideLevel.High)
             baseDC += 4;
 
         // Roll skill check at candidate generation time

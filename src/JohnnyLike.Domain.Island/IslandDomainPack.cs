@@ -72,6 +72,14 @@ public class IslandDomainPack : IDomainPack
         var world = new IslandWorldState();
         world.WorldItems.Add(new CampfireItem("main_campfire"));
         world.WorldItems.Add(new ShelterItem("main_shelter"));
+        
+        // Initialize WorldStats
+        world.WorldStats.Add(new Stats.TimeOfDayStat());
+        world.WorldStats.Add(new Stats.WeatherStat());
+        world.WorldStats.Add(new Stats.TideStat());
+        world.WorldStats.Add(new Stats.FishPopulationStat());
+        world.WorldStats.Add(new Stats.CoconutAvailabilityStat());
+        
         return world;
     }
 
@@ -293,136 +301,10 @@ public class IslandDomainPack : IDomainPack
     public List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability)
     {
         var islandWorld = (IslandWorldState)worldState;
-        var traceEvents = new List<TraceEvent>();
         var newCurrentTime = islandWorld.CurrentTime + dtSeconds;
         
-        // Track old values for change detection
-        var oldWeather = islandWorld.Weather;
-        var oldTideLevel = islandWorld.TideLevel;
-        var oldDayCount = islandWorld.DayCount;
-        var oldTimeOfDay = islandWorld.TimeOfDay;
-        
-        // Update current time first (before ticking items that may check it)
-        islandWorld.CurrentTime = newCurrentTime;
-        
-        // Update time of day and day count
-        islandWorld.TimeOfDay += dtSeconds / 86400.0;
-        if (islandWorld.TimeOfDay >= 1.0)
-        {
-            islandWorld.TimeOfDay -= 1.0;
-            islandWorld.DayCount++;
-            
-            // Regenerate coconuts on new day
-            var oldCoconuts = islandWorld.CoconutsAvailable;
-            islandWorld.CoconutsAvailable = Math.Min(10, islandWorld.CoconutsAvailable + 3);
-            
-            if (islandWorld.CoconutsAvailable > oldCoconuts)
-            {
-                traceEvents.Add(new TraceEvent(
-                    newCurrentTime,
-                    null,
-                    "CoconutsRegenerated",
-                    new Dictionary<string, object>
-                    {
-                        ["oldCount"] = oldCoconuts,
-                        ["newCount"] = islandWorld.CoconutsAvailable,
-                        ["added"] = islandWorld.CoconutsAvailable - oldCoconuts,
-                        ["dayCount"] = islandWorld.DayCount
-                    }
-                ));
-            }
-        }
-        
-        // Regenerate fish
-        var oldFish = islandWorld.FishAvailable;
-        islandWorld.FishAvailable = Math.Min(100.0, islandWorld.FishAvailable + islandWorld.FishRegenRatePerMinute * (dtSeconds / 60.0));
-        
-        // Log fish regeneration if significant (at least 1 fish worth of regeneration)
-        if (islandWorld.FishAvailable - oldFish >= 1.0)
-        {
-            traceEvents.Add(new TraceEvent(
-                newCurrentTime,
-                null,
-                "FishRegenerated",
-                new Dictionary<string, object>
-                {
-                    ["oldAvailable"] = Math.Round(oldFish, 2),
-                    ["newAvailable"] = Math.Round(islandWorld.FishAvailable, 2),
-                    ["regenerated"] = Math.Round(islandWorld.FishAvailable - oldFish, 2)
-                }
-            ));
-        }
-        
-        // Update tide level
-        var tidePhase = (islandWorld.TimeOfDay * 24.0) % 12.0;
-        islandWorld.TideLevel = tidePhase >= 6.0 ? TideLevel.High : TideLevel.Low;
-        
-        // Log tide changes
-        if (islandWorld.TideLevel != oldTideLevel)
-        {
-            traceEvents.Add(new TraceEvent(
-                newCurrentTime,
-                null,
-                "TideChanged",
-                new Dictionary<string, object>
-                {
-                    ["oldTide"] = oldTideLevel.ToString(),
-                    ["newTide"] = islandWorld.TideLevel.ToString(),
-                    ["timeOfDay"] = Math.Round(islandWorld.TimeOfDay * 24.0, 2)
-                }
-            ));
-        }
-        
-        // Tick maintainable items and detect state changes
-        foreach (var item in islandWorld.WorldItems.OfType<MaintainableWorldItem>())
-        {
-            // Track campfire state changes
-            if (item is CampfireItem campfire)
-            {
-                var wasLit = campfire.IsLit;
-                campfire.Tick(dtSeconds, islandWorld);
-                
-                // Log when campfire goes out
-                if (wasLit && !campfire.IsLit)
-                {
-                    traceEvents.Add(new TraceEvent(
-                        newCurrentTime,
-                        null,
-                        "CampfireExtinguished",
-                        new Dictionary<string, object>
-                        {
-                            ["itemId"] = campfire.Id,
-                            ["quality"] = Math.Round(campfire.Quality, 2)
-                        }
-                    ));
-                }
-            }
-            else
-            {
-                item.Tick(dtSeconds, islandWorld);
-            }
-        }
-        
-        // Remove expired maintainable items and log their expiration
-        // Note: ToList() is necessary here because we're removing items from WorldItems during iteration
-        var expiredItems = islandWorld.WorldItems.OfType<MaintainableWorldItem>().Where(item => item.IsExpired).ToList();
-        foreach (var item in expiredItems)
-        {
-            traceEvents.Add(new TraceEvent(
-                newCurrentTime,
-                null,
-                "WorldItemExpired",
-                new Dictionary<string, object>
-                {
-                    ["itemId"] = item.Id,
-                    ["itemType"] = item.Type,
-                    ["quality"] = Math.Round(item.Quality, 2)
-                }
-            ));
-            
-            item.PerformExpiration(islandWorld, resourceAvailability);
-            islandWorld.WorldItems.Remove(item);
-        }
+        // OnTimeAdvanced now returns all trace events (from stats and items)
+        var traceEvents = islandWorld.OnTimeAdvanced(newCurrentTime, dtSeconds, resourceAvailability);
         
         return traceEvents;
     }

@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Stats;
 using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island;
@@ -19,39 +20,92 @@ public enum TideLevel
 
 public class IslandWorldState : WorldState
 {
-    public double TimeOfDay { get; set; } = 0.5;
-    public int DayCount { get; set; } = 0;
-    public Weather Weather { get; set; } = Weather.Clear;
-    public double FishAvailable { get; set; } = 100.0;
-    public double FishRegenRatePerMinute { get; set; } = 5.0;
-    public int CoconutsAvailable { get; set; } = 5;
-    public TideLevel TideLevel { get; set; } = TideLevel.Low;
-
     public double CurrentTime { get; set; } = 0.0;
 
     public List<WorldItem> WorldItems { get; set; } = new();
+    public List<WorldStat> WorldStats { get; set; } = new();
 
     public CampfireItem? MainCampfire => WorldItems.OfType<CampfireItem>().FirstOrDefault();
     public ShelterItem? MainShelter => WorldItems.OfType<ShelterItem>().FirstOrDefault();
     public TreasureChestItem? TreasureChest => WorldItems.OfType<TreasureChestItem>().FirstOrDefault();
     public SharkItem? Shark => WorldItems.OfType<SharkItem>().FirstOrDefault();
 
-    public void OnTimeAdvanced(double currentTime, double dt, IResourceAvailability? resourceAvailability = null)
+    /// <summary>
+    /// Get a stat by its ID and optionally cast to a specific type
+    /// </summary>
+    public T? GetStat<T>(string id) where T : WorldStat
     {
-        CurrentTime = currentTime;
+        return WorldStats.FirstOrDefault(s => s.Id == id) as T;
+    }
 
-        TimeOfDay += dt / 86400.0;
-        if (TimeOfDay >= 1.0)
+    /// <summary>
+    /// Topologically sort stats based on their dependencies
+    /// </summary>
+    private List<WorldStat> TopologicalSortStats()
+    {
+        var sorted = new List<WorldStat>();
+        var visited = new HashSet<string>();
+        var visiting = new HashSet<string>();
+        var statById = WorldStats.ToDictionary(s => s.Id);
+        var path = new List<string>(); // Track current dependency path for better error messages
+
+        void Visit(WorldStat stat)
         {
-            TimeOfDay -= 1.0;
-            DayCount++;
-            CoconutsAvailable = Math.Min(10, CoconutsAvailable + 3);
+            if (visited.Contains(stat.Id))
+                return;
+
+            if (visiting.Contains(stat.Id))
+            {
+                // Build a clear error message showing the cycle
+                var cycleStart = path.IndexOf(stat.Id);
+                var cycle = string.Join(" -> ", path.Skip(cycleStart).Append(stat.Id));
+                throw new InvalidOperationException(
+                    $"Circular dependency detected in WorldStats: {cycle}");
+            }
+
+            visiting.Add(stat.Id);
+            path.Add(stat.Id);
+
+            foreach (var depId in stat.GetDependencies())
+            {
+                if (statById.TryGetValue(depId, out var depStat))
+                {
+                    Visit(depStat);
+                }
+            }
+
+            path.RemoveAt(path.Count - 1);
+            visiting.Remove(stat.Id);
+            visited.Add(stat.Id);
+            sorted.Add(stat);
         }
 
-        FishAvailable = Math.Min(100.0, FishAvailable + FishRegenRatePerMinute * (dt / 60.0));
+        foreach (var stat in WorldStats)
+        {
+            Visit(stat);
+        }
 
-        var tidePhase = (TimeOfDay * 24.0) % 12.0;
-        TideLevel = tidePhase >= 6.0 ? TideLevel.High : TideLevel.Low;
+        return sorted;
+    }
+
+    public List<TraceEvent> OnTimeAdvanced(double currentTime, double dt, IResourceAvailability? resourceAvailability = null)
+    {
+        CurrentTime = currentTime;
+        var traceEvents = new List<TraceEvent>();
+
+        // Tick all stats in dependency order and collect trace events
+        var sortedStats = TopologicalSortStats();
+        foreach (var stat in sortedStats)
+        {
+            var statEvents = stat.Tick(dt, this, currentTime);
+            traceEvents.AddRange(statEvents);
+        }
+
+        // Track campfire state before ticking items
+        var campfireLitBeforeTick = MainCampfire?.IsLit ?? false;
+        
+        // Track which items exist before ticking (for expiration detection)
+        var itemsBeforeTick = WorldItems.OfType<MaintainableWorldItem>().ToList();
 
         // Tick maintainable items
         foreach (var item in WorldItems.OfType<MaintainableWorldItem>())
@@ -59,18 +113,49 @@ public class IslandWorldState : WorldState
             item.Tick(dt, this);
         }
 
+        // Campfire extinguished trace event
+        var campfire = MainCampfire;
+        if (campfireLitBeforeTick && campfire != null && !campfire.IsLit)
+        {
+            traceEvents.Add(new TraceEvent(
+                currentTime,
+                null,
+                "CampfireExtinguished",
+                new Dictionary<string, object>
+                {
+                    ["itemId"] = campfire.Id,
+                    ["quality"] = Math.Round(campfire.Quality, 2)
+                }
+            ));
+        }
+
         // Remove expired maintainable items after tick cycle to avoid collection modification during iteration
         var expiredItems = WorldItems.OfType<MaintainableWorldItem>().Where(item => item.IsExpired).ToList();
         foreach (var item in expiredItems)
         {
+            traceEvents.Add(new TraceEvent(
+                currentTime,
+                null,
+                "WorldItemExpired",
+                new Dictionary<string, object>
+                {
+                    ["itemId"] = item.Id,
+                    ["itemType"] = item.Type,
+                    ["quality"] = Math.Round(item.Quality, 2)
+                }
+            ));
+            
             item.PerformExpiration(this, resourceAvailability);
             WorldItems.Remove(item);
         }
+        
+        return traceEvents;
     }
 
     public override string Serialize()
     {
         var serializedItems = WorldItems.Select(item => item.SerializeToDict()).ToList();
+        var serializedStats = WorldStats.Select(stat => stat.SerializeToDict()).ToList();
 
         var options = new JsonSerializerOptions
         {
@@ -79,14 +164,8 @@ public class IslandWorldState : WorldState
 
         return JsonSerializer.Serialize(new
         {
-            TimeOfDay,
-            DayCount,
-            Weather,
-            FishAvailable,
-            FishRegenRatePerMinute,
-            CoconutsAvailable,
-            TideLevel,
-            WorldItems = serializedItems
+            WorldItems = serializedItems,
+            WorldStats = serializedStats
         }, options);
     }
 
@@ -94,14 +173,6 @@ public class IslandWorldState : WorldState
     {
         var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
         if (data == null) return;
-
-        TimeOfDay = data["TimeOfDay"].GetDouble();
-        DayCount = data["DayCount"].GetInt32();
-        Weather = Enum.Parse<Weather>(data["Weather"].GetString()!);
-        FishAvailable = data["FishAvailable"].GetDouble();
-        FishRegenRatePerMinute = data["FishRegenRatePerMinute"].GetDouble();
-        CoconutsAvailable = data["CoconutsAvailable"].GetInt32();
-        TideLevel = Enum.Parse<TideLevel>(data["TideLevel"].GetString()!);
 
         WorldItems.Clear();
         if (data.TryGetValue("WorldItems", out var itemsElement))
@@ -127,6 +198,36 @@ public class IslandWorldState : WorldState
                     {
                         item.DeserializeFromDict(itemData);
                         WorldItems.Add(item);
+                    }
+                }
+            }
+        }
+
+        WorldStats.Clear();
+        if (data.TryGetValue("WorldStats", out var statsElement))
+        {
+            var statsList = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(statsElement.GetRawText());
+            if (statsList != null)
+            {
+                foreach (var statData in statsList)
+                {
+                    var type = statData["Type"].GetString()!;
+                    var id = statData["Id"].GetString()!;
+
+                    WorldStat? stat = type switch
+                    {
+                        "stat_time_of_day" => new TimeOfDayStat(),
+                        "stat_weather" => new WeatherStat(),
+                        "stat_tide" => new TideStat(),
+                        "stat_fish_population" => new FishPopulationStat(),
+                        "stat_coconut_availability" => new CoconutAvailabilityStat(),
+                        _ => null
+                    };
+
+                    if (stat != null)
+                    {
+                        stat.DeserializeFromDict(statData);
+                        WorldStats.Add(stat);
                     }
                 }
             }

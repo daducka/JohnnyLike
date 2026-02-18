@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Candidates;
@@ -10,17 +11,19 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
 
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
-        if (ctx.World.CoconutsAvailable < 1)
+        var coconutStat = ctx.World.GetStat<CoconutAvailabilityStat>("coconut_availability");
+        if (coconutStat == null || coconutStat.CoconutsAvailable < 1)
             return;
 
         var baseDC = 12;
 
-        if (ctx.World.CoconutsAvailable >= 5)
+        if (coconutStat.CoconutsAvailable >= 5)
             baseDC -= 2;
-        else if (ctx.World.CoconutsAvailable <= 2)
+        else if (coconutStat.CoconutsAvailable <= 2)
             baseDC += 2;
 
-        if (ctx.World.Weather == Weather.Windy)
+        var weatherStat = ctx.World.GetStat<WeatherStat>("weather");
+        if (weatherStat?.Weather == Weather.Windy)
             baseDC -= 1;
 
         // Roll skill check at candidate generation time
@@ -52,18 +55,21 @@ public class CoconutCandidateProvider : IIslandCandidateProvider
             return;
 
         var tier = ctx.Tier.Value;
+        var coconutStat = ctx.World.GetStat<CoconutAvailabilityStat>("coconut_availability");
+        if (coconutStat == null)
+            return;
 
         switch (tier)
         {
             case RollOutcomeTier.CriticalSuccess:
                 ctx.Actor.Hunger = Math.Max(0.0, ctx.Actor.Hunger - 25.0);
-                ctx.World.CoconutsAvailable = Math.Max(0, ctx.World.CoconutsAvailable - 1);
+                coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
                 ctx.Actor.Energy = Math.Min(100.0, ctx.Actor.Energy + 15.0);
                 break;
 
             case RollOutcomeTier.Success:
                 ctx.Actor.Hunger = Math.Max(0.0, ctx.Actor.Hunger - 15.0);
-                ctx.World.CoconutsAvailable = Math.Max(0, ctx.World.CoconutsAvailable - 1);
+                coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
                 ctx.Actor.Energy = Math.Min(100.0, ctx.Actor.Energy + 10.0);
                 break;
 

@@ -2,6 +2,7 @@ using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -204,10 +205,10 @@ public class ShelterMaintenanceCandidateProviderTests
         var worldClear = (IslandWorldState)domain.CreateInitialWorldState();
         var worldRainy = (IslandWorldState)domain.CreateInitialWorldState();
         
-        worldClear.Weather = Weather.Clear;
+        worldClear.GetStat<WeatherStat>("weather")!.Weather = Weather.Clear;
         worldClear.MainShelter!.Quality = 50.0;
         
-        worldRainy.Weather = Weather.Rainy;
+        worldRainy.GetStat<WeatherStat>("weather")!.Weather = Weather.Rainy;
         worldRainy.MainShelter!.Quality = 50.0;
         
         var actorId = new ActorId("TestActor");

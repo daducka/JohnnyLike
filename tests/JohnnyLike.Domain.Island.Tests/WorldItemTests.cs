@@ -2,6 +2,7 @@ using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -125,7 +126,8 @@ public class ShelterItemTests
     public void ShelterItem_DecaysInNormalWeather()
     {
         var shelter = new ShelterItem();
-        var world = new IslandWorldState { Weather = Weather.Clear };
+        var world = new IslandWorldState();
+        world.WorldStats.Add(new WeatherStat { Weather = Weather.Clear });
         
         var initialQuality = shelter.Quality;
         shelter.Tick(100.0, world);
@@ -138,8 +140,12 @@ public class ShelterItemTests
     {
         var shelterClear = new ShelterItem();
         var shelterRainy = new ShelterItem();
-        var worldClear = new IslandWorldState { Weather = Weather.Clear };
-        var worldRainy = new IslandWorldState { Weather = Weather.Rainy };
+        
+        var worldClear = new IslandWorldState();
+        worldClear.WorldStats.Add(new Stats.WeatherStat { Weather = Weather.Clear });
+        
+        var worldRainy = new IslandWorldState();
+        worldRainy.WorldStats.Add(new Stats.WeatherStat { Weather = Weather.Rainy });
         
         shelterClear.Tick(100.0, worldClear);
         shelterRainy.Tick(100.0, worldRainy);
@@ -152,8 +158,12 @@ public class ShelterItemTests
     {
         var shelterClear = new ShelterItem();
         var shelterWindy = new ShelterItem();
-        var worldClear = new IslandWorldState { Weather = Weather.Clear };
-        var worldWindy = new IslandWorldState { Weather = Weather.Windy };
+        
+        var worldClear = new IslandWorldState();
+        worldClear.WorldStats.Add(new Stats.WeatherStat { Weather = Weather.Clear });
+        
+        var worldWindy = new IslandWorldState();
+        worldWindy.WorldStats.Add(new Stats.WeatherStat { Weather = Weather.Windy });
         
         shelterClear.Tick(100.0, worldClear);
         shelterWindy.Tick(100.0, worldWindy);
@@ -166,8 +176,12 @@ public class ShelterItemTests
     {
         var shelterWindy = new ShelterItem();
         var shelterRainy = new ShelterItem();
-        var worldWindy = new IslandWorldState { Weather = Weather.Windy };
-        var worldRainy = new IslandWorldState { Weather = Weather.Rainy };
+        
+        var worldWindy = new IslandWorldState();
+        worldWindy.WorldStats.Add(new Stats.WeatherStat { Weather = Weather.Windy });
+        
+        var worldRainy = new IslandWorldState();
+        worldRainy.WorldStats.Add(new Stats.WeatherStat { Weather = Weather.Rainy });
         
         shelterWindy.Tick(100.0, worldWindy);
         shelterRainy.Tick(100.0, worldRainy);

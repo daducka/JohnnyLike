@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 using JohnnyLike.Engine;
 using JohnnyLike.SimRunner;
@@ -17,8 +18,8 @@ public class IslandDomainPackTests
         
         Assert.IsType<IslandWorldState>(world);
         var islandWorld = (IslandWorldState)world;
-        Assert.Equal(0, islandWorld.DayCount);
-        Assert.InRange(islandWorld.FishAvailable, 0, 100);
+        Assert.Equal(0, islandWorld.GetStat<TimeOfDayStat>("time_of_day")!.DayCount);
+        Assert.InRange(islandWorld.GetStat<FishPopulationStat>("fish_population")!.FishAvailable, 0, 100);
     }
 
     [Fact]
@@ -265,52 +266,60 @@ public class IslandWorldStateTests
     [Fact]
     public void OnTimeAdvanced_AdvancesTimeOfDay()
     {
-        var world = new IslandWorldState { TimeOfDay = 0.5 };
+        var world = new IslandWorldState();
+        world.WorldStats.Add(new Stats.TimeOfDayStat { TimeOfDay = 0.5 });
         
         world.OnTimeAdvanced(0.0, 21600.0);
         
-        Assert.InRange(world.TimeOfDay, 0.74, 0.76);
+        Assert.InRange(world.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay, 0.74, 0.76);
     }
 
     [Fact]
     public void OnTimeAdvanced_IncrementsDay()
     {
-        var world = new IslandWorldState { TimeOfDay = 0.9, DayCount = 0 };
+        var world = new IslandWorldState();
+        world.WorldStats.Add(new Stats.TimeOfDayStat { TimeOfDay = 0.9, DayCount = 0 });
+        world.WorldStats.Add(new Stats.CoconutAvailabilityStat { CoconutsAvailable = 2 });
         
         world.OnTimeAdvanced(0.0, 8640.0);
         
-        Assert.Equal(1, world.DayCount);
-        Assert.InRange(world.TimeOfDay, 0.0, 0.1);
+        Assert.Equal(1, world.GetStat<TimeOfDayStat>("time_of_day")!.DayCount);
+        Assert.InRange(world.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay, 0.0, 0.1);
     }
 
     [Fact]
     public void OnTimeAdvanced_RegensFish()
     {
-        var world = new IslandWorldState { FishAvailable = 50.0, FishRegenRatePerMinute = 5.0 };
+        var world = new IslandWorldState();
+        world.WorldStats.Add(new Stats.FishPopulationStat { FishAvailable = 50.0, FishRegenRatePerMinute = 5.0 });
         
         world.OnTimeAdvanced(0.0, 60.0);
         
-        Assert.Equal(55.0, world.FishAvailable, 1);
+        Assert.Equal(55.0, world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable, 1);
     }
 
     [Fact]
     public void OnTimeAdvanced_RegensCoconutsDaily()
     {
-        var world = new IslandWorldState { TimeOfDay = 0.9, CoconutsAvailable = 2 };
+        var world = new IslandWorldState();
+        world.WorldStats.Add(new Stats.TimeOfDayStat { TimeOfDay = 0.9, DayCount = 0 });
+        world.WorldStats.Add(new Stats.CoconutAvailabilityStat { CoconutsAvailable = 2 });
         
         world.OnTimeAdvanced(0.0, 10000.0);
         
-        Assert.Equal(5, world.CoconutsAvailable);
+        Assert.Equal(5, world.GetStat<CoconutAvailabilityStat>("coconut_availability")!.CoconutsAvailable);
     }
 
     [Fact]
     public void OnTimeAdvanced_UpdatesTideLevel()
     {
-        var world = new IslandWorldState { TimeOfDay = 0.0 };
+        var world = new IslandWorldState();
+        world.WorldStats.Add(new Stats.TimeOfDayStat { TimeOfDay = 0.0 });
+        world.WorldStats.Add(new Stats.TideStat());
         
         world.OnTimeAdvanced(0.0, 0.0);
         
-        Assert.True(world.TideLevel == TideLevel.Low || world.TideLevel == TideLevel.High);
+        Assert.True(world.GetStat<TideStat>("tide")!.TideLevel == TideLevel.Low || world.GetStat<TideStat>("tide")!.TideLevel == TideLevel.High);
     }
 }
 
@@ -408,7 +417,8 @@ public class IslandActionEffectsTests
                 15.0
             )
         };
-        var worldState = new IslandWorldState { FishAvailable = 100.0 };
+        var worldState = new IslandWorldState();
+        worldState.WorldStats.Add(new FishPopulationStat { FishAvailable = 100.0 });
         
         var outcome = new ActionOutcome(
             new ActionId("fish_for_food"),
@@ -628,6 +638,7 @@ public class IslandSignalHandlingTests
             EnqueuedAt = 0.0
         });
         var worldState = new IslandWorldState();
+        worldState.WorldStats.Add(new FishPopulationStat { FishAvailable = 100.0 });
         
         var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 10.0, new Random(42), new EmptyResourceAvailability());
         
@@ -803,20 +814,16 @@ public class IslandDCTuningTests
         var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
         
         // Morning scenario (timeOfDay = 0.1)
-        var morningWorld = new IslandWorldState
-        {
-            TimeOfDay = 0.1,
-            Weather = Weather.Clear,
-            FishAvailable = 100.0
-        };
+        var morningWorld = (IslandWorldState)domain.CreateInitialWorldState();
+        morningWorld.GetStat<Stats.TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.1;
+        morningWorld.GetStat<Stats.WeatherStat>("weather")!.Weather = Weather.Clear;
+        morningWorld.GetStat<Stats.FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         // Afternoon scenario (timeOfDay = 0.5)
-        var afternoonWorld = new IslandWorldState
-        {
-            TimeOfDay = 0.5,
-            Weather = Weather.Clear,
-            FishAvailable = 100.0
-        };
+        var afternoonWorld = (IslandWorldState)domain.CreateInitialWorldState();
+        afternoonWorld.GetStat<Stats.TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.5;
+        afternoonWorld.GetStat<Stats.WeatherStat>("weather")!.Weather = Weather.Clear;
+        afternoonWorld.GetStat<Stats.FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         var morningCandidates = domain.GenerateCandidates(actorId, actorState, morningWorld, 0.0, new Random(42), new EmptyResourceAvailability());
         var afternoonCandidates = domain.GenerateCandidates(actorId, actorState, afternoonWorld, 0.0, new Random(42), new EmptyResourceAvailability());
@@ -838,20 +845,16 @@ public class IslandDCTuningTests
         var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
         
         // Rainy scenario
-        var rainyWorld = new IslandWorldState
-        {
-            TimeOfDay = 0.5,
-            Weather = Weather.Rainy,
-            FishAvailable = 100.0
-        };
+        var rainyWorld = (IslandWorldState)domain.CreateInitialWorldState();
+        rainyWorld.GetStat<Stats.TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.5;
+        rainyWorld.GetStat<Stats.WeatherStat>("weather")!.Weather = Weather.Rainy;
+        rainyWorld.GetStat<Stats.FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         // Clear scenario
-        var clearWorld = new IslandWorldState
-        {
-            TimeOfDay = 0.5,
-            Weather = Weather.Clear,
-            FishAvailable = 100.0
-        };
+        var clearWorld = (IslandWorldState)domain.CreateInitialWorldState();
+        clearWorld.GetStat<Stats.TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.5;
+        clearWorld.GetStat<Stats.WeatherStat>("weather")!.Weather = Weather.Clear;
+        clearWorld.GetStat<Stats.FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         var rainyCandidates = domain.GenerateCandidates(actorId, actorState, rainyWorld, 0.0, new Random(42), new EmptyResourceAvailability());
         var clearCandidates = domain.GenerateCandidates(actorId, actorState, clearWorld, 0.0, new Random(42), new EmptyResourceAvailability());
@@ -873,18 +876,14 @@ public class IslandDCTuningTests
         var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
         
         // Windy scenario
-        var windyWorld = new IslandWorldState
-        {
-            Weather = Weather.Windy,
-            CoconutsAvailable = 5
-        };
+        var windyWorld = (IslandWorldState)domain.CreateInitialWorldState();
+        windyWorld.GetStat<Stats.WeatherStat>("weather")!.Weather = Weather.Windy;
+        windyWorld.GetStat<Stats.CoconutAvailabilityStat>("coconut_availability")!.CoconutsAvailable = 5;
         
         // Clear scenario
-        var clearWorld = new IslandWorldState
-        {
-            Weather = Weather.Clear,
-            CoconutsAvailable = 5
-        };
+        var clearWorld = (IslandWorldState)domain.CreateInitialWorldState();
+        clearWorld.GetStat<Stats.WeatherStat>("weather")!.Weather = Weather.Clear;
+        clearWorld.GetStat<Stats.CoconutAvailabilityStat>("coconut_availability")!.CoconutsAvailable = 5;
         
         var windyCandidates = domain.GenerateCandidates(actorId, actorState, windyWorld, 0.0, new Random(42), new EmptyResourceAvailability());
         var clearCandidates = domain.GenerateCandidates(actorId, actorState, clearWorld, 0.0, new Random(42), new EmptyResourceAvailability());
@@ -906,18 +905,14 @@ public class IslandDCTuningTests
         var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
         
         // Many coconuts scenario
-        var manyCoconutsWorld = new IslandWorldState
-        {
-            Weather = Weather.Clear,
-            CoconutsAvailable = 5
-        };
+        var manyCoconutsWorld = (IslandWorldState)domain.CreateInitialWorldState();
+        manyCoconutsWorld.GetStat<Stats.WeatherStat>("weather")!.Weather = Weather.Clear;
+        manyCoconutsWorld.GetStat<Stats.CoconutAvailabilityStat>("coconut_availability")!.CoconutsAvailable = 5;
         
         // Few coconuts scenario
-        var fewCoconutsWorld = new IslandWorldState
-        {
-            Weather = Weather.Clear,
-            CoconutsAvailable = 2
-        };
+        var fewCoconutsWorld = (IslandWorldState)domain.CreateInitialWorldState();
+        fewCoconutsWorld.GetStat<Stats.WeatherStat>("weather")!.Weather = Weather.Clear;
+        fewCoconutsWorld.GetStat<Stats.CoconutAvailabilityStat>("coconut_availability")!.CoconutsAvailable = 2;
         
         var manyCandidates = domain.GenerateCandidates(actorId, actorState, manyCoconutsWorld, 0.0, new Random(42), new EmptyResourceAvailability());
         var fewCandidates = domain.GenerateCandidates(actorId, actorState, fewCoconutsWorld, 0.0, new Random(42), new EmptyResourceAvailability());

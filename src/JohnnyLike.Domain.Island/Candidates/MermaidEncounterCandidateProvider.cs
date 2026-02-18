@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Candidates;
@@ -11,7 +12,9 @@ public class MermaidEncounterCandidateProvider : IIslandCandidateProvider
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
         // Only during night/dawn/dusk
-        if (ctx.World.TimeOfDay <= 0.75 && ctx.World.TimeOfDay >= 0.25)
+        var timeOfDayStat = ctx.World.GetStat<TimeOfDayStat>("time_of_day");
+        var timeOfDay = timeOfDayStat?.TimeOfDay ?? 0.5;
+        if (timeOfDay <= 0.75 && timeOfDay >= 0.25)
             return;
 
         // Only add if random chance triggers

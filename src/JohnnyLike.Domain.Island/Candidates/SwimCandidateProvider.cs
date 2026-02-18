@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Candidates;
@@ -16,9 +17,10 @@ public class SwimCandidateProvider : IIslandCandidateProvider
 
         var baseDC = 10;
 
-        if (ctx.World.Weather == Weather.Windy)
+        var weatherStat = ctx.World.GetStat<WeatherStat>("weather");
+        if (weatherStat?.Weather == Weather.Windy)
             baseDC += 3;
-        else if (ctx.World.Weather == Weather.Rainy)
+        else if (weatherStat?.Weather == Weather.Rainy)
             baseDC += 1;
 
         // Roll skill check at candidate generation time
