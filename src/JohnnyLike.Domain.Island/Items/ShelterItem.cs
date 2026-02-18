@@ -60,15 +60,13 @@ public class ShelterItem : ToolItem
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = 0.25 + (urgency * 0.5 * weatherMultiplier * foresightMultiplier);
 
-            var resultData = parameters.ToResultData();
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("repair_shelter"),
                     ActionKind.Interact,
                     parameters,
                     30.0 + ctx.Random.NextDouble() * 10.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 baseScore,
@@ -86,15 +84,13 @@ public class ShelterItem : ToolItem
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = 0.4 + (urgency * 0.5 * foresightMultiplier);
 
-            var resultData = parameters.ToResultData();
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("reinforce_shelter"),
                     ActionKind.Interact,
                     parameters,
                     40.0 + ctx.Random.NextDouble() * 10.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 baseScore,
@@ -111,15 +107,13 @@ public class ShelterItem : ToolItem
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = 1.2 * foresightMultiplier;
 
-            var resultData = parameters.ToResultData();
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("rebuild_shelter"),
                     ActionKind.Interact,
                     parameters,
                     90.0 + ctx.Random.NextDouble() * 30.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 baseScore,

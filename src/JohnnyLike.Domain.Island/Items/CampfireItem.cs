@@ -64,15 +64,13 @@ public class CampfireItem : ToolItem
                 baseScore *= 0.5;
             }
 
-            var resultData = parameters.ToResultData();
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("add_fuel_campfire"),
                     ActionKind.Interact,
                     parameters,
                     20.0 + ctx.Random.NextDouble() * 5.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
@@ -90,15 +88,13 @@ public class CampfireItem : ToolItem
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = urgency * foresightMultiplier;
 
-            var resultData = parameters.ToResultData();
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("relight_campfire"),
                     ActionKind.Interact,
                     parameters,
                     30.0 + ctx.Random.NextDouble() * 10.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
@@ -116,15 +112,13 @@ public class CampfireItem : ToolItem
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = 0.2 + (urgency * 0.4 * foresightMultiplier);
 
-            var resultData = parameters.ToResultData();
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("repair_campfire"),
                     ActionKind.Interact,
                     parameters,
                     25.0 + ctx.Random.NextDouble() * 5.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,
@@ -141,15 +135,13 @@ public class CampfireItem : ToolItem
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = 1.0 * foresightMultiplier;
 
-            var resultData = parameters.ToResultData();
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("rebuild_campfire"),
                     ActionKind.Interact,
                     parameters,
                     60.0 + ctx.Random.NextDouble() * 20.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 baseScore,

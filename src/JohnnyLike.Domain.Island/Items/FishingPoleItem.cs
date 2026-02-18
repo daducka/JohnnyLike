@@ -53,15 +53,13 @@ public class FishingPoleItem : ToolItem
             if (Quality < 50.0)
                 baseScore *= 0.7;
 
-            var resultData = parameters.ToResultData();
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("go_fishing"),
                     ActionKind.Interact,
                     parameters,
                     45.0 + ctx.Random.NextDouble() * 15.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
                 baseScore,
@@ -79,15 +77,13 @@ public class FishingPoleItem : ToolItem
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = 0.3 + (urgency * 0.4);
 
-            var resultData = parameters.ToResultData();
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("maintain_rod"),
                     ActionKind.Interact,
                     parameters,
                     20.0 + ctx.Random.NextDouble() * 5.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
                 baseScore,
@@ -104,15 +100,13 @@ public class FishingPoleItem : ToolItem
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = IsBroken ? 1.0 : 0.7;
 
-            var resultData = parameters.ToResultData();
-            
             output.Add(new ActionCandidate(
                 new ActionSpec(
                     new ActionId("repair_rod"),
                     ActionKind.Interact,
                     parameters,
                     40.0 + ctx.Random.NextDouble() * 10.0,
-                    resultData,
+                    parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
                 baseScore,
