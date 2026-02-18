@@ -54,8 +54,6 @@ public class FishingPoleItem : ToolItem
                 baseScore *= 0.7;
 
             var resultData = parameters.ToResultData();
-            var effectHandler = new Action<EffectContext>(ApplyGoFishingEffect);
-            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -68,7 +66,7 @@ public class FishingPoleItem : ToolItem
                 ),
                 baseScore,
                 $"Go fishing with pole (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: effectHandler
+                EffectHandler: new Action<EffectContext>(ApplyGoFishingEffect)
             ));
         }
 
@@ -82,8 +80,6 @@ public class FishingPoleItem : ToolItem
             var baseScore = 0.3 + (urgency * 0.4);
 
             var resultData = parameters.ToResultData();
-            var effectHandler = new Action<EffectContext>(ApplyMaintainRodEffect);
-            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -96,7 +92,7 @@ public class FishingPoleItem : ToolItem
                 ),
                 baseScore,
                 $"Maintain fishing rod (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: effectHandler
+                EffectHandler: new Action<EffectContext>(ApplyMaintainRodEffect)
             ));
         }
 
@@ -109,8 +105,6 @@ public class FishingPoleItem : ToolItem
             var baseScore = IsBroken ? 1.0 : 0.7;
 
             var resultData = parameters.ToResultData();
-            var effectHandler = new Action<EffectContext>(ApplyRepairRodEffect);
-            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -123,7 +117,7 @@ public class FishingPoleItem : ToolItem
                 ),
                 baseScore,
                 $"Repair fishing rod{(IsBroken ? " (broken)" : "")} (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: effectHandler
+                EffectHandler: new Action<EffectContext>(ApplyRepairRodEffect)
             ));
         }
     }

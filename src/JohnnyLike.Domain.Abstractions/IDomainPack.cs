@@ -38,7 +38,8 @@ public interface IDomainPack
         ActorState actorState,
         WorldState worldState,
         IRngStream rng,
-        IResourceAvailability resourceAvailability);
+        IResourceAvailability resourceAvailability,
+        object? effectHandler = null);
     
     void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime);
     

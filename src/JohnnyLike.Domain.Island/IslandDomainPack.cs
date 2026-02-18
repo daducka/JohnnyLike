@@ -170,7 +170,8 @@ public class IslandDomainPack : IDomainPack
         ActorState actorState,
         WorldState worldState,
         IRngStream rng,
-        IResourceAvailability resourceAvailability)
+        IResourceAvailability resourceAvailability,
+        object? effectHandler = null)
     {
         var islandState = (IslandActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
@@ -201,18 +202,17 @@ public class IslandDomainPack : IDomainPack
             Reservations = resourceAvailability
         };
 
-        // Check if this action has a direct effect handler attached (ToolItem pattern)
-        if (outcome.ResultData?.TryGetValue("__effect_handler__", out var effectHandlerObj) == true 
-            && effectHandlerObj is Action<EffectContext> effectHandler)
+        // Check if effect handler was provided by the Engine (ToolItem pattern)
+        if (effectHandler is Action<EffectContext> handler)
         {
-            effectHandler(effectCtx);
+            handler(effectCtx);
             return;
         }
 
         // Call provider-based effect handlers (for non-tool actions)
-        if (_effectHandlers.TryGetValue(actionId, out var handler))
+        if (_effectHandlers.TryGetValue(actionId, out var providerHandler))
         {
-            handler.ApplyEffects(effectCtx);
+            providerHandler.ApplyEffects(effectCtx);
         }
     }
 

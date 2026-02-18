@@ -112,12 +112,11 @@ public class MaintenanceIntegrationTests
             25.0,
             new Dictionary<string, object> 
             { 
-                ["tier"] = "Success",
-                ["__effect_handler__"] = new Action<EffectContext>(campfire.ApplyRepairEffect)
+                ["tier"] = "Success"
             }
         );
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability(), new Action<EffectContext>(campfire.ApplyRepairEffect));
         
         Assert.True(campfire.Quality > 50.0, "Campfire quality should increase after repair");
     }
@@ -151,12 +150,11 @@ public class MaintenanceIntegrationTests
             20.0,
             new Dictionary<string, object> 
             { 
-                ["tier"] = "Success",
-                ["__effect_handler__"] = new Action<EffectContext>(campfire.ApplyAddFuelEffect)
+                ["tier"] = "Success"
             }
         );
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability(), new Action<EffectContext>(campfire.ApplyAddFuelEffect));
         
         Assert.True(campfire.FuelSeconds > initialFuel, "Fuel should increase after adding fuel");
     }
@@ -222,12 +220,11 @@ public class MaintenanceIntegrationTests
             90.0,
             new Dictionary<string, object> 
             { 
-                ["tier"] = "Success",
-                ["__effect_handler__"] = new Action<EffectContext>(shelter.ApplyRebuildShelterEffect)
+                ["tier"] = "Success"
             }
         );
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability(), new Action<EffectContext>(shelter.ApplyRebuildShelterEffect));
         
         Assert.True(shelter.Quality >= 80.0, "Shelter quality should be significantly restored after rebuild");
     }

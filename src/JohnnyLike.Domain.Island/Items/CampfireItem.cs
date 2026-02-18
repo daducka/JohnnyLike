@@ -65,8 +65,6 @@ public class CampfireItem : ToolItem
             }
 
             var resultData = parameters.ToResultData();
-            var effectHandler = new Action<EffectContext>(ApplyAddFuelEffect);
-            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -79,7 +77,7 @@ public class CampfireItem : ToolItem
                 ),
                 baseScore,
                 $"Add fuel to campfire (fuel: {FuelSeconds:F0}s, wood: {currentWood:F1}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: effectHandler
+                EffectHandler: new Action<EffectContext>(ApplyAddFuelEffect)
             ));
         }
 
@@ -93,8 +91,6 @@ public class CampfireItem : ToolItem
             var baseScore = urgency * foresightMultiplier;
 
             var resultData = parameters.ToResultData();
-            var effectHandler = new Action<EffectContext>(ApplyRelightEffect);
-            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -107,7 +103,7 @@ public class CampfireItem : ToolItem
                 ),
                 baseScore,
                 $"Relight campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: effectHandler
+                EffectHandler: new Action<EffectContext>(ApplyRelightEffect)
             ));
         }
 
@@ -121,8 +117,6 @@ public class CampfireItem : ToolItem
             var baseScore = 0.2 + (urgency * 0.4 * foresightMultiplier);
 
             var resultData = parameters.ToResultData();
-            var effectHandler = new Action<EffectContext>(ApplyRepairEffect);
-            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -135,7 +129,7 @@ public class CampfireItem : ToolItem
                 ),
                 baseScore,
                 $"Repair campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: effectHandler
+                EffectHandler: new Action<EffectContext>(ApplyRepairEffect)
             ));
         }
 
@@ -148,8 +142,6 @@ public class CampfireItem : ToolItem
             var baseScore = 1.0 * foresightMultiplier;
 
             var resultData = parameters.ToResultData();
-            var effectHandler = new Action<EffectContext>(ApplyRebuildEffect);
-            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -162,7 +154,7 @@ public class CampfireItem : ToolItem
                 ),
                 baseScore,
                 $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: effectHandler
+                EffectHandler: new Action<EffectContext>(ApplyRebuildEffect)
             ));
         }
     }

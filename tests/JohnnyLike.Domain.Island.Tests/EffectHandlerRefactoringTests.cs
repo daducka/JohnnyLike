@@ -29,12 +29,9 @@ public class EffectHandlerRefactoringTests
         
         Assert.NotNull(addFuelCandidate);
         
-        // Verify the effect handler is in ResultData
-        Assert.True(addFuelCandidate.Action.ResultData?.ContainsKey("__effect_handler__") ?? false,
-            "Candidate should contain __effect_handler__ in ResultData");
-        
-        var effectHandler = addFuelCandidate.Action.ResultData!["__effect_handler__"];
-        Assert.IsType<Action<EffectContext>>(effectHandler);
+        // Verify the effect handler is in ActionCandidate.EffectHandler property
+        Assert.NotNull(addFuelCandidate.EffectHandler);
+        Assert.IsType<Action<EffectContext>>(addFuelCandidate.EffectHandler);
     }
     
     [Fact]
@@ -55,7 +52,7 @@ public class EffectHandlerRefactoringTests
         
         Assert.NotNull(repairCandidate);
         
-        // Simulate successful action completion
+        // Simulate successful action completion, passing the effect handler
         var outcome = new ActionOutcome(
             repairCandidate.Action.Id,
             ActionOutcomeType.Success,
@@ -64,7 +61,7 @@ public class EffectHandlerRefactoringTests
         );
         
         var rng = new RandomRngStream(new Random(42));
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability(), repairCandidate.EffectHandler);
         
         // Verify effect was applied
         Assert.True(campfire.Quality > 50.0, "Quality should increase after repair");

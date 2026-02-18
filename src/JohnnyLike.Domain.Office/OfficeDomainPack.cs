@@ -118,7 +118,8 @@ public class OfficeDomainPack : IDomainPack
         ActorState actorState,
         WorldState worldState,
         IRngStream rng,
-        IResourceAvailability resourceAvailability)
+        IResourceAvailability resourceAvailability,
+        object? effectHandler = null)
     {
         var officeState = (OfficeActorState)actorState;
         var officeWorld = (OfficeWorldState)worldState;

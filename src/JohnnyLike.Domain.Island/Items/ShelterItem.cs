@@ -61,8 +61,6 @@ public class ShelterItem : ToolItem
             var baseScore = 0.25 + (urgency * 0.5 * weatherMultiplier * foresightMultiplier);
 
             var resultData = parameters.ToResultData();
-            var effectHandler = new Action<EffectContext>(ApplyRepairShelterEffect);
-            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -75,7 +73,7 @@ public class ShelterItem : ToolItem
                 ),
                 baseScore,
                 $"Repair shelter (quality: {Quality:F0}%, {weather}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: effectHandler
+                EffectHandler: new Action<EffectContext>(ApplyRepairShelterEffect)
             ));
         }
 
@@ -89,8 +87,6 @@ public class ShelterItem : ToolItem
             var baseScore = 0.4 + (urgency * 0.5 * foresightMultiplier);
 
             var resultData = parameters.ToResultData();
-            var effectHandler = new Action<EffectContext>(ApplyReinforceShelterEffect);
-            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -103,7 +99,7 @@ public class ShelterItem : ToolItem
                 ),
                 baseScore,
                 $"Reinforce shelter (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: effectHandler
+                EffectHandler: new Action<EffectContext>(ApplyReinforceShelterEffect)
             ));
         }
 
@@ -116,8 +112,6 @@ public class ShelterItem : ToolItem
             var baseScore = 1.2 * foresightMultiplier;
 
             var resultData = parameters.ToResultData();
-            var effectHandler = new Action<EffectContext>(ApplyRebuildShelterEffect);
-            resultData["__effect_handler__"] = effectHandler;
             
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -130,7 +124,7 @@ public class ShelterItem : ToolItem
                 ),
                 baseScore,
                 $"Rebuild shelter from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: effectHandler
+                EffectHandler: new Action<EffectContext>(ApplyRebuildShelterEffect)
             ));
         }
     }
