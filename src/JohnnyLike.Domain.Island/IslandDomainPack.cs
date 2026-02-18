@@ -215,16 +215,8 @@ public class IslandDomainPack : IDomainPack
                 return; // Action was handled by the specific tool
             }
         }
-        
-        // If no specific tool was identified, iterate through all ToolItems
-        // (for backward compatibility with tests and manually created actions)
-        // Each ToolItem checks the actionId internally to see if it should handle it
-        foreach (var item in islandWorld.WorldItems.OfType<ToolItem>())
-        {
-            item.ApplyEffects(effectCtx);
-        }
 
-        // Also call legacy provider-based effect handlers (for non-tool actions)
+        // Call legacy provider-based effect handlers (for non-tool actions)
         if (_effectHandlers.TryGetValue(actionId, out var handler))
         {
             handler.ApplyEffects(effectCtx);

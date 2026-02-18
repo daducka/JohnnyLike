@@ -110,7 +110,11 @@ public class MaintenanceIntegrationTests
             new ActionId("repair_campfire"),
             ActionOutcomeType.Success,
             25.0,
-            new Dictionary<string, object> { ["tier"] = "Success" }
+            new Dictionary<string, object> 
+            { 
+                ["tier"] = "Success",
+                ["tool_item_id"] = "main_campfire"
+            }
         );
         
         domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
@@ -145,7 +149,11 @@ public class MaintenanceIntegrationTests
             new ActionId("add_fuel_campfire"),
             ActionOutcomeType.Success,
             20.0,
-            new Dictionary<string, object> { ["tier"] = "Success" }
+            new Dictionary<string, object> 
+            { 
+                ["tier"] = "Success",
+                ["tool_item_id"] = "main_campfire"
+            }
         );
         
         domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
@@ -212,7 +220,11 @@ public class MaintenanceIntegrationTests
             new ActionId("rebuild_shelter"),
             ActionOutcomeType.Success,
             90.0,
-            new Dictionary<string, object> { ["tier"] = "Success" }
+            new Dictionary<string, object> 
+            { 
+                ["tier"] = "Success",
+                ["tool_item_id"] = "main_shelter"
+            }
         );
         
         domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
