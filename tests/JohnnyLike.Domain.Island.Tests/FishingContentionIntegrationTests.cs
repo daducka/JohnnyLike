@@ -34,7 +34,7 @@ public class FishingContentionIntegrationTests
         {
             engine.AddActor(new ActorId($"Actor{i}"), new Dictionary<string, object>
             {
-                ["hunger"] = 70.0,
+                ["satiety"] = 30.0,
                 ["energy"] = 80.0
             });
             
@@ -74,13 +74,13 @@ public class FishingContentionIntegrationTests
         // Create two hungry actors
         engine.AddActor(new ActorId("Actor1"), new Dictionary<string, object>
         {
-            ["hunger"] = 70.0,
+            ["satiety"] = 30.0,
             ["energy"] = 80.0
         });
         
         engine.AddActor(new ActorId("Actor2"), new Dictionary<string, object>
         {
-            ["hunger"] = 70.0,
+            ["satiety"] = 30.0,
             ["energy"] = 80.0
         });
         
@@ -127,13 +127,13 @@ public class FishingContentionIntegrationTests
         // Create two hungry actors
         engine.AddActor(new ActorId("Actor1"), new Dictionary<string, object>
         {
-            ["hunger"] = 70.0,
+            ["satiety"] = 30.0,
             ["energy"] = 80.0
         });
         
         engine.AddActor(new ActorId("Actor2"), new Dictionary<string, object>
         {
-            ["hunger"] = 70.0,
+            ["satiety"] = 30.0,
             ["energy"] = 80.0
         });
         

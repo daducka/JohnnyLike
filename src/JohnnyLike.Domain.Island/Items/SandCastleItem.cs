@@ -77,8 +77,8 @@ public class SandCastleItem : MaintainableWorldItem
                 effectCtx.World.WorldItems.Remove(this);
 
                 // Grant a large morale boost (cathartic release)
-                effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 30.0);
-                effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 10.0);
+                effectCtx.Actor.Morale += 30.0;
+                effectCtx.Actor.Boredom -= 10.0;
             })
         ));
     }

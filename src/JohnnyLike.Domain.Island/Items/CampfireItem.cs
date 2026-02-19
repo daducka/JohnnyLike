@@ -169,15 +169,15 @@ public class CampfireItem : ToolItem
                 var fuelAdded = tier == RollOutcomeTier.CriticalSuccess ? 2400.0 :
                                 tier == RollOutcomeTier.Success ? 1800.0 : 900.0;
                 FuelSeconds = Math.Min(7200.0, FuelSeconds + fuelAdded);
-                ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 5.0);
+                ctx.Actor.Boredom -= 5.0;
             }
             else
             {
                 var reducedFuel = tier == RollOutcomeTier.CriticalSuccess ? 1200.0 :
                                   tier == RollOutcomeTier.Success ? 900.0 : 450.0;
                 FuelSeconds = Math.Min(7200.0, FuelSeconds + reducedFuel);
-                ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 2.0);
-                ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 3.0);
+                ctx.Actor.Boredom -= 2.0;
+                ctx.Actor.Morale -= 3.0;
             }
         }
     }
@@ -193,8 +193,8 @@ public class CampfireItem : ToolItem
         {
             IsLit = true;
             FuelSeconds = tier == RollOutcomeTier.CriticalSuccess ? 1800.0 : 1200.0;
-            ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 10.0);
-            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 8.0);
+            ctx.Actor.Morale += 10.0;
+            ctx.Actor.Boredom -= 8.0;
         }
     }
 
@@ -210,7 +210,7 @@ public class CampfireItem : ToolItem
             var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 40.0 : 
                                  tier == RollOutcomeTier.Success ? 25.0 : 15.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
-            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 7.0);
+            ctx.Actor.Boredom -= 7.0;
         }
     }
 
@@ -226,8 +226,8 @@ public class CampfireItem : ToolItem
             Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 80.0;
             IsLit = true;
             FuelSeconds = 1800.0;
-            ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 15.0);
-            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 20.0);
+            ctx.Actor.Morale += 15.0;
+            ctx.Actor.Boredom -= 20.0;
         }
     }
 

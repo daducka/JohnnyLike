@@ -68,26 +68,26 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
-                        effectCtx.Actor.Satiety = Math.Min(100.0, effectCtx.Actor.Satiety + 25.0);
+                        effectCtx.Actor.Satiety += 25.0;
                         coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
-                        effectCtx.Actor.Energy = Math.Min(100.0, effectCtx.Actor.Energy + 15.0);
+                        effectCtx.Actor.Energy += 15.0;
                         break;
 
                     case RollOutcomeTier.Success:
-                        effectCtx.Actor.Satiety = Math.Min(100.0, effectCtx.Actor.Satiety + 15.0);
+                        effectCtx.Actor.Satiety += 15.0;
                         coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
-                        effectCtx.Actor.Energy = Math.Min(100.0, effectCtx.Actor.Energy + 10.0);
+                        effectCtx.Actor.Energy += 10.0;
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
-                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 2.0);
+                        effectCtx.Actor.Morale += 2.0;
                         break;
 
                     case RollOutcomeTier.Failure:
                         break;
 
                     case RollOutcomeTier.CriticalFailure:
-                        effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 5.0);
+                        effectCtx.Actor.Morale -= 5.0;
                         break;
                 }
             })

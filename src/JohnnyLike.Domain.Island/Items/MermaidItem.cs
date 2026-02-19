@@ -44,8 +44,8 @@ public class MermaidItem : ExpirableWorldItem
                 // Positive impact on morale for successful interaction
                 if (tier >= RollOutcomeTier.Success)
                 {
-                    effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 40.0);
-                    effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 20.0);
+                    effectCtx.Actor.Morale += 40.0;
+                    effectCtx.Actor.Boredom -= 20.0;
                 }
 
                 // Critical success grants a blessing

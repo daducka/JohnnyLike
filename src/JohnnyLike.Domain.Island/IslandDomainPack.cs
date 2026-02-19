@@ -51,7 +51,7 @@ public class IslandDomainPack : IDomainPack
             INT = (int)(initialData?.GetValueOrDefault("INT", 10) ?? 10),
             WIS = (int)(initialData?.GetValueOrDefault("WIS", 10) ?? 10),
             CHA = (int)(initialData?.GetValueOrDefault("CHA", 10) ?? 10),
-            Satiety = GetSatietyFromInitialData(initialData),
+            Satiety = (double)(initialData?.GetValueOrDefault("satiety", 100.0) ?? 100.0),
             Energy = (double)(initialData?.GetValueOrDefault("energy", 100.0) ?? 100.0),
             Morale = (double)(initialData?.GetValueOrDefault("morale", 50.0) ?? 50.0),
             Boredom = (double)(initialData?.GetValueOrDefault("boredom", 0.0) ?? 0.0)
@@ -59,17 +59,6 @@ public class IslandDomainPack : IDomainPack
         return state;
     }
     
-    private static double GetSatietyFromInitialData(Dictionary<string, object>? initialData)
-    {
-        if (initialData == null)
-            return 100.0;
-        if (initialData.TryGetValue("satiety", out var satietyVal))
-            return (double)(satietyVal ?? 100.0);
-        if (initialData.TryGetValue("hunger", out var hungerVal))
-            return 100.0 - (double)(hungerVal ?? 0.0);
-        return 100.0;
-    }
-
     /// <summary>
     /// Initialize actor-specific items in the world (e.g., exclusive tools like fishing poles).
     /// This should be called after an actor is added to the engine.
@@ -180,9 +169,9 @@ public class IslandDomainPack : IDomainPack
         // This method only applies action-specific effects and actor passive decay
 
         // Apply passive actor decay based on action duration
-        islandActorState.Satiety = Math.Max(0.0, islandActorState.Satiety - outcome.ActualDuration * 0.5);
-        islandActorState.Energy = Math.Max(0.0, islandActorState.Energy - outcome.ActualDuration * 0.3);
-        islandActorState.Boredom = Math.Min(100.0, islandActorState.Boredom + outcome.ActualDuration * 0.4);
+        islandActorState.Satiety -= outcome.ActualDuration * 0.5;
+        islandActorState.Energy -= outcome.ActualDuration * 0.3;
+        islandActorState.Boredom += outcome.ActualDuration * 0.4;
 
         if (outcome.Type != ActionOutcomeType.Success)
         {

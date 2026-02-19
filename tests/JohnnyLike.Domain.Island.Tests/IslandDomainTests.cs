@@ -48,7 +48,7 @@ public class IslandDomainPackTests
             ["STR"] = 14,
             ["DEX"] = 16,
             ["WIS"] = 12,
-            ["hunger"] = 50.0
+            ["satiety"] = 50.0
         };
         
         var state = domain.CreateActorState(actorId, initialData);
@@ -65,7 +65,7 @@ public class IslandDomainPackTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 40.0 });
         var worldState = (IslandWorldState)domain.CreateInitialWorldState();
         domain.InitializeActorItems(actorId, worldState);
         
@@ -136,7 +136,7 @@ public class IslandDomainPackTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 40.0 });
         var worldState = (IslandWorldState)domain.CreateInitialWorldState();
         domain.InitializeActorItems(actorId, worldState);
         
@@ -180,7 +180,7 @@ public class IslandDomainPackTests
         var actorId = new ActorId("TestActor");
         var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> 
         { 
-            ["hunger"] = 85.0,  // Survival critical
+            ["satiety"] = 15.0,  // Survival critical
             ["energy"] = 50.0 
         }) as IslandActorState;
         var worldState = domain.CreateInitialWorldState();
@@ -454,7 +454,7 @@ public class IslandActionEffectsTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 40.0 });
         var worldState = domain.CreateInitialWorldState();
         domain.InitializeActorItems(actorId, (IslandWorldState)worldState);
         
@@ -650,7 +650,7 @@ public class IslandSignalHandlingTests
         
         engine.AddActor(new ActorId("TestActor"), new Dictionary<string, object>
         {
-            ["hunger"] = 30.0,
+            ["satiety"] = 70.0,
             ["energy"] = 70.0
         });
         
@@ -773,7 +773,7 @@ public class IslandDeterminismTests
             ["INT"] = 10,
             ["WIS"] = 16,
             ["CHA"] = 8,
-            ["hunger"] = 60.0,
+            ["satiety"] = 40.0,
             ["energy"] = 70.0,
             ["morale"] = 50.0,
             ["boredom"] = 30.0
@@ -813,7 +813,7 @@ public class IslandDCTuningTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 40.0 });
         
         // Windy scenario
         var windyWorld = (IslandWorldState)domain.CreateInitialWorldState();
@@ -842,7 +842,7 @@ public class IslandDCTuningTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 40.0 });
         
         // Many coconuts scenario
         var manyCoconutsWorld = (IslandWorldState)domain.CreateInitialWorldState();

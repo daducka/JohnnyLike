@@ -64,7 +64,7 @@ public class FuzzRunner
                         ["INT"] = rng.Next(8, 16),
                         ["WIS"] = rng.Next(8, 16),
                         ["CHA"] = rng.Next(8, 16),
-                        ["hunger"] = (double)rng.Next(0, 50),
+                        ["satiety"] = (double)rng.Next(50, 100),
                         ["energy"] = (double)rng.Next(60, 100),
                         ["morale"] = (double)rng.Next(30, 70),
                         ["boredom"] = (double)rng.Next(0, 40)
@@ -72,13 +72,13 @@ public class FuzzRunner
                 }
                 else
                 {
-                    var initialHunger = rng.Next(0, 50);
+                    var initialSatiety = rng.Next(50, 100);
                     var initialEnergy = rng.Next(60, 100);
                     var initialSocial = rng.Next(30, 70);
                     
                     initialData = new Dictionary<string, object>
                     {
-                        ["hunger"] = (double)initialHunger,
+                        ["satiety"] = (double)initialSatiety,
                         ["energy"] = (double)initialEnergy,
                         ["social"] = (double)initialSocial
                     };

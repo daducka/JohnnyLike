@@ -54,7 +54,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                 var tier = effectCtx.Tier.Value;
 
                 // Common effect: consume energy
-                effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 15.0);
+                effectCtx.Actor.Energy -= 15.0;
 
                 // Success: open and remove chest, grant reward
                 if (tier >= RollOutcomeTier.Success)
@@ -64,7 +64,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                     effectCtx.World.WorldItems.Remove(this);
 
                     // Placeholder reward
-                    effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 20.0);
+                    effectCtx.Actor.Morale += 20.0;
 
                     if (effectCtx.Outcome.ResultData != null)
                     {
@@ -86,7 +86,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                     Health = Math.Max(0.0, Health - damage);
 
                     // Small morale penalty for failing
-                    effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 5.0);
+                    effectCtx.Actor.Morale -= 5.0;
 
                     if (effectCtx.Outcome.ResultData != null)
                     {
