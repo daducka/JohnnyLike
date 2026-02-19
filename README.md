@@ -75,7 +75,9 @@ JohnnyLike includes a reusable dice toolkit:
 
 Located in:
 
+```
 src/JohnnyLike.Domain.Kit.Dice
+```
 
 Used extensively by the Island domain.
 
@@ -141,6 +143,7 @@ Every action generates structured trace output including:
 
 Example:
 
+```
 [1234.50] Johnny - ActionCompleted (
   actionId=fish_for_food,
   outcomeType=Success,
@@ -151,6 +154,7 @@ Example:
   total=17,
   tier=Success
 )
+```
 
 Trace is deterministic and replayable.
 
@@ -176,7 +180,9 @@ Profiles:
 
 Located in:
 
+```
 src/JohnnyLike.SimRunner/FuzzRunner.cs
+```
 
 CI runs fuzz tests automatically.
 
@@ -184,6 +190,7 @@ CI runs fuzz tests automatically.
 
 # Project Structure
 
+```
 src/
   JohnnyLike.Engine/
   JohnnyLike.Domain.Abstractions/
@@ -200,6 +207,7 @@ tests/
   JohnnyLike.Scenario.Tests/
 
 scenarios/
+```
 
 ---
 
@@ -211,11 +219,15 @@ dotnet build
 
 Run Island simulation:
 
+```
 dotnet run --project src/JohnnyLike.SimRunner -- --domain island --duration 120 --seed 42 --trace
+```
 
 Run fuzz tests:
 
+```
 dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --domain island --runs 10 --profile smoke
+```
 
 ---
 
