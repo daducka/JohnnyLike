@@ -135,7 +135,7 @@ public class ShelterItem : ToolItem
             var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 35.0 : 
                                  tier == RollOutcomeTier.Success ? 20.0 : 10.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
-            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 6.0);
+            ctx.Actor.Morale += 6.0;
         }
     }
 
@@ -150,8 +150,7 @@ public class ShelterItem : ToolItem
         {
             var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 45.0 : 30.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
-            ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 8.0);
-            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 10.0);
+            ctx.Actor.Morale += 8.0;
         }
     }
 
@@ -165,8 +164,7 @@ public class ShelterItem : ToolItem
         if (tier >= RollOutcomeTier.Success)
         {
             Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 85.0;
-            ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 20.0);
-            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 25.0);
+            ctx.Actor.Morale += 20.0;
         }
     }
 }

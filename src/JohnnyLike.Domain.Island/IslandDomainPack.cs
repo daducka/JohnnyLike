@@ -51,10 +51,9 @@ public class IslandDomainPack : IDomainPack
             INT = (int)(initialData?.GetValueOrDefault("INT", 10) ?? 10),
             WIS = (int)(initialData?.GetValueOrDefault("WIS", 10) ?? 10),
             CHA = (int)(initialData?.GetValueOrDefault("CHA", 10) ?? 10),
-            Hunger = (double)(initialData?.GetValueOrDefault("hunger", 0.0) ?? 0.0),
+            Satiety = (double)(initialData?.GetValueOrDefault("satiety", 100.0) ?? 100.0),
             Energy = (double)(initialData?.GetValueOrDefault("energy", 100.0) ?? 100.0),
-            Morale = (double)(initialData?.GetValueOrDefault("morale", 50.0) ?? 50.0),
-            Boredom = (double)(initialData?.GetValueOrDefault("boredom", 0.0) ?? 0.0)
+            Morale = (double)(initialData?.GetValueOrDefault("morale", 50.0) ?? 50.0)
         };
         return state;
     }
@@ -110,7 +109,84 @@ public class IslandDomainPack : IDomainPack
         // Generate candidates from the actor itself (e.g., idle action)
         islandActorState.AddCandidates(ctx, candidates);
 
+        // Post-pass: compute final Score from IntrinsicScore and Quality weights
+        var model = BuildQualityModel(ctx);
+        for (var i = 0; i < candidates.Count; i++)
+        {
+            candidates[i] = candidates[i] with { Score = ScoreCandidate(candidates[i], model) };
+        }
+
         return candidates;
+    }
+
+    /// <summary>
+    /// Encapsulates the three scoring influences — Needs, Personality, Mood — as separate
+    /// dictionaries so each can be tuned independently.
+    /// Effective weight = needAdd[q] + personalityBase[q] * moodMultiplier[q]
+    /// </summary>
+    /// <param name="NeedAdd">Additive urgency from current deficits (e.g., satiety/energy). Independent of personality.</param>
+    /// <param name="PersonalityBase">Stable baseline tendency derived from core stats (e.g., WIS/INT proactive trait).</param>
+    /// <param name="MoodMultiplier">Multiplicative modulation from current affect state — suppresses or amplifies personality tendencies.</param>
+    private sealed record QualityModel(
+        Dictionary<QualityType, double> NeedAdd,
+        Dictionary<QualityType, double> PersonalityBase,
+        Dictionary<QualityType, double> MoodMultiplier)
+    {
+        /// <summary>
+        /// Computes the effective weight for a quality dimension.
+        /// Missing keys default to 0.0, meaning no contribution from that influence.
+        /// </summary>
+        public double EffectiveWeight(QualityType q)
+        {
+            NeedAdd.TryGetValue(q, out var need);
+            PersonalityBase.TryGetValue(q, out var personality);
+            MoodMultiplier.TryGetValue(q, out var mood);
+            return need + personality * mood;
+        }
+    }
+
+    private static QualityModel BuildQualityModel(IslandContext ctx)
+    {
+        var actor = ctx.Actor;
+        var satietyDeficit = (100.0 - actor.Satiety) / 100.0;
+        var energyDeficit = (100.0 - actor.Energy) / 100.0;
+        var moraleFactor = actor.Morale / 100.0;
+        var proactiveTrait = Math.Clamp(((actor.WIS + actor.INT) - 20.0) / 20.0, 0.0, 1.0);
+
+        // Needs: immediate urgency from deficits — additive, independent of personality
+        var needAdd = new Dictionary<QualityType, double>
+        {
+            [QualityType.Rest]            = energyDeficit * 1.5,
+            [QualityType.FoodConsumption] = satietyDeficit * 2.0,
+            [QualityType.Safety]          = 0.3
+        };
+
+        // Personality: stable baseline tendency derived from core stats
+        var personalityBase = new Dictionary<QualityType, double>
+        {
+            [QualityType.ForwardPlanning] = proactiveTrait * 0.8,
+            [QualityType.Fun]             = 1.0
+        };
+
+        // Mood: multiplicative modulation — suppresses or amplifies personality tendencies
+        var moodMultiplier = new Dictionary<QualityType, double>
+        {
+            [QualityType.ForwardPlanning] = 0.3 + 0.7 * moraleFactor,  // suppressed when morale is low
+            [QualityType.Fun]             = 1.0 - moraleFactor           // amplified when morale is low
+        };
+
+        return new QualityModel(needAdd, personalityBase, moodMultiplier);
+    }
+
+    private static double ScoreCandidate(ActionCandidate candidate, QualityModel model)
+    {
+        if (candidate.Qualities == null || candidate.Qualities.Count == 0)
+            return candidate.IntrinsicScore;
+
+        var qualitySum = 0.0;
+        foreach (var (quality, value) in candidate.Qualities)
+            qualitySum += model.EffectiveWeight(quality) * value;
+        return candidate.IntrinsicScore + qualitySum;
     }
 
     public void ApplyActionEffects(
@@ -129,9 +205,9 @@ public class IslandDomainPack : IDomainPack
         // This method only applies action-specific effects and actor passive decay
 
         // Apply passive actor decay based on action duration
-        islandActorState.Hunger = Math.Min(100.0, islandActorState.Hunger + outcome.ActualDuration * 0.5);
-        islandActorState.Energy = Math.Max(0.0, islandActorState.Energy - outcome.ActualDuration * 0.3);
-        islandActorState.Boredom = Math.Min(100.0, islandActorState.Boredom + outcome.ActualDuration * 0.4);
+        islandActorState.Satiety -= outcome.ActualDuration * 0.5;
+        islandActorState.Energy -= outcome.ActualDuration * 0.3;
+        islandActorState.Morale -= outcome.ActualDuration * 0.4;
 
         if (outcome.Type != ActionOutcomeType.Success)
         {
@@ -257,10 +333,9 @@ public class IslandDomainPack : IDomainPack
         var islandActorState = (IslandActorState)actorState;
         var snapshot = new Dictionary<string, object>
         {
-            ["hunger"] = islandActorState.Hunger,
+            ["satiety"] = islandActorState.Satiety,
             ["energy"] = islandActorState.Energy,
-            ["morale"] = islandActorState.Morale,
-            ["boredom"] = islandActorState.Boredom
+            ["morale"] = islandActorState.Morale
         };
         
         if (islandActorState.ActiveBuffs.Count > 0)

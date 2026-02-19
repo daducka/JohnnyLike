@@ -170,7 +170,7 @@ public class WorldTickTraceTests
         engine.AddActor(actorId, new Dictionary<string, object>
         {
             ["energy"] = 10.0, // Low energy so actor will sleep
-            ["hunger"] = 20.0
+            ["satiety"] = 80.0
         });
 
         var world = (IslandWorldState)engine.WorldState;

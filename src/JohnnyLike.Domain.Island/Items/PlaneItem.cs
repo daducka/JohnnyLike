@@ -42,13 +42,13 @@ public class PlaneItem : ExpirableWorldItem
                 var tier = effectCtx.Tier.Value;
 
                 // Always fails - reduces morale
-                effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 10.0);
-                effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 15.0);
+                effectCtx.Actor.Morale -= 10.0;
+                effectCtx.Actor.Energy -= 15.0;
                 
                 // Even on "success" (unlikely), still doesn't rescue - just less morale loss
                 if (tier >= RollOutcomeTier.Success)
                 {
-                    effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 5.0); // Partial recovery
+                    effectCtx.Actor.Morale += 5.0; // Partial recovery
                 }
             })
         ));

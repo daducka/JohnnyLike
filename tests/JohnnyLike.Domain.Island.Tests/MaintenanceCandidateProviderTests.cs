@@ -110,8 +110,8 @@ public class CampfireMaintenanceCandidateProviderTests
         world.MainCampfire.AddCandidates(ctxLow, candidatesLow);
         world.MainCampfire.AddCandidates(ctxHigh, candidatesHigh);
         
-        var scoreLow = candidatesLow.First(c => c.Action.Id.Value == "add_fuel_campfire").Score;
-        var scoreHigh = candidatesHigh.First(c => c.Action.Id.Value == "add_fuel_campfire").Score;
+        var scoreLow = candidatesLow.First(c => c.Action.Id.Value == "add_fuel_campfire").IntrinsicScore;
+        var scoreHigh = candidatesHigh.First(c => c.Action.Id.Value == "add_fuel_campfire").IntrinsicScore;
         
         Assert.True(scoreHigh > scoreLow, $"High skill score ({scoreHigh}) should be greater than low skill score ({scoreLow})");
     }
@@ -219,8 +219,8 @@ public class ShelterMaintenanceCandidateProviderTests
         worldClear.MainShelter.AddCandidates(ctxClear, candidatesClear);
         worldRainy.MainShelter.AddCandidates(ctxRainy, candidatesRainy);
         
-        var scoreClear = candidatesClear.First(c => c.Action.Id.Value == "repair_shelter").Score;
-        var scoreRainy = candidatesRainy.First(c => c.Action.Id.Value == "repair_shelter").Score;
+        var scoreClear = candidatesClear.First(c => c.Action.Id.Value == "repair_shelter").IntrinsicScore;
+        var scoreRainy = candidatesRainy.First(c => c.Action.Id.Value == "repair_shelter").IntrinsicScore;
         
         Assert.True(scoreRainy > scoreClear);
     }
@@ -253,8 +253,8 @@ public class ShelterMaintenanceCandidateProviderTests
         world.MainShelter.AddCandidates(ctxLow, candidatesLow);
         world.MainShelter.AddCandidates(ctxHigh, candidatesHigh);
         
-        var scoreLow = candidatesLow.First(c => c.Action.Id.Value == "repair_shelter").Score;
-        var scoreHigh = candidatesHigh.First(c => c.Action.Id.Value == "repair_shelter").Score;
+        var scoreLow = candidatesLow.First(c => c.Action.Id.Value == "repair_shelter").IntrinsicScore;
+        var scoreHigh = candidatesHigh.First(c => c.Action.Id.Value == "repair_shelter").IntrinsicScore;
         
         Assert.True(scoreHigh > scoreLow, $"High skill score ({scoreHigh}) should be greater than low skill score ({scoreLow})");
     }

@@ -48,7 +48,7 @@ public class IslandDomainPackTests
             ["STR"] = 14,
             ["DEX"] = 16,
             ["WIS"] = 12,
-            ["hunger"] = 50.0
+            ["satiety"] = 50.0
         };
         
         var state = domain.CreateActorState(actorId, initialData);
@@ -57,7 +57,7 @@ public class IslandDomainPackTests
         Assert.Equal(14, islandState.STR);
         Assert.Equal(16, islandState.DEX);
         Assert.Equal(12, islandState.WIS);
-        Assert.Equal(50.0, islandState.Hunger);
+        Assert.Equal(50.0, islandState.Satiety);
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public class IslandDomainPackTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 40.0 });
         var worldState = (IslandWorldState)domain.CreateInitialWorldState();
         domain.InitializeActorItems(actorId, worldState);
         
@@ -136,7 +136,7 @@ public class IslandDomainPackTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 40.0 });
         var worldState = (IslandWorldState)domain.CreateInitialWorldState();
         domain.InitializeActorItems(actorId, worldState);
         
@@ -180,7 +180,7 @@ public class IslandDomainPackTests
         var actorId = new ActorId("TestActor");
         var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> 
         { 
-            ["hunger"] = 85.0,  // Survival critical
+            ["satiety"] = 15.0,  // Survival critical
             ["energy"] = 50.0 
         }) as IslandActorState;
         var worldState = domain.CreateInitialWorldState();
@@ -373,14 +373,14 @@ public class IslandActorStateTests
 public class IslandActionEffectsTests
 {
     [Fact]
-    public void ApplyActionEffects_FishingSuccess_ReducesBoredom()
+    public void ApplyActionEffects_FishingSuccess_IncreaseMorale()
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
         var actorState = new IslandActorState
         {
             Id = actorId,
-            Boredom = 10.0,  // Start with low boredom
+            Morale = 50.0,
             CurrentAction = new ActionSpec(
                 new ActionId("go_fishing"),
                 ActionKind.Interact,
@@ -413,9 +413,9 @@ public class IslandActionEffectsTests
         var rng = new RandomRngStream(new Random(42));
         domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability(), fishingCandidate.EffectHandler);
         
-        // Boredom should increase from passive decay (15 * 0.4 = 6) but be reduced by effect (-5)
-        // Net: 10 + 6 - 5 = 11
-        Assert.True(actorState.Boredom < 15.0, $"Expected boredom < 15, got {actorState.Boredom}");
+        // Morale decreases from passive decay (15 * 0.4 = 6) but is partially offset by fishing effect (+5 on Success)
+        // Net: 50 - 6 + 5 = 49 — fishing counteracts most of the decay vs. not fishing (50 - 6 = 44)
+        Assert.True(actorState.Morale > 44.0, $"Expected morale > 44 (fishing should offset some morale decay), got {actorState.Morale}");
     }
 
     [Fact]
@@ -454,7 +454,7 @@ public class IslandActionEffectsTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 40.0 });
         var worldState = domain.CreateInitialWorldState();
         domain.InitializeActorItems(actorId, (IslandWorldState)worldState);
         
@@ -491,9 +491,9 @@ public class IslandActionEffectsTests
         var actorState = new IslandActorState
         {
             Id = actorId,
-            Hunger = 30.0,
+            Satiety = 70.0,
             Energy = 80.0,
-            Boredom = 20.0
+            Morale = 50.0
         };
         var worldState = new IslandWorldState();
         
@@ -507,9 +507,9 @@ public class IslandActionEffectsTests
         var rng = new RandomRngStream(new Random(42));
         domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
         
-        Assert.True(actorState.Hunger > 30.0);
+        Assert.True(actorState.Satiety < 70.0);
         Assert.True(actorState.Energy < 80.0);
-        Assert.True(actorState.Boredom > 20.0);
+        Assert.True(actorState.Morale < 50.0);
     }
 }
 
@@ -581,7 +581,7 @@ public class IslandSignalHandlingTests
         var actorState = new IslandActorState
         {
             Id = actorId,
-            Hunger = 30.0,  // Not critical
+            Satiety = 70.0,  // Not critical
             Energy = 60.0   // Not critical
         };
         actorState.PendingChatActions.Enqueue(new PendingIntent
@@ -610,7 +610,7 @@ public class IslandSignalHandlingTests
         var actorState = new IslandActorState
         {
             Id = actorId,
-            Hunger = 85.0,  // Critical hunger
+            Satiety = 15.0,  // Critical (low satiety)
             Energy = 60.0
         };
         actorState.PendingChatActions.Enqueue(new PendingIntent
@@ -650,7 +650,7 @@ public class IslandSignalHandlingTests
         
         engine.AddActor(new ActorId("TestActor"), new Dictionary<string, object>
         {
-            ["hunger"] = 30.0,
+            ["satiety"] = 70.0,
             ["energy"] = 70.0
         });
         
@@ -773,10 +773,9 @@ public class IslandDeterminismTests
             ["INT"] = 10,
             ["WIS"] = 16,
             ["CHA"] = 8,
-            ["hunger"] = 60.0,
+            ["satiety"] = 40.0,
             ["energy"] = 70.0,
-            ["morale"] = 50.0,
-            ["boredom"] = 30.0
+            ["morale"] = 50.0
         });
 
         var executor = new FakeExecutor(engine);
@@ -813,7 +812,7 @@ public class IslandDCTuningTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 40.0 });
         
         // Windy scenario
         var windyWorld = (IslandWorldState)domain.CreateInitialWorldState();
@@ -842,7 +841,7 @@ public class IslandDCTuningTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["hunger"] = 60.0 });
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 40.0 });
         
         // Many coconuts scenario
         var manyCoconutsWorld = (IslandWorldState)domain.CreateInitialWorldState();
@@ -883,10 +882,9 @@ public class IslandCooldownSerializationTests
             INT = 10,
             WIS = 16,
             CHA = 8,
-            Hunger = 50.0,
+            Satiety = 50.0,
             Energy = 75.0,
             Morale = 60.0,
-            Boredom = 20.0,
             LastPlaneSightingTime = 100.0,
             LastMermaidEncounterTime = 200.0
         };
@@ -899,7 +897,7 @@ public class IslandCooldownSerializationTests
         Assert.Equal(originalState.LastPlaneSightingTime, deserializedState.LastPlaneSightingTime);
         Assert.Equal(originalState.LastMermaidEncounterTime, deserializedState.LastMermaidEncounterTime);
         Assert.Equal(originalState.STR, deserializedState.STR);
-        Assert.Equal(originalState.Hunger, deserializedState.Hunger);
+        Assert.Equal(originalState.Satiety, deserializedState.Satiety);
     }
 
     [Fact]
@@ -952,4 +950,74 @@ public class IslandCooldownSerializationTests
     }
 }
 
+public class ScoringPostPassTests
+{
+    [Fact]
+    public void GenerateCandidates_NullQualities_ScoreEqualsIntrinsicScore()
+    {
+        // Idle has no Qualities, so Score should equal IntrinsicScore after post-pass
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId);
+        var worldState = domain.CreateInitialWorldState();
+
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
+
+        var idle = candidates.First(c => c.Action.Id.Value == "idle");
+        Assert.Null(idle.Qualities);
+        Assert.Equal(idle.IntrinsicScore, idle.Score);
+    }
+
+    [Fact]
+    public void GenerateCandidates_LowSatiety_FoodConsumptionQualityIncreasesScore()
+    {
+        // An actor with very low satiety should score a FoodConsumption-quality candidate higher
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+
+        // Actor with very low satiety (very hungry)
+        var hungryState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 10.0 });
+        // Actor with full satiety
+        var fullState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 100.0 });
+
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        worldState.GetStat<Stats.CoconutAvailabilityStat>("coconut_availability")!.CoconutsAvailable = 10;
+
+        var hungryCandidates = domain.GenerateCandidates(actorId, hungryState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
+        var fullCandidates = domain.GenerateCandidates(actorId, fullState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
+
+        // Both actors should have a sleep candidate; Sleep has Rest quality
+        var hungrySleepScore = hungryCandidates.First(c => c.Action.Id.Value == "sleep_under_tree").Score;
+        var fullSleepScore = fullCandidates.First(c => c.Action.Id.Value == "sleep_under_tree").Score;
+
+        // Both should have the same sleep score since energy is the same (default 100)
+        Assert.Equal(fullSleepScore, hungrySleepScore);
+
+        // Coconut tree provides food (FoodConsumption quality via scoring); low satiety boosts it
+        var hungryCoconutScore = hungryCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").IntrinsicScore;
+        var fullCoconutScore = fullCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").IntrinsicScore;
+
+        // Hungry actor should have higher intrinsic score for coconut (due to Satiety-based scoring in CoconutTreeItem)
+        Assert.True(hungryCoconutScore > fullCoconutScore,
+            $"Hungry actor coconut score ({hungryCoconutScore:F3}) should be > full actor ({fullCoconutScore:F3})");
+    }
+
+    [Fact]
+    public void GenerateCandidates_LowEnergy_SleepScoreHigherThanIdleScore()
+    {
+        // With low energy and Rest quality weight on Sleep, sleep should score higher than idle
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["energy"] = 10.0 });
+        var worldState = domain.CreateInitialWorldState();
+
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
+
+        var sleepScore = candidates.First(c => c.Action.Id.Value == "sleep_under_tree").Score;
+        var idleScore = candidates.First(c => c.Action.Id.Value == "idle").Score;
+
+        Assert.True(sleepScore > idleScore,
+            $"Sleep score ({sleepScore:F3}) should be greater than idle ({idleScore:F3}) when energy is very low");
+    }
+}
 

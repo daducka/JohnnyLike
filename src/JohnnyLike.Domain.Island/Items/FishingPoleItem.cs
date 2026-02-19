@@ -127,7 +127,7 @@ public class FishingPoleItem : ToolItem
         {
             // Minor quality degradation from use
             Quality = Math.Max(0.0, Quality - 1.0);
-            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 5.0);
+            ctx.Actor.Morale += 5.0;
         }
     }
 
@@ -143,7 +143,7 @@ public class FishingPoleItem : ToolItem
             var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 25.0 : 
                                  tier == RollOutcomeTier.Success ? 15.0 : 8.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
-            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 3.0);
+            ctx.Actor.Morale += 3.0;
         }
     }
 
@@ -162,10 +162,10 @@ public class FishingPoleItem : ToolItem
             if (IsBroken)
             {
                 IsBroken = false;
-                ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 10.0);
+                ctx.Actor.Morale += 10.0;
             }
             
-            ctx.Actor.Boredom = Math.Max(0.0, ctx.Actor.Boredom - 8.0);
+            ctx.Actor.Morale += 8.0;
         }
     }
 

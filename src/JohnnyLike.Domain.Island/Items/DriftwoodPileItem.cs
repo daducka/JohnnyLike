@@ -99,19 +99,18 @@ public class DriftwoodPileItem : WorldItem, IIslandActionCandidate
                     driftStat.DriftwoodAvailable = Math.Max(0.0, driftStat.DriftwoodAvailable - woodGained);
                     
                     // Success effects
-                    effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 5.0);
-                    effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 3.0);
-                    effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 8.0);
+                    effectCtx.Actor.Morale += 5.0;
+                    effectCtx.Actor.Energy -= 8.0;
                 }
                 else
                 {
                     // Failure effects
-                    effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 5.0);
+                    effectCtx.Actor.Energy -= 5.0;
                 }
 
                 if (tier == RollOutcomeTier.CriticalFailure)
                 {
-                    effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 5.0);
+                    effectCtx.Actor.Morale -= 5.0;
                 }
             })
         ));
