@@ -9,5 +9,10 @@ public enum QualityType
     FoodConsumption,
     Fun,
     ForwardPlanning,
-    Safety
+    Safety,
+    Preparation,
+    Efficiency,
+    Comfort,
+    ResourcePreservation,
+    Mastery
 }

@@ -55,6 +55,8 @@ public class IslandDomainPack : IDomainPack
             Energy = (double)(initialData?.GetValueOrDefault("energy", 100.0) ?? 100.0),
             Morale = (double)(initialData?.GetValueOrDefault("morale", 50.0) ?? 50.0)
         };
+        // All actors start knowing how to cook fish
+        state.KnownRecipeIds.Add("cook_fish");
         return state;
     }
     
@@ -151,7 +153,11 @@ public class IslandDomainPack : IDomainPack
         var satietyDeficit = (100.0 - actor.Satiety) / 100.0;
         var energyDeficit = (100.0 - actor.Energy) / 100.0;
         var moraleFactor = actor.Morale / 100.0;
-        var proactiveTrait = Math.Clamp(((actor.WIS + actor.INT) - 20.0) / 20.0, 0.0, 1.0);
+        var proactiveTrait       = Math.Clamp(((actor.WIS + actor.INT) - 20.0) / 20.0, 0.0, 1.0);
+        var conscientiousTrait   = Math.Clamp(((actor.CON + actor.WIS) - 20.0) / 20.0, 0.0, 1.0);
+        var intelligenceTrait    = Math.Clamp((actor.INT - 10.0) / 10.0, 0.0, 1.0);
+        var comfortSeekingTrait  = Math.Clamp(((actor.CHA + actor.CON) - 20.0) / 20.0, 0.0, 1.0);
+        var industriousTrait     = Math.Clamp(((actor.STR + actor.WIS) - 20.0) / 20.0, 0.0, 1.0);
 
         // Needs: immediate urgency from deficits — additive, independent of personality
         var needAdd = new Dictionary<QualityType, double>
@@ -165,14 +171,22 @@ public class IslandDomainPack : IDomainPack
         var personalityBase = new Dictionary<QualityType, double>
         {
             [QualityType.ForwardPlanning] = proactiveTrait * 0.8,
-            [QualityType.Fun]             = 1.0
+            [QualityType.Fun]             = 1.0,
+            [QualityType.Preparation]     = conscientiousTrait * 0.6,
+            [QualityType.Efficiency]      = intelligenceTrait * 0.5,
+            [QualityType.Comfort]         = comfortSeekingTrait * 0.4,
+            [QualityType.Mastery]         = industriousTrait * 0.5
         };
 
         // Mood: multiplicative modulation — suppresses or amplifies personality tendencies
         var moodMultiplier = new Dictionary<QualityType, double>
         {
-            [QualityType.ForwardPlanning] = 0.3 + 0.7 * moraleFactor,  // suppressed when morale is low
-            [QualityType.Fun]             = 1.0 - moraleFactor           // amplified when morale is low
+            [QualityType.ForwardPlanning] = 0.3 + 0.7 * moraleFactor,   // suppressed when morale is low
+            [QualityType.Fun]             = 1.0 - moraleFactor,          // amplified when morale is low
+            [QualityType.Preparation]     = actor.Satiety < 20.0 ? 0.3 : 1.0, // starving actors eat now, don't cook
+            [QualityType.Efficiency]      = 1.0,
+            [QualityType.Comfort]         = 1.0,
+            [QualityType.Mastery]         = 1.0
         };
 
         return new QualityModel(needAdd, personalityBase, moodMultiplier);
@@ -187,6 +201,37 @@ public class IslandDomainPack : IDomainPack
         foreach (var (quality, value) in candidate.Qualities)
             qualitySum += model.EffectiveWeight(quality) * value;
         return candidate.IntrinsicScore + qualitySum;
+    }
+
+    /// <summary>
+    /// Executes the candidate's PreAction at the moment the action is chosen (before the action duration starts).
+    /// Casts the handler to <see cref="Func{EffectContext, bool}"/> and invokes it.
+    /// Returns false if the supply is missing so the Director can try the next-best candidate.
+    /// </summary>
+    public bool TryExecutePreAction(
+        ActorId actorId,
+        ActorState actorState,
+        WorldState worldState,
+        IRngStream rng,
+        IResourceAvailability resourceAvailability,
+        object? preActionHandler)
+    {
+        if (preActionHandler is not Func<EffectContext, bool> preAction)
+            return true; // Nothing to execute — always succeeds
+
+        var effectCtx = new EffectContext
+        {
+            ActorId = actorId,
+            // Use a placeholder outcome: PreAction only reads world/actor state, not outcome data
+            Outcome = new ActionOutcome(new ActionId("preaction_placeholder"), ActionOutcomeType.Success, 0.0),
+            Actor = (IslandActorState)actorState,
+            World = (IslandWorldState)worldState,
+            Tier = null,
+            Rng = rng,
+            Reservations = resourceAvailability
+        };
+
+        return preAction(effectCtx);
     }
 
     public void ApplyActionEffects(

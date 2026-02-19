@@ -56,7 +56,24 @@ public class Director
         {
             if (TryReserveActionResources(actorId, candidate.Action, currentTime, out var reservationSceneId))
             {
-                // Successfully reserved resources for this action
+                // Execute PreAction at action start (before the action duration begins).
+                // If it fails (e.g. required supply missing), release the reservation and try the next candidate.
+                if (candidate.PreAction != null)
+                {
+                    var rngStream = new RandomRngStream(rng);
+                    if (!_domainPack.TryExecutePreAction(actorId, actorState, worldState, rngStream, _reservations, candidate.PreAction))
+                    {
+                        // Release the reservation we just acquired and keep trying
+                        if (reservationSceneId.HasValue)
+                        {
+                            _reservations.ReleaseByPrefix($"scene:{reservationSceneId.Value.Value}:");
+                            _actorReservationScenes.Remove(actorId);
+                        }
+                        continue;
+                    }
+                }
+
+                // Successfully reserved resources (and PreAction passed) for this action
                 if (reservationSceneId.HasValue)
                 {
                     _actorReservationScenes[actorId] = reservationSceneId.Value;

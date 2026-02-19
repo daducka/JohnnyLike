@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Stats;
+using JohnnyLike.Domain.Island.Supply;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Items;
@@ -65,18 +66,18 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate
                 if (coconutStat == null)
                     return;
 
+                var sharedPile = effectCtx.World.SharedSupplyPile;
+
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
-                        effectCtx.Actor.Satiety += 25.0;
                         coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
-                        effectCtx.Actor.Energy += 15.0;
+                        sharedPile?.AddSupply("coconut", 2.0, id => new CoconutSupply(id));
                         break;
 
                     case RollOutcomeTier.Success:
-                        effectCtx.Actor.Satiety += 15.0;
                         coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
-                        effectCtx.Actor.Energy += 10.0;
+                        sharedPile?.AddSupply("coconut", 1.0, id => new CoconutSupply(id));
                         break;
 
                     case RollOutcomeTier.PartialSuccess:

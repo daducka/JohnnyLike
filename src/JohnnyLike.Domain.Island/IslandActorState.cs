@@ -42,6 +42,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
     public List<ActiveBuff> ActiveBuffs { get; set; } = new();
     public Queue<PendingIntent> PendingChatActions { get; set; } = new();
+    public HashSet<string> KnownRecipeIds { get; set; } = new(StringComparer.Ordinal);
 
     public int GetSkillModifier(SkillType skillType)
     {
@@ -94,7 +95,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             LastPlaneSightingTime,
             LastMermaidEncounterTime,
             ActiveBuffs,
-            PendingChatActions = PendingChatActions.ToList()
+            PendingChatActions = PendingChatActions.ToList(),
+            KnownRecipeIds = KnownRecipeIds.ToList()
         }, options);
     }
 
@@ -181,6 +183,12 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             var list = JsonSerializer.Deserialize<List<PendingIntent>>(actions.GetRawText(), options) ?? new();
             PendingChatActions = new Queue<PendingIntent>(list);
         }
+
+        if (data.TryGetValue("KnownRecipeIds", out var recipeIds))
+        {
+            var list = JsonSerializer.Deserialize<List<string>>(recipeIds.GetRawText(), options) ?? new();
+            KnownRecipeIds = new HashSet<string>(list, StringComparer.Ordinal);
+        }
     }
 
     /// <summary>
@@ -211,6 +219,13 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         
         // Build sand castle
         AddBuildSandCastleCandidate(ctx, output);
+
+        // Known recipes
+        foreach (var recipeId in KnownRecipeIds)
+        {
+            if (RecipeRegistry.Recipes.TryGetValue(recipeId, out var recipe))
+                recipe.AddCandidates(ctx, output);
+        }
     }
 
     private void AddBuildSandCastleCandidate(IslandContext ctx, List<ActionCandidate> output)
