@@ -1,426 +1,272 @@
 # JohnnyLike
 
-A deterministic, headless-testable "idle world" simulation engine inspired by Johnny Castaway and The Sims autonomy system. Designed to be used from Unity but with ZERO Unity dependencies in the core.
+JohnnyLike is a deterministic autonomy simulation engine for autonomous actors living in dynamic worlds.
 
-## Overview
+It is inspired by systems like **Johnny Castaway**, **The Sims autonomy model**, and idle simulations—but designed first and foremost as a fully deterministic, testable, headless simulation engine.
 
-JohnnyLike is a mono-repo implementing a generic simulation engine where autonomous actors execute tasks to completion without interruption. The system supports multi-actor coordination through "Scenes" (group activities) using join windows, staging, and resource reservations.
+The engine runs without Unity and is intended to serve as a reusable autonomy core for games, simulations, and streaming integrations.
 
-## Architecture
+The flagship domain is a castaway survival simulation, where Johnny must fish, explore, maintain shelter, react to environmental hazards, and experience rare vignette events—all governed by a DnD-style skill system.
 
-### Core Components
+---
 
-- **Engine**: Main simulation coordinator managing world state, actors, time progression, and event processing
-- **Director**: Authoritative planner that manages scene lifecycles, resource reservations, and task assignment
-- **Domain Packs**: Pluggable content modules that define:
-  - State schemas (world and actor states)
-  - Action candidates and scoring
-  - Scene templates
-  - Action effects
+# Key Features
 
-### Key Features
+## Deterministic Simulation
 
-- **Deterministic Replay**: Same seed + event schedule = identical trace
-- **No Interruption**: Actions execute to completion; new events only influence future decisions
-- **Multi-Actor Coordination**: Scenes with join windows and resource locking
-- **Variety System**: Memory-based repetition penalty
-- **Headless Testing**: FakeExecutor with simulated time for testing without Unity
+Given:
 
-## Project Structure
+- Seed  
+- Initial state  
+- Signal schedule  
 
-```
-JohnnyLike/
-├── src/
-│   ├── JohnnyLike.Engine/              # Core simulation engine
-│   ├── JohnnyLike.Domain.Abstractions/ # Interfaces and base types
-│   ├── JohnnyLike.Domain.Kit.Dice/     # Reusable DnD-style dice & skill toolkit
-│   ├── JohnnyLike.Domain.Office/       # Office domain pack (sample)
-│   ├── JohnnyLike.Domain.Island/       # Island survival domain pack with skill checks
-│   └── JohnnyLike.SimRunner/           # Console app for headless simulation
-├── tests/
-│   ├── JohnnyLike.Engine.Tests/        # Engine unit tests
-│   ├── JohnnyLike.Domain.Kit.Dice.Tests/ # Dice kit unit tests
-│   ├── JohnnyLike.Domain.Office.Tests/ # Domain validation tests
-│   ├── JohnnyLike.Domain.Island.Tests/ # Island domain tests
-│   └── JohnnyLike.Scenario.Tests/      # System/integration tests
-└── scenarios/                          # JSON scenario definitions
-```
+JohnnyLike produces identical behavior and identical trace output.
 
-## Getting Started
+This enables:
 
-### Prerequisites
+- Replay debugging  
+- Fuzz testing  
+- CI validation  
+- Regression detection  
 
-- .NET 8.0 SDK or later
+---
 
-### Building
+## Autonomous Actor Model
 
-```bash
-# Build the entire solution
-dotnet build
+Actors:
 
-# Build specific project
-dotnet build src/JohnnyLike.Engine
-```
+- Select actions based on needs, environment, and skill probability  
+- Execute actions to completion (no interruption model)  
+- Adapt behavior over time using memory and variety systems  
+- Participate in coordinated multi-actor scenes  
 
-### Running Tests
+---
 
-```bash
-# Run all tests
-dotnet test
+## Pluggable Domain Packs
 
-# Run specific test project
-dotnet test tests/JohnnyLike.Engine.Tests
+The engine is domain-agnostic. All behavior is defined by domain packs.
 
-# Run tests with verbose output
-dotnet test -v n
-```
+Domains define:
 
-### Running Simulations
+- Actor state  
+- World state  
+- Candidate actions  
+- Skill checks  
+- Action effects  
+- Scene templates  
+- Signal handling  
 
-#### Default Simulation (Office domain)
+Current domains:
 
-```bash
-dotnet run --project src/JohnnyLike.SimRunner -- --duration 30
-```
+- JohnnyLike.Domain.Office — coordination demo  
+- JohnnyLike.Domain.Island — survival simulation (primary domain)  
 
-#### Island Domain Simulation
+---
 
-```bash
-dotnet run --project src/JohnnyLike.SimRunner -- --domain island --duration 60 --seed 42
-```
+## DnD-Style Dice and Skill System
 
-#### With Scenario File
+JohnnyLike includes a reusable dice toolkit:
 
-```bash
-dotnet run --project src/JohnnyLike.SimRunner -- --scenario scenarios/jim_pam_highfive.json --trace
-```
+- D20 rolls  
+- Advantage / disadvantage  
+- Skill modifiers  
+- Critical success / failure  
+- Probability estimation for scoring  
 
-#### Command-line Options
+Located in:
 
-- `--scenario <path>`: Load and run scenario from JSON file
-- `--domain <name>`: Domain to use: office, island (default: office)
-- `--seed <number>`: Random seed (default: 42)
-- `--duration <sec>`: Simulation duration in seconds
-- `--trace`: Output detailed trace events
+src/JohnnyLike.Domain.Kit.Dice
 
-#### Fuzz Testing
+Used extensively by the Island domain.
 
-Run deterministic fuzz tests to stress-test the engine with random events and validate invariants:
+---
 
-```bash
-# Run 10 fuzz tests with default config (Office domain)
-dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 10 --seed 100
+## Persistent World Simulation
 
-# Run Island domain fuzz tests
-dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --domain island --runs 10 --seed 100 --profile smoke
+Island world includes persistent objects:
 
-# Run with custom config
-dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 5 --config fuzz-configs/stress-test.json
+- Campfires (fuel, decay, maintenance)  
+- Shelter (quality, weather damage)  
+- Treasure chests (spawn from swim critical success)  
+- Sharks (spawn from swim critical failure)  
+- Fish and coconut resources with regeneration  
+- Weather and tide systems  
+- Day/night cycle  
 
-# Use predefined profiles
-dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 10 --seed 123 --profile smoke
-dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 200 --profile extended
-dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 1000 --profile nightly
+World state evolves continuously and is fully deterministic.
 
-# Verbose output for detailed metrics
-dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 1 --seed 42 --verbose
-```
+---
 
-**Fuzz Testing Profiles:**
+## Rich Skill-Driven Survival Gameplay
 
-- **smoke** - Fast, deterministic tests for CI (60s sim, 2 actors, low failure rates)
-  - Used in required `fuzz-smoke` CI check
-  - Runs on every PR and push to main
-  - Designed to complete in < 60 seconds
-  
-- **extended** - Moderate stress testing (180s sim, 6 actors, higher event rates)
-  - Triggered manually via `workflow_dispatch` or with `run-extended-fuzz` label
-  - 200 runs for thorough coverage
-  - Uploads failure artifacts for debugging
-  
-- **nightly** - Maximum stress testing (240s sim, 8 actors, high burst/failure rates)
-  - Runs daily via cron schedule at 2 AM UTC
-  - 1000 runs to catch rare edge cases
-  - Uploads all results and failures as artifacts
+Johnny must balance:
 
-**Fuzz Testing Features:**
-- **Deterministic Event Generation**: Pre-generated signal schedule from seed (Poisson arrivals with bursts)
-- **Action Jitter**: Random duration variations for realism (configurable %)
-- **Failure Injection**: Random task failures, no-shows, busy locks
-- **Invariant Checking**: Real-time validation of reservation conflicts, scene lifetimes, starvation, signal backlogs
-- **Metrics Collection**: Tracks actions, scenes, signals, per-actor completions
-- **Reproducible Failures**: Full config + event schedule + trace logged on violation
+- Hunger  
+- Energy  
+- Morale  
+- Boredom  
 
-**Replaying Failures:**
+Actions include:
 
-If a fuzz test fails, the output includes:
-1. Seed that caused the failure
-2. Full FuzzConfig as JSON
-3. Complete EventSchedule
-4. Last 100 trace events
+- Fishing  
+- Coconut gathering  
+- Swimming  
+- Sleeping  
+- Sand castle building  
+- Chest discovery and opening  
+- Campfire maintenance  
+- Shelter maintenance  
 
-To replay a failure:
-```bash
-# Use the seed from the failure output
-dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --runs 1 --seed <failed-seed> --profile <profile-name> --verbose
-```
+Rare vignette events:
 
-The deterministic nature ensures the exact same trace will be produced, making debugging straightforward.
+- Plane sightings  
+- Mermaid encounters  
 
-**CI Integration:**
+All governed by skill checks with probability-aware scoring.
 
-The repository includes three GitHub Actions workflows:
-- `.github/workflows/ci.yml` - Required checks including `ci-tests` and `fuzz-smoke`
-- `.github/workflows/fuzz-extended.yml` - Manual or label-triggered extended testing
-- `.github/workflows/fuzz-nightly.yml` - Daily stress testing with artifact uploads
+---
 
-**Fuzz Config Parameters:**
-- `Seed`, `SimulatedDurationSeconds`, `DtSeconds`, `NumActors`
-- `EventRatePerMinute`, `BurstProbability`, `BurstMultiplier`
-- `ActionDurationJitterPct`, `TravelTimeJitterPct`, `TaskFailureRate`
-- `NoShowProbability`, `BusyLockProbability`
-- `JoinWindowMinSeconds`, `JoinWindowMaxSeconds`
-- `ResourceScarcityProfile`, `MaxActorQueueLength`, `MaxSceneLifetimeSeconds`
-- `StarvationThresholdSeconds`, `MaxAllowedReservationConflicts`
+## Fully Instrumented Trace System
 
-## Creating Custom Domain Packs
+Every action generates structured trace output including:
 
-1. Reference `JohnnyLike.Domain.Abstractions`
-2. Implement `IDomainPack` interface
-3. Define custom `ActorState` and `WorldState` classes
-4. Implement `GenerateCandidates()` for action selection
-5. Implement `ApplyActionEffects()` for state changes
-6. Define `SceneTemplate` objects for multi-actor activities
+- Action ID  
+- Duration  
+- Skill DC  
+- Modifier  
+- Dice roll  
+- Total roll  
+- Outcome tier  
+- World effects  
 
 Example:
-```csharp
-public class MyDomainPack : IDomainPack
-{
-    public string DomainName => "MyDomain";
-    
-    public WorldState CreateInitialWorldState() { ... }
-    public ActorState CreateActorState(ActorId id, ...) { ... }
-    public List<ActionCandidate> GenerateCandidates(...) { ... }
-    public void ApplyActionEffects(...) { ... }
-    public List<SceneTemplate> GetSceneTemplates() { ... }
-    public bool ValidateContent(out List<string> errors) { ... }
-}
-```
 
-## Dice Kit: Reusable DnD-style Skill Resolution
+[1234.50] Johnny - ActionCompleted (
+  actionId=fish_for_food,
+  outcomeType=Success,
+  actualDuration=18.5,
+  dc=15,
+  modifier=4,
+  roll=13,
+  total=17,
+  tier=Success
+)
 
-The `JohnnyLike.Domain.Kit.Dice` package provides a generic, reusable D&D-inspired dice rolling and skill check system that can be used by any domain pack.
+Trace is deterministic and replayable.
 
-### Core Features
+---
 
-- **D20 Rolls**: Standard d20, advantage, disadvantage
-- **Skill Checks**: Deterministic skill resolution with DC, modifiers, and advantage
-- **Outcome Tiers**: CriticalFailure, Failure, PartialSuccess, Success, CriticalSuccess
-- **Probability Estimation**: Calculate success chances for action scoring
-- **Domain-Agnostic**: No dependencies on engine internals except `IRngStream`
+## Fuzz Testing Infrastructure
 
-### Key Types
+JohnnyLike includes full fuzz testing support.
 
-```csharp
-// Roll a D20 with various modes
-int roll = Dice.RollD20(rng);
-int advantageRoll = Dice.RollD20WithAdvantage(rng);
-int disadvantageRoll = Dice.RollD20WithDisadvantage(rng);
+Fuzz tests:
 
-// Calculate ability modifier from D&D stats
-int modifier = DndMath.AbilityModifier(14); // Returns 2
+- Generate deterministic random signal schedules  
+- Inject failures, delays, and contention  
+- Validate invariants  
+- Detect rare edge cases  
+- Produce reproducible traces  
 
-// Estimate success probability for action scoring
-double chance = DndMath.EstimateSuccessChanceD20(dc: 15, modifier: 3, AdvantageType.Normal);
+Profiles:
 
-// Resolve a skill check
-var request = new SkillCheckRequest(DC: 15, Modifier: 3, AdvantageType.Normal, "Fishing");
-var result = SkillCheckResolver.Resolve(rng, request);
-// result.OutcomeTier: CriticalSuccess, Success, PartialSuccess, Failure, or CriticalFailure
-// result.IsSuccess: true/false (considers natural 1/20 auto-fail/success)
-// result.EstimatedSuccessChance: probability estimate
-```
+- smoke  
+- extended  
+- nightly  
 
-### Usage in Domain Packs
+Located in:
 
-Domain packs can use the Dice kit to:
-- Determine action outcomes with realistic probability distributions
-- Weight action candidates by success probability
-- Implement buffs/debuffs via advantage/disadvantage
-- Create dynamic difficulty with context-sensitive DCs
+src/JohnnyLike.SimRunner/FuzzRunner.cs
 
-## Island Domain: Survival Simulation
+CI runs fuzz tests automatically.
 
-The `JohnnyLike.Domain.Island` demonstrates the Dice kit with a castaway survival domain featuring:
+---
 
-### Actor State
-- **Attributes**: STR, DEX, CON, INT, WIS, CHA (D&D-style stats)
-- **Skill Types**: Five skill types defined as enum: `Fishing`, `Survival`, `Perception`, `Performance`, `Athletics`
-- **Derived Skills**: 
-  - FishingSkill (DEX + WIS)
-  - SurvivalSkill (WIS + STR)
-  - PerceptionSkill (WIS)
-  - PerformanceSkill (CHA)
-  - AthleticsSkill (STR)
-- **Needs**: Hunger (0-100), Energy (0-100), Morale (0-100), Boredom (0-100)
-- **Buff System**: Temporary modifiers and advantage grants tied to specific skill types
+# Project Structure
 
-**Adding New Skill Types**: To add a new skill type to the Island domain:
-1. Add the new skill to the `SkillType` enum in `IslandActorState.cs`
-2. Update `GetSkillModifier()` to return the appropriate modifier for the new skill
-3. Use the new `SkillType` enum value when calling `RollSkillCheck()` in candidate providers
+src/
+  JohnnyLike.Engine/
+  JohnnyLike.Domain.Abstractions/
+  JohnnyLike.Domain.Kit.Dice/
+  JohnnyLike.Domain.Office/
+  JohnnyLike.Domain.Island/
+  JohnnyLike.SimRunner/
 
-### World State
-- **Time**: Day/night cycle with timeOfDay (0-1) and dayCount
-- **Weather**: Clear, Rainy, Windy (affects skill DCs)
-- **Resources**: Fish population and coconut availability with regeneration
-- **Tide**: Low/High tides affecting activities
+tests/
+  JohnnyLike.Engine.Tests/
+  JohnnyLike.Domain.Kit.Dice.Tests/
+  JohnnyLike.Domain.Office.Tests/
+  JohnnyLike.Domain.Island.Tests/
+  JohnnyLike.Scenario.Tests/
 
-### World Items
+scenarios/
 
-Persistent objects in the world that track state and can be interacted with:
+---
 
-- **CampfireItem**: Maintainable light source with fuel tracking
-  - Properties: IsLit, FuelSeconds, Quality
-  - Decays when unlit, requires fuel and maintenance
-  
-- **ShelterItem**: Maintainable structure providing protection
-  - Properties: Quality
-  - Decays faster in bad weather (Rainy, Windy)
-  
-- **TreasureChestItem**: Discoverable loot container
-  - Properties: IsOpened, Health (0-100), Position
-  - Spawned by swim critical success
-  - Requires bashing to open, gets easier as health decreases
-  
-- **SharkItem**: Temporary hazard with timed despawn
-  - Properties: ExpiresAt (world time)
-  - Spawned by swim critical failure
-  - Blocks swimming until auto-despawn
-  - Duration: 60-180 seconds (randomized)
+# Running the Simulation
 
-All world items are serialized with IslandWorldState and survive across save/load cycles.
+Build:
 
-### Actions with Skill Checks
+dotnet build
 
-All actions use the Dice kit for resolution with type-safe `SkillType` enums:
+Run Island simulation:
 
-- **FishForFood**: `SkillType.Fishing` skill check, DC varies by time of day, weather, fish availability, and energy
-- **ShakeTreeForCoconut**: `SkillType.Survival` skill check, DC based on coconut availability and weather
-- **BuildSandCastle**: `SkillType.Performance` skill check for morale/boredom management
-- **Swim**: `SkillType.Survival` check with morale and energy effects
-  - **Critical Success**: Spawns TreasureChestItem at shore
-  - **Critical Failure**: Spawns SharkItem, applies -20 morale penalty
-- **BashOpenTreasureChest**: `SkillType.Athletics` check to open discovered treasure
-  - DC scales with chest health (DC 10-20)
-  - Failure damages chest, making subsequent attempts easier
-  - Success grants morale reward and removes chest
-- **SleepUnderTree**: No check, restores energy
+dotnet run --project src/JohnnyLike.SimRunner -- --domain island --duration 120 --seed 42 --trace
 
-### Vignette Events
+Run fuzz tests:
 
-Rare, special events with `SkillType.Perception` checks:
-- **PLANE_SIGHTING** (DC 15): Grants morale boost, critical success adds temporary Luck buff
-- **MERMAID_ENCOUNTER** (DC 18, night only): Grants strong morale boost, critical success adds `SkillType.Fishing` advantage
+dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --domain island --runs 10 --profile smoke
 
-### Dynamic Scoring
+---
 
-Action candidates are scored using estimated success probability:
-```csharp
-var baseScore = 0.5 + (hunger / 100.0);
-var estimatedChance = DndMath.EstimateSuccessChanceD20(dc, modifier, advantage);
-var finalScore = baseScore * estimatedChance; // Lower score for harder checks
+# Creating a New Domain
 
-// Exception: Survival actions override probability penalty when needs are critical
-if (hunger > 70.0 || energy < 20.0)
-    finalScore = 1.0; // Desperation ignores difficulty
-```
+Implement:
 
-## Scenario JSON Format
+IDomainPack
 
-```json
-{
-  "name": "ScenarioName",
-  "seed": 42,
-  "durationSeconds": 60.0,
-  "actors": [
-    {
-      "actorId": "ActorName",
-      "initialState": {
-        "hunger": 35.0,
-        "energy": 80.0
-      }
-    }
-  ],
-  "signals": [
-    {
-      "atTime": 10.0,
-      "type": "chat_redeem",
-      "targetActor": "ActorName",
-      "data": { "emote": "wave" }
-    }
-  ]
-}
-```
+Define:
 
-## Engine API
+- ActorState  
+- WorldState  
+- Candidate generation  
+- Skill resolution  
+- Action effects  
+- Scene templates  
 
-```csharp
-// Initialize engine with domain pack and seed
-var engine = new Engine(domainPack, seed, traceSink);
+The engine handles everything else.
 
-// Add actors
-engine.AddActor(new ActorId("Jim"), initialState);
+---
 
-// Advance simulation time
-engine.AdvanceTime(0.5); // in seconds
+# Design Philosophy
 
-// Enqueue signals for future processing
-engine.EnqueueSignal(new Signal(...));
+JohnnyLike is built on:
 
-// Get next action for ready actor
-if (engine.TryGetNextAction(actorId, out var action))
-{
-    // Execute action...
-}
+- Determinism first  
+- Domain isolation  
+- Testability  
+- Reproducibility  
+- Extensibility  
+- Simulation correctness  
 
-// Report action completion
-engine.ReportActionComplete(actorId, outcome);
+Rendering is optional and external.
 
-// Get trace for analysis
-var events = engine.GetTrace();
-var hash = TraceHelper.ComputeTraceHash(events);
-```
+---
 
-## Testing Strategy
+# Current Status
 
-### Unit Tests (`Engine.Tests`)
-- ReservationTable prevents double reservation
-- SceneInstance aborts after deadline
-- Determinism: same seed produces identical trace
-- VarietyMemory penalizes repetition
+JohnnyLike is fully functional and actively evolving.
 
-### Domain Tests (`Domain.Office.Tests`)
-- Content validation (anchors, scene roles)
-- Scoring logic (hunger affects EatSnack priority)
-- Chat redeem generates high-priority candidate
-- Action effects modify actor state correctly
+The Island domain serves as the primary reference implementation and demonstrates:
 
-### Scenario Tests (`Scenario.Tests`)
-- Multi-actor scene coordination
-- Signal handling without interruption
-- Scene abort and resource cleanup
-- End-to-end determinism
+- Skill-driven autonomy  
+- Persistent world state  
+- Resource systems  
+- Hazard systems  
+- Rare event systems  
+- Fuzz-validated stability  
 
-## Design Principles
+---
 
-1. **No Unity Dependencies**: Core engine is pure C# with no game engine dependencies
-2. **Deterministic**: Given same seed and events, produces identical results
-3. **No Interruption**: Actions run to completion; events only affect future planning
-4. **Resource Safety**: Reservations prevent conflicts; automatic cleanup on deadlines
-5. **Extensible**: Domain packs plug in custom content and behavior
-6. **Testable**: FakeExecutor enables fast, headless simulation testing
 
-## License
-
-[Your License Here]
+JohnnyLike is a foundation for building deterministic autonomous worlds.
