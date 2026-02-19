@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Kit.Dice;
 using System.Text.Json;
 
@@ -13,7 +14,7 @@ public enum SkillType
     Athletics
 }
 
-public class IslandActorState : ActorState
+public class IslandActorState : ActorState, IIslandActionCandidate
 {
     public int STR { get; set; } = 10;
     public int DEX { get; set; } = 10;
@@ -179,6 +180,307 @@ public class IslandActorState : ActorState
             var list = JsonSerializer.Deserialize<List<PendingIntent>>(actions.GetRawText(), options) ?? new();
             PendingChatActions = new Queue<PendingIntent>(list);
         }
+    }
+
+    /// <summary>
+    /// Actors can provide their own action candidates including idle, sleep, swim, build sand castle, and chat actions.
+    /// </summary>
+    public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
+    {
+        // Process pending chat actions first (unless survival critical)
+        AddChatCandidates(ctx, output);
+        
+        // Idle must ALWAYS be a candidate with a low baseline score
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("idle"),
+                ActionKind.Wait,
+                EmptyActionParameters.Instance,
+                5.0
+            ),
+            0.3,
+            "Idle"
+        ));
+        
+        // Sleep under tree
+        AddSleepCandidate(ctx, output);
+        
+        // Swim
+        AddSwimCandidate(ctx, output);
+        
+        // Build sand castle
+        AddBuildSandCastleCandidate(ctx, output);
+    }
+
+    private void AddBuildSandCastleCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        // Only provide candidate if no sand castle already exists
+        var existingSandCastle = ctx.World.WorldItems.OfType<Items.SandCastleItem>().FirstOrDefault();
+        if (existingSandCastle != null)
+            return;
+
+        var baseDC = 8;
+
+        var tideStat = ctx.World.GetStat<Stats.TideStat>("tide");
+        if (tideStat?.TideLevel == TideLevel.High)
+            baseDC += 4;
+
+        var parameters = ctx.RollSkillCheck(SkillType.Performance, baseDC);
+        var baseScore = 0.3 + (Boredom / 100.0);
+
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("build_sand_castle"),
+                ActionKind.Interact,
+                parameters,
+                20.0 + ctx.Random.NextDouble() * 10.0,
+                parameters.ToResultData(),
+                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach:sandcastle_spot")) }
+            ),
+            baseScore,
+            $"Build sand castle (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                if (effectCtx.Tier == null)
+                    return;
+
+                var tier = effectCtx.Tier.Value;
+
+                switch (tier)
+                {
+                    case RollOutcomeTier.CriticalSuccess:
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 25.0);
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 30.0);
+                        // Create sand castle
+                        effectCtx.World.WorldItems.Add(new Items.SandCastleItem());
+                        break;
+
+                    case RollOutcomeTier.Success:
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 15.0);
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 20.0);
+                        // Create sand castle
+                        effectCtx.World.WorldItems.Add(new Items.SandCastleItem());
+                        break;
+
+                    case RollOutcomeTier.PartialSuccess:
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 5.0);
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 10.0);
+                        // Create sand castle
+                        effectCtx.World.WorldItems.Add(new Items.SandCastleItem());
+                        break;
+
+                    case RollOutcomeTier.Failure:
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 5.0);
+                        break;
+
+                    case RollOutcomeTier.CriticalFailure:
+                        effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 5.0);
+                        break;
+                }
+            })
+        ));
+    }
+
+    private void AddChatCandidates(IslandContext ctx, List<ActionCandidate> output)
+    {
+        if (PendingChatActions.Count > 0)
+        {
+            var isSurvivalCritical = ctx.IsSurvivalCritical();
+            
+            if (!isSurvivalCritical)
+            {
+                var intent = PendingChatActions.Peek();
+                
+                if (intent.ActionId == "write_name_sand")
+                {
+                    var name = intent.Data.GetValueOrDefault("viewer_name", "Someone")?.ToString() ?? "Someone";
+                    output.Add(new ActionCandidate(
+                        new ActionSpec(
+                            new ActionId("write_name_sand"),
+                            ActionKind.Emote,
+                            new EmoteActionParameters("write_name", name, "beach"),
+                            8.0
+                        ),
+                        2.0, // High priority
+                        $"Write {name}'s name in sand (chat redeem)",
+                        EffectHandler: new Action<EffectContext>(effectCtx =>
+                        {
+                            // Dequeue the completed chat action intent
+                            if (effectCtx.Actor.PendingChatActions.Count > 0)
+                            {
+                                effectCtx.Actor.PendingChatActions.Dequeue();
+                            }
+                            
+                            effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 10.0);
+                            effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 15.0);
+                        })
+                    ));
+                }
+                else if (intent.ActionId == "clap_emote")
+                {
+                    output.Add(new ActionCandidate(
+                        new ActionSpec(
+                            new ActionId("clap_emote"),
+                            ActionKind.Emote,
+                            new EmoteActionParameters("clap"),
+                            2.0
+                        ),
+                        2.0, // High priority
+                        "Clap emote (sub/cheer)",
+                        EffectHandler: new Action<EffectContext>(effectCtx =>
+                        {
+                            // Dequeue the completed chat action intent
+                            if (effectCtx.Actor.PendingChatActions.Count > 0)
+                            {
+                                effectCtx.Actor.PendingChatActions.Dequeue();
+                            }
+                            
+                            effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 3.0);
+                        })
+                    ));
+                }
+            }
+        }
+    }
+
+    private void AddSleepCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        var baseScore = 0.4;
+        if (Energy < 30.0)
+            baseScore = 1.2;
+        else if (Energy < 50.0)
+            baseScore = 0.8;
+
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("sleep_under_tree"),
+                ActionKind.Interact,
+                new LocationActionParameters("tree"),
+                30.0 + ctx.Rng.NextDouble() * 10.0
+            ),
+            baseScore,
+            "Sleep under tree",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                effectCtx.Actor.Energy = Math.Min(100.0, effectCtx.Actor.Energy + 40.0);
+                effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 5.0);
+            })
+        ));
+    }
+
+    private void AddSwimCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        if (Energy < 20.0)
+            return;
+
+        var baseDC = 10;
+
+        var weatherStat = ctx.World.GetStat<Stats.WeatherStat>("weather");
+        if (weatherStat?.Weather == Weather.Windy)
+            baseDC += 3;
+        else if (weatherStat?.Weather == Weather.Rainy)
+            baseDC += 1;
+
+        var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
+        var baseScore = 0.35 + (Morale < 30 ? 0.2 : 0.0);
+
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("swim"),
+                ActionKind.Interact,
+                parameters,
+                15.0 + ctx.Random.NextDouble() * 5.0,
+                parameters.ToResultData(),
+                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) }
+            ),
+            baseScore,
+            $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                if (effectCtx.Tier == null)
+                    return;
+
+                var tier = effectCtx.Tier.Value;
+
+                switch (tier)
+                {
+                    case RollOutcomeTier.CriticalSuccess:
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 20.0);
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 5.0);
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 15.0);
+                        
+                        // Spawn treasure chest if not already present
+                        if (effectCtx.World.TreasureChest == null)
+                        {
+                            var chest = new Items.TreasureChestItem
+                            {
+                                IsOpened = false,
+                                Health = 100.0,
+                                Position = "shore"
+                            };
+                            effectCtx.World.WorldItems.Add(chest);
+                            
+                            if (effectCtx.Outcome.ResultData != null)
+                            {
+                                effectCtx.Outcome.ResultData["variant_id"] = "swim_crit_success_treasure";
+                                effectCtx.Outcome.ResultData["encounter_type"] = "treasure_chest";
+                            }
+                        }
+                        break;
+
+                    case RollOutcomeTier.Success:
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 10.0);
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 10.0);
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 10.0);
+                        break;
+
+                    case RollOutcomeTier.PartialSuccess:
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 3.0);
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 15.0);
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 5.0);
+                        break;
+
+                    case RollOutcomeTier.Failure:
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 15.0);
+                        effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 5.0);
+                        break;
+
+                    case RollOutcomeTier.CriticalFailure:
+                        effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 25.0);
+                        effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 15.0);
+                        
+                        // Spawn shark if not already present
+                        if (effectCtx.World.Shark == null)
+                        {
+                            var duration = 60.0 + effectCtx.Rng.NextDouble() * 120.0;
+                            var shark = new Items.SharkItem
+                            {
+                                ExpiresAt = effectCtx.World.CurrentTime + duration
+                            };
+                            
+                            // Try to reserve the water resource
+                            var waterResource = new ResourceId("island:resource:water");
+                            var utilityId = $"world_item:shark:{shark.Id}";
+                            var reserved = effectCtx.Reservations.TryReserve(waterResource, utilityId, shark.ExpiresAt);
+                            
+                            if (reserved)
+                            {
+                                shark.ReservedResourceId = waterResource;
+                                effectCtx.World.WorldItems.Add(shark);
+                                effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 15.0);
+                                
+                                if (effectCtx.Outcome.ResultData != null)
+                                {
+                                    effectCtx.Outcome.ResultData["variant_id"] = "swim_crit_failure_shark";
+                                    effectCtx.Outcome.ResultData["encounter_type"] = "shark";
+                                    effectCtx.Outcome.ResultData["shark_duration"] = duration;
+                                }
+                            }
+                        }
+                        break;
+                }
+            })
+        ));
     }
 }
 

@@ -55,6 +55,12 @@ public class TreasureChestTests
         // Set current action on actor
         actor.CurrentAction = swimAction;
         
+        // Generate candidates to get effect handler
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
+        var swimCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "swim");
+        Assert.NotNull(swimCandidate);
+        Assert.NotNull(swimCandidate.EffectHandler);
+        
         var resultData = new Dictionary<string, object>
         {
             ["tier"] = "CriticalSuccess"
@@ -69,7 +75,7 @@ public class TreasureChestTests
         // No longer need RNG since tier is pre-populated
         var rng = new FixedRngStream(20);
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability(), swimCandidate.EffectHandler);
         
         // Verify chest is spawned
         Assert.NotNull(world.TreasureChest);
@@ -138,6 +144,12 @@ public class TreasureChestTests
         // Set current action on actor
         actor.CurrentAction = bashAction;
         
+        // Generate candidates to get effect handler
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
+        var bashCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "bash_open_treasure_chest");
+        Assert.NotNull(bashCandidate);
+        Assert.NotNull(bashCandidate.EffectHandler);
+        
         var resultData = new Dictionary<string, object>
         {
             ["tier"] = "Failure"
@@ -152,7 +164,7 @@ public class TreasureChestTests
         // No longer need RNG since tier is pre-populated
         var rng = new FixedRngStream(8);
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability(), bashCandidate.EffectHandler);
         
         // Chest should still be present but damaged
         Assert.NotNull(world.TreasureChest);
@@ -195,6 +207,12 @@ public class TreasureChestTests
         // Set current action on actor
         actor.CurrentAction = bashAction;
         
+        // Generate candidates to get effect handler
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
+        var bashCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "bash_open_treasure_chest");
+        Assert.NotNull(bashCandidate);
+        Assert.NotNull(bashCandidate.EffectHandler);
+        
         var resultData = new Dictionary<string, object>
         {
             ["tier"] = "Success"
@@ -209,7 +227,7 @@ public class TreasureChestTests
         // No longer need RNG since tier is pre-populated
         var rng = new FixedRngStream(15);
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability());
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, new EmptyResourceAvailability(), bashCandidate.EffectHandler);
         
         // Chest should be removed
         Assert.Null(world.TreasureChest);
@@ -252,6 +270,12 @@ public class TreasureChestTests
         // Set current action on actor
         actor.CurrentAction = bashAction;
         
+        // Generate candidates to get effect handler
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
+        var bashCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "bash_open_treasure_chest");
+        Assert.NotNull(bashCandidate);
+        Assert.NotNull(bashCandidate.EffectHandler);
+        
         var resultData1 = new Dictionary<string, object>
         {
             ["tier"] = "Failure"
@@ -264,7 +288,7 @@ public class TreasureChestTests
         );
         var rng1 = new FixedRngStream(8); // No longer used
         
-        domain.ApplyActionEffects(actorId, outcome1, actor, world, rng1, new EmptyResourceAvailability());
+        domain.ApplyActionEffects(actorId, outcome1, actor, world, rng1, new EmptyResourceAvailability(), bashCandidate.EffectHandler);
         
         var healthAfterFirst = world.TreasureChest!.Health;
         Assert.True(healthAfterFirst < initialHealth);
@@ -273,6 +297,12 @@ public class TreasureChestTests
         // Second failed bash on weakened chest
         // Reset current action for second bash
         actor.CurrentAction = bashAction;
+        
+        // Get new candidates since chest health changed
+        var candidates2 = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
+        var bashCandidate2 = candidates2.FirstOrDefault(c => c.Action.Id.Value == "bash_open_treasure_chest");
+        Assert.NotNull(bashCandidate2);
+        Assert.NotNull(bashCandidate2.EffectHandler);
         
         var resultData2 = new Dictionary<string, object>
         {
@@ -286,7 +316,7 @@ public class TreasureChestTests
         );
         var rng2 = new FixedRngStream(8); // No longer used
         
-        domain.ApplyActionEffects(actorId, outcome2, actor, world, rng2, new EmptyResourceAvailability());
+        domain.ApplyActionEffects(actorId, outcome2, actor, world, rng2, new EmptyResourceAvailability(), bashCandidate2.EffectHandler);
         
         var healthAfterSecond = world.TreasureChest!.Health;
         Assert.True(healthAfterSecond < healthAfterFirst);

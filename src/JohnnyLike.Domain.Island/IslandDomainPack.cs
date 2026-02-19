@@ -3,69 +3,15 @@ using JohnnyLike.Domain.Kit.Dice;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Island.Supply;
-using System.Reflection;
 
 namespace JohnnyLike.Domain.Island;
 
 public class IslandDomainPack : IDomainPack
 {
-    private readonly List<IIslandCandidateProvider> _providers;
-    private readonly Dictionary<string, IIslandCandidateProvider> _effectHandlers;
-    private static List<IIslandCandidateProvider>? _cachedProviders;
-    private static Dictionary<string, IIslandCandidateProvider>? _cachedEffectHandlers;
-    private static readonly object _lock = new object();
-
     public string DomainName => "Island";
 
     public IslandDomainPack()
     {
-        // Use cached providers if available, otherwise discover and cache
-        if (_cachedProviders == null)
-        {
-            lock (_lock)
-            {
-                if (_cachedProviders == null)
-                {
-                    (_cachedProviders, _cachedEffectHandlers) = DiscoverProviders();
-                }
-            }
-        }
-        
-        _providers = _cachedProviders;
-        _effectHandlers = _cachedEffectHandlers!;
-    }
-
-    private static (List<IIslandCandidateProvider>, Dictionary<string, IIslandCandidateProvider>) DiscoverProviders()
-    {
-        // Discover types with attributes
-        var typesWithAttrs = Assembly.GetExecutingAssembly()
-            .GetTypes()
-            .Where(t => t.GetCustomAttribute<IslandCandidateProviderAttribute>() != null)
-            .Where(t => !t.IsAbstract && typeof(IIslandCandidateProvider).IsAssignableFrom(t))
-            .Select(t => new {
-                Type = t,
-                Attr = t.GetCustomAttribute<IslandCandidateProviderAttribute>()!
-            })
-            .OrderBy(x => x.Attr.Order)
-            .ToList();
-
-        // Create provider instances once
-        var providers = new List<IIslandCandidateProvider>();
-        var effectHandlers = new Dictionary<string, IIslandCandidateProvider>();
-
-        foreach (var item in typesWithAttrs)
-        {
-            var provider = (IIslandCandidateProvider)Activator.CreateInstance(item.Type)!;
-            providers.Add(provider);
-
-            // Build action ID -> provider lookup
-            foreach (var actionId in item.Attr.ActionIds)
-            {
-                effectHandlers[actionId] = provider;
-            }
-        }
-
-        return (providers, effectHandlers);
     }
 
     public WorldState CreateInitialWorldState()
@@ -78,6 +24,10 @@ public class IslandDomainPack : IDomainPack
         var sharedSupplies = new SupplyPile("shared_supplies", "shared");
         sharedSupplies.AddSupply("wood", 20.0, id => new WoodSupply(id));
         world.WorldItems.Add(sharedSupplies);
+        
+        // Add resource items
+        world.WorldItems.Add(new CoconutTreeItem("palm_tree"));
+        world.WorldItems.Add(new DriftwoodPileItem("driftwood_pile"));
         
         // Initialize WorldStats
         world.WorldStats.Add(new Stats.TimeOfDayStat());
@@ -150,16 +100,15 @@ public class IslandDomainPack : IDomainPack
 
         // Generate candidates using all registered providers
         var candidates = new List<ActionCandidate>();
-        foreach (var provider in _providers)
-        {
-            provider.AddCandidates(ctx, candidates);
-        }
         
-        // Generate candidates from ToolItems in the world
-        foreach (var item in islandWorld.WorldItems.OfType<ToolItem>())
+        // Generate candidates from all items implementing IIslandActionCandidate
+        foreach (var item in islandWorld.WorldItems.OfType<IIslandActionCandidate>())
         {
             item.AddCandidates(ctx, candidates);
         }
+        
+        // Generate candidates from the actor itself (e.g., idle action)
+        islandState.AddCandidates(ctx, candidates);
 
         return candidates;
     }
@@ -202,17 +151,10 @@ public class IslandDomainPack : IDomainPack
             Reservations = resourceAvailability
         };
 
-        // Check if effect handler was provided by the Engine (ToolItem pattern)
+        // Effect handler should always be provided via ActionCandidate.EffectHandler
         if (effectHandler is Action<EffectContext> handler)
         {
             handler(effectCtx);
-            return;
-        }
-
-        // Call provider-based effect handlers (for non-tool actions)
-        if (_effectHandlers.TryGetValue(actionId, out var providerHandler))
-        {
-            providerHandler.ApplyEffects(effectCtx);
         }
     }
 

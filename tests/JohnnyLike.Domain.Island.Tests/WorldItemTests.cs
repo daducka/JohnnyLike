@@ -201,7 +201,7 @@ public class IslandWorldStateItemIntegrationTests
         Assert.NotNull(world.MainCampfire);
         Assert.NotNull(world.MainShelter);
         Assert.NotNull(world.SharedSupplyPile);
-        Assert.Equal(3, world.WorldItems.Count); // Campfire, Shelter, SharedSupplyPile
+        Assert.Equal(5, world.WorldItems.Count); // Campfire, Shelter, SharedSupplyPile, CoconutTree, DriftwoodPile
     }
 
     [Fact]

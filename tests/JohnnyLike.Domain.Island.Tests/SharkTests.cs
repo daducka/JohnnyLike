@@ -72,19 +72,13 @@ public class SharkTests
         var currentTime = 100.0;
         world.CurrentTime = currentTime;
         
-        // Create a swim action
-        var swimAction = new ActionSpec(
-            new ActionId("swim"),
-            ActionKind.Interact,
-            new SkillCheckActionParameters(
-                    new SkillCheckRequest(10, 0, AdvantageType.Normal, "Survival"),
-                    new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
-            15.0
-        );
+        // Generate candidates to get the swim action with its effect handler
+        var candidates = domain.GenerateCandidates(actorId, actor, world, currentTime, new Random(42), reservations);
+        var swimCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "swim");
+        Assert.NotNull(swimCandidate);
+        Assert.NotNull(swimCandidate.EffectHandler);
         
-        // Set current action on actor
-        actor.CurrentAction = swimAction;
-        
+        // Create the outcome with CriticalFailure tier
         var resultData = new Dictionary<string, object>
         {
             ["tier"] = "CriticalFailure"
@@ -96,10 +90,9 @@ public class SharkTests
             resultData
         );
         
-        // No longer need RNG since tier is pre-populated
         var rng = new FixedRngStream(1);
         
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, reservations);
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, reservations, swimCandidate.EffectHandler);
         
         // Verify shark is spawned
         Assert.NotNull(world.Shark);
@@ -199,6 +192,12 @@ public class SharkTests
         // Verify water resource is not reserved initially
         Assert.False(reservations.IsReserved(waterResource));
         
+        // Generate candidates to get effect handler
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
+        var swimCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "swim");
+        Assert.NotNull(swimCandidate);
+        Assert.NotNull(swimCandidate.EffectHandler);
+        
         // Simulate swim critical failure that spawns a shark
         var resultData = new Dictionary<string, object>
         {
@@ -212,7 +211,7 @@ public class SharkTests
         );
         
         var rng = new FixedRngStream(1);
-        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, reservations);
+        domain.ApplyActionEffects(actorId, outcome, actor, world, rng, reservations, swimCandidate.EffectHandler);
         
         // Verify shark was spawned and reserved the water resource
         Assert.NotNull(world.Shark);
