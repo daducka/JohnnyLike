@@ -38,8 +38,8 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate
         // Roll skill check at candidate generation time
         var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
 
-        var baseScore = 0.4 + (ctx.Actor.Hunger / 150.0);
-        if (ctx.Actor.Hunger > 70.0)
+        var baseScore = 0.4 + ((100.0 - ctx.Actor.Satiety) / 150.0);
+        if (ctx.Actor.Satiety < 30.0)
         {
             baseScore = 0.9;
         }
@@ -68,13 +68,13 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
-                        effectCtx.Actor.Hunger = Math.Max(0.0, effectCtx.Actor.Hunger - 25.0);
+                        effectCtx.Actor.Satiety = Math.Min(100.0, effectCtx.Actor.Satiety + 25.0);
                         coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
                         effectCtx.Actor.Energy = Math.Min(100.0, effectCtx.Actor.Energy + 15.0);
                         break;
 
                     case RollOutcomeTier.Success:
-                        effectCtx.Actor.Hunger = Math.Max(0.0, effectCtx.Actor.Hunger - 15.0);
+                        effectCtx.Actor.Satiety = Math.Min(100.0, effectCtx.Actor.Satiety + 15.0);
                         coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
                         effectCtx.Actor.Energy = Math.Min(100.0, effectCtx.Actor.Energy + 10.0);
                         break;

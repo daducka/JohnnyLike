@@ -39,7 +39,7 @@ public class IslandContext
 
     public bool IsSurvivalCritical()
     {
-        return Actor.Hunger > 80.0 || Actor.Energy < 15.0;
+        return Actor.Satiety < 20.0 || Actor.Energy < 15.0;
     }
 
     /// <summary>

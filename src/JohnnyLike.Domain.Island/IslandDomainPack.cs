@@ -51,7 +51,7 @@ public class IslandDomainPack : IDomainPack
             INT = (int)(initialData?.GetValueOrDefault("INT", 10) ?? 10),
             WIS = (int)(initialData?.GetValueOrDefault("WIS", 10) ?? 10),
             CHA = (int)(initialData?.GetValueOrDefault("CHA", 10) ?? 10),
-            Hunger = (double)(initialData?.GetValueOrDefault("hunger", 0.0) ?? 0.0),
+            Satiety = GetSatietyFromInitialData(initialData),
             Energy = (double)(initialData?.GetValueOrDefault("energy", 100.0) ?? 100.0),
             Morale = (double)(initialData?.GetValueOrDefault("morale", 50.0) ?? 50.0),
             Boredom = (double)(initialData?.GetValueOrDefault("boredom", 0.0) ?? 0.0)
@@ -59,6 +59,17 @@ public class IslandDomainPack : IDomainPack
         return state;
     }
     
+    private static double GetSatietyFromInitialData(Dictionary<string, object>? initialData)
+    {
+        if (initialData == null)
+            return 100.0;
+        if (initialData.TryGetValue("satiety", out var satietyVal))
+            return (double)(satietyVal ?? 100.0);
+        if (initialData.TryGetValue("hunger", out var hungerVal))
+            return 100.0 - (double)(hungerVal ?? 0.0);
+        return 100.0;
+    }
+
     /// <summary>
     /// Initialize actor-specific items in the world (e.g., exclusive tools like fishing poles).
     /// This should be called after an actor is added to the engine.
@@ -110,7 +121,47 @@ public class IslandDomainPack : IDomainPack
         // Generate candidates from the actor itself (e.g., idle action)
         islandActorState.AddCandidates(ctx, candidates);
 
+        // Post-pass: compute final Score from IntrinsicScore and Quality weights
+        var weights = BuildQualityWeights(ctx);
+        for (var i = 0; i < candidates.Count; i++)
+        {
+            candidates[i] = candidates[i] with { Score = ScoreCandidate(candidates[i], weights) };
+        }
+
         return candidates;
+    }
+
+    private static Dictionary<QualityType, double> BuildQualityWeights(IslandContext ctx)
+    {
+        var actor = ctx.Actor;
+        var satietyDeficit = (100.0 - actor.Satiety) / 100.0;
+        var energyDeficit = (100.0 - actor.Energy) / 100.0;
+        var moraleFactor = actor.Morale / 100.0;
+        var boredomFactor = actor.Boredom / 100.0;
+        var proactiveTrait = Math.Clamp(((actor.WIS + actor.INT) - 20.0) / 20.0, 0.0, 1.0);
+
+        return new Dictionary<QualityType, double>
+        {
+            [QualityType.Rest] = energyDeficit * 1.5,
+            [QualityType.FoodConsumption] = satietyDeficit * 2.0,
+            [QualityType.ForwardPlanning] = proactiveTrait * 0.8 * (0.3 + 0.7 * moraleFactor),
+            [QualityType.Fun] = boredomFactor * 1.0,
+            [QualityType.Safety] = 0.3
+        };
+    }
+
+    private static double ScoreCandidate(ActionCandidate candidate, Dictionary<QualityType, double> weights)
+    {
+        if (candidate.Qualities == null || candidate.Qualities.Count == 0)
+            return candidate.IntrinsicScore;
+
+        var qualitySum = 0.0;
+        foreach (var (quality, value) in candidate.Qualities)
+        {
+            if (weights.TryGetValue(quality, out var weight))
+                qualitySum += weight * value;
+        }
+        return candidate.IntrinsicScore + qualitySum;
     }
 
     public void ApplyActionEffects(
@@ -129,7 +180,7 @@ public class IslandDomainPack : IDomainPack
         // This method only applies action-specific effects and actor passive decay
 
         // Apply passive actor decay based on action duration
-        islandActorState.Hunger = Math.Min(100.0, islandActorState.Hunger + outcome.ActualDuration * 0.5);
+        islandActorState.Satiety = Math.Max(0.0, islandActorState.Satiety - outcome.ActualDuration * 0.5);
         islandActorState.Energy = Math.Max(0.0, islandActorState.Energy - outcome.ActualDuration * 0.3);
         islandActorState.Boredom = Math.Min(100.0, islandActorState.Boredom + outcome.ActualDuration * 0.4);
 
@@ -257,7 +308,7 @@ public class IslandDomainPack : IDomainPack
         var islandActorState = (IslandActorState)actorState;
         var snapshot = new Dictionary<string, object>
         {
-            ["hunger"] = islandActorState.Hunger,
+            ["satiety"] = islandActorState.Satiety,
             ["energy"] = islandActorState.Energy,
             ["morale"] = islandActorState.Morale,
             ["boredom"] = islandActorState.Boredom

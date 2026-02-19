@@ -22,7 +22,7 @@ public class FishingSpotSelectionTests
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
-        actor.Hunger = 50.0;
+        actor.Satiety = 50.0;
         world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         domain.InitializeActorItems(actorId, world);
         
@@ -71,7 +71,7 @@ public class FishingSpotSelectionTests
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
-        actor.Hunger = 50.0;
+        actor.Satiety = 50.0;
         world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         domain.InitializeActorItems(actorId, world);
         
@@ -108,8 +108,8 @@ public class FishingSpotSelectionTests
         var actor1 = (IslandActorState)domain.CreateActorState(actorId1);
         var actor2 = (IslandActorState)domain.CreateActorState(actorId2);
         
-        actor1.Hunger = 50.0;
-        actor2.Hunger = 50.0;
+        actor1.Satiety = 50.0;
+        actor2.Satiety = 50.0;
         world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         // Initialize fishing poles for both actors

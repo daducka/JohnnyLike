@@ -109,7 +109,8 @@ public class OfficeDomainPack : IDomainPack
             ));
         }
 
-        return candidates;
+        // Post-pass: Score = IntrinsicScore (no Quality weights in Office domain)
+        return candidates.Select(c => c with { Score = c.IntrinsicScore }).ToList();
     }
 
     public void ApplyActionEffects(

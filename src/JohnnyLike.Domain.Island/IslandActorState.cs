@@ -29,7 +29,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
     public int PerformanceSkill => DndMath.AbilityModifier(CHA);
     public int AthleticsSkill => DndMath.AbilityModifier(STR);
 
-    public double Hunger { get; set; } = 0.0;
+    public double Satiety { get; set; } = 100.0;
     public double Energy { get; set; } = 100.0;
     public double Morale { get; set; } = 50.0;
     public double Boredom { get; set; } = 0.0;
@@ -85,7 +85,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             INT,
             WIS,
             CHA,
-            Hunger,
+            Satiety,
             Energy,
             Morale,
             Boredom,
@@ -125,7 +125,14 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         INT = data["INT"].GetInt32();
         WIS = data["WIS"].GetInt32();
         CHA = data["CHA"].GetInt32();
-        Hunger = data["Hunger"].GetDouble();
+        if (data.TryGetValue("Satiety", out var satietyEl))
+        {
+            Satiety = satietyEl.GetDouble();
+        }
+        else if (data.TryGetValue("Hunger", out var hungerEl))
+        {
+            Satiety = 100.0 - hungerEl.GetDouble();
+        }
         Energy = data["Energy"].GetDouble();
         Morale = data["Morale"].GetDouble();
         Boredom = data["Boredom"].GetDouble();
@@ -226,7 +233,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             baseDC += 4;
 
         var parameters = ctx.RollSkillCheck(SkillType.Performance, baseDC);
-        var baseScore = 0.3 + (Boredom / 100.0);
+        var baseScore = 0.3;
 
         output.Add(new ActionCandidate(
             new ActionSpec(
@@ -277,7 +284,11 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                         effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 5.0);
                         break;
                 }
-            })
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Fun] = 1.0
+            }
         ));
     }
 
@@ -345,12 +356,6 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
     private void AddSleepCandidate(IslandContext ctx, List<ActionCandidate> output)
     {
-        var baseScore = 0.4;
-        if (Energy < 30.0)
-            baseScore = 1.2;
-        else if (Energy < 50.0)
-            baseScore = 0.8;
-
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("sleep_under_tree"),
@@ -358,13 +363,18 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new LocationActionParameters("tree"),
                 30.0 + ctx.Rng.NextDouble() * 10.0
             ),
-            baseScore,
+            0.35,
             "Sleep under tree",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 effectCtx.Actor.Energy = Math.Min(100.0, effectCtx.Actor.Energy + 40.0);
                 effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 5.0);
-            })
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Rest] = 1.0,
+                [QualityType.Safety] = 0.2
+            }
         ));
     }
 
