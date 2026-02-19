@@ -5,8 +5,8 @@ namespace JohnnyLike.Domain.Island;
 
 /// <summary>
 /// Island-specific action candidate interface.
-/// Objects implementing this interface can provide action candidates and apply their effects
-/// within the Island domain.
+/// Objects implementing this interface can provide action candidates.
+/// Effects are defined inline when creating ActionCandidate instances via the EffectHandler parameter.
 /// </summary>
 public interface IIslandActionCandidate : IActionCandidate
 {
@@ -16,11 +16,4 @@ public interface IIslandActionCandidate : IActionCandidate
     /// <param name="ctx">Island context containing actor state, world state, and other relevant information</param>
     /// <param name="output">List to add candidates to</param>
     void AddCandidates(IslandContext ctx, List<ActionCandidate> output);
-    
-    /// <summary>
-    /// Apply the effects of a completed action.
-    /// This is called after an action has been executed successfully.
-    /// </summary>
-    /// <param name="ctx">Effect context containing the outcome and state to modify</param>
-    void ApplyEffects(EffectContext ctx);
 }

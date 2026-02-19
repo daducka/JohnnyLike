@@ -183,7 +183,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
     }
 
     /// <summary>
-    /// Actors can provide their own action candidates including idle, sleep, swim, collect driftwood, and chat actions.
+    /// Actors can provide their own action candidates including idle, sleep, swim, build sand castle, and chat actions.
     /// </summary>
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
@@ -208,8 +208,77 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         // Swim
         AddSwimCandidate(ctx, output);
         
-        // Collect driftwood
-        AddCollectDriftwoodCandidate(ctx, output);
+        // Build sand castle
+        AddBuildSandCastleCandidate(ctx, output);
+    }
+
+    private void AddBuildSandCastleCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        // Only provide candidate if no sand castle already exists
+        var existingSandCastle = ctx.World.WorldItems.OfType<Items.SandCastleItem>().FirstOrDefault();
+        if (existingSandCastle != null)
+            return;
+
+        var baseDC = 8;
+
+        var tideStat = ctx.World.GetStat<Stats.TideStat>("tide");
+        if (tideStat?.TideLevel == TideLevel.High)
+            baseDC += 4;
+
+        var parameters = ctx.RollSkillCheck(SkillType.Performance, baseDC);
+        var baseScore = 0.3 + (Boredom / 100.0);
+
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("build_sand_castle"),
+                ActionKind.Interact,
+                parameters,
+                20.0 + ctx.Random.NextDouble() * 10.0,
+                parameters.ToResultData(),
+                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach:sandcastle_spot")) }
+            ),
+            baseScore,
+            $"Build sand castle (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                if (effectCtx.Tier == null)
+                    return;
+
+                var tier = effectCtx.Tier.Value;
+
+                switch (tier)
+                {
+                    case RollOutcomeTier.CriticalSuccess:
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 25.0);
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 30.0);
+                        // Create sand castle
+                        effectCtx.World.WorldItems.Add(new Items.SandCastleItem());
+                        break;
+
+                    case RollOutcomeTier.Success:
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 15.0);
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 20.0);
+                        // Create sand castle
+                        effectCtx.World.WorldItems.Add(new Items.SandCastleItem());
+                        break;
+
+                    case RollOutcomeTier.PartialSuccess:
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 5.0);
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 10.0);
+                        // Create sand castle
+                        effectCtx.World.WorldItems.Add(new Items.SandCastleItem());
+                        break;
+
+                    case RollOutcomeTier.Failure:
+                        effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 5.0);
+                        break;
+
+                    case RollOutcomeTier.CriticalFailure:
+                        effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 5.0);
+                        break;
+                }
+            })
+        ));
     }
 
     private void AddChatCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -412,112 +481,6 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 }
             })
         ));
-    }
-
-    private void AddCollectDriftwoodCandidate(IslandContext ctx, List<ActionCandidate> output)
-    {
-        var driftwoodStat = ctx.World.GetStat<Stats.DriftwoodAvailabilityStat>("driftwood_availability");
-        if (driftwoodStat == null || driftwoodStat.DriftwoodAvailable < 5.0)
-            return;
-
-        var sharedPile = ctx.World.SharedSupplyPile;
-        if (sharedPile == null)
-            return;
-
-        var currentWood = sharedPile.GetQuantity<Supply.WoodSupply>("wood");
-
-        // Calculate supply awareness based on Survival skill and WIS modifier
-        var survivalSkill = SurvivalSkill;
-        var wisdomMod = DndMath.AbilityModifier(WIS);
-        var supplyAwareness = (survivalSkill + wisdomMod) / 2.0;
-
-        // Determine base score based on current wood levels
-        double baseScore;
-        if (currentWood < 20.0)
-        {
-            var urgency = (20.0 - currentWood) / 20.0;
-            baseScore = 0.8 + (urgency * 0.4);
-        }
-        else if (currentWood < 50.0)
-        {
-            var concern = (50.0 - currentWood) / 30.0;
-            baseScore = 0.4 + (concern * 0.3);
-        }
-        else
-        {
-            baseScore = 0.3;
-        }
-
-        var foresightMultiplier = 1.0 + (supplyAwareness * 0.15);
-        baseScore *= foresightMultiplier;
-
-        var baseDC = driftwoodStat.DriftwoodAvailable < 20.0 ? 12 : 8;
-        var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
-        var duration = 25.0 + ctx.Random.NextDouble() * 10.0;
-
-        output.Add(new ActionCandidate(
-            new ActionSpec(
-                new ActionId("collect_driftwood"),
-                ActionKind.Interact,
-                parameters,
-                duration,
-                parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach")) }
-            ),
-            baseScore,
-            $"Collect driftwood (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-            EffectHandler: new Action<EffectContext>(effectCtx =>
-            {
-                if (effectCtx.Tier == null)
-                    return;
-
-                var tier = effectCtx.Tier.Value;
-                var driftStat = effectCtx.World.GetStat<Stats.DriftwoodAvailabilityStat>("driftwood_availability");
-                if (driftStat == null)
-                    return;
-
-                var pile = effectCtx.World.SharedSupplyPile;
-                if (pile == null)
-                    return;
-
-                double woodGained = tier switch
-                {
-                    RollOutcomeTier.CriticalSuccess => 15.0,
-                    RollOutcomeTier.Success => 10.0,
-                    RollOutcomeTier.PartialSuccess => 5.0,
-                    _ => 0.0
-                };
-
-                if (woodGained > 0)
-                {
-                    pile.AddSupply("wood", woodGained, id => new Supply.WoodSupply(id));
-                    driftStat.DriftwoodAvailable = Math.Max(0.0, driftStat.DriftwoodAvailable - woodGained);
-                    
-                    // Success effects
-                    effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 5.0);
-                    effectCtx.Actor.Boredom = Math.Max(0.0, effectCtx.Actor.Boredom - 3.0);
-                    effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 8.0);
-                }
-                else
-                {
-                    // Failure effects
-                    effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 5.0);
-                }
-
-                if (tier == RollOutcomeTier.CriticalFailure)
-                {
-                    effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 5.0);
-                }
-            })
-        ));
-    }
-
-    /// <summary>
-    /// Apply effects is not used for actor-level actions since they use inline effect handlers.
-    /// </summary>
-    public void ApplyEffects(EffectContext ctx)
-    {
-        // Not used - actor actions use inline effect handlers in AddCandidates
     }
 }
 

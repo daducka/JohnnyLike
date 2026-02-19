@@ -25,11 +25,9 @@ public class IslandDomainPack : IDomainPack
         sharedSupplies.AddSupply("wood", 20.0, id => new WoodSupply(id));
         world.WorldItems.Add(sharedSupplies);
         
-        // Add action candidate items (opportunities and resources)
+        // Add resource items
         world.WorldItems.Add(new CoconutTreeItem("palm_tree"));
-        world.WorldItems.Add(new SandCastleItem("sandcastle_opportunity"));
-        world.WorldItems.Add(new MermaidEncounterItem("mermaid_encounter_opportunity"));
-        world.WorldItems.Add(new PlaneSightingItem("plane_sighting_opportunity"));
+        world.WorldItems.Add(new DriftwoodPileItem("driftwood_pile"));
         
         // Initialize WorldStats
         world.WorldStats.Add(new Stats.TimeOfDayStat());

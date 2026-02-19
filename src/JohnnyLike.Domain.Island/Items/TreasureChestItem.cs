@@ -46,58 +46,56 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
             ),
             baseScore,
             $"Bash open treasure chest (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-            EffectHandler: new Action<EffectContext>(ApplyEffects)
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                if (effectCtx.Tier == null)
+                    return;
+
+                var tier = effectCtx.Tier.Value;
+
+                // Common effect: consume energy
+                effectCtx.Actor.Energy = Math.Max(0.0, effectCtx.Actor.Energy - 15.0);
+
+                // Success: open and remove chest, grant reward
+                if (tier >= RollOutcomeTier.Success)
+                {
+                    IsOpened = true;
+                    Health = 0.0;
+                    effectCtx.World.WorldItems.Remove(this);
+
+                    // Placeholder reward
+                    effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 20.0);
+
+                    if (effectCtx.Outcome.ResultData != null)
+                    {
+                        effectCtx.Outcome.ResultData["variant_id"] = "bash_chest_success";
+                        effectCtx.Outcome.ResultData["loot_placeholder"] = true;
+                    }
+                }
+                // Failure: damage chest, keep it in world
+                else
+                {
+                    double damage = tier switch
+                    {
+                        RollOutcomeTier.CriticalFailure => 40.0,
+                        RollOutcomeTier.PartialSuccess => 25.0,
+                        RollOutcomeTier.Failure => 15.0,
+                        _ => 0.0
+                    };
+
+                    Health = Math.Max(0.0, Health - damage);
+
+                    // Small morale penalty for failing
+                    effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 5.0);
+
+                    if (effectCtx.Outcome.ResultData != null)
+                    {
+                        effectCtx.Outcome.ResultData["variant_id"] = "bash_chest_failure";
+                        effectCtx.Outcome.ResultData["chest_health_after"] = Health;
+                    }
+                }
+            })
         ));
-    }
-
-    public void ApplyEffects(EffectContext ctx)
-    {
-        if (ctx.Tier == null)
-            return;
-
-        var tier = ctx.Tier.Value;
-
-        // Common effect: consume energy
-        ctx.Actor.Energy = Math.Max(0.0, ctx.Actor.Energy - 15.0);
-
-        // Success: open and remove chest, grant reward
-        if (tier >= RollOutcomeTier.Success)
-        {
-            IsOpened = true;
-            Health = 0.0;
-            ctx.World.WorldItems.Remove(this);
-
-            // Placeholder reward
-            ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 20.0);
-
-            if (ctx.Outcome.ResultData != null)
-            {
-                ctx.Outcome.ResultData["variant_id"] = "bash_chest_success";
-                ctx.Outcome.ResultData["loot_placeholder"] = true;
-            }
-        }
-        // Failure: damage chest, keep it in world
-        else
-        {
-            double damage = tier switch
-            {
-                RollOutcomeTier.CriticalFailure => 40.0,
-                RollOutcomeTier.PartialSuccess => 25.0,
-                RollOutcomeTier.Failure => 15.0,
-                _ => 0.0
-            };
-
-            Health = Math.Max(0.0, Health - damage);
-
-            // Small morale penalty for failing
-            ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 5.0);
-
-            if (ctx.Outcome.ResultData != null)
-            {
-                ctx.Outcome.ResultData["variant_id"] = "bash_chest_failure";
-                ctx.Outcome.ResultData["chest_health_after"] = Health;
-            }
-        }
     }
 
     public override Dictionary<string, object> SerializeToDict()

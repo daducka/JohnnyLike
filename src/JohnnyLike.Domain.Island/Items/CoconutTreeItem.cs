@@ -55,44 +55,42 @@ public class CoconutTreeItem : MaintainableWorldItem
             ),
             baseScore,
             $"Get coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-            EffectHandler: new Action<EffectContext>(ApplyEffects)
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                if (effectCtx.Tier == null)
+                    return;
+
+                var tier = effectCtx.Tier.Value;
+                var coconutStat = effectCtx.World.GetStat<CoconutAvailabilityStat>("coconut_availability");
+                if (coconutStat == null)
+                    return;
+
+                switch (tier)
+                {
+                    case RollOutcomeTier.CriticalSuccess:
+                        effectCtx.Actor.Hunger = Math.Max(0.0, effectCtx.Actor.Hunger - 25.0);
+                        coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
+                        effectCtx.Actor.Energy = Math.Min(100.0, effectCtx.Actor.Energy + 15.0);
+                        break;
+
+                    case RollOutcomeTier.Success:
+                        effectCtx.Actor.Hunger = Math.Max(0.0, effectCtx.Actor.Hunger - 15.0);
+                        coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
+                        effectCtx.Actor.Energy = Math.Min(100.0, effectCtx.Actor.Energy + 10.0);
+                        break;
+
+                    case RollOutcomeTier.PartialSuccess:
+                        effectCtx.Actor.Morale = Math.Min(100.0, effectCtx.Actor.Morale + 2.0);
+                        break;
+
+                    case RollOutcomeTier.Failure:
+                        break;
+
+                    case RollOutcomeTier.CriticalFailure:
+                        effectCtx.Actor.Morale = Math.Max(0.0, effectCtx.Actor.Morale - 5.0);
+                        break;
+                }
+            })
         ));
-    }
-
-    public override void ApplyEffects(EffectContext ctx)
-    {
-        if (ctx.Tier == null)
-            return;
-
-        var tier = ctx.Tier.Value;
-        var coconutStat = ctx.World.GetStat<CoconutAvailabilityStat>("coconut_availability");
-        if (coconutStat == null)
-            return;
-
-        switch (tier)
-        {
-            case RollOutcomeTier.CriticalSuccess:
-                ctx.Actor.Hunger = Math.Max(0.0, ctx.Actor.Hunger - 25.0);
-                coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
-                ctx.Actor.Energy = Math.Min(100.0, ctx.Actor.Energy + 15.0);
-                break;
-
-            case RollOutcomeTier.Success:
-                ctx.Actor.Hunger = Math.Max(0.0, ctx.Actor.Hunger - 15.0);
-                coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
-                ctx.Actor.Energy = Math.Min(100.0, ctx.Actor.Energy + 10.0);
-                break;
-
-            case RollOutcomeTier.PartialSuccess:
-                ctx.Actor.Morale = Math.Min(100.0, ctx.Actor.Morale + 2.0);
-                break;
-
-            case RollOutcomeTier.Failure:
-                break;
-
-            case RollOutcomeTier.CriticalFailure:
-                ctx.Actor.Morale = Math.Max(0.0, ctx.Actor.Morale - 5.0);
-                break;
-        }
     }
 }

@@ -41,16 +41,6 @@ public abstract class MaintainableWorldItem : WorldItem, IIslandActionCandidate
         // Concrete items override this to provide their specific candidates
     }
 
-    /// <summary>
-    /// Apply the effects of a completed action. Default implementation does nothing.
-    /// Override to handle item-specific effect application.
-    /// </summary>
-    public virtual void ApplyEffects(EffectContext ctx)
-    {
-        // Default implementation has no effects to apply
-        // Concrete items override this to apply their specific effects
-    }
-
     public override Dictionary<string, object> SerializeToDict()
     {
         var dict = base.SerializeToDict();
