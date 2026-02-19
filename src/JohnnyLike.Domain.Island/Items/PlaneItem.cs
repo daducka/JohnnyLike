@@ -1,7 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Kit.Dice;
-using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island.Items;
 
@@ -9,26 +8,13 @@ namespace JohnnyLike.Domain.Island.Items;
 /// Represents a plane flying overhead.
 /// Provides "Try to Signal Plane" action (which currently always fails) and sticks around for a limited time.
 /// </summary>
-public class PlaneItem : MaintainableWorldItem
+public class PlaneItem : ExpirableWorldItem
 {
     private static readonly ResourceId BeachOpenArea = new("island:resource:beach:open_area");
     
-    public double ExpiresAt { get; set; } = 0.0;
-    
     public PlaneItem(string id = "plane")
-        : base(id, "plane", baseDecayPerSecond: 0.0)
+        : base(id, "plane")
     {
-    }
-
-    public override void Tick(double dtSeconds, IslandWorldState world)
-    {
-        base.Tick(dtSeconds, world);
-        
-        // Mark as expired when time is up
-        if (world.CurrentTime >= ExpiresAt)
-        {
-            IsExpired = true;
-        }
     }
 
     public override void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -66,18 +52,5 @@ public class PlaneItem : MaintainableWorldItem
                 }
             })
         ));
-    }
-
-    public override Dictionary<string, object> SerializeToDict()
-    {
-        var dict = base.SerializeToDict();
-        dict["ExpiresAt"] = ExpiresAt;
-        return dict;
-    }
-
-    public override void DeserializeFromDict(Dictionary<string, JsonElement> data)
-    {
-        base.DeserializeFromDict(data);
-        ExpiresAt = data["ExpiresAt"].GetDouble();
     }
 }

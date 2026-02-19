@@ -1,7 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Kit.Dice;
-using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island.Items;
 
@@ -9,26 +8,13 @@ namespace JohnnyLike.Domain.Island.Items;
 /// Represents a mermaid at the shore.
 /// Provides "Wave at Mermaid" action and sticks around for a limited time before leaving.
 /// </summary>
-public class MermaidItem : MaintainableWorldItem
+public class MermaidItem : ExpirableWorldItem
 {
     private static readonly ResourceId ShoreEastEnd = new("island:resource:shore:east_end");
     
-    public double ExpiresAt { get; set; } = 0.0;
-    
     public MermaidItem(string id = "mermaid")
-        : base(id, "mermaid", baseDecayPerSecond: 0.0)
+        : base(id, "mermaid")
     {
-    }
-
-    public override void Tick(double dtSeconds, IslandWorldState world)
-    {
-        base.Tick(dtSeconds, world);
-        
-        // Mark as expired when time is up
-        if (world.CurrentTime >= ExpiresAt)
-        {
-            IsExpired = true;
-        }
     }
 
     public override void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -76,18 +62,5 @@ public class MermaidItem : MaintainableWorldItem
                 }
             })
         ));
-    }
-
-    public override Dictionary<string, object> SerializeToDict()
-    {
-        var dict = base.SerializeToDict();
-        dict["ExpiresAt"] = ExpiresAt;
-        return dict;
-    }
-
-    public override void DeserializeFromDict(Dictionary<string, JsonElement> data)
-    {
-        base.DeserializeFromDict(data);
-        ExpiresAt = data["ExpiresAt"].GetDouble();
     }
 }
