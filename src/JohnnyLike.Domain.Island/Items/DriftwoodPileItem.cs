@@ -9,17 +9,17 @@ namespace JohnnyLike.Domain.Island.Items;
 /// <summary>
 /// Represents a pile of driftwood on the beach that can be collected.
 /// </summary>
-public class DriftwoodPileItem : MaintainableWorldItem
+public class DriftwoodPileItem : WorldItem, IIslandActionCandidate
 {
     private static readonly ResourceId BeachResource = new("island:resource:beach");
 
     public DriftwoodPileItem(string id = "driftwood_pile")
-        : base(id, "driftwood_pile", baseDecayPerSecond: 0.0)
+        : base(id, "driftwood_pile")
     {
         // Driftwood pile doesn't decay
     }
 
-    public override void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
+    public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
         var driftwoodStat = ctx.World.GetStat<DriftwoodAvailabilityStat>("driftwood_availability");
         if (driftwoodStat == null || driftwoodStat.DriftwoodAvailable < 5.0)

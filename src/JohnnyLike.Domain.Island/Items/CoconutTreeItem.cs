@@ -8,17 +8,17 @@ namespace JohnnyLike.Domain.Island.Items;
 /// <summary>
 /// Represents a coconut palm tree that can be shaken for coconuts.
 /// </summary>
-public class CoconutTreeItem : MaintainableWorldItem
+public class CoconutTreeItem : WorldItem, IIslandActionCandidate
 {
     private static readonly ResourceId PalmTreeResource = new("island:resource:palm_tree");
 
     public CoconutTreeItem(string id = "palm_tree")
-        : base(id, "palm_tree", baseDecayPerSecond: 0.0)
+        : base(id, "palm_tree")
     {
         // Trees don't decay
     }
 
-    public override void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
+    public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
         var coconutStat = ctx.World.GetStat<CoconutAvailabilityStat>("coconut_availability");
         if (coconutStat == null || coconutStat.CoconutsAvailable < 1)

@@ -78,19 +78,19 @@ public class IslandDomainPack : IDomainPack
         Random rng,
         IResourceAvailability resourceAvailability)
     {
-        var islandState = (IslandActorState)actorState;
+        var islandActorState = (IslandActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
         var rngStream = new RandomRngStream(rng);
 
         // Note: World state time advancement is now handled by TickWorldState in Engine.AdvanceTime
         // No need to call OnTimeAdvanced here
 
-        islandState.ActiveBuffs.RemoveAll(b => b.ExpiresAt <= currentTime);
+        islandActorState.ActiveBuffs.RemoveAll(b => b.ExpiresAt <= currentTime);
 
         // Create context for providers
         var ctx = new IslandContext(
             actorId,
-            islandState,
+            islandActorState,
             islandWorld,
             currentTime,
             rngStream,
@@ -108,7 +108,7 @@ public class IslandDomainPack : IDomainPack
         }
         
         // Generate candidates from the actor itself (e.g., idle action)
-        islandState.AddCandidates(ctx, candidates);
+        islandActorState.AddCandidates(ctx, candidates);
 
         return candidates;
     }
@@ -122,16 +122,16 @@ public class IslandDomainPack : IDomainPack
         IResourceAvailability resourceAvailability,
         object? effectHandler = null)
     {
-        var islandState = (IslandActorState)actorState;
+        var islandActorState = (IslandActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
 
         // Note: World state time advancement is now handled by TickWorldState in Engine.AdvanceTime
         // This method only applies action-specific effects and actor passive decay
 
         // Apply passive actor decay based on action duration
-        islandState.Hunger = Math.Min(100.0, islandState.Hunger + outcome.ActualDuration * 0.5);
-        islandState.Energy = Math.Max(0.0, islandState.Energy - outcome.ActualDuration * 0.3);
-        islandState.Boredom = Math.Min(100.0, islandState.Boredom + outcome.ActualDuration * 0.4);
+        islandActorState.Hunger = Math.Min(100.0, islandActorState.Hunger + outcome.ActualDuration * 0.5);
+        islandActorState.Energy = Math.Max(0.0, islandActorState.Energy - outcome.ActualDuration * 0.3);
+        islandActorState.Boredom = Math.Min(100.0, islandActorState.Boredom + outcome.ActualDuration * 0.4);
 
         if (outcome.Type != ActionOutcomeType.Success)
         {
@@ -144,7 +144,7 @@ public class IslandDomainPack : IDomainPack
         {
             ActorId = actorId,
             Outcome = outcome,
-            Actor = islandState,
+            Actor = islandActorState,
             World = islandWorld,
             Tier = GetTierFromOutcome(outcome),
             Rng = rng,
@@ -190,8 +190,8 @@ public class IslandDomainPack : IDomainPack
             return;
         }
 
-        var islandState = targetActor as IslandActorState;
-        if (islandState == null)
+        var islandActorState = targetActor as IslandActorState;
+        if (islandActorState == null)
         {
             return;
         }
@@ -201,11 +201,11 @@ public class IslandDomainPack : IDomainPack
         switch (signal.Type)
         {
             case "chat_redeem":
-                HandleChatRedeem(signal, islandState, currentTime);
+                HandleChatRedeem(signal, islandActorState, currentTime);
                 break;
             case "sub":
             case "cheer":
-                HandleSubOrCheer(signal, islandState, currentTime);
+                HandleSubOrCheer(signal, islandActorState, currentTime);
                 break;
         }
     }
@@ -254,19 +254,19 @@ public class IslandDomainPack : IDomainPack
 
     public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState)
     {
-        var islandState = (IslandActorState)actorState;
+        var islandActorState = (IslandActorState)actorState;
         var snapshot = new Dictionary<string, object>
         {
-            ["hunger"] = islandState.Hunger,
-            ["energy"] = islandState.Energy,
-            ["morale"] = islandState.Morale,
-            ["boredom"] = islandState.Boredom
+            ["hunger"] = islandActorState.Hunger,
+            ["energy"] = islandActorState.Energy,
+            ["morale"] = islandActorState.Morale,
+            ["boredom"] = islandActorState.Boredom
         };
         
-        if (islandState.ActiveBuffs.Count > 0)
+        if (islandActorState.ActiveBuffs.Count > 0)
         {
             snapshot["active_buffs"] = string.Join(", ", 
-                islandState.ActiveBuffs.Select(b => $"{b.Name}({b.ExpiresAt:F1})"));
+                islandActorState.ActiveBuffs.Select(b => $"{b.Name}({b.ExpiresAt:F1})"));
         }
         
         return snapshot;
