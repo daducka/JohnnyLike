@@ -150,7 +150,7 @@ public class ShelterItem : ToolItem
         {
             var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 45.0 : 30.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
-            ctx.Actor.Morale += 18.0;
+            ctx.Actor.Morale += 8.0;
         }
     }
 
@@ -164,7 +164,7 @@ public class ShelterItem : ToolItem
         if (tier >= RollOutcomeTier.Success)
         {
             Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 85.0;
-            ctx.Actor.Morale += 45.0;
+            ctx.Actor.Morale += 20.0;
         }
     }
 }

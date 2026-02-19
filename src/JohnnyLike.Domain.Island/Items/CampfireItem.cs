@@ -193,7 +193,7 @@ public class CampfireItem : ToolItem
         {
             IsLit = true;
             FuelSeconds = tier == RollOutcomeTier.CriticalSuccess ? 1800.0 : 1200.0;
-            ctx.Actor.Morale += 18.0;
+            ctx.Actor.Morale += 10.0;
         }
     }
 
@@ -225,7 +225,7 @@ public class CampfireItem : ToolItem
             Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 80.0;
             IsLit = true;
             FuelSeconds = 1800.0;
-            ctx.Actor.Morale += 35.0;
+            ctx.Actor.Morale += 15.0;
         }
     }
 

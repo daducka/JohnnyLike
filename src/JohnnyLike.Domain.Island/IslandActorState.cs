@@ -250,25 +250,24 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
-                        effectCtx.Actor.Morale += 55.0;
+                        effectCtx.Actor.Morale += 25.0;
                         // Create sand castle
                         effectCtx.World.WorldItems.Add(new Items.SandCastleItem());
                         break;
 
                     case RollOutcomeTier.Success:
-                        effectCtx.Actor.Morale += 35.0;
-                        // Create sand castle
-                        effectCtx.World.WorldItems.Add(new Items.SandCastleItem());
-                        break;
-
-                    case RollOutcomeTier.PartialSuccess:
                         effectCtx.Actor.Morale += 15.0;
                         // Create sand castle
                         effectCtx.World.WorldItems.Add(new Items.SandCastleItem());
                         break;
 
-                    case RollOutcomeTier.Failure:
+                    case RollOutcomeTier.PartialSuccess:
                         effectCtx.Actor.Morale += 5.0;
+                        // Create sand castle
+                        effectCtx.World.WorldItems.Add(new Items.SandCastleItem());
+                        break;
+
+                    case RollOutcomeTier.Failure:
                         break;
 
                     case RollOutcomeTier.CriticalFailure:
@@ -313,7 +312,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                                 effectCtx.Actor.PendingChatActions.Dequeue();
                             }
                             
-                            effectCtx.Actor.Morale += 25.0;
+                            effectCtx.Actor.Morale += 10.0;
                         })
                     ));
                 }
@@ -358,7 +357,6 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 effectCtx.Actor.Energy += 40.0;
-                effectCtx.Actor.Morale += 5.0;
             }),
             Qualities: new Dictionary<QualityType, double>
             {
@@ -407,7 +405,6 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                     case RollOutcomeTier.CriticalSuccess:
                         effectCtx.Actor.Morale += 20.0;
                         effectCtx.Actor.Energy -= 5.0;
-                        effectCtx.Actor.Morale += 15.0;
                         
                         // Spawn treasure chest if not already present
                         if (effectCtx.World.TreasureChest == null)
@@ -431,13 +428,11 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                     case RollOutcomeTier.Success:
                         effectCtx.Actor.Morale += 10.0;
                         effectCtx.Actor.Energy -= 10.0;
-                        effectCtx.Actor.Morale += 10.0;
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
                         effectCtx.Actor.Morale += 3.0;
                         effectCtx.Actor.Energy -= 15.0;
-                        effectCtx.Actor.Morale += 5.0;
                         break;
 
                     case RollOutcomeTier.Failure:

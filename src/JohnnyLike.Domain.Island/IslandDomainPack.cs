@@ -110,16 +110,42 @@ public class IslandDomainPack : IDomainPack
         islandActorState.AddCandidates(ctx, candidates);
 
         // Post-pass: compute final Score from IntrinsicScore and Quality weights
-        var weights = BuildQualityWeights(ctx);
+        var model = BuildQualityModel(ctx);
         for (var i = 0; i < candidates.Count; i++)
         {
-            candidates[i] = candidates[i] with { Score = ScoreCandidate(candidates[i], weights) };
+            candidates[i] = candidates[i] with { Score = ScoreCandidate(candidates[i], model) };
         }
 
         return candidates;
     }
 
-    private static Dictionary<QualityType, double> BuildQualityWeights(IslandContext ctx)
+    /// <summary>
+    /// Encapsulates the three scoring influences — Needs, Personality, Mood — as separate
+    /// dictionaries so each can be tuned independently.
+    /// Effective weight = needAdd[q] + personalityBase[q] * moodMultiplier[q]
+    /// </summary>
+    /// <param name="NeedAdd">Additive urgency from current deficits (e.g., satiety/energy). Independent of personality.</param>
+    /// <param name="PersonalityBase">Stable baseline tendency derived from core stats (e.g., WIS/INT proactive trait).</param>
+    /// <param name="MoodMultiplier">Multiplicative modulation from current affect state — suppresses or amplifies personality tendencies.</param>
+    private sealed record QualityModel(
+        Dictionary<QualityType, double> NeedAdd,
+        Dictionary<QualityType, double> PersonalityBase,
+        Dictionary<QualityType, double> MoodMultiplier)
+    {
+        /// <summary>
+        /// Computes the effective weight for a quality dimension.
+        /// Missing keys default to 0.0, meaning no contribution from that influence.
+        /// </summary>
+        public double EffectiveWeight(QualityType q)
+        {
+            NeedAdd.TryGetValue(q, out var need);
+            PersonalityBase.TryGetValue(q, out var personality);
+            MoodMultiplier.TryGetValue(q, out var mood);
+            return need + personality * mood;
+        }
+    }
+
+    private static QualityModel BuildQualityModel(IslandContext ctx)
     {
         var actor = ctx.Actor;
         var satietyDeficit = (100.0 - actor.Satiety) / 100.0;
@@ -127,27 +153,39 @@ public class IslandDomainPack : IDomainPack
         var moraleFactor = actor.Morale / 100.0;
         var proactiveTrait = Math.Clamp(((actor.WIS + actor.INT) - 20.0) / 20.0, 0.0, 1.0);
 
-        return new Dictionary<QualityType, double>
+        // Needs: immediate urgency from deficits — additive, independent of personality
+        var needAdd = new Dictionary<QualityType, double>
         {
-            [QualityType.Rest] = energyDeficit * 1.5,
+            [QualityType.Rest]            = energyDeficit * 1.5,
             [QualityType.FoodConsumption] = satietyDeficit * 2.0,
-            [QualityType.ForwardPlanning] = proactiveTrait * 0.8 * (0.3 + 0.7 * moraleFactor),
-            [QualityType.Fun] = (1.0 - moraleFactor),
-            [QualityType.Safety] = 0.3
+            [QualityType.Safety]          = 0.3
         };
+
+        // Personality: stable baseline tendency derived from core stats
+        var personalityBase = new Dictionary<QualityType, double>
+        {
+            [QualityType.ForwardPlanning] = proactiveTrait * 0.8,
+            [QualityType.Fun]             = 1.0
+        };
+
+        // Mood: multiplicative modulation — suppresses or amplifies personality tendencies
+        var moodMultiplier = new Dictionary<QualityType, double>
+        {
+            [QualityType.ForwardPlanning] = 0.3 + 0.7 * moraleFactor,  // suppressed when morale is low
+            [QualityType.Fun]             = 1.0 - moraleFactor           // amplified when morale is low
+        };
+
+        return new QualityModel(needAdd, personalityBase, moodMultiplier);
     }
 
-    private static double ScoreCandidate(ActionCandidate candidate, Dictionary<QualityType, double> weights)
+    private static double ScoreCandidate(ActionCandidate candidate, QualityModel model)
     {
         if (candidate.Qualities == null || candidate.Qualities.Count == 0)
             return candidate.IntrinsicScore;
 
         var qualitySum = 0.0;
         foreach (var (quality, value) in candidate.Qualities)
-        {
-            if (weights.TryGetValue(quality, out var weight))
-                qualitySum += weight * value;
-        }
+            qualitySum += model.EffectiveWeight(quality) * value;
         return candidate.IntrinsicScore + qualitySum;
     }
 
