@@ -23,8 +23,7 @@ public class IslandScenarioTests
             ["CHA"] = 15,
             ["satiety"] = 70.0,
             ["energy"] = 80.0,
-            ["morale"] = 60.0,
-            ["boredom"] = 20.0
+            ["morale"] = 60.0
         });
 
         var executor = new FakeExecutor(engine);

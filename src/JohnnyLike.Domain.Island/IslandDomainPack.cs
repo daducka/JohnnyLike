@@ -53,8 +53,7 @@ public class IslandDomainPack : IDomainPack
             CHA = (int)(initialData?.GetValueOrDefault("CHA", 10) ?? 10),
             Satiety = (double)(initialData?.GetValueOrDefault("satiety", 100.0) ?? 100.0),
             Energy = (double)(initialData?.GetValueOrDefault("energy", 100.0) ?? 100.0),
-            Morale = (double)(initialData?.GetValueOrDefault("morale", 50.0) ?? 50.0),
-            Boredom = (double)(initialData?.GetValueOrDefault("boredom", 0.0) ?? 0.0)
+            Morale = (double)(initialData?.GetValueOrDefault("morale", 50.0) ?? 50.0)
         };
         return state;
     }
@@ -126,7 +125,6 @@ public class IslandDomainPack : IDomainPack
         var satietyDeficit = (100.0 - actor.Satiety) / 100.0;
         var energyDeficit = (100.0 - actor.Energy) / 100.0;
         var moraleFactor = actor.Morale / 100.0;
-        var boredomFactor = actor.Boredom / 100.0;
         var proactiveTrait = Math.Clamp(((actor.WIS + actor.INT) - 20.0) / 20.0, 0.0, 1.0);
 
         return new Dictionary<QualityType, double>
@@ -134,7 +132,7 @@ public class IslandDomainPack : IDomainPack
             [QualityType.Rest] = energyDeficit * 1.5,
             [QualityType.FoodConsumption] = satietyDeficit * 2.0,
             [QualityType.ForwardPlanning] = proactiveTrait * 0.8 * (0.3 + 0.7 * moraleFactor),
-            [QualityType.Fun] = boredomFactor * 1.0,
+            [QualityType.Fun] = (1.0 - moraleFactor),
             [QualityType.Safety] = 0.3
         };
     }
@@ -171,7 +169,7 @@ public class IslandDomainPack : IDomainPack
         // Apply passive actor decay based on action duration
         islandActorState.Satiety -= outcome.ActualDuration * 0.5;
         islandActorState.Energy -= outcome.ActualDuration * 0.3;
-        islandActorState.Boredom += outcome.ActualDuration * 0.4;
+        islandActorState.Morale -= outcome.ActualDuration * 0.4;
 
         if (outcome.Type != ActionOutcomeType.Success)
         {
@@ -299,8 +297,7 @@ public class IslandDomainPack : IDomainPack
         {
             ["satiety"] = islandActorState.Satiety,
             ["energy"] = islandActorState.Energy,
-            ["morale"] = islandActorState.Morale,
-            ["boredom"] = islandActorState.Boredom
+            ["morale"] = islandActorState.Morale
         };
         
         if (islandActorState.ActiveBuffs.Count > 0)

@@ -66,8 +66,7 @@ public class FuzzRunner
                         ["CHA"] = rng.Next(8, 16),
                         ["satiety"] = (double)rng.Next(50, 100),
                         ["energy"] = (double)rng.Next(60, 100),
-                        ["morale"] = (double)rng.Next(30, 70),
-                        ["boredom"] = (double)rng.Next(0, 40)
+                        ["morale"] = (double)rng.Next(30, 70)
                     };
                 }
                 else

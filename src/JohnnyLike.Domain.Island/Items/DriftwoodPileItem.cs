@@ -100,7 +100,7 @@ public class DriftwoodPileItem : WorldItem, IIslandActionCandidate
                     
                     // Success effects
                     effectCtx.Actor.Morale += 5.0;
-                    effectCtx.Actor.Boredom -= 3.0;
+                    effectCtx.Actor.Morale += 3.0;
                     effectCtx.Actor.Energy -= 8.0;
                 }
                 else

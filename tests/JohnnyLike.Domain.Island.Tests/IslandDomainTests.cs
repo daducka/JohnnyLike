@@ -373,14 +373,14 @@ public class IslandActorStateTests
 public class IslandActionEffectsTests
 {
     [Fact]
-    public void ApplyActionEffects_FishingSuccess_ReducesBoredom()
+    public void ApplyActionEffects_FishingSuccess_IncreaseMorale()
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
         var actorState = new IslandActorState
         {
             Id = actorId,
-            Boredom = 10.0,  // Start with low boredom
+            Morale = 50.0,
             CurrentAction = new ActionSpec(
                 new ActionId("go_fishing"),
                 ActionKind.Interact,
@@ -413,9 +413,9 @@ public class IslandActionEffectsTests
         var rng = new RandomRngStream(new Random(42));
         domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability(), fishingCandidate.EffectHandler);
         
-        // Boredom should increase from passive decay (15 * 0.4 = 6) but be reduced by effect (-5)
-        // Net: 10 + 6 - 5 = 11
-        Assert.True(actorState.Boredom < 15.0, $"Expected boredom < 15, got {actorState.Boredom}");
+        // Morale decreases from passive decay (15 * 0.4 = 6) but is partially offset by fishing effect (+5 on Success)
+        // Net: 50 - 6 + 5 = 49 — fishing counteracts most of the decay vs. not fishing (50 - 6 = 44)
+        Assert.True(actorState.Morale > 44.0, $"Expected morale > 44 (fishing should offset some morale decay), got {actorState.Morale}");
     }
 
     [Fact]
@@ -493,7 +493,7 @@ public class IslandActionEffectsTests
             Id = actorId,
             Satiety = 70.0,
             Energy = 80.0,
-            Boredom = 20.0
+            Morale = 50.0
         };
         var worldState = new IslandWorldState();
         
@@ -509,7 +509,7 @@ public class IslandActionEffectsTests
         
         Assert.True(actorState.Satiety < 70.0);
         Assert.True(actorState.Energy < 80.0);
-        Assert.True(actorState.Boredom > 20.0);
+        Assert.True(actorState.Morale < 50.0);
     }
 }
 
@@ -775,8 +775,7 @@ public class IslandDeterminismTests
             ["CHA"] = 8,
             ["satiety"] = 40.0,
             ["energy"] = 70.0,
-            ["morale"] = 50.0,
-            ["boredom"] = 30.0
+            ["morale"] = 50.0
         });
 
         var executor = new FakeExecutor(engine);
@@ -886,7 +885,6 @@ public class IslandCooldownSerializationTests
             Satiety = 50.0,
             Energy = 75.0,
             Morale = 60.0,
-            Boredom = 20.0,
             LastPlaneSightingTime = 100.0,
             LastMermaidEncounterTime = 200.0
         };
