@@ -135,11 +135,6 @@ public class FishingPoleItem : ToolItem
             var sharedPile = ctx.World.SharedSupplyPile;
             if (sharedPile != null)
                 sharedPile.AddSupply("fish", fishCount, id => new Supply.FishSupply(id));
-
-            // Reduce the fish population stat
-            var fishStat = ctx.World.GetStat<Stats.FishPopulationStat>("fish_population");
-            if (fishStat != null)
-                fishStat.FishAvailable = Math.Max(0.0, fishStat.FishAvailable - fishCount);
         }
     }
 

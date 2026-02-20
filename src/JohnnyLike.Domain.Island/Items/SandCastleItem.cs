@@ -1,6 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
-using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 using System.Text.Json;
 
@@ -25,16 +24,16 @@ public class SandCastleItem : MaintainableWorldItem
         // Calculate decay rate based on environmental conditions
         var decayRate = BaseDecayPerSecond;
         
-        // Decay much faster in rain
-        var weatherStat = world.GetStat<WeatherStat>("weather");
-        if (weatherStat?.Weather == Weather.Rainy)
+        // Decay faster in cold weather
+        var weather = world.GetItem<WeatherItem>("weather");
+        if (weather?.Temperature == TemperatureBand.Cold)
         {
-            decayRate *= 5.0; // 5x faster decay in rain
+            decayRate *= 5.0; // 5x faster decay in cold weather
         }
         
         // Decay faster at high tide
-        var tideStat = world.GetStat<TideStat>("tide");
-        if (tideStat?.TideLevel == TideLevel.High)
+        var beach = world.GetItem<BeachItem>("beach");
+        if (beach?.Tide == TideLevel.High)
         {
             decayRate *= 3.0; // 3x faster decay at high tide
         }

@@ -2,7 +2,6 @@ using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
-using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -127,66 +126,39 @@ public class ShelterItemTests
     {
         var shelter = new ShelterItem();
         var world = new IslandWorldState();
-        world.WorldStats.Add(new WeatherStat { Weather = Weather.Clear });
-        
+
         var initialQuality = shelter.Quality;
         shelter.Tick(100.0, world);
-        
+
         Assert.True(shelter.Quality < initialQuality);
     }
 
     [Fact]
-    public void ShelterItem_DecaysFasterInRainyWeather()
+    public void ShelterItem_DecaysFasterInColdWeather()
     {
-        var shelterClear = new ShelterItem();
-        var shelterRainy = new ShelterItem();
-        
-        var worldClear = new IslandWorldState();
-        worldClear.WorldStats.Add(new Stats.WeatherStat { Weather = Weather.Clear });
-        
-        var worldRainy = new IslandWorldState();
-        worldRainy.WorldStats.Add(new Stats.WeatherStat { Weather = Weather.Rainy });
-        
-        shelterClear.Tick(100.0, worldClear);
-        shelterRainy.Tick(100.0, worldRainy);
-        
-        Assert.True(shelterRainy.Quality < shelterClear.Quality);
+        var shelterWarm = new ShelterItem();
+        var shelterCold = new ShelterItem();
+
+        var worldWarm = new IslandWorldState();
+        worldWarm.WorldItems.Add(new WeatherItem("weather") { Temperature = TemperatureBand.Hot });
+
+        var worldCold = new IslandWorldState();
+        worldCold.WorldItems.Add(new WeatherItem("weather") { Temperature = TemperatureBand.Cold });
+
+        shelterWarm.Tick(100.0, worldWarm);
+        shelterCold.Tick(100.0, worldCold);
+
+        Assert.True(shelterCold.Quality < shelterWarm.Quality);
     }
 
-    [Fact]
+    [Fact(Skip = "Windy weather no longer exists in the new weather system (Hot/Cold only)")]
     public void ShelterItem_DecaysFasterInWindyWeather()
     {
-        var shelterClear = new ShelterItem();
-        var shelterWindy = new ShelterItem();
-        
-        var worldClear = new IslandWorldState();
-        worldClear.WorldStats.Add(new Stats.WeatherStat { Weather = Weather.Clear });
-        
-        var worldWindy = new IslandWorldState();
-        worldWindy.WorldStats.Add(new Stats.WeatherStat { Weather = Weather.Windy });
-        
-        shelterClear.Tick(100.0, worldClear);
-        shelterWindy.Tick(100.0, worldWindy);
-        
-        Assert.True(shelterWindy.Quality < shelterClear.Quality);
     }
 
-    [Fact]
+    [Fact(Skip = "Windy weather no longer exists in the new weather system (Hot/Cold only)")]
     public void ShelterItem_RainyWeatherDecaysFasterThanWindy()
     {
-        var shelterWindy = new ShelterItem();
-        var shelterRainy = new ShelterItem();
-        
-        var worldWindy = new IslandWorldState();
-        worldWindy.WorldStats.Add(new Stats.WeatherStat { Weather = Weather.Windy });
-        
-        var worldRainy = new IslandWorldState();
-        worldRainy.WorldStats.Add(new Stats.WeatherStat { Weather = Weather.Rainy });
-        
-        shelterWindy.Tick(100.0, worldWindy);
-        shelterRainy.Tick(100.0, worldRainy);
-        
-        Assert.True(shelterRainy.Quality < shelterWindy.Quality);
     }
 }
 
@@ -197,11 +169,13 @@ public class IslandWorldStateItemIntegrationTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
-        
-        Assert.NotNull(world.MainCampfire);
+
+        // New initial state: CalendarItem, WeatherItem, BeachItem, CoconutTreeItem, ShelterItem, SupplyPile
         Assert.NotNull(world.MainShelter);
         Assert.NotNull(world.SharedSupplyPile);
-        Assert.Equal(5, world.WorldItems.Count); // Campfire, Shelter, SharedSupplyPile, CoconutTree, DriftwoodPile
+        Assert.NotNull(world.GetItem<CalendarItem>("calendar"));
+        Assert.NotNull(world.GetItem<WeatherItem>("weather"));
+        Assert.NotNull(world.GetItem<BeachItem>("beach"));
     }
 
     [Fact]
@@ -209,7 +183,8 @@ public class IslandWorldStateItemIntegrationTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
-        
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
+
         var campfire = world.MainCampfire!;
         var shelter = world.MainShelter!;
         

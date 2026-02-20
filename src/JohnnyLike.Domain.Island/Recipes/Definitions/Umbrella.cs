@@ -1,13 +1,12 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Items;
-using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Island.Supply;
 
 namespace JohnnyLike.Domain.Island.Recipes.Definitions;
 
 /// <summary>
 /// Recipe: craft an umbrella from sticks and palm fronds.
-/// Discoverable when it is raining and both materials are available.
+/// Discoverable when it is cold and both materials are available.
 /// </summary>
 public static class Umbrella
 {
@@ -73,9 +72,9 @@ public static class Umbrella
 
                 CanDiscover = (actor, world) =>
                 {
-                    var weather = world.GetStat<WeatherStat>("weather");
+                    var weather = world.GetItem<WeatherItem>("weather");
 
-                    if (weather?.Weather != Weather.Rainy)
+                    if (weather?.Temperature != TemperatureBand.Cold)
                         return false;
 
                     var pile = world.SharedSupplyPile;

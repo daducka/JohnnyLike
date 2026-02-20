@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
-using JohnnyLike.Domain.Island.Stats;
+using JohnnyLike.Domain.Island;
+using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Island.Supply;
 using Xunit;
 
@@ -69,80 +70,19 @@ public class SupplySystemTests
         Assert.Equal(25.0, newPile.GetQuantity<WoodSupply>("wood"));
     }
 
-    [Fact]
+    [Fact(Skip = "DriftwoodAvailabilityStat has been removed; driftwood is now tracked via BeachItem.Bounty")]
     public void DriftwoodAvailabilityStat_ReplenishesOverTime()
     {
-        var world = new IslandWorldState();
-        world.WorldStats.Add(new Stats.TimeOfDayStat());
-        world.WorldStats.Add(new Stats.WeatherStat());
-        world.WorldStats.Add(new Stats.TideStat());
-        var driftwoodStat = new DriftwoodAvailabilityStat();
-        driftwoodStat.DriftwoodAvailable = 40.0;
-        world.WorldStats.Add(driftwoodStat);
-        
-        // Advance time by 60 seconds (1 minute) at normal tide/weather
-        world.OnTimeAdvanced(60.0, 60.0);
-        
-        // Base rate: 0.5 per minute, so should increase by 0.5
-        Assert.True(driftwoodStat.DriftwoodAvailable >= 40.5);
     }
 
-    [Fact]
+    [Fact(Skip = "DriftwoodAvailabilityStat has been removed; driftwood is now tracked via BeachItem.Bounty")]
     public void DriftwoodAvailabilityStat_HighTide_IncreasesReplenishmentRate()
     {
-        var world = new IslandWorldState();
-        var timeStat = new Stats.TimeOfDayStat();
-        timeStat.TimeOfDay = 0.75; // Set time to ensure high tide (tidePhase = (0.75 * 24) % 12 = 18 % 12 = 6)
-        world.WorldStats.Add(timeStat);
-        world.WorldStats.Add(new Stats.WeatherStat());
-        world.WorldStats.Add(new Stats.TideStat());
-        
-        var driftwoodStat = new DriftwoodAvailabilityStat();
-        driftwoodStat.DriftwoodAvailable = 40.0;
-        world.WorldStats.Add(driftwoodStat);
-        
-        // First tick to set up tide state
-        world.OnTimeAdvanced(0.0, 0.1);
-        var initialDriftwood = driftwoodStat.DriftwoodAvailable;
-        
-        // Verify we're at high tide
-        var tideStat = world.GetStat<Stats.TideStat>("tide")!;
-        Assert.Equal(TideLevel.High, tideStat.TideLevel);
-        
-        // Advance time by 60 seconds (1 minute)
-        world.OnTimeAdvanced(60.0, 60.0);
-        
-        // At high tide, rate is 2x: 0.5 * 2 = 1.0 per minute
-        // So we expect at least 0.9 wood added
-        var increase = driftwoodStat.DriftwoodAvailable - initialDriftwood;
-        Assert.True(increase >= 0.9, $"Expected at least 0.9 increase, got {increase}");
     }
 
-    [Fact]
+    [Fact(Skip = "DriftwoodPileItem has been removed; wood collection now happens via BeachItem.AddCandidates")]
     public void CollectDriftwood_AddsWoodToSharedPile()
     {
-        var domain = new IslandDomainPack();
-        var world = (IslandWorldState)domain.CreateInitialWorldState();
-        var actor = (IslandActorState)domain.CreateActorState(new ActorId("test_actor"));
-        
-        // Set up initial conditions
-        var driftwoodStat = world.GetStat<DriftwoodAvailabilityStat>("driftwood_availability")!;
-        driftwoodStat.DriftwoodAvailable = 50.0;
-        
-        var sharedPile = world.SharedSupplyPile!;
-        var initialWood = sharedPile.GetQuantity<WoodSupply>("wood");
-        
-        // Manually simulate wood collection (bypass the candidate system)
-        var amountCollected = 10.0;
-        driftwoodStat.DriftwoodAvailable -= amountCollected;
-        sharedPile.AddSupply("wood", amountCollected, id => new WoodSupply(id));
-        
-        // Verify wood was added to the pile
-        var finalWood = sharedPile.GetQuantity<WoodSupply>("wood");
-        Assert.Equal(initialWood + amountCollected, finalWood);
-        
-        // Verify driftwood was consumed
-        Assert.Equal(40.0, driftwoodStat.DriftwoodAvailable);
     }
 
     [Fact]
@@ -150,7 +90,8 @@ public class SupplySystemTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
-        
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
+
         // Set up campfire with low fuel
         var campfire = world.MainCampfire!;
         var initialFuel = campfire.FuelSeconds;

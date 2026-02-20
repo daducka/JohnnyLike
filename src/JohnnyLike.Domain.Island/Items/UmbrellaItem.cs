@@ -1,13 +1,12 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
-using JohnnyLike.Domain.Island.Stats;
 
 namespace JohnnyLike.Domain.Island.Items;
 
 /// <summary>
 /// A crafted umbrella tool owned by a specific actor.
-/// Offers DeployUmbrella during rain (when rain-protection buff is absent)
-/// and HolsterUmbrella when the buff is active but it is no longer raining.
+/// Offers DeployUmbrella during cold weather (when cold-protection buff is absent)
+/// and HolsterUmbrella when the buff is active but temperature has warmed.
 /// </summary>
 public class UmbrellaItem : ToolItem
 {
@@ -24,12 +23,12 @@ public class UmbrellaItem : ToolItem
         if (!CanActorUseTool(ctx.ActorId))
             return;
 
-        var weather = ctx.World.GetStat<WeatherStat>("weather");
-        var isRaining = weather?.Weather == Weather.Rainy;
+        var weather = ctx.World.GetItem<WeatherItem>("weather");
+        var isCold = weather?.Temperature == TemperatureBand.Cold;
         var hasRainBuff = ctx.Actor.ActiveBuffs.Any(b => b.Name == RainProtectionBuffName);
 
-        // Deploy: offered during rain when the buff is not yet active
-        if (isRaining && !hasRainBuff)
+        // Deploy: offered during cold when the buff is not yet active
+        if (isCold && !hasRainBuff)
         {
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -39,7 +38,7 @@ public class UmbrellaItem : ToolItem
                     5.0
                 ),
                 0.7,
-                "Deploy umbrella (rain protection)",
+                "Deploy umbrella (cold protection)",
                 EffectHandler: new Action<EffectContext>(effectCtx =>
                 {
                     effectCtx.Actor.ActiveBuffs.Add(new ActiveBuff
@@ -48,7 +47,7 @@ public class UmbrellaItem : ToolItem
                         Type = BuffType.RainProtection,
                         SkillType = null,
                         Value = 1,
-                        ExpiresAt = double.MaxValue // persists until manually holstered (only possible when rain stops)
+                        ExpiresAt = double.MaxValue
                     });
                     effectCtx.Actor.Morale += 5.0;
                 }),
@@ -60,8 +59,8 @@ public class UmbrellaItem : ToolItem
             ));
         }
 
-        // Holster: offered when the buff is active but it has stopped raining
-        if (hasRainBuff && !isRaining)
+        // Holster: offered when the buff is active but it has warmed up
+        if (hasRainBuff && !isCold)
         {
             output.Add(new ActionCandidate(
                 new ActionSpec(

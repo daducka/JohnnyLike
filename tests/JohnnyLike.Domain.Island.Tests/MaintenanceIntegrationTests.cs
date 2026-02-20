@@ -2,7 +2,6 @@ using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
-using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -14,6 +13,7 @@ public class MaintenanceIntegrationTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
@@ -51,6 +51,7 @@ public class MaintenanceIntegrationTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
@@ -73,8 +74,10 @@ public class MaintenanceIntegrationTests
         var worldClear = (IslandWorldState)domain.CreateInitialWorldState();
         var worldRainy = (IslandWorldState)domain.CreateInitialWorldState();
         
-        worldClear.GetStat<WeatherStat>("weather")!.Weather = Weather.Clear;
-        worldRainy.GetStat<WeatherStat>("weather")!.Weather = Weather.Rainy;
+        worldClear.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Hot;
+        worldClear.GetItem<CalendarItem>("calendar")!.TimeOfDay = 0.5; // noon = hot
+        worldRainy.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
+        worldRainy.GetItem<CalendarItem>("calendar")!.TimeOfDay = 0.0; // midnight = cold
         
         var duration = 3600.0;
         worldClear.OnTimeAdvanced(duration, duration);
@@ -89,6 +92,7 @@ public class MaintenanceIntegrationTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
@@ -126,6 +130,7 @@ public class MaintenanceIntegrationTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
@@ -164,6 +169,7 @@ public class MaintenanceIntegrationTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         
         world.MainCampfire!.FuelSeconds = 1500.0;
         
@@ -234,6 +240,7 @@ public class MaintenanceIntegrationTests
     {
         var domain = new IslandDomainPack();
         var world1 = (IslandWorldState)domain.CreateInitialWorldState();
+        world1.WorldItems.Add(new CampfireItem("main_campfire"));
         
         world1.MainCampfire!.FuelSeconds = 1234.5;
         world1.MainCampfire.Quality = 67.8;

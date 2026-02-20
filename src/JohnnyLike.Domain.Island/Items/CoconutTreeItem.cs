@@ -1,40 +1,51 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
-using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Island.Supply;
 using JohnnyLike.Domain.Kit.Dice;
+using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island.Items;
 
 /// <summary>
 /// Represents a coconut palm tree that can be shaken for coconuts.
+/// Tracks its own coconut availability and regenerates daily via CalendarItem.
 /// </summary>
-public class CoconutTreeItem : WorldItem, IIslandActionCandidate
+public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorldItem
 {
     private static readonly ResourceId PalmTreeResource = new("island:resource:palm_tree");
+
+    public int CoconutsAvailable { get; set; } = 5;
+    private int _lastDayCount = 0;
 
     public CoconutTreeItem(string id = "palm_tree")
         : base(id, "palm_tree")
     {
-        // Trees don't decay
+    }
+
+    public IEnumerable<string> GetDependencies() => new[] { "calendar" };
+
+    public List<TraceEvent> Tick(double dtSeconds, IslandWorldState world, double currentTime)
+    {
+        var calendar = world.GetItem<CalendarItem>("calendar");
+        if (calendar != null && calendar.DayCount > _lastDayCount)
+        {
+            CoconutsAvailable = Math.Min(10, CoconutsAvailable + 3);
+            _lastDayCount = calendar.DayCount;
+        }
+        return new List<TraceEvent>();
     }
 
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
-        var coconutStat = ctx.World.GetStat<CoconutAvailabilityStat>("coconut_availability");
-        if (coconutStat == null || coconutStat.CoconutsAvailable < 1)
+        if (CoconutsAvailable < 1)
             return;
 
         var baseDC = 12;
 
-        if (coconutStat.CoconutsAvailable >= 5)
+        if (CoconutsAvailable >= 5)
             baseDC -= 2;
-        else if (coconutStat.CoconutsAvailable <= 2)
+        else if (CoconutsAvailable <= 2)
             baseDC += 2;
-
-        var weatherStat = ctx.World.GetStat<WeatherStat>("weather");
-        if (weatherStat?.Weather == Weather.Windy)
-            baseDC -= 1;
 
         // Roll skill check at candidate generation time
         var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
@@ -62,21 +73,20 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate
                     return;
 
                 var tier = effectCtx.Tier.Value;
-                var coconutStat = effectCtx.World.GetStat<CoconutAvailabilityStat>("coconut_availability");
-                if (coconutStat == null)
-                    return;
+                var tree = effectCtx.World.GetItem<CoconutTreeItem>(Id);
+                if (tree == null) return;
 
                 var sharedPile = effectCtx.World.SharedSupplyPile;
 
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
-                        coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 2);
+                        tree.CoconutsAvailable = Math.Max(0, tree.CoconutsAvailable - 2);
                         sharedPile?.AddSupply("coconut", 2.0, id => new CoconutSupply(id));
                         break;
 
                     case RollOutcomeTier.Success:
-                        coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
+                        tree.CoconutsAvailable = Math.Max(0, tree.CoconutsAvailable - 1);
                         sharedPile?.AddSupply("coconut", 1.0, id => new CoconutSupply(id));
                         break;
 
@@ -93,5 +103,20 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate
                 }
             })
         ));
+    }
+
+    public override Dictionary<string, object> SerializeToDict()
+    {
+        var dict = base.SerializeToDict();
+        dict["CoconutsAvailable"] = CoconutsAvailable;
+        dict["LastDayCount"] = _lastDayCount;
+        return dict;
+    }
+
+    public override void DeserializeFromDict(Dictionary<string, JsonElement> data)
+    {
+        base.DeserializeFromDict(data);
+        if (data.TryGetValue("CoconutsAvailable", out var ca)) CoconutsAvailable = ca.GetInt32();
+        if (data.TryGetValue("LastDayCount", out var ldc)) _lastDayCount = ldc.GetInt32();
     }
 }

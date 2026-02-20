@@ -1,6 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
-using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 using System.Text.Json;
 
@@ -19,14 +18,10 @@ public class ShelterItem : ToolItem
     {
         base.Tick(dtSeconds, world);
 
-        var weatherStat = world.GetStat<WeatherStat>("weather");
-        if (weatherStat?.Weather == Weather.Rainy)
+        var weather = world.GetItem<WeatherItem>("weather");
+        if (weather?.Temperature == TemperatureBand.Cold)
         {
             Quality = Math.Max(0.0, Quality - 0.03 * dtSeconds);
-        }
-        else if (weatherStat?.Weather == Weather.Windy)
-        {
-            Quality = Math.Max(0.0, Quality - 0.02 * dtSeconds);
         }
     }
 
@@ -36,26 +31,19 @@ public class ShelterItem : ToolItem
         var wisdomMod = DndMath.AbilityModifier(ctx.Actor.WIS);
         var foresightBonus = (survivalMod + wisdomMod) / 2.0;
 
-        var weatherStat = ctx.World.GetStat<WeatherStat>("weather");
-        var weather = weatherStat?.Weather ?? Weather.Clear;
+        var weather = ctx.World.GetItem<WeatherItem>("weather");
+        var isCold = weather?.Temperature == TemperatureBand.Cold;
 
         // Repair action
         if (Quality < 70.0)
         {
             var urgency = (70.0 - Quality) / 70.0;
-            var weatherMultiplier = weather switch
-            {
-                Weather.Rainy => 1.5,
-                Weather.Windy => 1.3,
-                _ => 1.0
-            };
+            var weatherMultiplier = isCold ? 1.5 : 1.0;
 
             var foresightMultiplier = 1.0 + (foresightBonus * 0.15);
             var baseDC = 12;
-            if (weather == Weather.Rainy)
+            if (isCold)
                 baseDC += 2;
-            else if (weather == Weather.Windy)
-                baseDC += 1;
 
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
             var baseScore = 0.25 + (urgency * 0.5 * weatherMultiplier * foresightMultiplier);
@@ -70,7 +58,7 @@ public class ShelterItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 baseScore,
-                $"Repair shelter (quality: {Quality:F0}%, {weather}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                $"Repair shelter (quality: {Quality:F0}%, {(isCold ? "cold" : "warm")}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyRepairShelterEffect)
             ));
         }
