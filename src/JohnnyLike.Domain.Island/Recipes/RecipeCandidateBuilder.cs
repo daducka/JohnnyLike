@@ -16,15 +16,12 @@ public static class RecipeCandidateBuilder
         if (!recipe.CanCraft(ctx))
             return;
 
-        var r = ctx.Random.NextDouble();
-        var duration = recipe.DurationSeconds(r);
-
         output.Add(new ActionCandidate(
             new ActionSpec(
                 recipe.CraftActionId,
                 ActionKind.Interact,
                 new LocationActionParameters(recipe.Location),
-                duration
+                recipe.Duration
             ),
             recipe.IntrinsicScore,
             recipe.DisplayName,

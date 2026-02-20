@@ -21,7 +21,7 @@ public static class Umbrella
 
             Location: "camp",
 
-            DurationSeconds: r => 25 + r * 15,
+            Duration: 30.0,
 
             IntrinsicScore: 0.5,
 

@@ -6,6 +6,7 @@ namespace JohnnyLike.Domain.Island.Recipes.Definitions;
 
 /// <summary>
 /// Recipe: cook raw fish over a lit campfire to produce cooked fish.
+/// Discoverable when fish is in the supply pile and the campfire is lit.
 /// </summary>
 public static class CookFish
 {
@@ -19,7 +20,7 @@ public static class CookFish
 
             Location: "campfire",
 
-            DurationSeconds: r => 20 + r * 10,
+            Duration: 25.0,
 
             IntrinsicScore: 0.4,
 
@@ -62,7 +63,24 @@ public static class CookFish
                     id => new CookedFishSupply(id));
             },
 
-            Discovery: null
+            Discovery: new RecipeDiscoverySpec
+            {
+                Trigger = DiscoveryTrigger.ThinkAboutSupplies,
+
+                CanDiscover = (actor, world) =>
+                {
+                    var pile = world.SharedSupplyPile;
+                    if (pile == null) return false;
+
+                    if (pile.GetQuantity<FishSupply>("fish") < 1)
+                        return false;
+
+                    var campfire = world.MainCampfire;
+                    return campfire != null && campfire.IsLit;
+                },
+
+                BaseChance = 0.3
+            }
         );
     }
 }

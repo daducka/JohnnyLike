@@ -1,5 +1,4 @@
 using JohnnyLike.Domain.Abstractions;
-using JohnnyLike.Domain.Island.Candidates;
 
 namespace JohnnyLike.Domain.Island.Recipes;
 
@@ -38,11 +37,4 @@ public static class RecipeDiscoverySystem
             }
         }
     }
-
-    /// <summary>
-    /// Convenience overload for tests and other call sites that already hold a fully-formed
-    /// <see cref="IslandContext"/>.  Uses <c>ctx.Rng</c> for rolls.
-    /// </summary>
-    public static void TryDiscover(IslandContext ctx, DiscoveryTrigger trigger)
-        => TryDiscover(ctx.Actor, ctx.World, ctx.Rng, trigger);
 }

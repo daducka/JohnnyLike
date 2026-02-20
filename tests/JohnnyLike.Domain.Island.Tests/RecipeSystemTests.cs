@@ -224,8 +224,7 @@ public class RecipeSystemTests
         pile.AddSupply("stick", 1, id => new StickSupply(id));
         pile.AddSupply("palm_frond", 1, id => new PalmFrondSupply(id));
 
-        var ctx = MakeContext(actor, world, new Random(seed));
-        RecipeDiscoverySystem.TryDiscover(ctx, DiscoveryTrigger.ThinkAboutSupplies);
+        RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(seed)), DiscoveryTrigger.ThinkAboutSupplies);
 
         Assert.Contains("umbrella", actor.KnownRecipeIds);
     }
@@ -244,8 +243,7 @@ public class RecipeSystemTests
         pile.AddSupply("stick", 1, id => new StickSupply(id));
         pile.AddSupply("palm_frond", 1, id => new PalmFrondSupply(id));
 
-        var ctx = MakeContext(actor, world, new Random(seed));
-        RecipeDiscoverySystem.TryDiscover(ctx, DiscoveryTrigger.ThinkAboutSupplies);
+        RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(seed)), DiscoveryTrigger.ThinkAboutSupplies);
 
         Assert.DoesNotContain("umbrella", actor.KnownRecipeIds);
     }
@@ -263,8 +261,7 @@ public class RecipeSystemTests
         pile.AddSupply("stick", 1, id => new StickSupply(id));
         pile.AddSupply("palm_frond", 1, id => new PalmFrondSupply(id));
 
-        var ctx = MakeContext(actor, world, new Random(seed));
-        RecipeDiscoverySystem.TryDiscover(ctx, DiscoveryTrigger.ThinkAboutSupplies);
+        RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(seed)), DiscoveryTrigger.ThinkAboutSupplies);
 
         Assert.DoesNotContain("umbrella", actor.KnownRecipeIds);
     }
@@ -284,8 +281,8 @@ public class RecipeSystemTests
         }
 
         var seed = 12345;
-        RecipeDiscoverySystem.TryDiscover(MakeContext(actor1, world1, new Random(seed)), DiscoveryTrigger.ThinkAboutSupplies);
-        RecipeDiscoverySystem.TryDiscover(MakeContext(actor2, world2, new Random(seed)), DiscoveryTrigger.ThinkAboutSupplies);
+        RecipeDiscoverySystem.TryDiscover(actor1, world1, new RandomRngStream(new Random(seed)), DiscoveryTrigger.ThinkAboutSupplies);
+        RecipeDiscoverySystem.TryDiscover(actor2, world2, new RandomRngStream(new Random(seed)), DiscoveryTrigger.ThinkAboutSupplies);
 
         Assert.Equal(actor1.KnownRecipeIds.Contains("umbrella"), actor2.KnownRecipeIds.Contains("umbrella"));
     }
@@ -301,12 +298,59 @@ public class RecipeSystemTests
 
         actor.KnownRecipeIds.Add("umbrella"); // already known
 
-        var ctx = MakeContext(actor, world, new Random(1));
-        RecipeDiscoverySystem.TryDiscover(ctx, DiscoveryTrigger.ThinkAboutSupplies);
+        RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(1)), DiscoveryTrigger.ThinkAboutSupplies);
 
         // Still just one entry - not duplicated
         Assert.Contains("umbrella", actor.KnownRecipeIds);
         Assert.Single(actor.KnownRecipeIds, id => id == "umbrella");
+    }
+
+    // ── cook_fish discovery ────────────────────────────────────────────────────
+
+    [Fact]
+    public void CookFish_Discovered_WhenFishPresentAndCampfireLit()
+    {
+        int seed = FindSeedBelow(0.3);
+
+        var (actor, world) = MakeBase();
+        var campfire = world.MainCampfire!;
+        campfire.FuelSeconds = 600;
+        world.SharedSupplyPile!.AddSupply("fish", 1, id => new FishSupply(id));
+
+        RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(seed)), DiscoveryTrigger.ThinkAboutSupplies);
+
+        Assert.Contains("cook_fish", actor.KnownRecipeIds);
+    }
+
+    [Fact]
+    public void CookFish_NotDiscovered_WhenNoFish()
+    {
+        int seed = FindSeedBelow(0.3);
+
+        var (actor, world) = MakeBase();
+        var campfire = world.MainCampfire!;
+        campfire.FuelSeconds = 600;
+        // No fish in pile
+
+        RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(seed)), DiscoveryTrigger.ThinkAboutSupplies);
+
+        Assert.DoesNotContain("cook_fish", actor.KnownRecipeIds);
+    }
+
+    [Fact]
+    public void CookFish_NotDiscovered_WhenCampfireUnlit()
+    {
+        int seed = FindSeedBelow(0.3);
+
+        var (actor, world) = MakeBase();
+        var campfire = world.MainCampfire!;
+        campfire.IsLit = false;
+        campfire.FuelSeconds = 0;
+        world.SharedSupplyPile!.AddSupply("fish", 1, id => new FishSupply(id));
+
+        RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(seed)), DiscoveryTrigger.ThinkAboutSupplies);
+
+        Assert.DoesNotContain("cook_fish", actor.KnownRecipeIds);
     }
 
     // ── serialization ─────────────────────────────────────────────────────────

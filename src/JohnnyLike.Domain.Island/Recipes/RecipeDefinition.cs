@@ -15,7 +15,7 @@ public sealed record RecipeDefinition(
 
     string Location,
 
-    Func<double, double> DurationSeconds,
+    double Duration,
 
     double IntrinsicScore,
 
