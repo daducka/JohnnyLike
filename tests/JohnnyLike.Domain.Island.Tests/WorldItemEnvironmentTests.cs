@@ -83,7 +83,7 @@ public class WorldItemEnvironmentTests
 
         weather.Tick(0.0, world, 0.0);
 
-        // hour 6.0 < 8.0 → Cold
+        // hour 6.0 < 8.0, therefore Cold
         Assert.Equal(TemperatureBand.Cold, weather.Temperature);
     }
 

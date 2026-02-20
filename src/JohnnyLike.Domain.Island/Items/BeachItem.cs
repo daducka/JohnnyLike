@@ -66,17 +66,17 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate
                 var pile = effectCtx.World.SharedSupplyPile;
                 if (pile == null) return;
 
-                var sticks = effectCtx.Rng.Next(1, 5);
-                var wood = effectCtx.Rng.Next(1, 5);
-                var rocks = effectCtx.Rng.Next(0, 3);
+                var sticksGathered = effectCtx.Rng.Next(1, 5);
+                var woodGathered = effectCtx.Rng.Next(1, 5);
+                var rocksGathered = effectCtx.Rng.Next(0, 3);
 
-                pile.AddSupply("sticks", sticks, id => new StickSupply(id));
-                pile.AddSupply("wood", wood, id => new WoodSupply(id));
-                pile.AddSupply("rocks", rocks, id => new RocksSupply(id));
+                pile.AddSupply("sticks", sticksGathered, id => new StickSupply(id));
+                pile.AddSupply("wood", woodGathered, id => new WoodSupply(id));
+                pile.AddSupply("rocks", rocksGathered, id => new RocksSupply(id));
 
-                Bounty["sticks"] = Math.Max(0, Bounty["sticks"] - sticks);
-                Bounty["driftwood"] = Math.Max(0, Bounty["driftwood"] - wood);
-                Bounty["rocks"] = Math.Max(0, Bounty["rocks"] - rocks);
+                Bounty["sticks"] = Math.Max(0, Bounty["sticks"] - sticksGathered);
+                Bounty["driftwood"] = Math.Max(0, Bounty["driftwood"] - woodGathered);
+                Bounty["rocks"] = Math.Max(0, Bounty["rocks"] - rocksGathered);
 
                 effectCtx.Actor.Morale += 5.0;
                 effectCtx.Actor.Energy -= 10.0;
