@@ -32,16 +32,22 @@ public class IslandActorState : ActorState, IIslandActionCandidate
     private double _satiety = 100.0;
     private double _energy = 100.0;
     private double _morale = 50.0;
+    private double _health = 100.0;
 
     public double Satiety { get => _satiety; set => _satiety = Math.Clamp(value, 0.0, 100.0); }
     public double Energy   { get => _energy;  set => _energy  = Math.Clamp(value, 0.0, 100.0); }
     public double Morale   { get => _morale;  set => _morale  = Math.Clamp(value, 0.0, 100.0); }
+    public double Health   { get => _health;  set => _health  = Math.Clamp(value, 0.0, 100.0); }
 
     public double LastPlaneSightingTime { get; set; } = double.NegativeInfinity;
     public double LastMermaidEncounterTime { get; set; } = double.NegativeInfinity;
 
     public List<ActiveBuff> ActiveBuffs { get; set; } = new();
     public Queue<PendingIntent> PendingChatActions { get; set; } = new();
+    /// <summary>
+    /// Recipes this actor knows. Each actor can have a different set of recipes.
+    /// </summary>
+    public List<IIslandRecipe> KnownRecipes { get; set; } = new();
 
     public int GetSkillModifier(SkillType skillType)
     {
@@ -91,10 +97,12 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Satiety,
             Energy,
             Morale,
+            Health,
             LastPlaneSightingTime,
             LastMermaidEncounterTime,
             ActiveBuffs,
-            PendingChatActions = PendingChatActions.ToList()
+            PendingChatActions = PendingChatActions.ToList(),
+            KnownRecipeIds = KnownRecipes.Select(r => r.Id).ToList()
         }, options);
     }
 
@@ -130,6 +138,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         Satiety = data["Satiety"].GetDouble();
         Energy = data["Energy"].GetDouble();
         Morale = data["Morale"].GetDouble();
+        if (data.TryGetValue("Health", out var health))
+            Health = health.GetDouble();
 
         if (data.TryGetValue("LastPlaneSightingTime", out var lastPlane))
         {
@@ -181,7 +191,26 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             var list = JsonSerializer.Deserialize<List<PendingIntent>>(actions.GetRawText(), options) ?? new();
             PendingChatActions = new Queue<PendingIntent>(list);
         }
+
+        if (data.TryGetValue("KnownRecipeIds", out var recipeIds))
+        {
+            var list = JsonSerializer.Deserialize<List<string>>(recipeIds.GetRawText(), options) ?? new();
+            KnownRecipes = list
+                .Select(CreateRecipeById)
+                .OfType<IIslandRecipe>()
+                .ToList();
+        }
     }
+
+    /// <summary>
+    /// Local factory: reconstructs a recipe instance from its persisted ID.
+    /// Add new recipe types here as they are introduced.
+    /// </summary>
+    private static IIslandRecipe? CreateRecipeById(string id) => id switch
+    {
+        "cook_fish" => new Recipes.CookFishRecipe(),
+        _ => null
+    };
 
     /// <summary>
     /// Actors can provide their own action candidates including idle, sleep, swim, build sand castle, and chat actions.
@@ -211,6 +240,12 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         
         // Build sand castle
         AddBuildSandCastleCandidate(ctx, output);
+
+        // Known recipes
+        foreach (var recipe in KnownRecipes)
+        {
+            recipe.AddCandidates(ctx, output);
+        }
     }
 
     private void AddBuildSandCastleCandidate(IslandContext ctx, List<ActionCandidate> output)

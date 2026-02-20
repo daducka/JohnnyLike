@@ -10,6 +10,9 @@ namespace JohnnyLike.Domain.Abstractions;
 /// This provides explicit binding between the action and its effects, eliminating the need for
 /// string-based actionId lookups. Domain implementations can provide a delegate that takes their
 /// specific EffectContext type (e.g., Action&lt;EffectContext&lt;IslandActorState, IslandWorldState&gt;&gt;).</param>
+/// <param name="PreAction">Optional callback executed at action start (before the action duration begins).
+/// Used to consume required supplies and commit resources. If it returns false the action is aborted
+/// and the next best candidate is tried instead.</param>
 /// <param name="Qualities">Optional per-quality weights for domain-level scoring post-pass</param>
 /// <param name="Score">Final computed score assigned by the domain after gathering all candidates</param>
 public record ActionCandidate(
@@ -17,6 +20,7 @@ public record ActionCandidate(
     double IntrinsicScore,
     string? Reason = null,
     object? EffectHandler = null,
+    object? PreAction = null,
     IReadOnlyDictionary<QualityType, double>? Qualities = null,
     double Score = 0.0
 );
@@ -68,4 +72,20 @@ public interface IDomainPack
     /// <param name="resourceAvailability">Resource availability for checking reservations</param>
     /// <returns>List of trace events for significant world state changes</returns>
     List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability);
+
+    /// <summary>
+    /// Executes the pre-action handler at the moment the action is chosen and committed,
+    /// before the action duration begins. Used to consume required supplies so they are
+    /// locked in before another actor can claim them.
+    /// Returns false if the pre-action fails (e.g. required supply is missing), signalling
+    /// that the candidate should be skipped and the next-best candidate tried instead.
+    /// The default implementation always returns true (no pre-action needed).
+    /// </summary>
+    bool TryExecutePreAction(
+        ActorId actorId,
+        ActorState actorState,
+        WorldState worldState,
+        IRngStream rng,
+        IResourceAvailability resourceAvailability,
+        object? preActionHandler) => true;
 }

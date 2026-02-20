@@ -8,6 +8,10 @@ public enum QualityType
     Rest,
     FoodConsumption,
     Fun,
-    ForwardPlanning,
-    Safety
+    Safety,
+    Preparation,
+    Efficiency,
+    Comfort,
+    ResourcePreservation,
+    Mastery
 }

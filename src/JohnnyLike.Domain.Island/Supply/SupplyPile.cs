@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Candidates;
 using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island.Supply;
@@ -6,7 +7,7 @@ namespace JohnnyLike.Domain.Island.Supply;
 /// <summary>
 /// Represents a pile of supplies with generic methods to manage different supply types
 /// </summary>
-public class SupplyPile : WorldItem
+public class SupplyPile : WorldItem, IIslandActionCandidate
 {
     public List<SupplyItem> Supplies { get; set; } = new();
     public string AccessControl { get; set; }
@@ -80,6 +81,21 @@ public class SupplyPile : WorldItem
         return AccessControl == "shared";
     }
 
+    /// <summary>
+    /// Provides action candidates from all supply items that implement ISupplyActionCandidate.
+    /// </summary>
+    public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
+    {
+        if (!CanAccess(ctx.ActorId))
+            return;
+
+        foreach (var supply in Supplies)
+        {
+            if (supply is ISupplyActionCandidate candidate)
+                candidate.AddCandidates(ctx, this, output);
+        }
+    }
+
     public override Dictionary<string, object> SerializeToDict()
     {
         var dict = base.SerializeToDict();
@@ -106,7 +122,10 @@ public class SupplyPile : WorldItem
 
                     SupplyItem? supply = type switch
                     {
-                        "supply_wood" => new WoodSupply(id),
+                        "supply_wood"        => new WoodSupply(id),
+                        "supply_fish"        => new FishSupply(id),
+                        "supply_cooked_fish" => new CookedFishSupply(id),
+                        "supply_coconut"     => new CoconutSupply(id),
                         _ => null
                     };
 

@@ -128,6 +128,18 @@ public class FishingPoleItem : ToolItem
             // Minor quality degradation from use
             Quality = Math.Max(0.0, Quality - 1.0);
             ctx.Actor.Morale += 5.0;
+
+            var fishCount = tier == RollOutcomeTier.CriticalSuccess ? 2.0 : 1.0;
+
+            // Add fish to shared supply pile
+            var sharedPile = ctx.World.SharedSupplyPile;
+            if (sharedPile != null)
+                sharedPile.AddSupply("fish", fishCount, id => new Supply.FishSupply(id));
+
+            // Reduce the fish population stat
+            var fishStat = ctx.World.GetStat<Stats.FishPopulationStat>("fish_population");
+            if (fishStat != null)
+                fishStat.FishAvailable = Math.Max(0.0, fishStat.FishAvailable - fishCount);
         }
     }
 
