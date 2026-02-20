@@ -34,6 +34,11 @@ public static class Umbrella
 
             CanCraft: ctx =>
             {
+                // An actor can only own one umbrella at a time
+                if (ctx.World.WorldItems.OfType<UmbrellaItem>()
+                        .Any(u => u.OwnerActorId == ctx.ActorId))
+                    return false;
+
                 var pile = ctx.World.SharedSupplyPile;
                 if (pile == null) return false;
 
@@ -66,14 +71,14 @@ public static class Umbrella
             {
                 Trigger = DiscoveryTrigger.ThinkAboutSupplies,
 
-                CanDiscover = ctx =>
+                CanDiscover = (actor, world) =>
                 {
-                    var weather = ctx.World.GetStat<WeatherStat>("weather");
+                    var weather = world.GetStat<WeatherStat>("weather");
 
                     if (weather?.Weather != Weather.Rainy)
                         return false;
 
-                    var pile = ctx.World.SharedSupplyPile;
+                    var pile = world.SharedSupplyPile;
                     if (pile == null) return false;
 
                     return

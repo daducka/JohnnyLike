@@ -235,7 +235,9 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         // Known recipes
         foreach (var recipeId in KnownRecipeIds)
         {
-            var recipe = IslandRecipeRegistry.Get(recipeId);
+            if (!IslandRecipeRegistry.All.TryGetValue(recipeId, out var recipe))
+                continue; // skip stale or removed recipe IDs
+
             RecipeCandidateBuilder.AddCandidate(recipe, ctx, output);
         }
     }
@@ -320,9 +322,12 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             ),
             0.2,
             "Think about supplies",
-            EffectHandler: new Action<EffectContext>(_ =>
+            EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                RecipeDiscoverySystem.TryDiscover(ctx, DiscoveryTrigger.ThinkAboutSupplies);
+                // Use effect-time Rng (not the candidate-generation ctx) for deterministic rolls.
+                RecipeDiscoverySystem.TryDiscover(
+                    effectCtx.Actor, effectCtx.World, effectCtx.Rng,
+                    DiscoveryTrigger.ThinkAboutSupplies);
             }),
             Qualities: new Dictionary<QualityType, double>
             {

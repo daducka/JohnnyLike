@@ -1,3 +1,4 @@
+using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
 
 namespace JohnnyLike.Domain.Island.Recipes;
@@ -9,26 +10,39 @@ public static class RecipeDiscoverySystem
 {
     /// <summary>
     /// Iterates all recipes and attempts to discover unknown ones that match the trigger.
-    /// Uses the context's RNG for deterministic rolls.
+    /// Uses the provided <paramref name="rng"/> for deterministic rolls — callers must pass
+    /// the RNG active at the moment of effect execution (e.g. <c>effectCtx.Rng</c>), not a
+    /// context captured at candidate-generation time.  This ensures reproducible discovery
+    /// outcomes when replaying from the same game state.
     /// </summary>
-    public static void TryDiscover(IslandContext ctx, DiscoveryTrigger trigger)
+    public static void TryDiscover(
+        IslandActorState actor,
+        IslandWorldState world,
+        IRngStream rng,
+        DiscoveryTrigger trigger)
     {
         foreach (var (id, recipe) in IslandRecipeRegistry.All)
         {
             if (recipe.Discovery == null || recipe.Discovery.Trigger != trigger)
                 continue;
 
-            if (ctx.Actor.KnownRecipeIds.Contains(id))
+            if (actor.KnownRecipeIds.Contains(id))
                 continue;
 
-            if (!recipe.Discovery.CanDiscover(ctx))
+            if (!recipe.Discovery.CanDiscover(actor, world))
                 continue;
 
-            var roll = ctx.Random.NextDouble();
-            if (roll < recipe.Discovery.BaseChance)
+            if (rng.NextDouble() < recipe.Discovery.BaseChance)
             {
-                ctx.Actor.KnownRecipeIds.Add(id);
+                actor.KnownRecipeIds.Add(id);
             }
         }
     }
+
+    /// <summary>
+    /// Convenience overload for tests and other call sites that already hold a fully-formed
+    /// <see cref="IslandContext"/>.  Uses <c>ctx.Rng</c> for rolls.
+    /// </summary>
+    public static void TryDiscover(IslandContext ctx, DiscoveryTrigger trigger)
+        => TryDiscover(ctx.Actor, ctx.World, ctx.Rng, trigger);
 }
