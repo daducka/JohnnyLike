@@ -1,0 +1,68 @@
+using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Supply;
+
+namespace JohnnyLike.Domain.Island.Recipes.Definitions;
+
+/// <summary>
+/// Recipe: cook raw fish over a lit campfire to produce cooked fish.
+/// </summary>
+public static class CookFish
+{
+    public static RecipeDefinition Define()
+    {
+        return new RecipeDefinition(
+            Id: "cook_fish",
+            DisplayName: "Cook fish over campfire",
+
+            CraftActionId: new ActionId("cook_fish"),
+
+            Location: "campfire",
+
+            DurationSeconds: r => 20 + r * 10,
+
+            IntrinsicScore: 0.4,
+
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Preparation] = 0.8,
+                [QualityType.Efficiency]  = 0.6
+            },
+
+            CanCraft: ctx =>
+            {
+                var pile = ctx.World.SharedSupplyPile;
+                if (pile == null) return false;
+
+                if (pile.GetQuantity<FishSupply>("fish") < 1)
+                    return false;
+
+                var campfire = ctx.World.MainCampfire;
+                if (campfire == null || !campfire.IsLit)
+                    return false;
+
+                return true;
+            },
+
+            PreAction: effectCtx =>
+            {
+                var pile = effectCtx.World.SharedSupplyPile;
+                return pile != null &&
+                       pile.TryConsumeSupply<FishSupply>("fish", 1);
+            },
+
+            Effect: effectCtx =>
+            {
+                var pile = effectCtx.World.SharedSupplyPile;
+                if (pile == null) return;
+
+                pile.AddSupply(
+                    "cooked_fish",
+                    1,
+                    id => new CookedFishSupply(id));
+            },
+
+            Discovery: null
+        );
+    }
+}
