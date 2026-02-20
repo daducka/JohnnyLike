@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Island.Supply;
 
@@ -57,13 +58,8 @@ public static class Umbrella
 
             Effect: effectCtx =>
             {
-                var pile = effectCtx.World.SharedSupplyPile;
-                if (pile == null) return;
-
-                pile.AddSupply(
-                    "umbrella",
-                    1,
-                    id => new UmbrellaSupply(id));
+                var toolId = $"umbrella_{effectCtx.ActorId.Value}";
+                effectCtx.World.WorldItems.Add(new UmbrellaItem(toolId, effectCtx.ActorId));
             },
 
             Discovery: new RecipeDiscoverySpec

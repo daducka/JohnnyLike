@@ -206,6 +206,7 @@ public class IslandWorldState : WorldState
                         "treasure_chest" => new TreasureChestItem(id),
                         "shark" => new SharkItem(id),
                         "supply_pile" => new SupplyPile(id),
+                        "umbrella_tool" => new UmbrellaItem(id),
                         _ => null
                     };
 

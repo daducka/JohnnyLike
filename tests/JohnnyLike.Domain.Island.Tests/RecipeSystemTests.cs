@@ -172,7 +172,7 @@ public class RecipeSystemTests
     }
 
     [Fact]
-    public void Umbrella_Effect_ProducesUmbrella_AndPreAction_ConsumesIngredients()
+    public void Umbrella_Effect_ProducesUmbrellaTool_AndPreAction_ConsumesIngredients()
     {
         var (actor, world) = MakeBase();
         var pile = world.SharedSupplyPile!;
@@ -188,7 +188,9 @@ public class RecipeSystemTests
         Assert.Equal(3.0, pile.GetQuantity<PalmFrondSupply>("palm_frond"));
 
         recipe.Effect(effectCtx);
-        Assert.Equal(1.0, pile.GetQuantity<UmbrellaSupply>("umbrella"));
+        var umbrellaItem = world.WorldItems.OfType<UmbrellaItem>().FirstOrDefault();
+        Assert.NotNull(umbrellaItem);
+        Assert.Equal(actor.Id, umbrellaItem.OwnerActorId);
     }
 
     [Fact]
@@ -323,6 +325,131 @@ public class RecipeSystemTests
 
         Assert.Contains("cook_fish", actor2.KnownRecipeIds);
         Assert.Contains("umbrella", actor2.KnownRecipeIds);
+    }
+
+    // ── UmbrellaItem tool ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void UmbrellaItem_DeployCandidate_OfferedDuringRain_WhenBuffAbsent()
+    {
+        var (actor, world) = MakeBase();
+        world.GetStat<WeatherStat>("weather")!.Weather = Weather.Rainy;
+
+        var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
+        world.WorldItems.Add(umbrella);
+
+        var ctx = MakeContext(actor, world);
+        var candidates = new List<ActionCandidate>();
+        umbrella.AddCandidates(ctx, candidates);
+
+        Assert.Contains(candidates, c => c.Action.Id.Value == "deploy_umbrella");
+        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "holster_umbrella");
+    }
+
+    [Fact]
+    public void UmbrellaItem_DeployCandidate_NotOffered_WhenNotRaining()
+    {
+        var (actor, world) = MakeBase();
+        world.GetStat<WeatherStat>("weather")!.Weather = Weather.Clear;
+
+        var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
+        world.WorldItems.Add(umbrella);
+
+        var ctx = MakeContext(actor, world);
+        var candidates = new List<ActionCandidate>();
+        umbrella.AddCandidates(ctx, candidates);
+
+        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "deploy_umbrella");
+    }
+
+    [Fact]
+    public void UmbrellaItem_DeployEffect_AddsRainProtectionBuff()
+    {
+        var (actor, world) = MakeBase();
+        world.GetStat<WeatherStat>("weather")!.Weather = Weather.Rainy;
+
+        var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
+        world.WorldItems.Add(umbrella);
+
+        var ctx = MakeContext(actor, world);
+        var candidates = new List<ActionCandidate>();
+        umbrella.AddCandidates(ctx, candidates);
+
+        var deployCandidate = candidates.Single(c => c.Action.Id.Value == "deploy_umbrella");
+        var effectHandler = (Action<EffectContext>)deployCandidate.EffectHandler!;
+
+        effectHandler(MakeEffectContext(actor, world));
+
+        Assert.Contains(actor.ActiveBuffs, b => b.Name == UmbrellaItem.RainProtectionBuffName && b.Type == BuffType.RainProtection);
+    }
+
+    [Fact]
+    public void UmbrellaItem_HolsterCandidate_OfferedWhenBuffActiveAndNotRaining()
+    {
+        var (actor, world) = MakeBase();
+        world.GetStat<WeatherStat>("weather")!.Weather = Weather.Clear;
+
+        actor.ActiveBuffs.Add(new ActiveBuff
+        {
+            Name = UmbrellaItem.RainProtectionBuffName,
+            Type = BuffType.RainProtection,
+            ExpiresAt = double.MaxValue
+        });
+
+        var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
+        world.WorldItems.Add(umbrella);
+
+        var ctx = MakeContext(actor, world);
+        var candidates = new List<ActionCandidate>();
+        umbrella.AddCandidates(ctx, candidates);
+
+        Assert.Contains(candidates, c => c.Action.Id.Value == "holster_umbrella");
+        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "deploy_umbrella");
+    }
+
+    [Fact]
+    public void UmbrellaItem_HolsterEffect_RemovesRainProtectionBuff()
+    {
+        var (actor, world) = MakeBase();
+        world.GetStat<WeatherStat>("weather")!.Weather = Weather.Clear;
+
+        actor.ActiveBuffs.Add(new ActiveBuff
+        {
+            Name = UmbrellaItem.RainProtectionBuffName,
+            Type = BuffType.RainProtection,
+            ExpiresAt = double.MaxValue
+        });
+
+        var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
+        world.WorldItems.Add(umbrella);
+
+        var ctx = MakeContext(actor, world);
+        var candidates = new List<ActionCandidate>();
+        umbrella.AddCandidates(ctx, candidates);
+
+        var holsterCandidate = candidates.Single(c => c.Action.Id.Value == "holster_umbrella");
+        var effectHandler = (Action<EffectContext>)holsterCandidate.EffectHandler!;
+
+        effectHandler(MakeEffectContext(actor, world));
+
+        Assert.DoesNotContain(actor.ActiveBuffs, b => b.Name == UmbrellaItem.RainProtectionBuffName);
+    }
+
+    [Fact]
+    public void UmbrellaItem_NoCandidates_ForOtherActor()
+    {
+        var (actor, world) = MakeBase();
+        world.GetStat<WeatherStat>("weather")!.Weather = Weather.Rainy;
+
+        var otherActorId = new ActorId("other_actor");
+        var umbrella = new UmbrellaItem($"umbrella_{otherActorId.Value}", otherActorId);
+        world.WorldItems.Add(umbrella);
+
+        var ctx = MakeContext(actor, world); // actor is not the owner
+        var candidates = new List<ActionCandidate>();
+        umbrella.AddCandidates(ctx, candidates);
+
+        Assert.Empty(candidates);
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

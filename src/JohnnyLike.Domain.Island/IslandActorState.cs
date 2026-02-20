@@ -532,7 +532,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 public enum BuffType
 {
     SkillBonus,
-    Advantage
+    Advantage,
+    RainProtection
 }
 
 public class ActiveBuff
