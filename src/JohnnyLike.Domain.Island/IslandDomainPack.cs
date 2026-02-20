@@ -55,8 +55,6 @@ public class IslandDomainPack : IDomainPack
             Energy = (double)(initialData?.GetValueOrDefault("energy", 100.0) ?? 100.0),
             Morale = (double)(initialData?.GetValueOrDefault("morale", 50.0) ?? 50.0)
         };
-        // All actors start knowing how to cook fish
-        state.KnownRecipeIds.Add("cook_fish");
         return state;
     }
     
@@ -150,43 +148,74 @@ public class IslandDomainPack : IDomainPack
     private static QualityModel BuildQualityModel(IslandContext ctx)
     {
         var actor = ctx.Actor;
-        var satietyDeficit = (100.0 - actor.Satiety) / 100.0;
-        var energyDeficit = (100.0 - actor.Energy) / 100.0;
-        var moraleFactor = actor.Morale / 100.0;
-        var proactiveTrait       = Math.Clamp(((actor.WIS + actor.INT) - 20.0) / 20.0, 0.0, 1.0);
-        var conscientiousTrait   = Math.Clamp(((actor.CON + actor.WIS) - 20.0) / 20.0, 0.0, 1.0);
-        var intelligenceTrait    = Math.Clamp((actor.INT - 10.0) / 10.0, 0.0, 1.0);
-        var comfortSeekingTrait  = Math.Clamp(((actor.CHA + actor.CON) - 20.0) / 20.0, 0.0, 1.0);
-        var industriousTrait     = Math.Clamp(((actor.STR + actor.WIS) - 20.0) / 20.0, 0.0, 1.0);
 
-        // Needs: immediate urgency from deficits — additive, independent of personality
+        // ── Core Abilities ────────────────────────────────────────────────────────
+        // Stable actor capabilities: STR, DEX, CON, INT, WIS, CHA
+        // Raw values are normalised so that 10 = 0.0 and 20 = 1.0.
+
+        double Norm(int a, int b) => Math.Clamp(((double)(a + b) - 20.0) / 20.0, 0.0, 1.0);
+
+        // ── Actor Stats ───────────────────────────────────────────────────────────
+        // Dynamic physiological / psychological state.
+        // Each deficit becomes a "pressure" that adds weight to a need quality.
+
+        var hungerPressure  = 100.0 - actor.Satiety;   // → FoodConsumption
+        var fatiguePressure = 100.0 - actor.Energy;    // → Rest
+        var miseryPressure  = 100.0 - actor.Morale;    // → Comfort
+        var injuryPressure  = 100.0 - actor.Health;    // → Safety
+
+        // ── Traits ────────────────────────────────────────────────────────────────
+        // Stable personality tendencies derived from pairs of core abilities.
+        // Every core ability participates in exactly two traits.
+
+        var planner     = Norm(actor.INT, actor.WIS);   // INT + WIS  → prefers preparation, efficiency
+        var craftsman   = Norm(actor.DEX, actor.INT);   // DEX + INT  → prefers crafting, mastery
+        var survivor    = Norm(actor.CON, actor.WIS);   // CON + WIS  → prefers safety, sustainability
+        var hedonist    = Norm(actor.CHA, actor.CON);   // CHA + CON  → prefers comfort, morale
+        var instinctive = Norm(actor.STR, actor.CHA);   // STR + CHA  → prefers immediate reward
+        var industrious = Norm(actor.STR, actor.DEX);   // STR + DEX  → prefers building, working
+
+        // ── Qualities ─────────────────────────────────────────────────────────────
+        // Labels on actions describing what they provide:
+        // FoodConsumption, Rest, Comfort, Fun, Safety,
+        // Preparation, Efficiency, Mastery, ResourcePreservation
+
+        // Need pressures drive urgency directly (additive, independent of personality).
+        // Scale factors keep pressures comparable across the 0-100 range.
         var needAdd = new Dictionary<QualityType, double>
         {
-            [QualityType.Rest]            = energyDeficit * 1.5,
-            [QualityType.FoodConsumption] = satietyDeficit * 2.0,
-            [QualityType.Safety]          = 0.3
+            [QualityType.FoodConsumption] = hungerPressure  * 0.02,
+            [QualityType.Rest]            = fatiguePressure * 0.015,
+            [QualityType.Comfort]         = miseryPressure  * 0.01,
+            [QualityType.Safety]          = injuryPressure  * 0.01
         };
 
-        // Personality: stable baseline tendency derived from core stats
+        // Personality weights come from traits (stable, independent of current state).
         var personalityBase = new Dictionary<QualityType, double>
         {
-            [QualityType.ForwardPlanning] = proactiveTrait * 0.8,
-            [QualityType.Fun]             = 1.0,
-            [QualityType.Preparation]     = conscientiousTrait * 0.6,
-            [QualityType.Efficiency]      = intelligenceTrait * 0.5,
-            [QualityType.Comfort]         = comfortSeekingTrait * 0.4,
-            [QualityType.Mastery]         = industriousTrait * 0.5
+            [QualityType.Preparation]     = (planner + industrious) * 0.4,
+            [QualityType.Efficiency]      = (planner + craftsman)   * 0.3,
+            [QualityType.Mastery]         = (craftsman + industrious) * 0.3,
+            [QualityType.Comfort]         = hedonist * 0.4,
+            [QualityType.Safety]          = survivor * 0.3,
+            [QualityType.FoodConsumption] = (instinctive + hedonist) * 0.2,
+            [QualityType.Fun]             = 1.0
         };
 
-        // Mood: multiplicative modulation — suppresses or amplifies personality tendencies
+        // Mood multipliers modulate personality when actor state is critical.
+        // They suppress longer-horizon tendencies so survival instinct takes over.
         var moodMultiplier = new Dictionary<QualityType, double>
         {
-            [QualityType.ForwardPlanning] = 0.3 + 0.7 * moraleFactor,   // suppressed when morale is low
-            [QualityType.Fun]             = 1.0 - moraleFactor,          // amplified when morale is low
-            [QualityType.Preparation]     = actor.Satiety < 20.0 ? 0.3 : 1.0, // starving actors eat now, don't cook
+            [QualityType.Preparation]     = Math.Min(
+                                                actor.Satiety < 20.0 ? 0.3 : 1.0,  // starving → eat now, not cook
+                                                actor.Health  < 30.0 ? 0.5 : 1.0   // injured → heal, not cook
+                                            ),
+            [QualityType.Mastery]         = actor.Energy  < 20.0 ? 0.4 : 1.0, // exhausted → rest, not work
+            [QualityType.Fun]             = 1.0 - (actor.Morale / 100.0),  // amplified when morale is low
             [QualityType.Efficiency]      = 1.0,
             [QualityType.Comfort]         = 1.0,
-            [QualityType.Mastery]         = 1.0
+            [QualityType.Safety]          = 1.0,
+            [QualityType.FoodConsumption] = 1.0
         };
 
         return new QualityModel(needAdd, personalityBase, moodMultiplier);
@@ -380,7 +409,8 @@ public class IslandDomainPack : IDomainPack
         {
             ["satiety"] = islandActorState.Satiety,
             ["energy"] = islandActorState.Energy,
-            ["morale"] = islandActorState.Morale
+            ["morale"] = islandActorState.Morale,
+            ["health"] = islandActorState.Health
         };
         
         if (islandActorState.ActiveBuffs.Count > 0)

@@ -71,7 +71,7 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
-                        coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 1);
+                        coconutStat.CoconutsAvailable = Math.Max(0, coconutStat.CoconutsAvailable - 2);
                         sharedPile?.AddSupply("coconut", 2.0, id => new CoconutSupply(id));
                         break;
 
