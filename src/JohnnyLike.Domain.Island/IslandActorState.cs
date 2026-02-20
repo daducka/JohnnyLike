@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Recipes;
 using JohnnyLike.Domain.Kit.Dice;
 using System.Text.Json;
 
@@ -45,9 +46,9 @@ public class IslandActorState : ActorState, IIslandActionCandidate
     public List<ActiveBuff> ActiveBuffs { get; set; } = new();
     public Queue<PendingIntent> PendingChatActions { get; set; } = new();
     /// <summary>
-    /// Recipes this actor knows. Each actor can have a different set of recipes.
+    /// IDs of recipes this actor knows. Each actor can have a different set of known recipes.
     /// </summary>
-    public List<IIslandRecipe> KnownRecipes { get; set; } = new();
+    public HashSet<string> KnownRecipeIds { get; set; } = new();
 
     public int GetSkillModifier(SkillType skillType)
     {
@@ -102,7 +103,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             LastMermaidEncounterTime,
             ActiveBuffs,
             PendingChatActions = PendingChatActions.ToList(),
-            KnownRecipeIds = KnownRecipes.Select(r => r.Id).ToList()
+            KnownRecipeIds = KnownRecipeIds.ToList()
         }, options);
     }
 
@@ -195,22 +196,9 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         if (data.TryGetValue("KnownRecipeIds", out var recipeIds))
         {
             var list = JsonSerializer.Deserialize<List<string>>(recipeIds.GetRawText(), options) ?? new();
-            KnownRecipes = list
-                .Select(CreateRecipeById)
-                .OfType<IIslandRecipe>()
-                .ToList();
+            KnownRecipeIds = new HashSet<string>(list);
         }
     }
-
-    /// <summary>
-    /// Local factory: reconstructs a recipe instance from its persisted ID.
-    /// Add new recipe types here as they are introduced.
-    /// </summary>
-    private static IIslandRecipe? CreateRecipeById(string id) => id switch
-    {
-        "cook_fish" => new Recipes.CookFishRecipe(),
-        _ => null
-    };
 
     /// <summary>
     /// Actors can provide their own action candidates including idle, sleep, swim, build sand castle, and chat actions.
@@ -241,10 +229,16 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         // Build sand castle
         AddBuildSandCastleCandidate(ctx, output);
 
+        // Think about supplies (triggers recipe discovery)
+        AddThinkAboutSuppliesCandidate(ctx, output);
+
         // Known recipes
-        foreach (var recipe in KnownRecipes)
+        foreach (var recipeId in KnownRecipeIds)
         {
-            recipe.AddCandidates(ctx, output);
+            if (!IslandRecipeRegistry.All.TryGetValue(recipeId, out var recipe))
+                continue; // skip stale or removed recipe IDs
+
+            RecipeCandidateBuilder.AddCandidate(recipe, ctx, output);
         }
     }
 
@@ -313,6 +307,32 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Qualities: new Dictionary<QualityType, double>
             {
                 [QualityType.Fun] = 1.0
+            }
+        ));
+    }
+
+    private void AddThinkAboutSuppliesCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("think_about_supplies"),
+                ActionKind.Wait,
+                EmptyActionParameters.Instance,
+                10.0 + ctx.Random.NextDouble() * 5.0
+            ),
+            0.2,
+            "Think about supplies",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                // Use effect-time Rng (not the candidate-generation ctx) for deterministic rolls.
+                RecipeDiscoverySystem.TryDiscover(
+                    effectCtx.Actor, effectCtx.World, effectCtx.Rng,
+                    DiscoveryTrigger.ThinkAboutSupplies);
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Preparation] = 0.5,
+                [QualityType.Efficiency]  = 0.5
             }
         ));
     }
@@ -517,7 +537,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 public enum BuffType
 {
     SkillBonus,
-    Advantage
+    Advantage,
+    RainProtection
 }
 
 public class ActiveBuff

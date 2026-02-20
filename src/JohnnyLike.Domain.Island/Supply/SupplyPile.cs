@@ -126,6 +126,8 @@ public class SupplyPile : WorldItem, IIslandActionCandidate
                         "supply_fish"        => new FishSupply(id),
                         "supply_cooked_fish" => new CookedFishSupply(id),
                         "supply_coconut"     => new CoconutSupply(id),
+                        "supply_stick"       => new StickSupply(id),
+                        "supply_palm_frond"  => new PalmFrondSupply(id),
                         _ => null
                     };
 
