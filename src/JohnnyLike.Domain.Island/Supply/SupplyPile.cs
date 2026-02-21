@@ -172,6 +172,7 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
                         "supply_stick"       => new StickSupply(id),
                         "supply_palm_frond"  => new PalmFrondSupply(id),
                         "supply_rocks"       => new RocksSupply(id),
+                        "supply_rope"        => new RopeSupply(id),
                         _ => null
                     };
 

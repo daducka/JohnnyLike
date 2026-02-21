@@ -71,7 +71,7 @@ public static class Campfire
                     return weather?.Temperature == TemperatureBand.Cold;
                 },
 
-                BaseChance = 0.3
+                BaseChance = 0.9
             },
 
             SupplyCosts: supplyCosts

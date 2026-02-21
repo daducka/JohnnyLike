@@ -45,10 +45,11 @@ public class RecipeSystemTests
     // ── Registry ───────────────────────────────────────────────────────────────
 
     [Fact]
-    public void Registry_ContainsCookFishAndUmbrella()
+    public void Registry_ContainsCookFishUmbrellaAndRope()
     {
         Assert.True(IslandRecipeRegistry.All.ContainsKey("cook_fish"));
         Assert.True(IslandRecipeRegistry.All.ContainsKey("umbrella"));
+        Assert.True(IslandRecipeRegistry.All.ContainsKey("rope"));
     }
 
     // ── cook_fish candidate ────────────────────────────────────────────────────
@@ -205,6 +206,55 @@ public class RecipeSystemTests
 
         var preOk = recipe.PreAction(effectCtx);
         Assert.False(preOk);
+    }
+
+    // ── rope recipe ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Rope_CandidateExists_WhenKnownAndPalmFrondAvailable()
+    {
+        var (actor, world) = MakeBase();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(1, () => new PalmFrondSupply());
+
+        actor.KnownRecipeIds.Add("rope");
+
+        var ctx = MakeContext(actor, world);
+        var candidates = new List<ActionCandidate>();
+        actor.AddCandidates(ctx, candidates);
+
+        Assert.Contains(candidates, c => c.Action.Id.Value == "craft_rope");
+    }
+
+    [Fact]
+    public void Rope_CandidateAbsent_WhenInsufficientPalmFrond()
+    {
+        var (actor, world) = MakeBase();
+        actor.KnownRecipeIds.Add("rope");
+
+        var ctx = MakeContext(actor, world);
+        var candidates = new List<ActionCandidate>();
+        actor.AddCandidates(ctx, candidates);
+
+        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "craft_rope");
+    }
+
+    [Fact]
+    public void Rope_Effect_ProducesThreeRope_AndPreAction_ConsumesOnePalmFrond()
+    {
+        var (actor, world) = MakeBase();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(2, () => new PalmFrondSupply());
+
+        var recipe = IslandRecipeRegistry.Get("rope");
+        var effectCtx = MakeEffectContext(actor, world);
+
+        var preOk = recipe.PreAction(effectCtx);
+        Assert.True(preOk);
+        Assert.Equal(1.0, pile.GetQuantity<PalmFrondSupply>());
+
+        recipe.Effect(effectCtx);
+        Assert.Equal(3.0, pile.GetQuantity<RopeSupply>());
     }
 
     [Fact]
