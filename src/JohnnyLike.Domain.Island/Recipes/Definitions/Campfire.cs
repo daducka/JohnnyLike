@@ -12,6 +12,13 @@ public static class Campfire
 {
     public static RecipeDefinition Define()
     {
+        var supplyCosts = new List<RecipeSupplyCost>
+        {
+            RecipeSupplyCost.Of<StickSupply>(5),
+            RecipeSupplyCost.Of<WoodSupply>(3),
+            RecipeSupplyCost.Of<RocksSupply>(6)
+        };
+
         return new RecipeDefinition(
             Id: "campfire",
             DisplayName: "Build campfire",
@@ -37,13 +44,7 @@ public static class Campfire
                 if (weather?.Temperature != TemperatureBand.Cold) return false;
 
                 var pile = ctx.World.SharedSupplyPile;
-                if (pile == null) return false;
-
-                if (pile.GetQuantity<StickSupply>() < 5) return false;
-                if (pile.GetQuantity<WoodSupply>() < 3) return false;
-                if (pile.GetQuantity<RocksSupply>() < 6) return false;
-
-                return true;
+                return RecipeDefinition.HasRequiredSupplies(pile, supplyCosts);
             },
 
             PreAction: effectCtx =>
@@ -52,12 +53,7 @@ public static class Campfire
                 if (weather?.Temperature != TemperatureBand.Cold) return false;
 
                 var pile = effectCtx.World.SharedSupplyPile;
-                if (pile == null) return false;
-
-                return
-                          pile.TryConsumeSupply<StickSupply>(5)
-                      && pile.TryConsumeSupply<WoodSupply>(3)
-                      && pile.TryConsumeSupply<RocksSupply>(6);
+                return RecipeDefinition.TryConsumeRequiredSupplies(pile, supplyCosts);
             },
 
             Effect: effectCtx =>
@@ -76,7 +72,9 @@ public static class Campfire
                 },
 
                 BaseChance = 0.3
-            }
+            },
+
+            SupplyCosts: supplyCosts
         );
     }
 }

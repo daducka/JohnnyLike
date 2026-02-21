@@ -12,6 +12,11 @@ public static class CookFish
 {
     public static RecipeDefinition Define()
     {
+        var supplyCosts = new List<RecipeSupplyCost>
+        {
+            RecipeSupplyCost.Of<FishSupply>(1)
+        };
+
         return new RecipeDefinition(
             Id: "cook_fish",
             DisplayName: "Cook fish over campfire",
@@ -33,9 +38,7 @@ public static class CookFish
             CanCraft: ctx =>
             {
                 var pile = ctx.World.SharedSupplyPile;
-                if (pile == null) return false;
-
-                if (pile.GetQuantity<FishSupply>() < 1)
+                if (!RecipeDefinition.HasRequiredSupplies(pile, supplyCosts))
                     return false;
 
                 var campfire = ctx.World.MainCampfire;
@@ -48,8 +51,7 @@ public static class CookFish
             PreAction: effectCtx =>
             {
                 var pile = effectCtx.World.SharedSupplyPile;
-                return pile != null &&
-                      pile.TryConsumeSupply<FishSupply>(1);
+                return RecipeDefinition.TryConsumeRequiredSupplies(pile, supplyCosts);
             },
 
             Effect: effectCtx =>
@@ -77,7 +79,9 @@ public static class CookFish
                 },
 
                 BaseChance = 0.3
-            }
+            },
+
+            SupplyCosts: supplyCosts
         );
     }
 }

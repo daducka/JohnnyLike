@@ -12,6 +12,12 @@ public static class Umbrella
 {
     public static RecipeDefinition Define()
     {
+        var supplyCosts = new List<RecipeSupplyCost>
+        {
+            RecipeSupplyCost.Of<StickSupply>(2),
+            RecipeSupplyCost.Of<PalmFrondSupply>(3)
+        };
+
         return new RecipeDefinition(
             Id: "umbrella",
             DisplayName: "Craft umbrella",
@@ -39,25 +45,13 @@ public static class Umbrella
                     return false;
 
                 var pile = ctx.World.SharedSupplyPile;
-                if (pile == null) return false;
-
-                if (pile.GetQuantity<StickSupply>() < 2)
-                    return false;
-
-                if (pile.GetQuantity<PalmFrondSupply>() < 3)
-                    return false;
-
-                return true;
+                return RecipeDefinition.HasRequiredSupplies(pile, supplyCosts);
             },
 
             PreAction: effectCtx =>
             {
                 var pile = effectCtx.World.SharedSupplyPile;
-                if (pile == null) return false;
-
-                return
-                          pile.TryConsumeSupply<StickSupply>(2)
-                      && pile.TryConsumeSupply<PalmFrondSupply>(3);
+                return RecipeDefinition.TryConsumeRequiredSupplies(pile, supplyCosts);
             },
 
             Effect: effectCtx =>
@@ -86,7 +80,9 @@ public static class Umbrella
                 },
 
                 BaseChance = 0.25
-            }
+            },
+
+            SupplyCosts: supplyCosts
         );
     }
 }

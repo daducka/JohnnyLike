@@ -207,6 +207,61 @@ public class RecipeSystemTests
         Assert.False(preOk);
     }
 
+    [Fact]
+    public void Umbrella_SupplyCosts_AreDefinedInOnePlace()
+    {
+        var recipe = IslandRecipeRegistry.Get("umbrella");
+
+        Assert.NotNull(recipe.SupplyCosts);
+        Assert.Collection(
+            recipe.SupplyCosts!,
+            c =>
+            {
+                Assert.Equal("StickSupply", c.Name);
+                Assert.Equal(2.0, c.Quantity);
+            },
+            c =>
+            {
+                Assert.Equal("PalmFrondSupply", c.Name);
+                Assert.Equal(3.0, c.Quantity);
+            });
+    }
+
+    [Fact]
+    public void Umbrella_HasRequiredSupplies_UsesCentralizedSupplyCosts()
+    {
+        var recipe = IslandRecipeRegistry.Get("umbrella");
+
+        var (_, worldMissing) = MakeBase();
+        var missingPile = worldMissing.SharedSupplyPile!;
+        missingPile.AddSupply(1, () => new StickSupply());
+        missingPile.AddSupply(3, () => new PalmFrondSupply());
+        Assert.False(recipe.HasRequiredSupplies(missingPile));
+
+        var (_, worldEnough) = MakeBase();
+        var enoughPile = worldEnough.SharedSupplyPile!;
+        enoughPile.AddSupply(2, () => new StickSupply());
+        enoughPile.AddSupply(3, () => new PalmFrondSupply());
+        Assert.True(recipe.HasRequiredSupplies(enoughPile));
+    }
+
+    [Fact]
+    public void Umbrella_TryConsumeRequiredSupplies_ConsumesExpectedAmounts()
+    {
+        var recipe = IslandRecipeRegistry.Get("umbrella");
+
+        var (_, world) = MakeBase();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(5, () => new StickSupply());
+        pile.AddSupply(6, () => new PalmFrondSupply());
+
+        var consumed = recipe.TryConsumeRequiredSupplies(pile);
+
+        Assert.True(consumed);
+        Assert.Equal(3.0, pile.GetQuantity<StickSupply>());
+        Assert.Equal(3.0, pile.GetQuantity<PalmFrondSupply>());
+    }
+
     // ── discovery ─────────────────────────────────────────────────────────────
 
     [Fact]
