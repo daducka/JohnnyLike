@@ -216,7 +216,7 @@ public class RecipeSystemTests
         int seed = FindSeedBelow(0.25);
 
         var (actor, world) = MakeBase();
-        world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
 
         var pile = world.SharedSupplyPile!;
         pile.AddSupply("stick", 1, id => new StickSupply(id));
@@ -234,7 +234,7 @@ public class RecipeSystemTests
         int seed = FindSeedAboveOrEqual(0.25);
 
         var (actor, world) = MakeBase();
-        world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
 
         var pile = world.SharedSupplyPile!;
         pile.AddSupply("stick", 1, id => new StickSupply(id));
@@ -251,7 +251,7 @@ public class RecipeSystemTests
         int seed = FindSeedBelow(0.25);
 
         var (actor, world) = MakeBase();
-        world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Hot; // not cold
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Clear; // not cold
 
         var pile = world.SharedSupplyPile!;
         pile.AddSupply("stick", 1, id => new StickSupply(id));
@@ -270,7 +270,7 @@ public class RecipeSystemTests
 
         foreach (var (actor, world) in new[] { (actor1, world1), (actor2, world2) })
         {
-            world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
+            world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
             var pile = world.SharedSupplyPile!;
             pile.AddSupply("stick", 1, id => new StickSupply(id));
             pile.AddSupply("palm_frond", 1, id => new PalmFrondSupply(id));
@@ -287,7 +287,7 @@ public class RecipeSystemTests
     public void Discovery_AlreadyKnown_NotDiscoveredAgain()
     {
         var (actor, world) = MakeBase();
-        world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
         var pile = world.SharedSupplyPile!;
         pile.AddSupply("stick", 1, id => new StickSupply(id));
         pile.AddSupply("palm_frond", 1, id => new PalmFrondSupply(id));
@@ -373,7 +373,7 @@ public class RecipeSystemTests
     public void UmbrellaItem_DeployCandidate_OfferedDuringRain_WhenBuffAbsent()
     {
         var (actor, world) = MakeBase();
-        world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
 
         var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
         world.WorldItems.Add(umbrella);
@@ -390,7 +390,7 @@ public class RecipeSystemTests
     public void UmbrellaItem_DeployCandidate_NotOffered_WhenNotRaining()
     {
         var (actor, world) = MakeBase();
-        world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Hot;
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Clear;
 
         var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
         world.WorldItems.Add(umbrella);
@@ -406,7 +406,7 @@ public class RecipeSystemTests
     public void UmbrellaItem_DeployEffect_AddsRainProtectionBuff()
     {
         var (actor, world) = MakeBase();
-        world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
 
         var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
         world.WorldItems.Add(umbrella);
@@ -427,7 +427,7 @@ public class RecipeSystemTests
     public void UmbrellaItem_HolsterCandidate_OfferedWhenBuffActiveAndNotRaining()
     {
         var (actor, world) = MakeBase();
-        world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Hot;
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Clear;
 
         actor.ActiveBuffs.Add(new ActiveBuff
         {
@@ -451,7 +451,7 @@ public class RecipeSystemTests
     public void UmbrellaItem_HolsterEffect_RemovesRainProtectionBuff()
     {
         var (actor, world) = MakeBase();
-        world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Hot;
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Clear;
 
         actor.ActiveBuffs.Add(new ActiveBuff
         {
@@ -479,7 +479,7 @@ public class RecipeSystemTests
     public void UmbrellaItem_NoCandidates_ForOtherActor()
     {
         var (actor, world) = MakeBase();
-        world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
 
         var otherActorId = new ActorId("other_actor");
         var umbrella = new UmbrellaItem($"umbrella_{otherActorId.Value}", otherActorId);
@@ -524,7 +524,7 @@ public class RecipeSystemTests
 
         foreach (var (actor, world) in new[] { (actor1, world1), (actor2, world2) })
         {
-            world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
+            world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
             var pile = world.SharedSupplyPile!;
             pile.AddSupply("stick", 1, id => new StickSupply(id));
             pile.AddSupply("palm_frond", 1, id => new PalmFrondSupply(id));
@@ -557,7 +557,7 @@ public class RecipeSystemTests
 
         foreach (var (actor, world) in new[] { (actor1, world1), (actor2, world2) })
         {
-            world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
+            world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
             world.SharedSupplyPile!.AddSupply("stick", 1, id => new StickSupply(id));
             world.SharedSupplyPile!.AddSupply("palm_frond", 1, id => new PalmFrondSupply(id));
         }

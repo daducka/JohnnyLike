@@ -189,6 +189,7 @@ public class IslandWorldState : WorldState
                         "weather"        => new WeatherItem(id),
                         "beach"          => new BeachItem(id),
                         "palm_tree"      => new CoconutTreeItem(id),
+                        "ocean"          => new OceanItem(id),
                         _                => null
                     };
 

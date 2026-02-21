@@ -33,39 +33,48 @@ public class FishingPoleItem : ToolItem
         if (!CanActorUseTool(ctx.ActorId))
             return;
 
-        // GoFishing action - only if pole is not broken
+        // GoFishing action - only if pole is not broken and ocean has fish
         if (!IsBroken && Quality > 10.0)
         {
-            var fishingMod = ctx.Actor.FishingSkill;
-            var dexMod = DndMath.AbilityModifier(ctx.Actor.DEX);
-            var baseDC = 12;
-            
-            // Quality affects the DC
-            if (Quality < 50.0)
-                baseDC += 2;
-            else if (Quality > 80.0)
-                baseDC -= 1;
-            
-            var parameters = ctx.RollSkillCheck(SkillType.Fishing, baseDC);
-            var baseScore = 0.6 + (fishingMod * 0.05);
-            
-            // Reduce score if pole quality is low
-            if (Quality < 50.0)
-                baseScore *= 0.7;
+            var ocean = ctx.World.GetItem<OceanItem>("ocean");
+            var fishAvailable = ocean?.GetQuantity<Supply.FishSupply>("fish") ?? 0.0;
 
-            output.Add(new ActionCandidate(
-                new ActionSpec(
-                    new ActionId("go_fishing"),
-                    ActionKind.Interact,
-                    parameters,
-                    45.0 + ctx.Random.NextDouble() * 15.0,
-                    parameters.ToResultData(),
-                    new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
-                ),
-                baseScore,
-                $"Go fishing with pole (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: new Action<EffectContext>(ApplyGoFishingEffect)
-            ));
+            if (fishAvailable >= 1.0)
+            {
+                var fishingMod = ctx.Actor.FishingSkill;
+                var baseDC = 12;
+
+                if (Quality < 50.0)
+                    baseDC += 2;
+                else if (Quality > 80.0)
+                    baseDC -= 1;
+
+                var parameters = ctx.RollSkillCheck(SkillType.Fishing, baseDC);
+                var baseScore = 0.6 + (fishingMod * 0.05);
+
+                if (Quality < 50.0)
+                    baseScore *= 0.7;
+
+                output.Add(new ActionCandidate(
+                    new ActionSpec(
+                        new ActionId("go_fishing"),
+                        ActionKind.Interact,
+                        parameters,
+                        45.0 + ctx.Random.NextDouble() * 15.0,
+                        parameters.ToResultData(),
+                        new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
+                    ),
+                    baseScore,
+                    $"Go fishing with pole (quality: {Quality:F0}%, fish available: {fishAvailable:F0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                    PreAction: new Func<EffectContext, bool>(effectCtx =>
+                    {
+                        var o = effectCtx.World.GetItem<OceanItem>("ocean");
+                        if (o == null) return false;
+                        return o.TryConsumeSupply<Supply.FishSupply>("fish", 1.0);
+                    }),
+                    EffectHandler: new Action<EffectContext>(ApplyGoFishingEffect)
+                ));
+            }
         }
 
         // MaintainRod action - maintain the pole to keep it in good condition
@@ -129,9 +138,17 @@ public class FishingPoleItem : ToolItem
             Quality = Math.Max(0.0, Quality - 1.0);
             ctx.Actor.Morale += 5.0;
 
-            var fishCount = tier == RollOutcomeTier.CriticalSuccess ? 2.0 : 1.0;
+            // PreAction already consumed 1 fish from the ocean
+            double fishCount = 1.0;
 
-            // Add fish to shared supply pile
+            // CriticalSuccess: try to land an extra fish from the ocean
+            if (tier == RollOutcomeTier.CriticalSuccess)
+            {
+                var ocean = ctx.World.GetItem<OceanItem>("ocean");
+                if (ocean != null && ocean.TryConsumeSupply<Supply.FishSupply>("fish", 1.0))
+                    fishCount = 2.0;
+            }
+
             var sharedPile = ctx.World.SharedSupplyPile;
             if (sharedPile != null)
                 sharedPile.AddSupply("fish", fishCount, id => new Supply.FishSupply(id));

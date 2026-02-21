@@ -23,6 +23,10 @@ public class ShelterItem : ToolItem
         {
             Quality = Math.Max(0.0, Quality - 0.03 * dtSeconds);
         }
+        if (weather?.Precipitation == PrecipitationBand.Rainy)
+        {
+            Quality = Math.Max(0.0, Quality - 0.02 * dtSeconds);
+        }
     }
 
     public override void AddCandidates(IslandContext ctx, List<ActionCandidate> output)

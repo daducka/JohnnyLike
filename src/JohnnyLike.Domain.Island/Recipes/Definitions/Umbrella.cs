@@ -74,7 +74,7 @@ public static class Umbrella
                 {
                     var weather = world.GetItem<WeatherItem>("weather");
 
-                    if (weather?.Temperature != TemperatureBand.Cold)
+                    if (weather?.Precipitation != PrecipitationBand.Rainy)
                         return false;
 
                     var pile = world.SharedSupplyPile;

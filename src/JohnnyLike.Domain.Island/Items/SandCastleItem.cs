@@ -24,11 +24,11 @@ public class SandCastleItem : MaintainableWorldItem
         // Calculate decay rate based on environmental conditions
         var decayRate = BaseDecayPerSecond;
         
-        // Decay faster in cold weather
+        // Decay faster in rain
         var weather = world.GetItem<WeatherItem>("weather");
-        if (weather?.Temperature == TemperatureBand.Cold)
+        if (weather?.Precipitation == PrecipitationBand.Rainy)
         {
-            decayRate *= 5.0; // 5x faster decay in cold weather
+            decayRate *= 5.0; // 5x faster decay in rain
         }
         
         // Decay faster at high tide

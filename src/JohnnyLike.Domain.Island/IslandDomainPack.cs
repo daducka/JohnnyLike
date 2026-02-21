@@ -21,6 +21,7 @@ public class IslandDomainPack : IDomainPack
         world.WorldItems.Add(new CalendarItem("calendar"));
         world.WorldItems.Add(new WeatherItem("weather"));
         world.WorldItems.Add(new BeachItem("beach"));
+        world.WorldItems.Add(new OceanItem("ocean"));
         world.WorldItems.Add(new CoconutTreeItem("palm_tree"));
         world.WorldItems.Add(new ShelterItem("main_shelter"));
 

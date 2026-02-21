@@ -5,8 +5,8 @@ namespace JohnnyLike.Domain.Island.Items;
 
 /// <summary>
 /// A crafted umbrella tool owned by a specific actor.
-/// Offers DeployUmbrella during cold weather (when cold-protection buff is absent)
-/// and HolsterUmbrella when the buff is active but temperature has warmed.
+/// Offers DeployUmbrella during rain (when rain-protection buff is absent)
+/// and HolsterUmbrella when the buff is active but rain has stopped.
 /// </summary>
 public class UmbrellaItem : ToolItem
 {
@@ -24,11 +24,11 @@ public class UmbrellaItem : ToolItem
             return;
 
         var weather = ctx.World.GetItem<WeatherItem>("weather");
-        var isCold = weather?.Temperature == TemperatureBand.Cold;
+        var isRaining = weather?.Precipitation == PrecipitationBand.Rainy;
         var hasRainBuff = ctx.Actor.ActiveBuffs.Any(b => b.Name == RainProtectionBuffName);
 
-        // Deploy: offered during cold when the buff is not yet active
-        if (isCold && !hasRainBuff)
+        // Deploy: offered during rain when the buff is not yet active
+        if (isRaining && !hasRainBuff)
         {
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -38,7 +38,7 @@ public class UmbrellaItem : ToolItem
                     5.0
                 ),
                 0.7,
-                "Deploy umbrella (cold protection)",
+                "Deploy umbrella (rain protection)",
                 EffectHandler: new Action<EffectContext>(effectCtx =>
                 {
                     effectCtx.Actor.ActiveBuffs.Add(new ActiveBuff
@@ -59,8 +59,8 @@ public class UmbrellaItem : ToolItem
             ));
         }
 
-        // Holster: offered when the buff is active but it has warmed up
-        if (hasRainBuff && !isCold)
+        // Holster: offered when the buff is active but rain has stopped
+        if (hasRainBuff && !isRaining)
         {
             output.Add(new ActionCandidate(
                 new ActionSpec(

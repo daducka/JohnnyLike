@@ -2,6 +2,7 @@ using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Supply;
 using JohnnyLike.Domain.Kit.Dice;
 using JohnnyLike.Engine;
 using JohnnyLike.SimRunner;
@@ -268,12 +269,13 @@ public class IslandWorldStateTests
         var world = new IslandWorldState();
         var calendar = new CalendarItem("calendar") { TimeOfDay = 0.9, DayCount = 0 };
         world.WorldItems.Add(calendar);
-        var tree = new CoconutTreeItem("palm_tree") { CoconutsAvailable = 2 };
+        var tree = new CoconutTreeItem("palm_tree");
+        tree.GetSupply<CoconutSupply>("coconut")!.Quantity = 2;
         world.WorldItems.Add(tree);
 
         world.OnTimeAdvanced(0.0, 10000.0);
 
-        Assert.True(tree.CoconutsAvailable > 2);
+        Assert.True(tree.GetQuantity<CoconutSupply>("coconut") > 2);
     }
 
     [Fact]
@@ -388,6 +390,7 @@ public class IslandActionEffectsTests
         var worldState = new IslandWorldState();
 
         domain.InitializeActorItems(actorId, worldState);
+        worldState.WorldItems.Add(new OceanItem("ocean"));
         
         // Generate candidates to get the effect handler
         var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
@@ -618,6 +621,7 @@ public class IslandSignalHandlingTests
         var worldState = new IslandWorldState();
 
         domain.InitializeActorItems(actorId, worldState);
+        worldState.WorldItems.Add(new OceanItem("ocean"));
         
         var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 10.0, new Random(42), new EmptyResourceAvailability());
         
@@ -817,11 +821,11 @@ public class IslandDCTuningTests
         
         // Many coconuts scenario
         var manyCoconutsWorld = (IslandWorldState)domain.CreateInitialWorldState();
-        manyCoconutsWorld.GetItem<CoconutTreeItem>("palm_tree")!.CoconutsAvailable = 5;
+        manyCoconutsWorld.GetItem<CoconutTreeItem>("palm_tree")!.GetSupply<CoconutSupply>("coconut")!.Quantity = 5;
         
         // Few coconuts scenario
         var fewCoconutsWorld = (IslandWorldState)domain.CreateInitialWorldState();
-        fewCoconutsWorld.GetItem<CoconutTreeItem>("palm_tree")!.CoconutsAvailable = 2;
+        fewCoconutsWorld.GetItem<CoconutTreeItem>("palm_tree")!.GetSupply<CoconutSupply>("coconut")!.Quantity = 2;
         
         var manyCandidates = domain.GenerateCandidates(actorId, actorState, manyCoconutsWorld, 0.0, new Random(42), new EmptyResourceAvailability());
         var fewCandidates = domain.GenerateCandidates(actorId, actorState, fewCoconutsWorld, 0.0, new Random(42), new EmptyResourceAvailability());
@@ -951,7 +955,7 @@ public class ScoringPostPassTests
         var fullState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 100.0 });
 
         var worldState = (IslandWorldState)domain.CreateInitialWorldState();
-        worldState.GetItem<CoconutTreeItem>("palm_tree")!.CoconutsAvailable = 10;
+        worldState.GetItem<CoconutTreeItem>("palm_tree")!.GetSupply<CoconutSupply>("coconut")!.Quantity = 10;
 
         var hungryCandidates = domain.GenerateCandidates(actorId, hungryState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());
         var fullCandidates = domain.GenerateCandidates(actorId, fullState, worldState, 0.0, new Random(42), new EmptyResourceAvailability());

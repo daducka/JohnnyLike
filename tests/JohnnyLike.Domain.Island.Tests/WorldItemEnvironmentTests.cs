@@ -3,6 +3,7 @@ using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Island.Recipes;
 using JohnnyLike.Domain.Island.Supply;
+using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Tests;
 
@@ -94,7 +95,7 @@ public class WorldItemEnvironmentTests
     {
         var world = MakeWorld();
         var beach = world.GetItem<BeachItem>("beach")!;
-        beach.Bounty["sticks"] = 20;
+        beach.GetSupply<StickSupply>("sticks")!.Quantity = 20;
 
         var actor = new IslandActorState { Id = new ActorId("test_actor") };
         var rng = new Random(0);
@@ -116,7 +117,7 @@ public class WorldItemEnvironmentTests
             Outcome = new ActionOutcome(new ActionId("explore_beach"), ActionOutcomeType.Success, 0.0),
             Actor = actor,
             World = world,
-            Tier = null,
+            Tier = RollOutcomeTier.Success,
             Rng = new RandomRngStream(new Random(0)),
             Reservations = new EmptyResourceAvailability()
         };
@@ -175,5 +176,147 @@ public class WorldItemEnvironmentTests
     public void CampfireRecipe_IsInRegistry()
     {
         Assert.True(IslandRecipeRegistry.All.ContainsKey("campfire"));
+    }
+
+    // ── OceanItem ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void OceanItem_RegeneratesFish_OverTime()
+    {
+        var world = new IslandWorldState();
+        var calendar = new CalendarItem("calendar");
+        world.WorldItems.Add(calendar);
+        var ocean = new OceanItem("ocean") { FishRegenRatePerMinute = 5.0 };
+        ocean.GetSupply<FishSupply>("fish")!.Quantity = 50.0;
+        world.WorldItems.Add(ocean);
+
+        ocean.Tick(60.0, world, 0.0); // 1 minute
+
+        Assert.Equal(55.0, ocean.GetQuantity<FishSupply>("fish"), 1);
+    }
+
+    [Fact]
+    public void OceanItem_FishCappedAt100()
+    {
+        var world = new IslandWorldState();
+        var calendar = new CalendarItem("calendar");
+        world.WorldItems.Add(calendar);
+        var ocean = new OceanItem("ocean") { FishRegenRatePerMinute = 10.0 };
+        ocean.GetSupply<FishSupply>("fish")!.Quantity = 95.0;
+
+        ocean.Tick(60.0, world, 0.0);
+
+        Assert.Equal(100.0, ocean.GetQuantity<FishSupply>("fish"));
+    }
+
+    [Fact]
+    public void OceanItem_IsInInitialWorldState()
+    {
+        var domain = new IslandDomainPack();
+        var world = (IslandWorldState)domain.CreateInitialWorldState();
+
+        Assert.NotNull(world.GetItem<OceanItem>("ocean"));
+    }
+
+    // ── UmbrellaItem (Precipitation-based) ────────────────────────────────────
+
+    [Fact]
+    public void UmbrellaItem_DeployedWhenRaining_UsingPrecipitationBand()
+    {
+        var world = MakeWorld();
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
+
+        var actor = new IslandActorState { Id = new ActorId("test_actor") };
+        var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
+        world.WorldItems.Add(umbrella);
+
+        var rng = new Random(42);
+        var ctx = new Candidates.IslandContext(
+            actor.Id, actor, world, 0.0,
+            new RandomRngStream(rng), rng,
+            new EmptyResourceAvailability());
+
+        var candidates = new List<ActionCandidate>();
+        umbrella.AddCandidates(ctx, candidates);
+
+        Assert.Contains(candidates, c => c.Action.Id.Value == "deploy_umbrella");
+    }
+
+    [Fact]
+    public void UmbrellaItem_NotDeployedWhenClear_UsingPrecipitationBand()
+    {
+        var world = MakeWorld();
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Clear;
+
+        var actor = new IslandActorState { Id = new ActorId("test_actor") };
+        var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
+        world.WorldItems.Add(umbrella);
+
+        var rng = new Random(42);
+        var ctx = new Candidates.IslandContext(
+            actor.Id, actor, world, 0.0,
+            new RandomRngStream(rng), rng,
+            new EmptyResourceAvailability());
+
+        var candidates = new List<ActionCandidate>();
+        umbrella.AddCandidates(ctx, candidates);
+
+        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "deploy_umbrella");
+    }
+
+    // ── BeachItem bounty-gated candidate ─────────────────────────────────────
+
+    [Fact]
+    public void BeachItem_ExploreCandidate_NotOffered_WhenInsufficientBounty()
+    {
+        var world = MakeWorld();
+        var beach = world.GetItem<BeachItem>("beach")!;
+
+        // Set bounty below minimum
+        beach.GetSupply<StickSupply>("sticks")!.Quantity = 1.0;
+        beach.GetSupply<WoodSupply>("driftwood")!.Quantity = 1.0;
+
+        var actor = new IslandActorState { Id = new ActorId("test_actor") };
+        var rng = new Random(0);
+        var ctx = new Candidates.IslandContext(
+            actor.Id, actor, world, 0.0,
+            new RandomRngStream(rng), rng,
+            new EmptyResourceAvailability());
+
+        var candidates = new List<ActionCandidate>();
+        beach.AddCandidates(ctx, candidates);
+
+        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "explore_beach");
+    }
+
+    // ── CoconutTreeItem bounty ────────────────────────────────────────────────
+
+    [Fact]
+    public void CoconutTreeItem_HasPalmFrondBounty()
+    {
+        var tree = new CoconutTreeItem("palm_tree");
+        Assert.True(tree.GetQuantity<PalmFrondSupply>("palm_frond") > 0);
+    }
+
+    [Fact]
+    public void CoconutTreeItem_ExploreCandidate_NotOffered_WhenNoFronds()
+    {
+        var world = MakeWorld();
+        var tree = new CoconutTreeItem("palm_tree");
+        // Remove fronds from bounty
+        tree.GetSupply<PalmFrondSupply>("palm_frond")!.Quantity = 0;
+        world.WorldItems.Add(tree);
+
+        var actor = new IslandActorState { Id = new ActorId("test_actor") };
+        var rng = new Random(0);
+        var ctx = new Candidates.IslandContext(
+            actor.Id, actor, world, 0.0,
+            new RandomRngStream(rng), rng,
+            new EmptyResourceAvailability());
+
+        var candidates = new List<ActionCandidate>();
+        tree.AddCandidates(ctx, candidates);
+
+        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "shake_tree_coconut");
     }
 }
