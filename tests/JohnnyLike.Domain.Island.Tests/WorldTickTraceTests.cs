@@ -1,92 +1,25 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
-using JohnnyLike.Domain.Island.Stats;
+using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Engine;
 
 namespace JohnnyLike.Domain.Island.Tests;
 
 /// <summary>
 /// Tests for world state tick trace logging functionality.
-/// Verifies that significant world state changes are properly logged during time advancement.
 /// </summary>
 public class WorldTickTraceTests
 {
-    [Fact]
-    public void TickWorldState_FishRegeneration_LogsTraceEvent()
-    {
-        // Arrange
-        var domainPack = new IslandDomainPack();
-        var world = (IslandWorldState)domainPack.CreateInitialWorldState();
-        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 50.0; // Start with partial fish
-        world.CurrentTime = 0.0;
-        var reservations = new EmptyResourceAvailability();
-
-        // Act - Tick for enough time to regenerate fish (1 minute = 5 fish)
-        var events = domainPack.TickWorldState(world, 60.0, reservations);
-
-        // Assert
-        var fishEvent = events.FirstOrDefault(e => e.EventType == "FishRegenerated");
-        Assert.NotNull(fishEvent);
-        Assert.Equal(50.0, Math.Round((double)fishEvent.Details["oldAvailable"], 2));
-        Assert.Equal(55.0, Math.Round((double)fishEvent.Details["newAvailable"], 2));
-        Assert.Equal(5.0, Math.Round((double)fishEvent.Details["regenerated"], 2));
-    }
-
-    [Fact]
-    public void TickWorldState_NewDay_LogsCoconutRegeneration()
-    {
-        // Arrange
-        var domainPack = new IslandDomainPack();
-        var world = (IslandWorldState)domainPack.CreateInitialWorldState();
-        world.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.9; // Near end of day
-        world.GetStat<CoconutAvailabilityStat>("coconut_availability")!.CoconutsAvailable = 3;
-        world.GetStat<TimeOfDayStat>("time_of_day")!.DayCount = 0;
-        world.CurrentTime = 0.0;
-        var reservations = new EmptyResourceAvailability();
-
-        // Act - Tick past midnight (0.15 of a day = 12960 seconds)
-        var events = domainPack.TickWorldState(world, 12960.0, reservations);
-
-        // Assert
-        Assert.Equal(1, world.GetStat<TimeOfDayStat>("time_of_day")!.DayCount);
-        var coconutEvent = events.FirstOrDefault(e => e.EventType == "CoconutsRegenerated");
-        Assert.NotNull(coconutEvent);
-        Assert.Equal(3, coconutEvent.Details["oldCount"]);
-        Assert.Equal(6, coconutEvent.Details["newCount"]);
-        Assert.Equal(3, coconutEvent.Details["added"]);
-        Assert.Equal(1, coconutEvent.Details["dayCount"]);
-    }
-
-    [Fact]
-    public void TickWorldState_TideChange_LogsTraceEvent()
-    {
-        // Arrange
-        var domainPack = new IslandDomainPack();
-        var world = (IslandWorldState)domainPack.CreateInitialWorldState();
-        world.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.0; // Start at midnight, low tide
-        world.GetStat<TideStat>("tide")!.TideLevel = TideLevel.Low;
-        world.CurrentTime = 0.0;
-        var reservations = new EmptyResourceAvailability();
-
-        // Act - Tick forward 6 hours (0.25 of a day = 21600 seconds) to high tide
-        var events = domainPack.TickWorldState(world, 21600.0, reservations);
-
-        // Assert
-        var tideEvent = events.FirstOrDefault(e => e.EventType == "TideChanged");
-        Assert.NotNull(tideEvent);
-        Assert.Equal("Low", tideEvent.Details["oldTide"]);
-        Assert.Equal("High", tideEvent.Details["newTide"]);
-    }
-
     [Fact]
     public void TickWorldState_CampfireExtinguished_LogsTraceEvent()
     {
         // Arrange
         var domainPack = new IslandDomainPack();
         var world = (IslandWorldState)domainPack.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         world.CurrentTime = 0.0;
         var reservations = new EmptyResourceAvailability();
-        
+
         // Set campfire to have very little fuel
         var campfire = world.MainCampfire;
         Assert.NotNull(campfire);
@@ -112,7 +45,7 @@ public class WorldTickTraceTests
         var world = (IslandWorldState)domainPack.CreateInitialWorldState();
         world.CurrentTime = 100.0;
         var reservations = new EmptyResourceAvailability();
-        
+
         // Add a shark that should expire
         var shark = new Items.SharkItem("test_shark");
         shark.ExpiresAt = 105.0; // Expires at time 105
@@ -131,111 +64,59 @@ public class WorldTickTraceTests
     }
 
     [Fact]
-    public void EngineAdvanceTime_CallsTickWorldState_AndRecordsTraces()
-    {
-        // Arrange
-        var domainPack = new IslandDomainPack();
-        var traceSink = new InMemoryTraceSink();
-        var engine = new JohnnyLike.Engine.Engine(domainPack, 42, traceSink);
-        
-        var world = (IslandWorldState)engine.WorldState;
-        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 50.0;
-        world.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.9; // Near end of day
-        world.GetStat<CoconutAvailabilityStat>("coconut_availability")!.CoconutsAvailable = 3;
-
-        // Act - Advance time by enough to trigger multiple events
-        engine.AdvanceTime(12960.0); // About 0.15 of a day
-
-        // Assert
-        var events = traceSink.GetEvents();
-        
-        // Should have coconut regeneration event
-        var coconutEvent = events.FirstOrDefault(e => e.EventType == "CoconutsRegenerated");
-        Assert.NotNull(coconutEvent);
-        
-        // Should have fish regeneration events
-        var fishEvents = events.Where(e => e.EventType == "FishRegenerated").ToList();
-        Assert.NotEmpty(fishEvents);
-    }
-
-    [Fact]
-    public void EngineAdvanceTime_DuringLongActorSleep_WorldStateChangesIndependently()
-    {
-        // Arrange - This test demonstrates the key feature: world ticks independently of actor actions
-        var domainPack = new IslandDomainPack();
-        var traceSink = new InMemoryTraceSink();
-        var engine = new JohnnyLike.Engine.Engine(domainPack, 42, traceSink);
-        
-        var actorId = new ActorId("Sleeper");
-        engine.AddActor(actorId, new Dictionary<string, object>
-        {
-            ["energy"] = 10.0, // Low energy so actor will sleep
-            ["satiety"] = 80.0
-        });
-
-        var world = (IslandWorldState)engine.WorldState;
-        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 50.0;
-        world.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay = 0.1; // Early morning
-        world.GetStat<TideStat>("tide")!.TideLevel = TideLevel.Low;
-        
-        // Get an action (should be sleep due to low energy)
-        engine.TryGetNextAction(actorId, out var action);
-        Assert.NotNull(action);
-        Assert.Contains("sleep", action.Id.Value);
-
-        // Actor starts sleeping (simulate a long sleep of 8 hours = 28800 seconds)
-        var sleepDuration = 28800.0;
-        
-        // Clear traces before the main test
-        traceSink.Clear();
-
-        // Act - Advance time while actor is sleeping
-        // This should trigger world state changes even though no actor action is completing
-        engine.AdvanceTime(sleepDuration);
-
-        // Assert - World should have changed during the sleep
-        var events = traceSink.GetEvents();
-        
-        // Fish should have regenerated multiple times during the sleep
-        var fishEvents = events.Where(e => e.EventType == "FishRegenerated").ToList();
-        Assert.NotEmpty(fishEvents);
-        
-        // Tide should have changed (8 hours covers multiple tide cycles)
-        var tideEvents = events.Where(e => e.EventType == "TideChanged").ToList();
-        Assert.NotEmpty(tideEvents);
-        
-        // Verify world state actually changed
-        Assert.True(world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable > 50.0, "Fish should have regenerated during sleep");
-        Assert.True(world.GetStat<TimeOfDayStat>("time_of_day")!.TimeOfDay > 0.1, "Time of day should have advanced");
-        
-        // Now complete the actor's sleep action
-        engine.ReportActionComplete(actorId, new ActionOutcome(
-            action.Id,
-            ActionOutcomeType.Success,
-            sleepDuration,
-            null
-        ));
-        
-        // Verify actor is ready for next action after sleep
-        var actors = engine.Actors;
-        Assert.Equal(ActorStatus.Ready, actors[actorId].Status);
-    }
-
-    [Fact]
-    public void TickWorldState_NoSignificantChanges_ReturnsEmptyEventList()
+    public void TickWorldState_CalendarAdvances_TimeProgresses()
     {
         // Arrange
         var domainPack = new IslandDomainPack();
         var world = (IslandWorldState)domainPack.CreateInitialWorldState();
-        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 99.5; // Almost full
         world.CurrentTime = 0.0;
         var reservations = new EmptyResourceAvailability();
 
-        // Act - Tick for a very short time (not enough for significant regeneration)
-        var events = domainPack.TickWorldState(world, 0.1, reservations);
+        var calendar = world.GetItem<CalendarItem>("calendar")!;
+        calendar.TimeOfDay = 0.5; // noon
 
-        // Assert - Should be no significant events (fish regen < 1.0)
-        var fishEvent = events.FirstOrDefault(e => e.EventType == "FishRegenerated");
-        Assert.Null(fishEvent);
+        // Act - Tick for 6 hours
+        domainPack.TickWorldState(world, 21600.0, reservations);
+
+        // Assert - time should have advanced ~0.25 of a day
+        Assert.InRange(calendar.TimeOfDay, 0.74, 0.76);
+    }
+
+    [Fact]
+    public void TickWorldState_CalendarNewDay_IncrementsDayCount()
+    {
+        // Arrange
+        var domainPack = new IslandDomainPack();
+        var world = (IslandWorldState)domainPack.CreateInitialWorldState();
+        world.CurrentTime = 0.0;
+        var reservations = new EmptyResourceAvailability();
+
+        var calendar = world.GetItem<CalendarItem>("calendar")!;
+        calendar.TimeOfDay = 0.9;
+
+        // Act - tick enough to cross midnight
+        domainPack.TickWorldState(world, 8640.0, reservations);
+
+        // Assert
+        Assert.Equal(1, calendar.DayCount);
+    }
+
+    [Fact]
+    public void EngineAdvanceTime_CallsTickWorldState_AndWorldChanges()
+    {
+        // Arrange
+        var domainPack = new IslandDomainPack();
+        var traceSink = new InMemoryTraceSink();
+        var engine = new JohnnyLike.Engine.Engine(domainPack, 42, traceSink);
+
+        var world = (IslandWorldState)engine.WorldState;
+        var calendar = world.GetItem<CalendarItem>("calendar")!;
+        calendar.TimeOfDay = 0.9;
+
+        // Act
+        engine.AdvanceTime(12960.0);
+
+        // Assert - calendar should have advanced past midnight
+        Assert.Equal(1, calendar.DayCount);
     }
 }

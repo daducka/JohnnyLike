@@ -13,9 +13,10 @@ public class EffectHandlerRefactoringTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
-        
+
         var campfire = world.MainCampfire!;
         // Set fuel to 500s which is below the 1800s threshold that triggers add fuel candidate
         campfire.FuelSeconds = 500.0;
@@ -39,9 +40,10 @@ public class EffectHandlerRefactoringTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
-        
+
         var campfire = world.MainCampfire!;
         var initialQuality = campfire.Quality;
         campfire.Quality = 50.0;
@@ -52,12 +54,15 @@ public class EffectHandlerRefactoringTests
         
         Assert.NotNull(repairCandidate);
         
-        // Simulate successful action completion, passing the effect handler
+        // Simulate successful action completion, passing the effect handler.
+        // Force tier=Success so the test is not sensitive to RNG seed / world composition.
+        var resultData = new Dictionary<string, object>(repairCandidate.Action.ResultData ?? new());
+        resultData["tier"] = "Success";
         var outcome = new ActionOutcome(
             repairCandidate.Action.Id,
             ActionOutcomeType.Success,
             25.0,
-            new Dictionary<string, object>(repairCandidate.Action.ResultData!)
+            resultData
         );
         
         var rng = new RandomRngStream(new Random(42));

@@ -7,10 +7,14 @@ namespace JohnnyLike.Domain.Island.Supply;
 /// <summary>
 /// Represents a pile of supplies with generic methods to manage different supply types
 /// </summary>
-public class SupplyPile : WorldItem, IIslandActionCandidate
+public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
 {
     public List<SupplyItem> Supplies { get; set; } = new();
     public string AccessControl { get; set; }
+
+    // ISupplyBounty: route through the Supplies list so default interface methods work too
+    List<SupplyItem> ISupplyBounty.BountySupplies => Supplies;
+    Dictionary<string, Dictionary<string, double>> ISupplyBounty.ActiveReservations { get; } = new();
 
     public SupplyPile(string id, string accessControl = "shared") 
         : base(id, "supply_pile")
@@ -128,6 +132,7 @@ public class SupplyPile : WorldItem, IIslandActionCandidate
                         "supply_coconut"     => new CoconutSupply(id),
                         "supply_stick"       => new StickSupply(id),
                         "supply_palm_frond"  => new PalmFrondSupply(id),
+                        "supply_rocks"       => new RocksSupply(id),
                         _ => null
                     };
 

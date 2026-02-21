@@ -1,13 +1,12 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
-using JohnnyLike.Domain.Island.Stats;
 
 namespace JohnnyLike.Domain.Island.Items;
 
 /// <summary>
 /// A crafted umbrella tool owned by a specific actor.
 /// Offers DeployUmbrella during rain (when rain-protection buff is absent)
-/// and HolsterUmbrella when the buff is active but it is no longer raining.
+/// and HolsterUmbrella when the buff is active but rain has stopped.
 /// </summary>
 public class UmbrellaItem : ToolItem
 {
@@ -24,8 +23,8 @@ public class UmbrellaItem : ToolItem
         if (!CanActorUseTool(ctx.ActorId))
             return;
 
-        var weather = ctx.World.GetStat<WeatherStat>("weather");
-        var isRaining = weather?.Weather == Weather.Rainy;
+        var weather = ctx.World.GetItem<WeatherItem>("weather");
+        var isRaining = weather?.Precipitation == PrecipitationBand.Rainy;
         var hasRainBuff = ctx.Actor.ActiveBuffs.Any(b => b.Name == RainProtectionBuffName);
 
         // Deploy: offered during rain when the buff is not yet active
@@ -48,7 +47,7 @@ public class UmbrellaItem : ToolItem
                         Type = BuffType.RainProtection,
                         SkillType = null,
                         Value = 1,
-                        ExpiresAt = double.MaxValue // persists until manually holstered (only possible when rain stops)
+                        ExpiresAt = double.MaxValue
                     });
                     effectCtx.Actor.Morale += 5.0;
                 }),
@@ -60,7 +59,7 @@ public class UmbrellaItem : ToolItem
             ));
         }
 
-        // Holster: offered when the buff is active but it has stopped raining
+        // Holster: offered when the buff is active but rain has stopped
         if (hasRainBuff && !isRaining)
         {
             output.Add(new ActionCandidate(

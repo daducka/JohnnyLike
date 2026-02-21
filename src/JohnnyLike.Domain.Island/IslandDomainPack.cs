@@ -17,26 +17,18 @@ public class IslandDomainPack : IDomainPack
     public WorldState CreateInitialWorldState()
     {
         var world = new IslandWorldState();
-        world.WorldItems.Add(new CampfireItem("main_campfire"));
-        world.WorldItems.Add(new ShelterItem("main_shelter"));
-        
-        // Initialize shared supply pile with some starting wood
-        var sharedSupplies = new SupplyPile("shared_supplies", "shared");
-        sharedSupplies.AddSupply("wood", 20.0, id => new WoodSupply(id));
-        world.WorldItems.Add(sharedSupplies);
-        
-        // Add resource items
+
+        world.WorldItems.Add(new CalendarItem("calendar"));
+        world.WorldItems.Add(new WeatherItem("weather"));
+        world.WorldItems.Add(new BeachItem("beach"));
+        world.WorldItems.Add(new OceanItem("ocean"));
         world.WorldItems.Add(new CoconutTreeItem("palm_tree"));
-        world.WorldItems.Add(new DriftwoodPileItem("driftwood_pile"));
-        
-        // Initialize WorldStats
-        world.WorldStats.Add(new Stats.TimeOfDayStat());
-        world.WorldStats.Add(new Stats.WeatherStat());
-        world.WorldStats.Add(new Stats.TideStat());
-        world.WorldStats.Add(new Stats.FishPopulationStat());
-        world.WorldStats.Add(new Stats.CoconutAvailabilityStat());
-        world.WorldStats.Add(new Stats.DriftwoodAvailabilityStat());
-        
+        world.WorldItems.Add(new ShelterItem("main_shelter"));
+
+        var supplies = new SupplyPile("shared_supplies", "shared");
+        supplies.AddSupply("wood", 20.0, id => new WoodSupply(id));
+        world.WorldItems.Add(supplies);
+
         return world;
     }
 

@@ -251,8 +251,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
         var baseDC = 8;
 
-        var tideStat = ctx.World.GetStat<Stats.TideStat>("tide");
-        if (tideStat?.TideLevel == TideLevel.High)
+        var beach = ctx.World.GetItem<Items.BeachItem>("beach");
+        if (beach?.Tide == Items.TideLevel.High)
             baseDC += 4;
 
         var parameters = ctx.RollSkillCheck(SkillType.Performance, baseDC);
@@ -427,12 +427,6 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             return;
 
         var baseDC = 10;
-
-        var weatherStat = ctx.World.GetStat<Stats.WeatherStat>("weather");
-        if (weatherStat?.Weather == Weather.Windy)
-            baseDC += 3;
-        else if (weatherStat?.Weather == Weather.Rainy)
-            baseDC += 1;
 
         var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
         var baseScore = 0.35 + (Morale < 30 ? 0.2 : 0.0);

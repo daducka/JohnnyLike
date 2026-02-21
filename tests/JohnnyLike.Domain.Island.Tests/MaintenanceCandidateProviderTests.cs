@@ -2,7 +2,6 @@ using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
-using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -14,6 +13,7 @@ public class CampfireMaintenanceCandidateProviderTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
@@ -32,6 +32,7 @@ public class CampfireMaintenanceCandidateProviderTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
@@ -51,6 +52,7 @@ public class CampfireMaintenanceCandidateProviderTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
@@ -69,6 +71,7 @@ public class CampfireMaintenanceCandidateProviderTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
@@ -87,6 +90,7 @@ public class CampfireMaintenanceCandidateProviderTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         world.MainCampfire!.FuelSeconds = 1200.0;
         
         var lowSkillActor = (IslandActorState)domain.CreateActorState(
@@ -143,6 +147,7 @@ public class ShelterMaintenanceCandidateProviderTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
@@ -161,6 +166,7 @@ public class ShelterMaintenanceCandidateProviderTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
@@ -179,6 +185,7 @@ public class ShelterMaintenanceCandidateProviderTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
@@ -199,10 +206,10 @@ public class ShelterMaintenanceCandidateProviderTests
         var worldClear = (IslandWorldState)domain.CreateInitialWorldState();
         var worldRainy = (IslandWorldState)domain.CreateInitialWorldState();
         
-        worldClear.GetStat<WeatherStat>("weather")!.Weather = Weather.Clear;
+        worldClear.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Hot;
         worldClear.MainShelter!.Quality = 50.0;
         
-        worldRainy.GetStat<WeatherStat>("weather")!.Weather = Weather.Rainy;
+        worldRainy.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
         worldRainy.MainShelter!.Quality = 50.0;
         
         var actorId = new ActorId("TestActor");
@@ -230,6 +237,7 @@ public class ShelterMaintenanceCandidateProviderTests
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.WorldItems.Add(new CampfireItem("main_campfire"));
         world.MainShelter!.Quality = 50.0;
         
         var lowSkillActor = (IslandActorState)domain.CreateActorState(

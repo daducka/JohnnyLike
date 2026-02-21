@@ -1,7 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
-using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -23,7 +22,6 @@ public class FishingSpotSelectionTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         actor.Satiety = 50.0;
-        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         domain.InitializeActorItems(actorId, world);
         
         var resourceAvailability = new EmptyResourceAvailability();
@@ -72,7 +70,6 @@ public class FishingSpotSelectionTests
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
         actor.Satiety = 50.0;
-        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         domain.InitializeActorItems(actorId, world);
         
         var resourceAvailability = new EmptyResourceAvailability();
@@ -110,7 +107,6 @@ public class FishingSpotSelectionTests
         
         actor1.Satiety = 50.0;
         actor2.Satiety = 50.0;
-        world.GetStat<FishPopulationStat>("fish_population")!.FishAvailable = 100.0;
         
         // Initialize fishing poles for both actors
         domain.InitializeActorItems(actorId1, world);

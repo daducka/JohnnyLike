@@ -1,30 +1,15 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Items;
-using JohnnyLike.Domain.Island.Stats;
 using JohnnyLike.Domain.Island.Supply;
 using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island;
-
-public enum Weather
-{
-    Clear,
-    Rainy,
-    Windy
-}
-
-public enum TideLevel
-{
-    Low,
-    High
-}
 
 public class IslandWorldState : WorldState
 {
     public double CurrentTime { get; set; } = 0.0;
 
     public List<WorldItem> WorldItems { get; set; } = new();
-    public List<WorldStat> WorldStats { get; set; } = new();
 
     public CampfireItem? MainCampfire => WorldItems.OfType<CampfireItem>().FirstOrDefault();
     public ShelterItem? MainShelter => WorldItems.OfType<ShelterItem>().FirstOrDefault();
@@ -34,11 +19,11 @@ public class IslandWorldState : WorldState
         .FirstOrDefault(p => p.AccessControl == "shared");
 
     /// <summary>
-    /// Get a stat by its ID and optionally cast to a specific type
+    /// Get a WorldItem by its ID and type.
     /// </summary>
-    public T? GetStat<T>(string id) where T : WorldStat
+    public T? GetItem<T>(string id) where T : WorldItem
     {
-        return WorldStats.FirstOrDefault(s => s.Id == id) as T;
+        return WorldItems.OfType<T>().FirstOrDefault(x => x.Id == id);
     }
 
     /// <summary>
@@ -52,51 +37,49 @@ public class IslandWorldState : WorldState
     }
 
     /// <summary>
-    /// Topologically sort stats based on their dependencies
+    /// Topologically sort ITickableWorldItems based on their dependencies.
     /// </summary>
-    private List<WorldStat> TopologicalSortStats()
+    private List<ITickableWorldItem> TopologicalSortTickables()
     {
-        var sorted = new List<WorldStat>();
+        var tickables = WorldItems.OfType<ITickableWorldItem>().ToList();
+        var sorted = new List<ITickableWorldItem>();
         var visited = new HashSet<string>();
         var visiting = new HashSet<string>();
-        var statById = WorldStats.ToDictionary(s => s.Id);
-        var path = new List<string>(); // Track current dependency path for better error messages
+        var itemById = tickables
+            .Select(t => (item: t, id: ((WorldItem)t).Id))
+            .ToDictionary(x => x.id, x => x.item);
+        var path = new List<string>();
 
-        void Visit(WorldStat stat)
+        void Visit(ITickableWorldItem tickable)
         {
-            if (visited.Contains(stat.Id))
-                return;
+            var id = ((WorldItem)tickable).Id;
+            if (visited.Contains(id)) return;
 
-            if (visiting.Contains(stat.Id))
+            if (visiting.Contains(id))
             {
-                // Build a clear error message showing the cycle
-                var cycleStart = path.IndexOf(stat.Id);
-                var cycle = string.Join(" -> ", path.Skip(cycleStart).Append(stat.Id));
+                var cycleStart = path.IndexOf(id);
+                var cycle = string.Join(" -> ", path.Skip(cycleStart).Append(id));
                 throw new InvalidOperationException(
-                    $"Circular dependency detected in WorldStats: {cycle}");
+                    $"Circular dependency detected in WorldItems: {cycle}");
             }
 
-            visiting.Add(stat.Id);
-            path.Add(stat.Id);
+            visiting.Add(id);
+            path.Add(id);
 
-            foreach (var depId in stat.GetDependencies())
+            foreach (var depId in tickable.GetDependencies())
             {
-                if (statById.TryGetValue(depId, out var depStat))
-                {
-                    Visit(depStat);
-                }
+                if (itemById.TryGetValue(depId, out var dep))
+                    Visit(dep);
             }
 
             path.RemoveAt(path.Count - 1);
-            visiting.Remove(stat.Id);
-            visited.Add(stat.Id);
-            sorted.Add(stat);
+            visiting.Remove(id);
+            visited.Add(id);
+            sorted.Add(tickable);
         }
 
-        foreach (var stat in WorldStats)
-        {
-            Visit(stat);
-        }
+        foreach (var tickable in tickables)
+            Visit(tickable);
 
         return sorted;
     }
@@ -106,19 +89,16 @@ public class IslandWorldState : WorldState
         CurrentTime = currentTime;
         var traceEvents = new List<TraceEvent>();
 
-        // Tick all stats in dependency order and collect trace events
-        var sortedStats = TopologicalSortStats();
-        foreach (var stat in sortedStats)
+        // Tick all ITickableWorldItems in dependency order
+        var sortedTickables = TopologicalSortTickables();
+        foreach (var tickable in sortedTickables)
         {
-            var statEvents = stat.Tick(dt, this, currentTime);
-            traceEvents.AddRange(statEvents);
+            var events = tickable.Tick(dt, this, currentTime);
+            traceEvents.AddRange(events);
         }
 
         // Track campfire state before ticking items
         var campfireLitBeforeTick = MainCampfire?.IsLit ?? false;
-        
-        // Track which items exist before ticking (for expiration detection)
-        var itemsBeforeTick = WorldItems.OfType<MaintainableWorldItem>().ToList();
 
         // Tick maintainable items
         foreach (var item in WorldItems.OfType<MaintainableWorldItem>())
@@ -142,7 +122,7 @@ public class IslandWorldState : WorldState
             ));
         }
 
-        // Remove expired maintainable items after tick cycle to avoid collection modification during iteration
+        // Remove expired maintainable items after tick cycle
         var expiredItems = WorldItems.OfType<MaintainableWorldItem>().Where(item => item.IsExpired).ToList();
         foreach (var item in expiredItems)
         {
@@ -157,18 +137,17 @@ public class IslandWorldState : WorldState
                     ["quality"] = Math.Round(item.Quality, 2)
                 }
             ));
-            
+
             item.PerformExpiration(this, resourceAvailability);
             WorldItems.Remove(item);
         }
-        
+
         return traceEvents;
     }
 
     public override string Serialize()
     {
         var serializedItems = WorldItems.Select(item => item.SerializeToDict()).ToList();
-        var serializedStats = WorldStats.Select(stat => stat.SerializeToDict()).ToList();
 
         var options = new JsonSerializerOptions
         {
@@ -177,8 +156,7 @@ public class IslandWorldState : WorldState
 
         return JsonSerializer.Serialize(new
         {
-            WorldItems = serializedItems,
-            WorldStats = serializedStats
+            WorldItems = serializedItems
         }, options);
     }
 
@@ -200,51 +178,25 @@ public class IslandWorldState : WorldState
 
                     WorldItem? item = type switch
                     {
-                        "campfire" => new CampfireItem(id),
-                        "shelter" => new ShelterItem(id),
-                        "fishing_pole" => new FishingPoleItem(id),
+                        "campfire"       => new CampfireItem(id),
+                        "shelter"        => new ShelterItem(id),
+                        "fishing_pole"   => new FishingPoleItem(id),
                         "treasure_chest" => new TreasureChestItem(id),
-                        "shark" => new SharkItem(id),
-                        "supply_pile" => new SupplyPile(id),
-                        "umbrella_tool" => new UmbrellaItem(id),
-                        _ => null
+                        "shark"          => new SharkItem(id),
+                        "supply_pile"    => new SupplyPile(id),
+                        "umbrella_tool"  => new UmbrellaItem(id),
+                        "calendar"       => new CalendarItem(id),
+                        "weather"        => new WeatherItem(id),
+                        "beach"          => new BeachItem(id),
+                        "palm_tree"      => new CoconutTreeItem(id),
+                        "ocean"          => new OceanItem(id),
+                        _                => null
                     };
 
                     if (item != null)
                     {
                         item.DeserializeFromDict(itemData);
                         WorldItems.Add(item);
-                    }
-                }
-            }
-        }
-
-        WorldStats.Clear();
-        if (data.TryGetValue("WorldStats", out var statsElement))
-        {
-            var statsList = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(statsElement.GetRawText());
-            if (statsList != null)
-            {
-                foreach (var statData in statsList)
-                {
-                    var type = statData["Type"].GetString()!;
-                    var id = statData["Id"].GetString()!;
-
-                    WorldStat? stat = type switch
-                    {
-                        "stat_time_of_day" => new TimeOfDayStat(),
-                        "stat_weather" => new WeatherStat(),
-                        "stat_tide" => new TideStat(),
-                        "stat_fish_population" => new FishPopulationStat(),
-                        "stat_coconut_availability" => new CoconutAvailabilityStat(),
-                        "stat_driftwood" => new DriftwoodAvailabilityStat(),
-                        _ => null
-                    };
-
-                    if (stat != null)
-                    {
-                        stat.DeserializeFromDict(statData);
-                        WorldStats.Add(stat);
                     }
                 }
             }

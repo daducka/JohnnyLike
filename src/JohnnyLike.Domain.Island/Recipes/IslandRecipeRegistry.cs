@@ -12,6 +12,7 @@ public static class IslandRecipeRegistry
         {
             ["cook_fish"] = CookFish.Define(),
             ["umbrella"]  = Umbrella.Define(),
+            ["campfire"]  = Campfire.Define(),
         };
 
     public static RecipeDefinition Get(string id)
