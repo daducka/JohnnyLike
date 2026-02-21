@@ -109,8 +109,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 // Consume the base harvest amount from bounty upfront
                 var gotSticks = TryConsumeSupply<StickSupply>("sticks", 2.0);
                 var gotDriftwood = TryConsumeSupply<WoodSupply>("driftwood", 2.0);
-                var gotRocks = TryConsumeSupply<RocksSupply>("rocks", 1.0);
-                return gotSticks && gotDriftwood; // rocks optional
+                TryConsumeSupply<RocksSupply>("rocks", 1.0); // rocks optional, consume if available
+                return gotSticks && gotDriftwood;
             }),
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {

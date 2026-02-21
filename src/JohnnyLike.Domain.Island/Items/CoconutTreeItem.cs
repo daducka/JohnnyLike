@@ -119,10 +119,8 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
             PreAction: new Func<EffectContext, bool>(effectCtx =>
             {
                 // Reserve 1 coconut and 1 frond from tree bounty upfront
-                var tree = effectCtx.World.GetItem<CoconutTreeItem>(Id);
-                if (tree == null) return false;
-                return tree.TryConsumeSupply<CoconutSupply>("coconut", 1.0)
-                    && tree.TryConsumeSupply<PalmFrondSupply>("palm_frond", 1.0);
+                return TryConsumeSupply<CoconutSupply>("coconut", 1.0)
+                    && TryConsumeSupply<PalmFrondSupply>("palm_frond", 1.0);
             }),
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {

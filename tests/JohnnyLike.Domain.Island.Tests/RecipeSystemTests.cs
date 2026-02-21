@@ -251,7 +251,7 @@ public class RecipeSystemTests
         int seed = FindSeedBelow(0.25);
 
         var (actor, world) = MakeBase();
-        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Clear; // not cold
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Clear; // not rainy
 
         var pile = world.SharedSupplyPile!;
         pile.AddSupply("stick", 1, id => new StickSupply(id));
