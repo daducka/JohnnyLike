@@ -102,7 +102,7 @@ public class IslandDomainPack : IDomainPack
         islandActorState.AddCandidates(ctx, candidates);
 
         // Post-pass: compute final Score from IntrinsicScore and Quality weights
-        var model = BuildQualityModel(ctx);
+        var model = BuildQualityModel(ctx.Actor);
         for (var i = 0; i < candidates.Count; i++)
         {
             candidates[i] = candidates[i] with { Score = ScoreCandidate(candidates[i], model) };
@@ -137,9 +137,24 @@ public class IslandDomainPack : IDomainPack
         }
     }
 
-    private static QualityModel BuildQualityModel(IslandContext ctx)
+    internal static double ScoreByQualities(
+        IslandActorState actor,
+        double intrinsicScore,
+        IReadOnlyDictionary<QualityType, double>? qualities)
     {
-        var actor = ctx.Actor;
+        if (qualities == null || qualities.Count == 0)
+            return intrinsicScore;
+
+        var model = BuildQualityModel(actor);
+        var qualitySum = 0.0;
+        foreach (var (quality, value) in qualities)
+            qualitySum += model.EffectiveWeight(quality) * value;
+
+        return intrinsicScore + qualitySum;
+    }
+
+    private static QualityModel BuildQualityModel(IslandActorState actor)
+    {
 
         // ── Core Abilities ────────────────────────────────────────────────────────
         // Stable actor capabilities: STR, DEX, CON, INT, WIS, CHA

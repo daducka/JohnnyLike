@@ -8,11 +8,10 @@ namespace JohnnyLike.Domain.Island.Recipes;
 public static class RecipeDiscoverySystem
 {
     /// <summary>
-    /// Iterates all recipes and attempts to discover unknown ones that match the trigger.
-    /// Uses the provided <paramref name="rng"/> for deterministic rolls — callers must pass
-    /// the RNG active at the moment of effect execution (e.g. <c>effectCtx.Rng</c>), not a
-    /// context captured at candidate-generation time.  This ensures reproducible discovery
-    /// outcomes when replaying from the same game state.
+    /// Collects all unknown recipes matching the trigger and discoverability conditions,
+    /// applies each recipe's discovery base chance as a gate, then scores the remaining
+    /// candidates using the same quality-weighting model as action candidates and discovers
+    /// the top-scoring recipe.
     /// </summary>
     public static void TryDiscover(
         IslandActorState actor,
@@ -20,6 +19,8 @@ public static class RecipeDiscoverySystem
         IRngStream rng,
         DiscoveryTrigger trigger)
     {
+        var discoverableRecipes = new List<(string Id, RecipeDefinition Recipe)>();
+
         foreach (var (id, recipe) in IslandRecipeRegistry.All)
         {
             if (recipe.Discovery == null || recipe.Discovery.Trigger != trigger)
@@ -31,10 +32,25 @@ public static class RecipeDiscoverySystem
             if (!recipe.Discovery.CanDiscover(actor, world))
                 continue;
 
-            if (rng.NextDouble() < recipe.Discovery.BaseChance)
-            {
-                actor.KnownRecipeIds.Add(id);
-            }
+            if (rng.NextDouble() >= recipe.Discovery.BaseChance)
+                continue;
+
+            discoverableRecipes.Add((id, recipe));
         }
+
+        if (discoverableRecipes.Count == 0)
+            return;
+
+        var topRecipe = discoverableRecipes
+            .Select(x => new
+            {
+                x.Id,
+                Score = IslandDomainPack.ScoreByQualities(actor, x.Recipe.IntrinsicScore, x.Recipe.Qualities)
+            })
+            .OrderByDescending(x => x.Score)
+            .ThenBy(x => x.Id, StringComparer.Ordinal)
+            .First();
+
+        actor.KnownRecipeIds.Add(topRecipe.Id);
     }
 }

@@ -28,7 +28,7 @@ public class IslandScenarioTests
 
         var executor = new FakeExecutor(engine);
         
-        for (int i = 0; i < 200; i++)
+        for (int i = 0; i < 2000; i++)
         {
             executor.Update(0.5);
         }

@@ -51,7 +51,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
             regenRate *= 1.2;
 
         Bounty.AddSupply("sticks", regenRate * dtSeconds, id => new StickSupply(id));
-        Bounty.AddSupply("driftwood", regenRate * dtSeconds, id => new WoodSupply(id));
+        Bounty.AddSupply("wood", regenRate * dtSeconds, id => new WoodSupply(id));
         Bounty.AddSupply("rocks", regenRate * dtSeconds * 0.5, id => new RocksSupply(id));
 
         return new List<TraceEvent>();
