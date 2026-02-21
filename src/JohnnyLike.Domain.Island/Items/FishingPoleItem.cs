@@ -38,7 +38,7 @@ public class FishingPoleItem : ToolItem
         if (!IsBroken && Quality > 10.0)
         {
             var ocean = ctx.World.GetItem<OceanItem>("ocean") as ISupplyBounty;
-            var fishAvailable = ocean?.GetQuantity<Supply.FishSupply>("fish") ?? 0.0;
+            var fishAvailable = ocean?.GetQuantity<FishSupply>("fish") ?? 0.0;
 
             if (fishAvailable >= 1.0)
             {
@@ -71,7 +71,7 @@ public class FishingPoleItem : ToolItem
                     {
                         var o = effectCtx.World.GetItem<OceanItem>("ocean") as ISupplyBounty;
                         if (o == null) return false;
-                        return o.TryConsumeSupply<Supply.FishSupply>("fish", 1.0);
+                        return o.TryConsumeSupply<FishSupply>("fish", 1.0);
                     }),
                     EffectHandler: new Action<EffectContext>(ApplyGoFishingEffect)
                 ));
@@ -146,13 +146,13 @@ public class FishingPoleItem : ToolItem
             if (tier == RollOutcomeTier.CriticalSuccess)
             {
                 var ocean = ctx.World.GetItem<OceanItem>("ocean") as ISupplyBounty;
-                if (ocean != null && ocean.TryConsumeSupply<Supply.FishSupply>("fish", 1.0))
+                if (ocean != null && ocean.TryConsumeSupply<FishSupply>("fish", 1.0))
                     fishCount = 2.0;
             }
 
             var sharedPile = ctx.World.SharedSupplyPile;
             if (sharedPile != null)
-                sharedPile.AddSupply("fish", fishCount, id => new Supply.FishSupply(id));
+                sharedPile.AddSupply("fish", fishCount, id => new FishSupply(id));
         }
     }
 

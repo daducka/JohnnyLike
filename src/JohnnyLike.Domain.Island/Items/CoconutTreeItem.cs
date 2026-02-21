@@ -39,18 +39,12 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
         var calendar = world.GetItem<CalendarItem>("calendar");
         if (calendar != null && calendar.DayCount > _lastDayCount)
         {
-            // Regenerate coconuts and fronds daily
-            var coconuts = Bounty.GetSupply<CoconutSupply>("coconut");
-            if (coconuts != null)
-                coconuts.Quantity = Math.Min(10, coconuts.Quantity + 3);
-            else
-                BountySupplies.Add(new CoconutSupply("coconut", 3));
+            // Regenerate coconuts and fronds daily (capped)
+            var coconuts = Bounty.GetOrCreateSupply("coconut", id => new CoconutSupply(id));
+            coconuts.Quantity = Math.Min(10, coconuts.Quantity + 3);
 
-            var fronds = Bounty.GetSupply<PalmFrondSupply>("palm_frond");
-            if (fronds != null)
-                fronds.Quantity = Math.Min(12, fronds.Quantity + 4);
-            else
-                BountySupplies.Add(new PalmFrondSupply("palm_frond", 4));
+            var fronds = Bounty.GetOrCreateSupply("palm_frond", id => new PalmFrondSupply(id));
+            fronds.Quantity = Math.Min(12, fronds.Quantity + 4);
 
             _lastDayCount = calendar.DayCount;
         }
