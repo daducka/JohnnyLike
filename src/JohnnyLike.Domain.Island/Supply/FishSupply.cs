@@ -9,6 +9,11 @@ namespace JohnnyLike.Domain.Island.Supply;
 /// </summary>
 public class FishSupply : SupplyItem, ISupplyActionCandidate
 {
+    public FishSupply(double quantity)
+        : this("fish", quantity)
+    {
+    }
+
     public FishSupply(string id = "fish", double quantity = 0.0)
         : base(id, "supply_fish", quantity)
     {
@@ -34,7 +39,7 @@ public class FishSupply : SupplyItem, ISupplyActionCandidate
                 effectCtx.Actor.Morale  -= 5.0;
             }),
             PreAction: (Func<EffectContext, bool>)(effectCtx =>
-                pile.TryConsumeSupply<FishSupply>(Id, 1.0)),
+                pile.TryConsumeSupply<FishSupply>(1.0)),
             Qualities: new Dictionary<QualityType, double>
             {
                 [QualityType.FoodConsumption] = 0.6,

@@ -26,7 +26,7 @@ public class IslandDomainPack : IDomainPack
         world.WorldItems.Add(new ShelterItem("main_shelter"));
 
         var supplies = new SupplyPile("shared_supplies", "shared");
-        supplies.AddSupply("wood", 20.0, id => new WoodSupply(id));
+        supplies.AddSupply(20.0, () => new WoodSupply());
         world.WorldItems.Add(supplies);
 
         return world;

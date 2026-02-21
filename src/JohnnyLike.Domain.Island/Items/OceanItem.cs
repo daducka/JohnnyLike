@@ -14,7 +14,7 @@ public class OceanItem : WorldItem, ITickableWorldItem, ISupplyBounty
     // ISupplyBounty — all method logic comes from the interface's default implementations
     public List<SupplyItem> BountySupplies { get; set; } = new()
     {
-        new FishSupply("fish", 100)
+        new FishSupply(100)
     };
 
     public Dictionary<string, Dictionary<string, double>> ActiveReservations { get; } = new();
@@ -31,7 +31,7 @@ public class OceanItem : WorldItem, ITickableWorldItem, ISupplyBounty
 
     public List<TraceEvent> Tick(double dtSeconds, IslandWorldState world, double currentTime)
     {
-        var fish = Bounty.GetSupply<FishSupply>("fish");
+        var fish = Bounty.GetSupply<FishSupply>();
         if (fish != null)
         {
             var oldAmount = fish.Quantity;

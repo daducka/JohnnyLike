@@ -48,7 +48,7 @@ public class CampfireItem : ToolItem
         if (IsLit && FuelSeconds < 1800.0)
         {
             var sharedPile = ctx.World.SharedSupplyPile;
-            var currentWood = sharedPile?.GetQuantity<WoodSupply>("wood") ?? 0.0;
+            var currentWood = sharedPile?.GetQuantity<WoodSupply>() ?? 0.0;
 
             if (currentWood < 3.0)
                 return;
@@ -164,7 +164,7 @@ public class CampfireItem : ToolItem
                            tier == RollOutcomeTier.Success ? 5.0 : 7.0;
 
             var sharedPile = ctx.World.SharedSupplyPile;
-            if (sharedPile != null && sharedPile.TryConsumeSupply<WoodSupply>("wood", woodCost))
+            if (sharedPile != null && sharedPile.TryConsumeSupply<WoodSupply>(woodCost))
             {
                 var fuelAdded = tier == RollOutcomeTier.CriticalSuccess ? 2400.0 :
                                 tier == RollOutcomeTier.Success ? 1800.0 : 900.0;

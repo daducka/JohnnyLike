@@ -39,9 +39,9 @@ public static class Campfire
                 var pile = ctx.World.SharedSupplyPile;
                 if (pile == null) return false;
 
-                if (pile.GetQuantity<StickSupply>("sticks") < 5) return false;
-                if (pile.GetQuantity<WoodSupply>("wood") < 3) return false;
-                if (pile.GetQuantity<RocksSupply>("rocks") < 6) return false;
+                if (pile.GetQuantity<StickSupply>() < 5) return false;
+                if (pile.GetQuantity<WoodSupply>() < 3) return false;
+                if (pile.GetQuantity<RocksSupply>() < 6) return false;
 
                 return true;
             },
@@ -55,9 +55,9 @@ public static class Campfire
                 if (pile == null) return false;
 
                 return
-                    pile.TryConsumeSupply<StickSupply>("sticks", 5)
-                 && pile.TryConsumeSupply<WoodSupply>("wood", 3)
-                 && pile.TryConsumeSupply<RocksSupply>("rocks", 6);
+                          pile.TryConsumeSupply<StickSupply>(5)
+                      && pile.TryConsumeSupply<WoodSupply>(3)
+                      && pile.TryConsumeSupply<RocksSupply>(6);
             },
 
             Effect: effectCtx =>

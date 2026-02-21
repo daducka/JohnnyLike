@@ -14,9 +14,9 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
     // ISupplyBounty — all method logic comes from the interface's default implementations
     public List<SupplyItem> BountySupplies { get; set; } = new()
     {
-        new StickSupply("sticks", 10),
-        new WoodSupply("driftwood", 10),
-        new RocksSupply("rocks", 5)
+        new StickSupply(10),
+        new WoodSupply(10),
+        new RocksSupply(5)
     };
 
     public Dictionary<string, Dictionary<string, double>> ActiveReservations { get; } = new();
@@ -50,9 +50,9 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
         if (weather?.Temperature == TemperatureBand.Cold)
             regenRate *= 1.2;
 
-        Bounty.AddSupply("sticks", regenRate * dtSeconds, id => new StickSupply(id));
-        Bounty.AddSupply("wood", regenRate * dtSeconds, id => new WoodSupply(id));
-        Bounty.AddSupply("rocks", regenRate * dtSeconds * 0.5, id => new RocksSupply(id));
+        Bounty.AddSupply(regenRate * dtSeconds, () => new StickSupply());
+        Bounty.AddSupply(regenRate * dtSeconds, () => new WoodSupply());
+        Bounty.AddSupply(regenRate * dtSeconds * 0.5, () => new RocksSupply());
 
         return new List<TraceEvent>();
     }
@@ -61,9 +61,9 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
         // Only offer explore_beach when there's enough bounty to get at least a partial result
-        var sticks = Bounty.GetQuantity<StickSupply>("sticks");
-        var driftwood = Bounty.GetQuantity<WoodSupply>("driftwood");
-        if (sticks < 2.0 || driftwood < 2.0)
+        var sticks = Bounty.GetQuantity<StickSupply>();
+        var wood = Bounty.GetQuantity<WoodSupply>();
+        if (sticks < 2.0 || wood < 2.0)
             return;
 
         var baseDC = Tide == TideLevel.High ? 12 : 8;
@@ -85,20 +85,20 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 new List<ResourceRequirement> { new ResourceRequirement(BeachResource) }
             ),
             0.5,
-            $"Explore beach (sticks: {sticks:F0}, driftwood: {driftwood:F0}, DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            $"Explore beach (sticks: {sticks:F0}, wood: {wood:F0}, DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             PreAction: new Func<EffectContext, bool>(_ =>
             {
                 // Reserve the MAX possible payout (CriticalSuccess upper-bound) so other actors
                 // see reduced availability. The actual payout is committed in the EffectHandler.
-                var availSticks = source.GetQuantity<StickSupply>("sticks");
-                var availDriftwood = source.GetQuantity<WoodSupply>("driftwood");
-                if (availSticks < 1.0 || availDriftwood < 1.0) return false;
+                var availSticks = source.GetQuantity<StickSupply>();
+                var availWood = source.GetQuantity<WoodSupply>();
+                if (availSticks < 1.0 || availWood < 1.0) return false;
 
-                source.ReserveSupply<StickSupply>(actorKey, "sticks",    Math.Min(availSticks, 4.0));
-                source.ReserveSupply<WoodSupply>(actorKey,  "driftwood", Math.Min(availDriftwood, 4.0));
-                var availRocks = source.GetQuantity<RocksSupply>("rocks");
+                source.ReserveSupply<StickSupply>(actorKey, Math.Min(availSticks, 4.0));
+                source.ReserveSupply<WoodSupply>(actorKey, Math.Min(availWood, 4.0));
+                var availRocks = source.GetQuantity<RocksSupply>();
                 if (availRocks > 0)
-                    source.ReserveSupply<RocksSupply>(actorKey, "rocks", Math.Min(availRocks, 2.0));
+                    source.ReserveSupply<RocksSupply>(actorKey, Math.Min(availRocks, 2.0));
 
                 bountyCtx = new BountyCollectionContext(source, actorKey);
                 return true;
@@ -120,24 +120,24 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
-                        src.CommitReservation(key, "sticks",    4.0, pile, id => new StickSupply(id));
-                        src.CommitReservation(key, "driftwood", 4.0, pile, id => new WoodSupply(id));
-                        src.CommitReservation(key, "rocks",     2.0, pile, id => new RocksSupply(id));
+                        src.CommitReservation<StickSupply>(key, 4.0, pile, () => new StickSupply());
+                        src.CommitReservation<WoodSupply>(key, 4.0, pile, () => new WoodSupply());
+                        src.CommitReservation<RocksSupply>(key, 2.0, pile, () => new RocksSupply());
                         effectCtx.Actor.Morale += 8.0;
                         effectCtx.Actor.Energy -= 8.0;
                         break;
 
                     case RollOutcomeTier.Success:
-                        src.CommitReservation(key, "sticks",    2.0, pile, id => new StickSupply(id));
-                        src.CommitReservation(key, "driftwood", 2.0, pile, id => new WoodSupply(id));
-                        src.CommitReservation(key, "rocks",     1.0, pile, id => new RocksSupply(id));
+                        src.CommitReservation<StickSupply>(key, 2.0, pile, () => new StickSupply());
+                        src.CommitReservation<WoodSupply>(key, 2.0, pile, () => new WoodSupply());
+                        src.CommitReservation<RocksSupply>(key, 1.0, pile, () => new RocksSupply());
                         effectCtx.Actor.Morale += 5.0;
                         effectCtx.Actor.Energy -= 10.0;
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
-                        src.CommitReservation(key, "sticks",    1.0, pile, id => new StickSupply(id));
-                        src.CommitReservation(key, "driftwood", 1.0, pile, id => new WoodSupply(id));
+                        src.CommitReservation<StickSupply>(key, 1.0, pile, () => new StickSupply());
+                        src.CommitReservation<WoodSupply>(key, 1.0, pile, () => new WoodSupply());
                         src.ReleaseReservation(key); // return reserved rocks (not committed at this tier)
                         effectCtx.Actor.Morale += 2.0;
                         effectCtx.Actor.Energy -= 12.0;

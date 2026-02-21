@@ -41,10 +41,10 @@ public static class Umbrella
                 var pile = ctx.World.SharedSupplyPile;
                 if (pile == null) return false;
 
-                if (pile.GetQuantity<StickSupply>("stick") < 2)
+                if (pile.GetQuantity<StickSupply>() < 2)
                     return false;
 
-                if (pile.GetQuantity<PalmFrondSupply>("palm_frond") < 3)
+                if (pile.GetQuantity<PalmFrondSupply>() < 3)
                     return false;
 
                 return true;
@@ -56,8 +56,8 @@ public static class Umbrella
                 if (pile == null) return false;
 
                 return
-                    pile.TryConsumeSupply<StickSupply>("stick", 2)
-                 && pile.TryConsumeSupply<PalmFrondSupply>("palm_frond", 3);
+                          pile.TryConsumeSupply<StickSupply>(2)
+                      && pile.TryConsumeSupply<PalmFrondSupply>(3);
             },
 
             Effect: effectCtx =>
@@ -81,8 +81,8 @@ public static class Umbrella
                     if (pile == null) return false;
 
                     return
-                        pile.GetQuantity<StickSupply>("stick") > 0 &&
-                        pile.GetQuantity<PalmFrondSupply>("palm_frond") > 0;
+                        pile.GetQuantity<StickSupply>() > 0 &&
+                        pile.GetQuantity<PalmFrondSupply>() > 0;
                 },
 
                 BaseChance = 0.25

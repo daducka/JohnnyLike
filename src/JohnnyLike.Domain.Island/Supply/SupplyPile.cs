@@ -27,7 +27,13 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
     /// </summary>
     public T? GetSupply<T>(string supplyId) where T : SupplyItem
     {
-        return Supplies.FirstOrDefault(s => s.Id == supplyId) as T;
+        return (Supplies.FirstOrDefault(s => s.Id == supplyId && s is T) as T)
+            ?? Supplies.OfType<T>().FirstOrDefault();
+    }
+
+    public T? GetSupply<T>() where T : SupplyItem
+    {
+        return Supplies.OfType<T>().FirstOrDefault();
     }
 
     /// <summary>
@@ -44,12 +50,29 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
         return newSupply;
     }
 
+    public T GetOrCreateSupply<T>(Func<T> factory) where T : SupplyItem
+    {
+        var existing = GetSupply<T>();
+        if (existing != null)
+            return existing;
+
+        var newSupply = factory();
+        Supplies.Add(newSupply);
+        return newSupply;
+    }
+
     /// <summary>
     /// Adds quantity to a supply, creating it if it doesn't exist
     /// </summary>
     public void AddSupply<T>(string supplyId, double quantity, Func<string, T> factory) where T : SupplyItem
     {
         var supply = GetOrCreateSupply(supplyId, factory);
+        supply.Quantity += quantity;
+    }
+
+    public void AddSupply<T>(double quantity, Func<T> factory) where T : SupplyItem
+    {
+        var supply = GetOrCreateSupply(factory);
         supply.Quantity += quantity;
     }
 
@@ -67,12 +90,28 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
         return true;
     }
 
+    public bool TryConsumeSupply<T>(double quantity) where T : SupplyItem
+    {
+        var supply = GetSupply<T>();
+        if (supply == null || supply.Quantity < quantity)
+            return false;
+
+        supply.Quantity -= quantity;
+        return true;
+    }
+
     /// <summary>
     /// Gets the quantity of a specific supply (returns 0 if not found)
     /// </summary>
     public double GetQuantity<T>(string supplyId) where T : SupplyItem
     {
         var supply = GetSupply<T>(supplyId);
+        return supply?.Quantity ?? 0.0;
+    }
+
+    public double GetQuantity<T>() where T : SupplyItem
+    {
+        var supply = GetSupply<T>();
         return supply?.Quantity ?? 0.0;
     }
 

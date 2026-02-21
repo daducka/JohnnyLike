@@ -35,7 +35,7 @@ public static class CookFish
                 var pile = ctx.World.SharedSupplyPile;
                 if (pile == null) return false;
 
-                if (pile.GetQuantity<FishSupply>("fish") < 1)
+                if (pile.GetQuantity<FishSupply>() < 1)
                     return false;
 
                 var campfire = ctx.World.MainCampfire;
@@ -49,7 +49,7 @@ public static class CookFish
             {
                 var pile = effectCtx.World.SharedSupplyPile;
                 return pile != null &&
-                       pile.TryConsumeSupply<FishSupply>("fish", 1);
+                      pile.TryConsumeSupply<FishSupply>(1);
             },
 
             Effect: effectCtx =>
@@ -57,10 +57,7 @@ public static class CookFish
                 var pile = effectCtx.World.SharedSupplyPile;
                 if (pile == null) return;
 
-                pile.AddSupply(
-                    "cooked_fish",
-                    1,
-                    id => new CookedFishSupply(id));
+                pile.AddSupply(1, () => new CookedFishSupply());
             },
 
             Discovery: new RecipeDiscoverySpec
@@ -72,7 +69,7 @@ public static class CookFish
                     var pile = world.SharedSupplyPile;
                     if (pile == null) return false;
 
-                    if (pile.GetQuantity<FishSupply>("fish") < 1)
+                    if (pile.GetQuantity<FishSupply>() < 1)
                         return false;
 
                     var campfire = world.MainCampfire;

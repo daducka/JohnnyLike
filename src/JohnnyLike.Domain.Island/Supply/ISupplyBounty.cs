@@ -18,7 +18,11 @@ public interface ISupplyBounty
     Dictionary<string, Dictionary<string, double>> ActiveReservations { get; }
 
     T? GetSupply<T>(string supplyId) where T : SupplyItem
-        => BountySupplies.FirstOrDefault(s => s.Id == supplyId) as T;
+        => (BountySupplies.FirstOrDefault(s => s.Id == supplyId && s is T) as T)
+        ?? BountySupplies.OfType<T>().FirstOrDefault();
+
+    T? GetSupply<T>() where T : SupplyItem
+        => BountySupplies.OfType<T>().FirstOrDefault();
 
     T GetOrCreateSupply<T>(string supplyId, Func<string, T> factory) where T : SupplyItem
     {
@@ -29,8 +33,20 @@ public interface ISupplyBounty
         return newSupply;
     }
 
+    T GetOrCreateSupply<T>(Func<T> factory) where T : SupplyItem
+    {
+        var existing = GetSupply<T>();
+        if (existing != null) return existing;
+        var newSupply = factory();
+        BountySupplies.Add(newSupply);
+        return newSupply;
+    }
+
     void AddSupply<T>(string supplyId, double quantity, Func<string, T> factory) where T : SupplyItem
         => GetOrCreateSupply(supplyId, factory).Quantity += quantity;
+
+    void AddSupply<T>(double quantity, Func<T> factory) where T : SupplyItem
+        => GetOrCreateSupply(factory).Quantity += quantity;
 
     bool TryConsumeSupply<T>(string supplyId, double quantity) where T : SupplyItem
     {
@@ -40,8 +56,19 @@ public interface ISupplyBounty
         return true;
     }
 
+    bool TryConsumeSupply<T>(double quantity) where T : SupplyItem
+    {
+        var supply = GetSupply<T>();
+        if (supply == null || supply.Quantity < quantity) return false;
+        supply.Quantity -= quantity;
+        return true;
+    }
+
     double GetQuantity<T>(string supplyId) where T : SupplyItem
         => GetSupply<T>(supplyId)?.Quantity ?? 0.0;
+
+    double GetQuantity<T>() where T : SupplyItem
+        => GetSupply<T>()?.Quantity ?? 0.0;
 
     // ── Reservation API ────────────────────────────────────────────────────────
 
@@ -59,6 +86,17 @@ public interface ISupplyBounty
         if (!ActiveReservations.TryGetValue(reservationKey, out var entries))
             ActiveReservations[reservationKey] = entries = new Dictionary<string, double>();
         entries[supplyId] = entries.GetValueOrDefault(supplyId) + quantity;
+        return true;
+    }
+
+    bool ReserveSupply<T>(string reservationKey, double quantity) where T : SupplyItem
+    {
+        var supply = GetSupply<T>();
+        if (supply == null || supply.Quantity < quantity) return false;
+        supply.Quantity -= quantity;
+        if (!ActiveReservations.TryGetValue(reservationKey, out var entries))
+            ActiveReservations[reservationKey] = entries = new Dictionary<string, double>();
+        entries[supply.Id] = entries.GetValueOrDefault(supply.Id) + quantity;
         return true;
     }
 
@@ -86,6 +124,28 @@ public interface ISupplyBounty
         entries.Remove(supplyId);
         if (entries.Count == 0)
             ActiveReservations.Remove(reservationKey);
+    }
+
+    void CommitReservation<T>(
+        string reservationKey,
+        double actualQuantity,
+        ISupplyBounty destination,
+        Func<T> factory) where T : SupplyItem
+    {
+        if (!ActiveReservations.TryGetValue(reservationKey, out var entries)) return;
+
+        var supplyId = entries.Keys
+            .FirstOrDefault(id => BountySupplies.FirstOrDefault(s => s.Id == id) is T);
+
+        if (supplyId == null)
+            return;
+
+        CommitReservation(
+            reservationKey,
+            supplyId,
+            actualQuantity,
+            destination,
+            _ => factory());
     }
 
     /// <summary>

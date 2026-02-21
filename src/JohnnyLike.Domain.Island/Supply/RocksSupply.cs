@@ -5,6 +5,11 @@ namespace JohnnyLike.Domain.Island.Supply;
 /// </summary>
 public class RocksSupply : SupplyItem
 {
+    public RocksSupply(double quantity)
+        : this("rocks", quantity)
+    {
+    }
+
     public RocksSupply(string id = "rocks", double quantity = 0.0)
         : base(id, "supply_rocks", quantity)
     {

@@ -17,8 +17,8 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
     // ISupplyBounty — all method logic comes from the interface's default implementations
     public List<SupplyItem> BountySupplies { get; set; } = new()
     {
-        new CoconutSupply("coconut", 5),
-        new PalmFrondSupply("palm_frond", 8)
+        new CoconutSupply(5),
+        new PalmFrondSupply(8)
     };
 
     public Dictionary<string, Dictionary<string, double>> ActiveReservations { get; } = new();
@@ -42,10 +42,10 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
         if (calendar != null && calendar.DayCount > _lastDayCount)
         {
             // Regenerate coconuts and fronds daily (capped)
-            var coconuts = Bounty.GetOrCreateSupply("coconut", id => new CoconutSupply(id));
+            var coconuts = Bounty.GetOrCreateSupply(() => new CoconutSupply());
             coconuts.Quantity = Math.Min(10, coconuts.Quantity + 3);
 
-            var fronds = Bounty.GetOrCreateSupply("palm_frond", id => new PalmFrondSupply(id));
+            var fronds = Bounty.GetOrCreateSupply(() => new PalmFrondSupply());
             fronds.Quantity = Math.Min(12, fronds.Quantity + 4);
 
             _lastDayCount = calendar.DayCount;
@@ -56,8 +56,8 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
     // IIslandActionCandidate
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
-        var coconutsAvailable = Bounty.GetQuantity<CoconutSupply>("coconut");
-        var frondsAvailable = Bounty.GetQuantity<PalmFrondSupply>("palm_frond");
+        var coconutsAvailable = Bounty.GetQuantity<CoconutSupply>();
+        var frondsAvailable = Bounty.GetQuantity<PalmFrondSupply>();
 
         if (coconutsAvailable < 1.0 || frondsAvailable < 1.0)
             return;
@@ -93,12 +93,12 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
             PreAction: new Func<EffectContext, bool>(_ =>
             {
                 // Reserve the MAX possible payout (CriticalSuccess = 2 coconuts + 2 fronds).
-                var availCoconuts = Bounty.GetQuantity<CoconutSupply>("coconut");
-                var availFronds   = Bounty.GetQuantity<PalmFrondSupply>("palm_frond");
+                var availCoconuts = Bounty.GetQuantity<CoconutSupply>();
+                var availFronds   = Bounty.GetQuantity<PalmFrondSupply>();
                 if (availCoconuts < 1.0 || availFronds < 1.0) return false;
 
-                Bounty.ReserveSupply<CoconutSupply>(actorKey,   "coconut",     Math.Min(availCoconuts, 2.0));
-                Bounty.ReserveSupply<PalmFrondSupply>(actorKey, "palm_frond",  Math.Min(availFronds,   2.0));
+                Bounty.ReserveSupply<CoconutSupply>(actorKey, Math.Min(availCoconuts, 2.0));
+                Bounty.ReserveSupply<PalmFrondSupply>(actorKey, Math.Min(availFronds, 2.0));
 
                 bountyCtx = new BountyCollectionContext(Bounty, actorKey);
                 return true;
@@ -120,14 +120,14 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
-                        src.CommitReservation(key, "coconut",    2.0, sharedPile, id => new CoconutSupply(id));
-                        src.CommitReservation(key, "palm_frond", 2.0, sharedPile, id => new PalmFrondSupply(id));
+                        src.CommitReservation<CoconutSupply>(key, 2.0, sharedPile, () => new CoconutSupply());
+                        src.CommitReservation<PalmFrondSupply>(key, 2.0, sharedPile, () => new PalmFrondSupply());
                         effectCtx.Actor.Morale += 5.0;
                         break;
 
                     case RollOutcomeTier.Success:
-                        src.CommitReservation(key, "coconut",    1.0, sharedPile, id => new CoconutSupply(id));
-                        src.CommitReservation(key, "palm_frond", 1.0, sharedPile, id => new PalmFrondSupply(id));
+                        src.CommitReservation<CoconutSupply>(key, 1.0, sharedPile, () => new CoconutSupply());
+                        src.CommitReservation<PalmFrondSupply>(key, 1.0, sharedPile, () => new PalmFrondSupply());
                         effectCtx.Actor.Morale += 3.0;
                         break;
 
