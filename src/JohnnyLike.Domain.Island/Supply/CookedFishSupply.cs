@@ -8,6 +8,11 @@ namespace JohnnyLike.Domain.Island.Supply;
 /// </summary>
 public class CookedFishSupply : SupplyItem, ISupplyActionCandidate
 {
+    public CookedFishSupply(double quantity)
+        : this("cooked_fish", quantity)
+    {
+    }
+
     public CookedFishSupply(string id = "cooked_fish", double quantity = 0.0)
         : base(id, "supply_cooked_fish", quantity)
     {
@@ -33,7 +38,7 @@ public class CookedFishSupply : SupplyItem, ISupplyActionCandidate
                 effectCtx.Actor.Morale  += 5.0;
             }),
             PreAction: (Func<EffectContext, bool>)(effectCtx =>
-                pile.TryConsumeSupply<CookedFishSupply>(Id, 1.0)),
+                pile.TryConsumeSupply<CookedFishSupply>(1.0)),
             Qualities: new Dictionary<QualityType, double>
             {
                 [QualityType.FoodConsumption] = 1.0,

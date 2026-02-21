@@ -38,7 +38,7 @@ public class FishingPoleItem : ToolItem
         if (!IsBroken && Quality > 10.0)
         {
             var ocean = ctx.World.GetItem<OceanItem>("ocean") as ISupplyBounty;
-            var fishAvailable = ocean?.GetQuantity<FishSupply>("fish") ?? 0.0;
+            var fishAvailable = ocean?.GetQuantity<FishSupply>() ?? 0.0;
 
             if (fishAvailable >= 1.0)
             {
@@ -74,10 +74,10 @@ public class FishingPoleItem : ToolItem
                     PreAction: new Func<EffectContext, bool>(_ =>
                     {
                         if (ocean == null) return false;
-                        var available = ocean.GetQuantity<FishSupply>("fish");
+                        var available = ocean.GetQuantity<FishSupply>();
                         if (available < 1.0) return false;
                         // Reserve max payout (CriticalSuccess = 2 fish)
-                        ocean.ReserveSupply<FishSupply>(actorKey, "fish", Math.Min(available, 2.0));
+                        ocean.ReserveSupply<FishSupply>(actorKey, Math.Min(available, 2.0));
                         fishCtx = new BountyCollectionContext(ocean, actorKey);
                         return true;
                     }),
@@ -104,7 +104,7 @@ public class FishingPoleItem : ToolItem
                                 // CriticalSuccess commits 2 fish; Success/Partial commits 1
                                 // CommitReservation returns any remainder (e.g. reserved 2, committed 1)
                                 var commitFish = tier == RollOutcomeTier.CriticalSuccess ? 2.0 : 1.0;
-                                src.CommitReservation(key, "fish", commitFish, sharedPile, id => new FishSupply(id));
+                                src.CommitReservation<FishSupply>(key, commitFish, sharedPile, () => new FishSupply());
                             }
                             else
                             {

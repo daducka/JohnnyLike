@@ -12,6 +12,12 @@ public static class Umbrella
 {
     public static RecipeDefinition Define()
     {
+        var supplyCosts = new List<RecipeSupplyCost>
+        {
+            RecipeSupplyCost.Of<StickSupply>(2),
+            RecipeSupplyCost.Of<PalmFrondSupply>(3)
+        };
+
         return new RecipeDefinition(
             Id: "umbrella",
             DisplayName: "Craft umbrella",
@@ -39,25 +45,13 @@ public static class Umbrella
                     return false;
 
                 var pile = ctx.World.SharedSupplyPile;
-                if (pile == null) return false;
-
-                if (pile.GetQuantity<StickSupply>("stick") < 2)
-                    return false;
-
-                if (pile.GetQuantity<PalmFrondSupply>("palm_frond") < 3)
-                    return false;
-
-                return true;
+                return RecipeDefinition.HasRequiredSupplies(pile, supplyCosts);
             },
 
             PreAction: effectCtx =>
             {
                 var pile = effectCtx.World.SharedSupplyPile;
-                if (pile == null) return false;
-
-                return
-                    pile.TryConsumeSupply<StickSupply>("stick", 2)
-                 && pile.TryConsumeSupply<PalmFrondSupply>("palm_frond", 3);
+                return RecipeDefinition.TryConsumeRequiredSupplies(pile, supplyCosts);
             },
 
             Effect: effectCtx =>
@@ -81,12 +75,14 @@ public static class Umbrella
                     if (pile == null) return false;
 
                     return
-                        pile.GetQuantity<StickSupply>("stick") > 0 &&
-                        pile.GetQuantity<PalmFrondSupply>("palm_frond") > 0;
+                        pile.GetQuantity<StickSupply>() > 0 &&
+                        pile.GetQuantity<PalmFrondSupply>() > 0;
                 },
 
                 BaseChance = 0.25
-            }
+            },
+
+            SupplyCosts: supplyCosts
         );
     }
 }

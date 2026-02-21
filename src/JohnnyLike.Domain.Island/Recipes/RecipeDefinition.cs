@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Supply;
 
 namespace JohnnyLike.Domain.Island.Recipes;
 
@@ -27,5 +28,56 @@ public sealed record RecipeDefinition(
 
     Action<EffectContext> Effect,
 
-    RecipeDiscoverySpec? Discovery
-);
+    RecipeDiscoverySpec? Discovery,
+
+    IReadOnlyList<RecipeSupplyCost>? SupplyCosts = null
+)
+{
+    public bool HasRequiredSupplies(SupplyPile? pile)
+        => HasRequiredSupplies(pile, SupplyCosts);
+
+    public bool TryConsumeRequiredSupplies(SupplyPile? pile)
+        => TryConsumeRequiredSupplies(pile, SupplyCosts);
+
+    public static bool HasRequiredSupplies(SupplyPile? pile, IReadOnlyList<RecipeSupplyCost>? supplyCosts)
+    {
+        if (pile == null)
+            return false;
+
+        if (supplyCosts == null || supplyCosts.Count == 0)
+            return true;
+
+        return supplyCosts.All(cost => cost.AvailableQuantity(pile) >= cost.Quantity);
+    }
+
+    public static bool TryConsumeRequiredSupplies(SupplyPile? pile, IReadOnlyList<RecipeSupplyCost>? supplyCosts)
+    {
+        if (!HasRequiredSupplies(pile, supplyCosts))
+            return false;
+
+        if (supplyCosts == null)
+            return true;
+
+        foreach (var cost in supplyCosts)
+        {
+            if (!cost.TryConsume(pile!, cost.Quantity))
+                return false;
+        }
+
+        return true;
+    }
+}
+
+public sealed record RecipeSupplyCost(
+    string Name,
+    double Quantity,
+    Func<SupplyPile, double> AvailableQuantity,
+    Func<SupplyPile, double, bool> TryConsume)
+{
+    public static RecipeSupplyCost Of<T>(double quantity, string? name = null) where T : SupplyItem
+        => new(
+            Name: name ?? typeof(T).Name,
+            Quantity: quantity,
+            AvailableQuantity: pile => pile.GetQuantity<T>(),
+            TryConsume: (pile, amount) => pile.TryConsumeSupply<T>(amount));
+}

@@ -1,51 +1,43 @@
 using JohnnyLike.Domain.Abstractions;
-using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Island.Supply;
 
 namespace JohnnyLike.Domain.Island.Recipes.Definitions;
 
 /// <summary>
-/// Recipe: cook raw fish over a lit campfire to produce cooked fish.
-/// Discoverable when fish is in the supply pile and the campfire is lit.
+/// Recipe: braid rope from palm fronds.
+/// Costs 1 palm frond and produces 3 rope.
 /// </summary>
-public static class CookFish
+public static class Rope
 {
     public static RecipeDefinition Define()
     {
         var supplyCosts = new List<RecipeSupplyCost>
         {
-            RecipeSupplyCost.Of<FishSupply>(1)
+            RecipeSupplyCost.Of<PalmFrondSupply>(1)
         };
 
         return new RecipeDefinition(
-            Id: "cook_fish",
-            DisplayName: "Cook fish over campfire",
+            Id: "rope",
+            DisplayName: "Braid rope",
 
-            CraftActionId: new ActionId("cook_fish"),
+            CraftActionId: new ActionId("craft_rope"),
 
-            Location: "campfire",
+            Location: "camp",
 
-            Duration: 25.0,
+            Duration: 20.0,
 
             IntrinsicScore: 0.4,
 
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Preparation] = 0.8,
-                [QualityType.Efficiency]  = 0.6
+                [QualityType.Preparation] = 0.7,
+                [QualityType.Mastery]     = 0.4
             },
 
             CanCraft: ctx =>
             {
                 var pile = ctx.World.SharedSupplyPile;
-                if (!RecipeDefinition.HasRequiredSupplies(pile, supplyCosts))
-                    return false;
-
-                var campfire = ctx.World.MainCampfire;
-                if (campfire == null || !campfire.IsLit)
-                    return false;
-
-                return true;
+                return RecipeDefinition.HasRequiredSupplies(pile, supplyCosts);
             },
 
             PreAction: effectCtx =>
@@ -59,10 +51,10 @@ public static class CookFish
                 var pile = effectCtx.World.SharedSupplyPile;
                 if (pile == null) return;
 
-                pile.AddSupply(1, () => new CookedFishSupply());
+                pile.AddSupply(3, () => new RopeSupply());
             },
 
-            Discovery: new RecipeDiscoverySpec
+            Discovery:  new RecipeDiscoverySpec
             {
                 Trigger = DiscoveryTrigger.ThinkAboutSupplies,
 
@@ -71,14 +63,13 @@ public static class CookFish
                     var pile = world.SharedSupplyPile;
                     if (pile == null) return false;
 
-                    if (pile.GetQuantity<FishSupply>() < 1)
+                    if (pile.GetQuantity<PalmFrondSupply>() < 1)
                         return false;
 
-                    var campfire = world.MainCampfire;
-                    return campfire != null && campfire.IsLit;
+                    return true;
                 },
 
-                BaseChance = 0.3
+                BaseChance = 0.4
             },
 
             SupplyCosts: supplyCosts
