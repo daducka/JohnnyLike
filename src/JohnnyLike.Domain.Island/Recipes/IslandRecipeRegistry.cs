@@ -14,6 +14,7 @@ public static class IslandRecipeRegistry
             ["umbrella"]  = Umbrella.Define(),
             ["campfire"]  = Campfire.Define(),
             ["rope"]      = Rope.Define(),
+            ["fishing_pole"] = FishingPole.Define(),
         };
 
     public static RecipeDefinition Get(string id)

@@ -66,8 +66,7 @@ public static class Rope
                     if (pile.GetQuantity<PalmFrondSupply>() < 1)
                         return false;
 
-                    var campfire = world.MainCampfire;
-                    return campfire != null && campfire.IsLit;
+                    return true;
                 },
 
                 BaseChance = 0.4

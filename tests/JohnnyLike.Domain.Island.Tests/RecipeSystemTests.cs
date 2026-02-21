@@ -45,11 +45,12 @@ public class RecipeSystemTests
     // ── Registry ───────────────────────────────────────────────────────────────
 
     [Fact]
-    public void Registry_ContainsCookFishUmbrellaAndRope()
+    public void Registry_ContainsCookFishUmbrellaRopeAndFishingPole()
     {
         Assert.True(IslandRecipeRegistry.All.ContainsKey("cook_fish"));
         Assert.True(IslandRecipeRegistry.All.ContainsKey("umbrella"));
         Assert.True(IslandRecipeRegistry.All.ContainsKey("rope"));
+        Assert.True(IslandRecipeRegistry.All.ContainsKey("fishing_pole"));
     }
 
     // ── cook_fish candidate ────────────────────────────────────────────────────
@@ -257,6 +258,67 @@ public class RecipeSystemTests
         Assert.Equal(3.0, pile.GetQuantity<RopeSupply>());
     }
 
+    // ── fishing pole recipe ──────────────────────────────────────────────────
+
+    [Fact]
+    public void FishingPole_CandidateExists_WhenKnownAndIngredientsAvailable()
+    {
+        var (actor, world) = MakeBase();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(3, () => new StickSupply());
+        pile.AddSupply(2, () => new RopeSupply());
+
+        actor.KnownRecipeIds.Add("fishing_pole");
+
+        var ctx = MakeContext(actor, world);
+        var candidates = new List<ActionCandidate>();
+        actor.AddCandidates(ctx, candidates);
+
+        Assert.Contains(candidates, c => c.Action.Id.Value == "craft_fishing_pole");
+    }
+
+    [Fact]
+    public void FishingPole_CandidateAbsent_WhenActorAlreadyOwnsPole()
+    {
+        var (actor, world) = MakeBase();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(3, () => new StickSupply());
+        pile.AddSupply(2, () => new RopeSupply());
+        world.WorldItems.Add(new FishingPoleItem($"fishing_pole_{actor.Id.Value}", actor.Id));
+
+        actor.KnownRecipeIds.Add("fishing_pole");
+
+        var ctx = MakeContext(actor, world);
+        var candidates = new List<ActionCandidate>();
+        actor.AddCandidates(ctx, candidates);
+
+        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "craft_fishing_pole");
+    }
+
+    [Fact]
+    public void FishingPole_Effect_CreatesOwnedPole_AndPreAction_ConsumesIngredients()
+    {
+        var (actor, world) = MakeBase();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(5, () => new StickSupply());
+        pile.AddSupply(4, () => new RopeSupply());
+
+        var recipe = IslandRecipeRegistry.Get("fishing_pole");
+        var effectCtx = MakeEffectContext(actor, world);
+
+        var preOk = recipe.PreAction(effectCtx);
+        Assert.True(preOk);
+        Assert.Equal(2.0, pile.GetQuantity<StickSupply>());
+        Assert.Equal(2.0, pile.GetQuantity<RopeSupply>());
+
+        recipe.Effect(effectCtx);
+        var pole = world.WorldItems
+            .OfType<FishingPoleItem>()
+            .SingleOrDefault(p => p.OwnerActorId == actor.Id);
+
+        Assert.NotNull(pole);
+    }
+
     [Fact]
     public void Umbrella_SupplyCosts_AreDefinedInOnePlace()
     {
@@ -452,6 +514,31 @@ public class RecipeSystemTests
         RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(seed)), DiscoveryTrigger.ThinkAboutSupplies);
 
         Assert.DoesNotContain("cook_fish", actor.KnownRecipeIds);
+    }
+
+    [Fact]
+    public void FishingPole_Discovered_WhenHungry()
+    {
+        var (actor, world) = MakeBase();
+        actor.Satiety = 49.0;
+
+        // Ensure no competing discoverable recipes in this setup
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Clear;
+
+        RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(1)), DiscoveryTrigger.ThinkAboutSupplies);
+
+        Assert.Contains("fishing_pole", actor.KnownRecipeIds);
+    }
+
+    [Fact]
+    public void FishingPole_NotDiscovered_WhenNotHungry()
+    {
+        var (actor, world) = MakeBase();
+        actor.Satiety = 50.0; // must be strictly less than 50
+
+        RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(1)), DiscoveryTrigger.ThinkAboutSupplies);
+
+        Assert.DoesNotContain("fishing_pole", actor.KnownRecipeIds);
     }
 
     // ── serialization ─────────────────────────────────────────────────────────
