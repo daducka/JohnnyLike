@@ -14,11 +14,15 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
 {
     private static readonly ResourceId PalmTreeResource = new("island:resource:palm_tree");
 
+    // ISupplyBounty — all method logic comes from the interface's default implementations
     public List<SupplyItem> BountySupplies { get; set; } = new()
     {
         new CoconutSupply("coconut", 5),
         new PalmFrondSupply("palm_frond", 8)
     };
+
+    // Shorthand so internal methods can call ISupplyBounty defaults without explicit casts
+    private ISupplyBounty Bounty => this;
 
     private int _lastDayCount = 0;
 
@@ -26,36 +30,6 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
         : base(id, "palm_tree")
     {
     }
-
-    // ISupplyBounty
-    public T? GetSupply<T>(string supplyId) where T : SupplyItem
-        => BountySupplies.FirstOrDefault(s => s.Id == supplyId) as T;
-
-    public T GetOrCreateSupply<T>(string supplyId, Func<string, T> factory) where T : SupplyItem
-    {
-        var existing = GetSupply<T>(supplyId);
-        if (existing != null) return existing;
-        var newSupply = factory(supplyId);
-        BountySupplies.Add(newSupply);
-        return newSupply;
-    }
-
-    public void AddSupply<T>(string supplyId, double quantity, Func<string, T> factory) where T : SupplyItem
-    {
-        var supply = GetOrCreateSupply(supplyId, factory);
-        supply.Quantity += quantity;
-    }
-
-    public bool TryConsumeSupply<T>(string supplyId, double quantity) where T : SupplyItem
-    {
-        var supply = GetSupply<T>(supplyId);
-        if (supply == null || supply.Quantity < quantity) return false;
-        supply.Quantity -= quantity;
-        return true;
-    }
-
-    public double GetQuantity<T>(string supplyId) where T : SupplyItem
-        => GetSupply<T>(supplyId)?.Quantity ?? 0.0;
 
     // ITickableWorldItem
     public IEnumerable<string> GetDependencies() => new[] { "calendar" };
@@ -66,13 +40,13 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
         if (calendar != null && calendar.DayCount > _lastDayCount)
         {
             // Regenerate coconuts and fronds daily
-            var coconuts = GetSupply<CoconutSupply>("coconut");
+            var coconuts = Bounty.GetSupply<CoconutSupply>("coconut");
             if (coconuts != null)
                 coconuts.Quantity = Math.Min(10, coconuts.Quantity + 3);
             else
                 BountySupplies.Add(new CoconutSupply("coconut", 3));
 
-            var fronds = GetSupply<PalmFrondSupply>("palm_frond");
+            var fronds = Bounty.GetSupply<PalmFrondSupply>("palm_frond");
             if (fronds != null)
                 fronds.Quantity = Math.Min(12, fronds.Quantity + 4);
             else
@@ -86,8 +60,8 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
     // IIslandActionCandidate
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
-        var coconutsAvailable = GetQuantity<CoconutSupply>("coconut");
-        var frondsAvailable = GetQuantity<PalmFrondSupply>("palm_frond");
+        var coconutsAvailable = Bounty.GetQuantity<CoconutSupply>("coconut");
+        var frondsAvailable = Bounty.GetQuantity<PalmFrondSupply>("palm_frond");
 
         if (coconutsAvailable < 1.0 || frondsAvailable < 1.0)
             return;
@@ -119,8 +93,8 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
             PreAction: new Func<EffectContext, bool>(effectCtx =>
             {
                 // Reserve 1 coconut and 1 frond from tree bounty upfront
-                return TryConsumeSupply<CoconutSupply>("coconut", 1.0)
-                    && TryConsumeSupply<PalmFrondSupply>("palm_frond", 1.0);
+                return Bounty.TryConsumeSupply<CoconutSupply>("coconut", 1.0)
+                    && Bounty.TryConsumeSupply<PalmFrondSupply>("palm_frond", 1.0);
             }),
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
@@ -128,17 +102,17 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                     return;
 
                 var tier = effectCtx.Tier.Value;
-                var tree = effectCtx.World.GetItem<CoconutTreeItem>(Id);
+                var treeBounty = effectCtx.World.GetItem<CoconutTreeItem>(Id) as ISupplyBounty;
                 var sharedPile = effectCtx.World.SharedSupplyPile;
 
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
-                        // Transfer base 1+1 consumed, plus try for bonus from remaining bounty
-                        var bonusCoconut = tree?.TryConsumeSupply<CoconutSupply>("coconut", 1.0) ?? false;
-                        var bonusFrond = tree?.TryConsumeSupply<PalmFrondSupply>("palm_frond", 1.0) ?? false;
-                        sharedPile?.AddSupply("coconut", bonusCoconut ? 2.0 : 1.0, id => new CoconutSupply(id));
-                        sharedPile?.AddSupply("palm_frond", bonusFrond ? 2.0 : 1.0, id => new PalmFrondSupply(id));
+                        // Transfer base 1+1 consumed; try for additional from remaining bounty
+                        var gotBonusCoconut = treeBounty?.TryConsumeSupply<CoconutSupply>("coconut", 1.0) ?? false;
+                        var gotBonusFrond = treeBounty?.TryConsumeSupply<PalmFrondSupply>("palm_frond", 1.0) ?? false;
+                        sharedPile?.AddSupply("coconut", gotBonusCoconut ? 2.0 : 1.0, id => new CoconutSupply(id));
+                        sharedPile?.AddSupply("palm_frond", gotBonusFrond ? 2.0 : 1.0, id => new PalmFrondSupply(id));
                         effectCtx.Actor.Morale += 5.0;
                         break;
 

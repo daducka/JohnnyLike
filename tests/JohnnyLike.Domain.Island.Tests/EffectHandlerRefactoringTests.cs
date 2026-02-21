@@ -54,12 +54,15 @@ public class EffectHandlerRefactoringTests
         
         Assert.NotNull(repairCandidate);
         
-        // Simulate successful action completion, passing the effect handler
+        // Simulate successful action completion, passing the effect handler.
+        // Force tier=Success so the test is not sensitive to RNG seed / world composition.
+        var resultData = new Dictionary<string, object>(repairCandidate.Action.ResultData ?? new());
+        resultData["tier"] = "Success";
         var outcome = new ActionOutcome(
             repairCandidate.Action.Id,
             ActionOutcomeType.Success,
             25.0,
-            new Dictionary<string, object>(repairCandidate.Action.ResultData!)
+            resultData
         );
         
         var rng = new RandomRngStream(new Random(42));

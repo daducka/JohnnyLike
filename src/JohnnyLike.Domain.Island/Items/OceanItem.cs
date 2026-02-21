@@ -11,51 +11,25 @@ namespace JohnnyLike.Domain.Island.Items;
 /// </summary>
 public class OceanItem : WorldItem, ITickableWorldItem, ISupplyBounty
 {
+    // ISupplyBounty — all method logic comes from the interface's default implementations
     public List<SupplyItem> BountySupplies { get; set; } = new()
     {
         new FishSupply("fish", 100)
     };
 
+    // Shorthand so internal methods can call ISupplyBounty defaults without explicit casts
+    private ISupplyBounty Bounty => this;
+
     public double FishRegenRatePerMinute { get; set; } = 5.0;
 
     public OceanItem(string id = "ocean") : base(id, "ocean") { }
-
-    // ISupplyBounty
-    public T? GetSupply<T>(string supplyId) where T : SupplyItem
-        => BountySupplies.FirstOrDefault(s => s.Id == supplyId) as T;
-
-    public T GetOrCreateSupply<T>(string supplyId, Func<string, T> factory) where T : SupplyItem
-    {
-        var existing = GetSupply<T>(supplyId);
-        if (existing != null) return existing;
-        var newSupply = factory(supplyId);
-        BountySupplies.Add(newSupply);
-        return newSupply;
-    }
-
-    public void AddSupply<T>(string supplyId, double quantity, Func<string, T> factory) where T : SupplyItem
-    {
-        var supply = GetOrCreateSupply(supplyId, factory);
-        supply.Quantity += quantity;
-    }
-
-    public bool TryConsumeSupply<T>(string supplyId, double quantity) where T : SupplyItem
-    {
-        var supply = GetSupply<T>(supplyId);
-        if (supply == null || supply.Quantity < quantity) return false;
-        supply.Quantity -= quantity;
-        return true;
-    }
-
-    public double GetQuantity<T>(string supplyId) where T : SupplyItem
-        => GetSupply<T>(supplyId)?.Quantity ?? 0.0;
 
     // ITickableWorldItem
     public IEnumerable<string> GetDependencies() => new[] { "calendar" };
 
     public List<TraceEvent> Tick(double dtSeconds, IslandWorldState world, double currentTime)
     {
-        var fish = GetSupply<FishSupply>("fish");
+        var fish = Bounty.GetSupply<FishSupply>("fish");
         if (fish != null)
         {
             var oldAmount = fish.Quantity;

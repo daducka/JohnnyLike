@@ -95,7 +95,7 @@ public class WorldItemEnvironmentTests
     {
         var world = MakeWorld();
         var beach = world.GetItem<BeachItem>("beach")!;
-        beach.GetSupply<StickSupply>("sticks")!.Quantity = 20;
+        ((ISupplyBounty)beach).GetSupply<StickSupply>("sticks")!.Quantity = 20;
 
         var actor = new IslandActorState { Id = new ActorId("test_actor") };
         var rng = new Random(0);
@@ -187,12 +187,12 @@ public class WorldItemEnvironmentTests
         var calendar = new CalendarItem("calendar");
         world.WorldItems.Add(calendar);
         var ocean = new OceanItem("ocean") { FishRegenRatePerMinute = 5.0 };
-        ocean.GetSupply<FishSupply>("fish")!.Quantity = 50.0;
+        ((ISupplyBounty)ocean).GetSupply<FishSupply>("fish")!.Quantity = 50.0;
         world.WorldItems.Add(ocean);
 
         ocean.Tick(60.0, world, 0.0); // 1 minute
 
-        Assert.Equal(55.0, ocean.GetQuantity<FishSupply>("fish"), 1);
+        Assert.Equal(55.0, ((ISupplyBounty)ocean).GetQuantity<FishSupply>("fish"), 1);
     }
 
     [Fact]
@@ -202,11 +202,11 @@ public class WorldItemEnvironmentTests
         var calendar = new CalendarItem("calendar");
         world.WorldItems.Add(calendar);
         var ocean = new OceanItem("ocean") { FishRegenRatePerMinute = 10.0 };
-        ocean.GetSupply<FishSupply>("fish")!.Quantity = 95.0;
+        ((ISupplyBounty)ocean).GetSupply<FishSupply>("fish")!.Quantity = 95.0;
 
         ocean.Tick(60.0, world, 0.0);
 
-        Assert.Equal(100.0, ocean.GetQuantity<FishSupply>("fish"));
+        Assert.Equal(100.0, ((ISupplyBounty)ocean).GetQuantity<FishSupply>("fish"));
     }
 
     [Fact]
@@ -273,8 +273,8 @@ public class WorldItemEnvironmentTests
         var beach = world.GetItem<BeachItem>("beach")!;
 
         // Set bounty below minimum
-        beach.GetSupply<StickSupply>("sticks")!.Quantity = 1.0;
-        beach.GetSupply<WoodSupply>("driftwood")!.Quantity = 1.0;
+        ((ISupplyBounty)beach).GetSupply<StickSupply>("sticks")!.Quantity = 1.0;
+        ((ISupplyBounty)beach).GetSupply<WoodSupply>("driftwood")!.Quantity = 1.0;
 
         var actor = new IslandActorState { Id = new ActorId("test_actor") };
         var rng = new Random(0);
@@ -295,7 +295,7 @@ public class WorldItemEnvironmentTests
     public void CoconutTreeItem_HasPalmFrondBounty()
     {
         var tree = new CoconutTreeItem("palm_tree");
-        Assert.True(tree.GetQuantity<PalmFrondSupply>("palm_frond") > 0);
+        Assert.True(((ISupplyBounty)tree).GetQuantity<PalmFrondSupply>("palm_frond") > 0);
     }
 
     [Fact]
@@ -304,7 +304,7 @@ public class WorldItemEnvironmentTests
         var world = MakeWorld();
         var tree = new CoconutTreeItem("palm_tree");
         // Remove fronds from bounty
-        tree.GetSupply<PalmFrondSupply>("palm_frond")!.Quantity = 0;
+        ((ISupplyBounty)tree).GetSupply<PalmFrondSupply>("palm_frond")!.Quantity = 0;
         world.WorldItems.Add(tree);
 
         var actor = new IslandActorState { Id = new ActorId("test_actor") };

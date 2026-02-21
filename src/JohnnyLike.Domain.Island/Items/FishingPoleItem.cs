@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Supply;
 using JohnnyLike.Domain.Kit.Dice;
 using System.Text.Json;
 
@@ -36,7 +37,7 @@ public class FishingPoleItem : ToolItem
         // GoFishing action - only if pole is not broken and ocean has fish
         if (!IsBroken && Quality > 10.0)
         {
-            var ocean = ctx.World.GetItem<OceanItem>("ocean");
+            var ocean = ctx.World.GetItem<OceanItem>("ocean") as ISupplyBounty;
             var fishAvailable = ocean?.GetQuantity<Supply.FishSupply>("fish") ?? 0.0;
 
             if (fishAvailable >= 1.0)
@@ -68,7 +69,7 @@ public class FishingPoleItem : ToolItem
                     $"Go fishing with pole (quality: {Quality:F0}%, fish available: {fishAvailable:F0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                     PreAction: new Func<EffectContext, bool>(effectCtx =>
                     {
-                        var o = effectCtx.World.GetItem<OceanItem>("ocean");
+                        var o = effectCtx.World.GetItem<OceanItem>("ocean") as ISupplyBounty;
                         if (o == null) return false;
                         return o.TryConsumeSupply<Supply.FishSupply>("fish", 1.0);
                     }),
@@ -144,7 +145,7 @@ public class FishingPoleItem : ToolItem
             // CriticalSuccess: try to land an extra fish from the ocean
             if (tier == RollOutcomeTier.CriticalSuccess)
             {
-                var ocean = ctx.World.GetItem<OceanItem>("ocean");
+                var ocean = ctx.World.GetItem<OceanItem>("ocean") as ISupplyBounty;
                 if (ocean != null && ocean.TryConsumeSupply<Supply.FishSupply>("fish", 1.0))
                     fishCount = 2.0;
             }
