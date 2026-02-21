@@ -17,6 +17,8 @@ public class OceanItem : WorldItem, ITickableWorldItem, ISupplyBounty
         new FishSupply("fish", 100)
     };
 
+    public Dictionary<string, Dictionary<string, double>> ActiveReservations { get; } = new();
+
     // Shorthand so internal methods can call ISupplyBounty defaults without explicit casts
     private ISupplyBounty Bounty => this;
 

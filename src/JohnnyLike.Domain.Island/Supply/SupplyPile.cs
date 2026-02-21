@@ -14,6 +14,7 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
 
     // ISupplyBounty: route through the Supplies list so default interface methods work too
     List<SupplyItem> ISupplyBounty.BountySupplies => Supplies;
+    Dictionary<string, Dictionary<string, double>> ISupplyBounty.ActiveReservations { get; } = new();
 
     public SupplyPile(string id, string accessControl = "shared") 
         : base(id, "supply_pile")

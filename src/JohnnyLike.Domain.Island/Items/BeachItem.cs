@@ -19,6 +19,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
         new RocksSupply("rocks", 5)
     };
 
+    public Dictionary<string, Dictionary<string, double>> ActiveReservations { get; } = new();
+
     // Shorthand so internal methods can call ISupplyBounty defaults without explicit casts
     private ISupplyBounty Bounty => this;
 
@@ -67,6 +69,12 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
         var baseDC = Tide == TideLevel.High ? 12 : 8;
         var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
 
+        // Both lambdas capture the same variable so the reservation key survives the
+        // Director's resource-release call that happens before ApplyActionEffects.
+        BountyCollectionContext? bountyCtx = null;
+        ISupplyBounty source = this;
+        var actorKey = ctx.ActorId.Value;
+
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("explore_beach"),
@@ -78,63 +86,68 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
             ),
             0.5,
             $"Explore beach (sticks: {sticks:F0}, driftwood: {driftwood:F0}, DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-            PreAction: new Func<EffectContext, bool>(effectCtx =>
+            PreAction: new Func<EffectContext, bool>(_ =>
             {
-                // Consume the base harvest amount from bounty upfront
-                var gotSticks = Bounty.TryConsumeSupply<StickSupply>("sticks", 2.0);
-                var gotDriftwood = Bounty.TryConsumeSupply<WoodSupply>("driftwood", 2.0);
-                _ = Bounty.TryConsumeSupply<RocksSupply>("rocks", 1.0); // optional; discard result
-                return gotSticks && gotDriftwood;
+                // Reserve the MAX possible payout (CriticalSuccess upper-bound) so other actors
+                // see reduced availability. The actual payout is committed in the EffectHandler.
+                var availSticks = source.GetQuantity<StickSupply>("sticks");
+                var availDriftwood = source.GetQuantity<WoodSupply>("driftwood");
+                if (availSticks < 1.0 || availDriftwood < 1.0) return false;
+
+                source.ReserveSupply<StickSupply>(actorKey, "sticks",    Math.Min(availSticks, 4.0));
+                source.ReserveSupply<WoodSupply>(actorKey,  "driftwood", Math.Min(availDriftwood, 4.0));
+                var availRocks = source.GetQuantity<RocksSupply>("rocks");
+                if (availRocks > 0)
+                    source.ReserveSupply<RocksSupply>(actorKey, "rocks", Math.Min(availRocks, 2.0));
+
+                bountyCtx = new BountyCollectionContext(source, actorKey);
+                return true;
             }),
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                if (effectCtx.Tier == null)
+                if (effectCtx.Tier == null || bountyCtx == null)
+                {
+                    bountyCtx?.Source.ReleaseReservation(bountyCtx.ReservationKey);
                     return;
-
-                var pile = effectCtx.World.SharedSupplyPile;
-                if (pile == null) return;
+                }
 
                 var tier = effectCtx.Tier.Value;
-                var beach = (ISupplyBounty)effectCtx.World.GetItem<BeachItem>(Id)!;
+                var src = bountyCtx.Source;
+                var key = bountyCtx.ReservationKey;
+                var pile = effectCtx.World.SharedSupplyPile;
+                if (pile == null) { src.ReleaseReservation(key); return; }
 
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
-                        // Base 2+2+1 consumed; try for additional amounts from remaining bounty
-                        var additionalSticks = beach.TryConsumeSupply<StickSupply>("sticks", 2.0) ? 2 : 0;
-                        var additionalDriftwood = beach.TryConsumeSupply<WoodSupply>("driftwood", 2.0) ? 2 : 0;
-                        var additionalRocks = beach.TryConsumeSupply<RocksSupply>("rocks", 1.0) ? 1 : 0;
-                        pile.AddSupply("sticks", 2 + additionalSticks, id => new StickSupply(id));
-                        pile.AddSupply("wood", 2 + additionalDriftwood, id => new WoodSupply(id));
-                        pile.AddSupply("rocks", 1 + additionalRocks, id => new RocksSupply(id));
+                        src.CommitReservation(key, "sticks",    4.0, pile, id => new StickSupply(id));
+                        src.CommitReservation(key, "driftwood", 4.0, pile, id => new WoodSupply(id));
+                        src.CommitReservation(key, "rocks",     2.0, pile, id => new RocksSupply(id));
                         effectCtx.Actor.Morale += 8.0;
                         effectCtx.Actor.Energy -= 8.0;
                         break;
 
                     case RollOutcomeTier.Success:
-                        // All consumed base goes to pile
-                        pile.AddSupply("sticks", 2, id => new StickSupply(id));
-                        pile.AddSupply("wood", 2, id => new WoodSupply(id));
-                        pile.AddSupply("rocks", 1, id => new RocksSupply(id));
+                        src.CommitReservation(key, "sticks",    2.0, pile, id => new StickSupply(id));
+                        src.CommitReservation(key, "driftwood", 2.0, pile, id => new WoodSupply(id));
+                        src.CommitReservation(key, "rocks",     1.0, pile, id => new RocksSupply(id));
                         effectCtx.Actor.Morale += 5.0;
                         effectCtx.Actor.Energy -= 10.0;
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
-                        // Partial return — some resources wasted
-                        pile.AddSupply("sticks", 1, id => new StickSupply(id));
-                        pile.AddSupply("wood", 1, id => new WoodSupply(id));
+                        src.CommitReservation(key, "sticks",    1.0, pile, id => new StickSupply(id));
+                        src.CommitReservation(key, "driftwood", 1.0, pile, id => new WoodSupply(id));
+                        src.ReleaseReservation(key); // return reserved rocks (not committed at this tier)
                         effectCtx.Actor.Morale += 2.0;
                         effectCtx.Actor.Energy -= 12.0;
                         break;
 
-                    case RollOutcomeTier.Failure:
-                        effectCtx.Actor.Energy -= 12.0;
-                        break;
-
-                    case RollOutcomeTier.CriticalFailure:
-                        effectCtx.Actor.Energy -= 15.0;
-                        effectCtx.Actor.Morale -= 5.0;
+                    default: // Failure or CriticalFailure: everything returned
+                        src.ReleaseReservation(key);
+                        effectCtx.Actor.Energy -= tier == RollOutcomeTier.Failure ? 12.0 : 15.0;
+                        if (tier == RollOutcomeTier.CriticalFailure)
+                            effectCtx.Actor.Morale -= 5.0;
                         break;
                 }
             }),

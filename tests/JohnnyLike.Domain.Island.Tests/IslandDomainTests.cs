@@ -409,6 +409,8 @@ public class IslandActionEffectsTests
         );
         
         var rng = new RandomRngStream(new Random(42));
+        // Call PreAction first so the reservation context (fishCtx) is set for EffectHandler
+        domain.TryExecutePreAction(actorId, actorState, worldState, rng, new EmptyResourceAvailability(), fishingCandidate.PreAction);
         domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability(), fishingCandidate.EffectHandler);
         
         // Morale decreases from passive decay (15 * 0.4 = 6) but is partially offset by fishing effect (+5 on Success)

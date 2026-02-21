@@ -21,6 +21,8 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
         new PalmFrondSupply("palm_frond", 8)
     };
 
+    public Dictionary<string, Dictionary<string, double>> ActiveReservations { get; } = new();
+
     // Shorthand so internal methods can call ISupplyBounty defaults without explicit casts
     private ISupplyBounty Bounty => this;
 
@@ -73,6 +75,10 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
         if (ctx.Actor.Satiety < 30.0)
             baseScore = 0.9;
 
+        // Shared context captured by both PreAction and EffectHandler lambdas.
+        BountyCollectionContext? bountyCtx = null;
+        var actorKey = ctx.ActorId.Value;
+
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("shake_tree_coconut"),
@@ -84,48 +90,51 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
             ),
             baseScore,
             $"Get coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-            PreAction: new Func<EffectContext, bool>(effectCtx =>
+            PreAction: new Func<EffectContext, bool>(_ =>
             {
-                // Reserve 1 coconut and 1 frond from tree bounty upfront
-                return Bounty.TryConsumeSupply<CoconutSupply>("coconut", 1.0)
-                    && Bounty.TryConsumeSupply<PalmFrondSupply>("palm_frond", 1.0);
+                // Reserve the MAX possible payout (CriticalSuccess = 2 coconuts + 2 fronds).
+                var availCoconuts = Bounty.GetQuantity<CoconutSupply>("coconut");
+                var availFronds   = Bounty.GetQuantity<PalmFrondSupply>("palm_frond");
+                if (availCoconuts < 1.0 || availFronds < 1.0) return false;
+
+                Bounty.ReserveSupply<CoconutSupply>(actorKey,   "coconut",     Math.Min(availCoconuts, 2.0));
+                Bounty.ReserveSupply<PalmFrondSupply>(actorKey, "palm_frond",  Math.Min(availFronds,   2.0));
+
+                bountyCtx = new BountyCollectionContext(Bounty, actorKey);
+                return true;
             }),
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                if (effectCtx.Tier == null)
+                if (effectCtx.Tier == null || bountyCtx == null)
+                {
+                    bountyCtx?.Source.ReleaseReservation(bountyCtx.ReservationKey);
                     return;
+                }
 
                 var tier = effectCtx.Tier.Value;
-                var treeBounty = effectCtx.World.GetItem<CoconutTreeItem>(Id) as ISupplyBounty;
+                var src = bountyCtx.Source;
+                var key = bountyCtx.ReservationKey;
                 var sharedPile = effectCtx.World.SharedSupplyPile;
+                if (sharedPile == null) { src.ReleaseReservation(key); return; }
 
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
-                        // Transfer base 1+1 consumed; try for additional from remaining bounty
-                        var gotBonusCoconut = treeBounty?.TryConsumeSupply<CoconutSupply>("coconut", 1.0) ?? false;
-                        var gotBonusFrond = treeBounty?.TryConsumeSupply<PalmFrondSupply>("palm_frond", 1.0) ?? false;
-                        sharedPile?.AddSupply("coconut", gotBonusCoconut ? 2.0 : 1.0, id => new CoconutSupply(id));
-                        sharedPile?.AddSupply("palm_frond", gotBonusFrond ? 2.0 : 1.0, id => new PalmFrondSupply(id));
+                        src.CommitReservation(key, "coconut",    2.0, sharedPile, id => new CoconutSupply(id));
+                        src.CommitReservation(key, "palm_frond", 2.0, sharedPile, id => new PalmFrondSupply(id));
                         effectCtx.Actor.Morale += 5.0;
                         break;
 
                     case RollOutcomeTier.Success:
-                        sharedPile?.AddSupply("coconut", 1.0, id => new CoconutSupply(id));
-                        sharedPile?.AddSupply("palm_frond", 1.0, id => new PalmFrondSupply(id));
+                        src.CommitReservation(key, "coconut",    1.0, sharedPile, id => new CoconutSupply(id));
+                        src.CommitReservation(key, "palm_frond", 1.0, sharedPile, id => new PalmFrondSupply(id));
                         effectCtx.Actor.Morale += 3.0;
                         break;
 
-                    case RollOutcomeTier.PartialSuccess:
-                        // Consumed resources wasted (fell in the sea), actor is amused
-                        effectCtx.Actor.Morale += 2.0;
-                        break;
-
-                    case RollOutcomeTier.Failure:
-                        break;
-
-                    case RollOutcomeTier.CriticalFailure:
-                        effectCtx.Actor.Morale -= 5.0;
+                    default: // PartialSuccess / Failure / CriticalFailure — wasted
+                        src.ReleaseReservation(key);
+                        if (tier == RollOutcomeTier.PartialSuccess) effectCtx.Actor.Morale += 2.0;
+                        else if (tier == RollOutcomeTier.CriticalFailure) effectCtx.Actor.Morale -= 5.0;
                         break;
                 }
             })

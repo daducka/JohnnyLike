@@ -56,6 +56,10 @@ public class FishingPoleItem : ToolItem
                 if (Quality < 50.0)
                     baseScore *= 0.7;
 
+                // Shared reservation context captured by both lambdas.
+                BountyCollectionContext? fishCtx = null;
+                var actorKey = ctx.ActorId.Value;
+
                 output.Add(new ActionCandidate(
                     new ActionSpec(
                         new ActionId("go_fishing"),
@@ -67,13 +71,52 @@ public class FishingPoleItem : ToolItem
                     ),
                     baseScore,
                     $"Go fishing with pole (quality: {Quality:F0}%, fish available: {fishAvailable:F0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                    PreAction: new Func<EffectContext, bool>(effectCtx =>
+                    PreAction: new Func<EffectContext, bool>(_ =>
                     {
-                        var o = effectCtx.World.GetItem<OceanItem>("ocean") as ISupplyBounty;
-                        if (o == null) return false;
-                        return o.TryConsumeSupply<FishSupply>("fish", 1.0);
+                        if (ocean == null) return false;
+                        var available = ocean.GetQuantity<FishSupply>("fish");
+                        if (available < 1.0) return false;
+                        // Reserve max payout (CriticalSuccess = 2 fish)
+                        ocean.ReserveSupply<FishSupply>(actorKey, "fish", Math.Min(available, 2.0));
+                        fishCtx = new BountyCollectionContext(ocean, actorKey);
+                        return true;
                     }),
-                    EffectHandler: new Action<EffectContext>(ApplyGoFishingEffect)
+                    EffectHandler: new Action<EffectContext>(effectCtx =>
+                    {
+                        if (effectCtx.Tier == null || fishCtx == null)
+                        {
+                            fishCtx?.Source.ReleaseReservation(fishCtx.ReservationKey);
+                            return;
+                        }
+
+                        var tier = effectCtx.Tier.Value;
+                        var src = fishCtx.Source;
+                        var key = fishCtx.ReservationKey;
+
+                        if (tier >= RollOutcomeTier.PartialSuccess)
+                        {
+                            Quality = Math.Max(0.0, Quality - 1.0);
+                            effectCtx.Actor.Morale += 5.0;
+
+                            var sharedPile = effectCtx.World.SharedSupplyPile;
+                            if (sharedPile != null)
+                            {
+                                // CriticalSuccess commits 2 fish; Success/Partial commits 1
+                                // CommitReservation returns any remainder (e.g. reserved 2, committed 1)
+                                var commitFish = tier == RollOutcomeTier.CriticalSuccess ? 2.0 : 1.0;
+                                src.CommitReservation(key, "fish", commitFish, sharedPile, id => new FishSupply(id));
+                            }
+                            else
+                            {
+                                src.ReleaseReservation(key); // no shared pile — return fish to ocean
+                            }
+                        }
+                        else
+                        {
+                            // Failure: return all reserved fish to the ocean
+                            src.ReleaseReservation(key);
+                        }
+                    })
                 ));
             }
         }
@@ -123,36 +166,6 @@ public class FishingPoleItem : ToolItem
                 $"Repair fishing rod{(IsBroken ? " (broken)" : "")} (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyRepairRodEffect)
             ));
-        }
-    }
-
-    public void ApplyGoFishingEffect(EffectContext ctx)
-    {
-        if (ctx.Tier == null)
-            return;
-
-        var tier = ctx.Tier.Value;
-
-        if (tier >= RollOutcomeTier.PartialSuccess)
-        {
-            // Minor quality degradation from use
-            Quality = Math.Max(0.0, Quality - 1.0);
-            ctx.Actor.Morale += 5.0;
-
-            // PreAction already consumed 1 fish from the ocean
-            double fishCount = 1.0;
-
-            // CriticalSuccess: try to land an extra fish from the ocean
-            if (tier == RollOutcomeTier.CriticalSuccess)
-            {
-                var ocean = ctx.World.GetItem<OceanItem>("ocean") as ISupplyBounty;
-                if (ocean != null && ocean.TryConsumeSupply<FishSupply>("fish", 1.0))
-                    fishCount = 2.0;
-            }
-
-            var sharedPile = ctx.World.SharedSupplyPile;
-            if (sharedPile != null)
-                sharedPile.AddSupply("fish", fishCount, id => new FishSupply(id));
         }
     }
 

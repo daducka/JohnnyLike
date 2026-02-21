@@ -122,6 +122,10 @@ public class WorldItemEnvironmentTests
             Reservations = new EmptyResourceAvailability()
         };
 
+        // Call PreAction first (sets the reservation context captured by EffectHandler)
+        var domain = new IslandDomainPack();
+        domain.TryExecutePreAction(actor.Id, actor, world, new RandomRngStream(new Random(0)), new EmptyResourceAvailability(), explore.PreAction);
+
         ((Action<EffectContext>)explore.EffectHandler!)(effectCtx);
 
         var pile = world.SharedSupplyPile!;
@@ -318,5 +322,98 @@ public class WorldItemEnvironmentTests
         tree.AddCandidates(ctx, candidates);
 
         Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "shake_tree_coconut");
+    }
+
+    // ── ISupplyBounty Reservation System ─────────────────────────────────────
+
+    [Fact]
+    public void ReserveSupply_ReducesAvailableQuantity()
+    {
+        ISupplyBounty beach = new BeachItem("beach");
+        ((BeachItem)beach).BountySupplies.Clear();
+        beach.AddSupply("sticks", 10.0, id => new StickSupply(id));
+
+        beach.ReserveSupply<StickSupply>("actor1", "sticks", 4.0);
+
+        Assert.Equal(6.0, beach.GetQuantity<StickSupply>("sticks"));
+        Assert.True(beach.ActiveReservations.ContainsKey("actor1"));
+    }
+
+    [Fact]
+    public void ReserveSupply_ReturnsFalse_WhenInsufficientSupply()
+    {
+        ISupplyBounty beach = new BeachItem("beach");
+        ((BeachItem)beach).BountySupplies.Clear();
+        beach.AddSupply("sticks", 2.0, id => new StickSupply(id));
+
+        var result = beach.ReserveSupply<StickSupply>("actor1", "sticks", 5.0);
+
+        Assert.False(result);
+        Assert.Equal(2.0, beach.GetQuantity<StickSupply>("sticks")); // unchanged
+    }
+
+    [Fact]
+    public void ReleaseReservation_ReturnsSuppliesAndClearsEntry()
+    {
+        ISupplyBounty beach = new BeachItem("beach");
+        ((BeachItem)beach).BountySupplies.Clear();
+        beach.AddSupply("sticks", 10.0, id => new StickSupply(id));
+        beach.ReserveSupply<StickSupply>("actor1", "sticks", 4.0);
+        Assert.Equal(6.0, beach.GetQuantity<StickSupply>("sticks"));
+
+        beach.ReleaseReservation("actor1");
+
+        Assert.Equal(10.0, beach.GetQuantity<StickSupply>("sticks")); // restored
+        Assert.False(beach.ActiveReservations.ContainsKey("actor1"));
+    }
+
+    [Fact]
+    public void CommitReservation_TransfersActualAndReleasesRemainder()
+    {
+        ISupplyBounty beach = new BeachItem("beach");
+        ((BeachItem)beach).BountySupplies.Clear();
+        beach.AddSupply("sticks", 10.0, id => new StickSupply(id));
+
+        var pile = new SupplyPile("pile", "shared");
+        beach.ReserveSupply<StickSupply>("actor1", "sticks", 4.0); // reserve 4
+
+        // Commit only 2 (Success tier), remainder 2 should go back to beach
+        beach.CommitReservation("actor1", "sticks", 2.0, pile, id => new StickSupply(id));
+
+        Assert.Equal(8.0, beach.GetQuantity<StickSupply>("sticks"), 1);  // 6 unreserved + 2 returned
+        Assert.Equal(2.0, pile.GetQuantity<StickSupply>("sticks"), 1);   // 2 transferred
+        Assert.False(beach.ActiveReservations.ContainsKey("actor1"));
+    }
+
+    [Fact]
+    public void CommitReservation_NeverCommitsMoreThanReserved()
+    {
+        ISupplyBounty ocean = new OceanItem("ocean");
+        ((OceanItem)ocean).BountySupplies.Clear();
+        ocean.AddSupply("fish", 1.0, id => new FishSupply(id)); // only 1 fish
+
+        var pile = new SupplyPile("pile", "shared");
+        ocean.ReserveSupply<FishSupply>("actor1", "fish", 1.0);
+
+        // Try to commit 2 even though only 1 was reserved
+        ocean.CommitReservation("actor1", "fish", 2.0, pile, id => new FishSupply(id));
+
+        Assert.Equal(0.0, ocean.GetQuantity<FishSupply>("fish"));  // nothing returned
+        Assert.Equal(1.0, pile.GetQuantity<FishSupply>("fish"));   // only 1 committed
+    }
+
+    [Fact]
+    public void TwoActors_ReservationsAreIndependent_NoDoubleSpend()
+    {
+        ISupplyBounty beach = new BeachItem("beach");
+        ((BeachItem)beach).BountySupplies.Clear();
+        beach.AddSupply("sticks", 3.0, id => new StickSupply(id));
+
+        var result1 = beach.ReserveSupply<StickSupply>("actor1", "sticks", 2.0);
+        var result2 = beach.ReserveSupply<StickSupply>("actor2", "sticks", 2.0);
+
+        Assert.True(result1);   // actor1 succeeds
+        Assert.False(result2);  // actor2 fails (only 1 left, needs 2)
+        Assert.Equal(1.0, beach.GetQuantity<StickSupply>("sticks")); // 1 unreserved
     }
 }
