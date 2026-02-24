@@ -4,7 +4,7 @@ namespace JohnnyLike.Tts;
 
 /// <summary>
 /// Wraps the Piper TTS CLI (piper.exe) to synthesize text to a WAV file.
-/// Piper reads text from stdin and writes WAV to stdout (or a file via --output_file).
+/// Piper reads text from stdin and writes the WAV to the path given by --output_file.
 /// </summary>
 public sealed class PiperTtsClient : ITtsClient
 {
@@ -25,7 +25,9 @@ public sealed class PiperTtsClient : ITtsClient
             Arguments = $"--model \"{_voiceModelPath}\" --output_file \"{outputWavPath}\"",
             UseShellExecute = false,
             RedirectStandardInput = true,
-            RedirectStandardOutput = true,
+            // stdout is NOT redirected: piper writes audio to --output_file, not stdout.
+            // Redirecting without draining would deadlock if the pipe buffer fills.
+            RedirectStandardOutput = false,
             RedirectStandardError = true,
             CreateNoWindow = true
         };
@@ -33,12 +35,15 @@ public sealed class PiperTtsClient : ITtsClient
         using var process = new Process { StartInfo = psi };
         process.Start();
 
+        // Write text then close stdin so piper knows input is done
+        // WriteLineAsync ensures a trailing newline, which Piper requires to start processing
         await process.StandardInput.WriteLineAsync(text).ConfigureAwait(false);
         process.StandardInput.Close();
 
-        var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
-
+        // Drain stderr concurrently with WaitForExit to avoid pipe-buffer deadlocks
+        var stderrTask = process.StandardError.ReadToEndAsync(ct);
         await process.WaitForExitAsync(ct).ConfigureAwait(false);
+        var stderr = await stderrTask.ConfigureAwait(false);
 
         if (process.ExitCode != 0)
         {

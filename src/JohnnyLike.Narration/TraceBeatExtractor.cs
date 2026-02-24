@@ -52,6 +52,9 @@ public sealed class TraceBeatExtractor
     /// </summary>
     public NarrationJob? Consume(TraceEvent evt)
     {
+        // Always keep CurrentSimTime up to date
+        _facts.CurrentSimTime = evt.Time;
+
         switch (evt.EventType)
         {
             case "ActionAssigned":
@@ -106,7 +109,7 @@ public sealed class TraceBeatExtractor
         var actionKind = GetString(evt.Details, "actionKind");
         var actionId = GetString(evt.Details, "actionId");
         var outcomeStr = GetString(evt.Details, "outcomeType");
-        var success = outcomeStr == "Success";
+        var isSuccess = IsSuccessOutcome(outcomeStr);
 
         // Collect all actor_* keys generically — the domain decides what to expose
         var statsAfter = CollectActorStats(evt.Details);
@@ -117,10 +120,16 @@ public sealed class TraceBeatExtractor
         _facts.UpdateActor(new ActorFacts(actorId, mergedStats, actionKind, actionId));
 
         var beat = new Beat(evt.Time, actorId, "Actor", evt.EventType, actionKind, actionId,
-            success, statsAfter.Count > 0 ? statsAfter : null);
+            Success: isSuccess, OutcomeType: outcomeStr,
+            StatsAfter: statsAfter.Count > 0 ? statsAfter : null);
         AddBeat(beat);
 
-        var prompt = _promptBuilder.BuildOutcomePrompt(beat, _facts, _recentBeats, false);
+        // Apply summary cadence to outcomes too
+        _beatsSinceLastSummary++;
+        bool wantSummary = _beatsSinceLastSummary >= _summaryRefreshEveryN;
+        if (wantSummary) _beatsSinceLastSummary = 0;
+
+        var prompt = _promptBuilder.BuildOutcomePrompt(beat, _facts, _recentBeats, wantSummary);
 
         return new NarrationJob(
             JobId: Guid.NewGuid(),
@@ -147,10 +156,19 @@ public sealed class TraceBeatExtractor
             PlayAtSimTime: beat.SimTime,
             DeadlineSimTime: beat.SimTime + 12.0,
             Kind: NarrationJobKind.WorldEvent,
-            SubjectId: beat.ActorId,
+            // Use beat.Subject as the world-object subject; fall back to ActorId for actor-sourced world events
+            SubjectId: beat.Subject.Length > 0 ? beat.Subject : beat.ActorId,
             Prompt: prompt
         );
     }
+
+    /// <summary>
+    /// Determines whether the raw outcome type string represents a successful outcome.
+    /// Recognises: Success, CriticalSuccess, PartialSuccess (success family)
+    ///             and anything else (Failed, Failure, TimedOut, Cancelled, …) as failure.
+    /// </summary>
+    public static bool IsSuccessOutcome(string outcomeType) =>
+        outcomeType is "Success" or "CriticalSuccess" or "PartialSuccess";
 
     private void AddBeat(Beat beat)
     {

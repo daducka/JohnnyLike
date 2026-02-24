@@ -59,10 +59,49 @@ public static class NarrationResponseParser
 
     private static string? ExtractJson(string raw)
     {
+        // String-aware balanced-brace scanner.
+        // Skips over characters inside quoted strings (including escaped quotes)
+        // so that braces within string values do not affect brace depth.
         var start = raw.IndexOf('{');
-        var end = raw.LastIndexOf('}');
-        if (start >= 0 && end > start)
-            return raw[start..(end + 1)];
+        if (start < 0) return null;
+
+        int depth = 0;
+        bool inString = false;
+        bool escaped = false;
+
+        for (int i = start; i < raw.Length; i++)
+        {
+            var c = raw[i];
+
+            if (escaped)
+            {
+                escaped = false;
+                continue;
+            }
+
+            if (c == '\\' && inString)
+            {
+                escaped = true;
+                continue;
+            }
+
+            if (c == '"')
+            {
+                inString = !inString;
+                continue;
+            }
+
+            if (inString) continue;
+
+            if (c == '{') depth++;
+            else if (c == '}')
+            {
+                depth--;
+                if (depth == 0)
+                    return raw[start..(i + 1)];
+            }
+        }
+
         return null;
     }
 

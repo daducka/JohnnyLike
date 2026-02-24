@@ -44,6 +44,7 @@ public sealed class CanonicalFacts
 /// For actor-action beats: the action identifier.
 /// For world-event beats: the world-object or entity identifier set by the domain handler.
 /// </param>
+/// <param name="OutcomeType">Raw outcome string from the trace (e.g. Success, CriticalSuccess, Failed).</param>
 public sealed record Beat(
     double SimTime,
     string? ActorId,
@@ -52,6 +53,7 @@ public sealed record Beat(
     string ActionKind,
     string Subject,
     bool? Success = null,
+    string? OutcomeType = null,
     /// <summary>
     /// Generic stat snapshot after the action (mirrors the domain's
     /// <c>GetActorStateSnapshot</c> output).  <c>null</c> for world-event beats.
