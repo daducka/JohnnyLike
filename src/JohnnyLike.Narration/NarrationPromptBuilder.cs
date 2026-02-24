@@ -23,7 +23,6 @@ public sealed class NarrationPromptBuilder
     public void UpdateSummary(string newSummary) => _storySummary = newSummary;
 
     public string BuildAttemptPrompt(
-        string actorId,
         Beat beat,
         CanonicalFacts facts,
         IReadOnlyList<Beat> recentBeats,
@@ -33,17 +32,17 @@ public sealed class NarrationPromptBuilder
         AppendSystemInstructions(sb, requestSummaryUpdate);
         sb.AppendLine();
         AppendTone(sb);
-        AppendFacts(sb, facts, actorId);
+        AppendActorFacts(sb, facts, beat.ActorId);
         AppendRecentBeats(sb, recentBeats);
         AppendCurrentSummary(sb);
         sb.AppendLine("## Current Event");
-        sb.AppendLine($"Actor \"{actorId}\" is about to attempt action \"{beat.ActionId}\" (kind: {beat.ActionKind}) at sim-time {beat.SimTime:F1}.");
+        sb.AppendLine($"Actor \"{beat.ActorId}\" is about to attempt action \"{beat.Subject}\" " +
+                      $"(kind: {beat.ActionKind}) at sim-time {beat.SimTime:F1}.");
         sb.AppendLine("Write the ATTEMPT narration line. Do NOT reveal the outcome.");
         return sb.ToString();
     }
 
     public string BuildOutcomePrompt(
-        string actorId,
         Beat beat,
         CanonicalFacts facts,
         IReadOnlyList<Beat> recentBeats,
@@ -53,25 +52,46 @@ public sealed class NarrationPromptBuilder
         AppendSystemInstructions(sb, requestSummaryUpdate);
         sb.AppendLine();
         AppendTone(sb);
-        AppendFacts(sb, facts, actorId);
+        AppendActorFacts(sb, facts, beat.ActorId);
         AppendRecentBeats(sb, recentBeats);
         AppendCurrentSummary(sb);
         sb.AppendLine("## Current Event");
         var outcomeWord = beat.Success == true ? "succeeded" : "failed";
-        sb.AppendLine($"Actor \"{actorId}\" has {outcomeWord} at action \"{beat.ActionId}\" (kind: {beat.ActionKind}) at sim-time {beat.SimTime:F1}.");
+        sb.AppendLine($"Actor \"{beat.ActorId}\" has {outcomeWord} at action \"{beat.Subject}\" " +
+                      $"(kind: {beat.ActionKind}) at sim-time {beat.SimTime:F1}.");
 
-        var actorFacts = facts.GetActor(actorId);
-        if (actorFacts != null)
+        // Domain-provided stats — output whatever was snapshotted, with no hardcoded names
+        if (beat.StatsAfter != null && beat.StatsAfter.Count > 0)
         {
-            var stats = new List<string>();
-            if (actorFacts.Satiety.HasValue) stats.Add($"satiety={actorFacts.Satiety.Value:F0}");
-            if (actorFacts.Energy.HasValue) stats.Add($"energy={actorFacts.Energy.Value:F0}");
-            if (actorFacts.Morale.HasValue) stats.Add($"morale={actorFacts.Morale.Value:F0}");
-            if (stats.Count > 0)
-                sb.AppendLine($"Actor stats: {string.Join(", ", stats)}.");
+            var statLine = string.Join(", ", beat.StatsAfter.Select(kv => $"{kv.Key}={kv.Value}"));
+            sb.AppendLine($"Actor stats: {statLine}.");
         }
 
         sb.AppendLine("Write the OUTCOME narration line. Include success/failure and relevant stats if meaningful.");
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Builds a prompt for a world/environment event that has no actor subject.
+    /// </summary>
+    public string BuildWorldEventPrompt(
+        Beat beat,
+        CanonicalFacts facts,
+        IReadOnlyList<Beat> recentBeats,
+        bool requestSummaryUpdate)
+    {
+        var sb = new StringBuilder();
+        AppendSystemInstructions(sb, requestSummaryUpdate);
+        sb.AppendLine();
+        AppendTone(sb);
+        sb.AppendLine($"## Domain: {facts.Domain}");
+        AppendRecentBeats(sb, recentBeats);
+        AppendCurrentSummary(sb);
+        sb.AppendLine("## Current Event");
+        sb.AppendLine($"World event \"{beat.EventType}\" at sim-time {beat.SimTime:F1}.");
+        if (beat.Subject.Length > 0)
+            sb.AppendLine($"Subject: {beat.Subject}");
+        sb.AppendLine("Write a narration line describing this world event from the observer's perspective.");
         return sb.ToString();
     }
 
@@ -96,17 +116,23 @@ public sealed class NarrationPromptBuilder
         sb.AppendLine();
     }
 
-    private static void AppendFacts(StringBuilder sb, CanonicalFacts facts, string focusActorId)
+    private static void AppendActorFacts(StringBuilder sb, CanonicalFacts facts, string? actorId)
     {
         sb.AppendLine($"## Domain: {facts.Domain}");
-        var actorFacts = facts.GetActor(focusActorId);
-        if (actorFacts != null)
+        if (actorId == null) return;
+
+        var actorFacts = facts.GetActor(actorId);
+        if (actorFacts == null) return;
+
+        // Output whatever stats the domain chose to expose — no hardcoded field names
+        if (actorFacts.Stats.Count > 0)
         {
-            sb.Append($"Actor \"{focusActorId}\":");
-            if (actorFacts.Satiety.HasValue) sb.Append($" satiety={actorFacts.Satiety.Value:F0}");
-            if (actorFacts.Energy.HasValue) sb.Append($" energy={actorFacts.Energy.Value:F0}");
-            if (actorFacts.Morale.HasValue) sb.Append($" morale={actorFacts.Morale.Value:F0}");
-            sb.AppendLine();
+            var statLine = string.Join(" ", actorFacts.Stats.Select(kv => $"{kv.Key}={kv.Value}"));
+            sb.AppendLine($"Actor \"{actorId}\": {statLine}");
+        }
+        else
+        {
+            sb.AppendLine($"Actor \"{actorId}\"");
         }
     }
 
@@ -116,8 +142,9 @@ public sealed class NarrationPromptBuilder
         sb.AppendLine("## Recent events (oldest first)");
         foreach (var b in recentBeats)
         {
+            var subject = b.ActorId ?? $"[{b.SubjectKind}]";
             var outcome = b.Success.HasValue ? (b.Success.Value ? " [success]" : " [failed]") : "";
-            sb.AppendLine($"  t={b.SimTime:F1} {b.ActorId} {b.EventType} {b.ActionId}{outcome}");
+            sb.AppendLine($"  t={b.SimTime:F1} {subject} {b.EventType} {b.Subject}{outcome}");
         }
     }
 

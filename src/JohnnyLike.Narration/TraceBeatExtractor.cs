@@ -4,8 +4,12 @@ namespace JohnnyLike.Narration;
 
 /// <summary>
 /// Consumes <see cref="TraceEvent"/>s, updates <see cref="CanonicalFacts"/>,
-/// maintains a recent-beats buffer, and yields <see cref="NarrationJob"/>s for
-/// ActionAssigned and ActionCompleted events.
+/// maintains a recent-beats buffer, and yields <see cref="NarrationJob"/>s.
+/// <para>
+/// Built-in handlers fire on <c>ActionAssigned</c> and <c>ActionCompleted</c>.
+/// Domain code can call <see cref="RegisterWorldEventHandler"/> to produce
+/// narration beats from arbitrary world/environment trace events.
+/// </para>
 /// </summary>
 public sealed class TraceBeatExtractor
 {
@@ -15,6 +19,9 @@ public sealed class TraceBeatExtractor
     private readonly int _maxRecentBeats;
     private readonly int _summaryRefreshEveryN;
     private int _beatsSinceLastSummary;
+
+    // Domain-registered handlers for world / environment events
+    private readonly Dictionary<string, Func<TraceEvent, Beat?>> _worldEventHandlers = new();
 
     public CanonicalFacts Facts => _facts;
     public IReadOnlyList<Beat> RecentBeats => _recentBeats;
@@ -32,8 +39,16 @@ public sealed class TraceBeatExtractor
     }
 
     /// <summary>
-    /// Process a single trace event. Returns a <see cref="NarrationJob"/> when the event
-    /// warrants narration, or <c>null</c> otherwise.
+    /// Register a handler for a domain-specific world/environment event type.
+    /// The handler receives the raw <see cref="TraceEvent"/> and returns a
+    /// <see cref="Beat"/> (or <c>null</c> to suppress narration for this instance).
+    /// </summary>
+    public void RegisterWorldEventHandler(string eventType, Func<TraceEvent, Beat?> handler)
+        => _worldEventHandlers[eventType] = handler;
+
+    /// <summary>
+    /// Process a single trace event. Returns a <see cref="NarrationJob"/> when the
+    /// event warrants narration, or <c>null</c> otherwise.
     /// </summary>
     public NarrationJob? Consume(TraceEvent evt)
     {
@@ -46,6 +61,12 @@ public sealed class TraceBeatExtractor
                 return HandleActionCompleted(evt);
 
             default:
+                if (_worldEventHandlers.TryGetValue(evt.EventType, out var handler))
+                {
+                    var beat = handler(evt);
+                    if (beat != null)
+                        return CreateWorldEventJob(beat);
+                }
                 return null;
         }
     }
@@ -55,24 +76,24 @@ public sealed class TraceBeatExtractor
         if (!evt.ActorId.HasValue) return null;
 
         var actorId = evt.ActorId.Value.Value;
-        var actionKind = evt.Details.TryGetValue("actionKind", out var ak) ? ak?.ToString() ?? "" : "";
-        var actionId = evt.Details.TryGetValue("actionId", out var aid) ? aid?.ToString() ?? "" : "";
+        var actionKind = GetString(evt.Details, "actionKind");
+        var actionId = GetString(evt.Details, "actionId");
 
-        var beat = new Beat(evt.Time, actorId, evt.EventType, actionKind, actionId);
+        var beat = new Beat(evt.Time, actorId, "Actor", evt.EventType, actionKind, actionId);
         AddBeat(beat);
 
         _beatsSinceLastSummary++;
         bool wantSummary = _beatsSinceLastSummary >= _summaryRefreshEveryN;
         if (wantSummary) _beatsSinceLastSummary = 0;
 
-        var prompt = _promptBuilder.BuildAttemptPrompt(actorId, beat, _facts, _recentBeats, wantSummary);
+        var prompt = _promptBuilder.BuildAttemptPrompt(beat, _facts, _recentBeats, wantSummary);
 
         return new NarrationJob(
             JobId: Guid.NewGuid(),
             PlayAtSimTime: evt.Time,
             DeadlineSimTime: evt.Time + 10.0,
             Kind: NarrationJobKind.Attempt,
-            ActorId: actorId,
+            SubjectId: actorId,
             Prompt: prompt
         );
     }
@@ -82,30 +103,51 @@ public sealed class TraceBeatExtractor
         if (!evt.ActorId.HasValue) return null;
 
         var actorId = evt.ActorId.Value.Value;
-        var actionKind = evt.Details.TryGetValue("actionKind", out var ak) ? ak?.ToString() ?? "" : "";
-        var actionId = evt.Details.TryGetValue("actionId", out var aid) ? aid?.ToString() ?? "" : "";
-        var outcomeStr = evt.Details.TryGetValue("outcomeType", out var ot) ? ot?.ToString() ?? "" : "";
+        var actionKind = GetString(evt.Details, "actionKind");
+        var actionId = GetString(evt.Details, "actionId");
+        var outcomeStr = GetString(evt.Details, "outcomeType");
         var success = outcomeStr == "Success";
 
-        double? satiety = TryGetDouble(evt.Details, "actor_satiety");
-        double? energy = TryGetDouble(evt.Details, "actor_energy");
-        double? morale = TryGetDouble(evt.Details, "actor_morale");
+        // Collect all actor_* keys generically — the domain decides what to expose
+        var statsAfter = CollectActorStats(evt.Details);
 
-        // Update canonical facts
+        // Update canonical facts: merge new stats over existing ones
         var existing = _facts.GetActor(actorId);
-        _facts.UpdateActor(new ActorFacts(actorId, satiety ?? existing?.Satiety, energy ?? existing?.Energy, morale ?? existing?.Morale, actionKind, actionId));
+        var mergedStats = MergeStats(existing?.Stats, statsAfter);
+        _facts.UpdateActor(new ActorFacts(actorId, mergedStats, actionKind, actionId));
 
-        var beat = new Beat(evt.Time, actorId, evt.EventType, actionKind, actionId, success, satiety, energy, morale);
+        var beat = new Beat(evt.Time, actorId, "Actor", evt.EventType, actionKind, actionId,
+            success, statsAfter.Count > 0 ? statsAfter : null);
         AddBeat(beat);
 
-        var prompt = _promptBuilder.BuildOutcomePrompt(actorId, beat, _facts, _recentBeats, false);
+        var prompt = _promptBuilder.BuildOutcomePrompt(beat, _facts, _recentBeats, false);
 
         return new NarrationJob(
             JobId: Guid.NewGuid(),
             PlayAtSimTime: evt.Time,
             DeadlineSimTime: evt.Time + 15.0,
             Kind: NarrationJobKind.Outcome,
-            ActorId: actorId,
+            SubjectId: actorId,
+            Prompt: prompt
+        );
+    }
+
+    private NarrationJob CreateWorldEventJob(Beat beat)
+    {
+        AddBeat(beat);
+
+        _beatsSinceLastSummary++;
+        bool wantSummary = _beatsSinceLastSummary >= _summaryRefreshEveryN;
+        if (wantSummary) _beatsSinceLastSummary = 0;
+
+        var prompt = _promptBuilder.BuildWorldEventPrompt(beat, _facts, _recentBeats, wantSummary);
+
+        return new NarrationJob(
+            JobId: Guid.NewGuid(),
+            PlayAtSimTime: beat.SimTime,
+            DeadlineSimTime: beat.SimTime + 12.0,
+            Kind: NarrationJobKind.WorldEvent,
+            SubjectId: beat.ActorId,
             Prompt: prompt
         );
     }
@@ -117,11 +159,37 @@ public sealed class TraceBeatExtractor
             _recentBeats.RemoveAt(0);
     }
 
-    private static double? TryGetDouble(Dictionary<string, object> dict, string key)
+    /// <summary>
+    /// Collects all details keys prefixed with "actor_" and returns them as a
+    /// stat dictionary (key = name after the prefix, value = string representation).
+    /// Stat names are stored case-sensitively so domains must use consistent casing.
+    /// </summary>
+    private static IReadOnlyDictionary<string, string> CollectActorStats(Dictionary<string, object> details)
     {
-        if (!dict.TryGetValue(key, out var raw)) return null;
-        if (raw is double d) return d;
-        if (double.TryParse(raw?.ToString(), out var parsed)) return parsed;
-        return null;
+        const string prefix = "actor_";
+        var stats = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var kvp in details)
+        {
+            if (kvp.Key.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                var statName = kvp.Key[prefix.Length..];
+                stats[statName] = kvp.Value?.ToString() ?? string.Empty;
+            }
+        }
+        return stats;
     }
+
+    private static IReadOnlyDictionary<string, string> MergeStats(
+        IReadOnlyDictionary<string, string>? existing,
+        IReadOnlyDictionary<string, string> incoming)
+    {
+        if (existing == null || existing.Count == 0) return incoming;
+        var merged = new Dictionary<string, string>(existing, StringComparer.Ordinal);
+        foreach (var kvp in incoming)
+            merged[kvp.Key] = kvp.Value;
+        return merged;
+    }
+
+    private static string GetString(Dictionary<string, object> dict, string key)
+        => dict.TryGetValue(key, out var v) ? v?.ToString() ?? string.Empty : string.Empty;
 }

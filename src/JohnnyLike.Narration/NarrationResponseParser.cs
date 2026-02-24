@@ -43,13 +43,16 @@ public static class NarrationResponseParser
 
     private static NarrationResponse Fallback(NarrationJob job)
     {
+        var subject = job.SubjectId ?? "Something";
         var text = job.Kind switch
         {
             NarrationJobKind.Attempt =>
-                $"{job.ActorId} prepares to attempt an action.",
+                $"{subject} prepares to attempt an action.",
             NarrationJobKind.Outcome =>
-                $"{job.ActorId} finishes their action.",
-            _ => $"{job.ActorId} does something."
+                $"{subject} finishes their action.",
+            NarrationJobKind.WorldEvent =>
+                "Something stirs in the world.",
+            _ => $"{subject} does something."
         };
         return new NarrationResponse(text, null);
     }

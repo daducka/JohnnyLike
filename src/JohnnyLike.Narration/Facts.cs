@@ -1,11 +1,17 @@
 namespace JohnnyLike.Narration;
 
 /// <summary>Immutable snapshot of a single actor's known facts.</summary>
+/// <param name="ActorId">Identifier of the actor.</param>
+/// <param name="Stats">
+/// Generic key-value stat snapshot provided by the domain's
+/// <c>GetActorStateSnapshot</c> (e.g. "satiety"→"42", "energy"→"77").
+/// The narration system never hard-codes specific stat names.
+/// </param>
+/// <param name="LastActionKind">Kind of the most recent action, if any.</param>
+/// <param name="LastActionId">Id of the most recent action, if any.</param>
 public sealed record ActorFacts(
     string ActorId,
-    double? Satiety,
-    double? Energy,
-    double? Morale,
+    IReadOnlyDictionary<string, string> Stats,
     string? LastActionKind,
     string? LastActionId
 );
@@ -25,15 +31,30 @@ public sealed class CanonicalFacts
         _actors.TryGetValue(actorId, out var f) ? f : null;
 }
 
-/// <summary>A single narrative beat extracted from one trace event.</summary>
+/// <summary>
+/// A single narrative beat extracted from one trace event.
+/// <para>
+/// For actor action events <see cref="ActorId"/> is set and
+/// <see cref="SubjectKind"/> is <c>"Actor"</c>.
+/// For world / environment events <see cref="ActorId"/> is <c>null</c> and
+/// <see cref="SubjectKind"/> is <c>"World"</c> or a domain-defined label.
+/// </para>
+/// </summary>
+/// <param name="Subject">
+/// For actor-action beats: the action identifier.
+/// For world-event beats: the world-object or entity identifier set by the domain handler.
+/// </param>
 public sealed record Beat(
     double SimTime,
-    string ActorId,
+    string? ActorId,
+    string SubjectKind,
     string EventType,
     string ActionKind,
-    string ActionId,
+    string Subject,
     bool? Success = null,
-    double? SatietyAfter = null,
-    double? EnergyAfter = null,
-    double? MoraleAfter = null
+    /// <summary>
+    /// Generic stat snapshot after the action (mirrors the domain's
+    /// <c>GetActorStateSnapshot</c> output).  <c>null</c> for world-event beats.
+    /// </summary>
+    IReadOnlyDictionary<string, string>? StatsAfter = null
 );
