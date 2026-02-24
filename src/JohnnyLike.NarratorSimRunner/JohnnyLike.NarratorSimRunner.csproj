@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JohnnyLike.Engine\JohnnyLike.Engine.csproj" />
+    <ProjectReference Include="..\JohnnyLike.Domain.Island\JohnnyLike.Domain.Island.csproj" />
+    <ProjectReference Include="..\JohnnyLike.Domain.Office\JohnnyLike.Domain.Office.csproj" />
+    <ProjectReference Include="..\JohnnyLike.Narration\JohnnyLike.Narration.csproj" />
+    <ProjectReference Include="..\JohnnyLike.Llm\JohnnyLike.Llm.csproj" />
+    <ProjectReference Include="..\JohnnyLike.Tts\JohnnyLike.Tts.csproj" />
+    <ProjectReference Include="..\JohnnyLike.SimRunner\JohnnyLike.SimRunner.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Windows.Extensions" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>
