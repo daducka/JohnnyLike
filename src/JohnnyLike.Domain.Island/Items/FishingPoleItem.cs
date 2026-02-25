@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Supply;
+using JohnnyLike.Domain.Island.Telemetry;
 using JohnnyLike.Domain.Kit.Dice;
 using System.Text.Json;
 
@@ -26,6 +27,25 @@ public class FishingPoleItem : ToolItem
         {
             IsBroken = true;
         }
+    }
+
+    protected override void EmitDegradationBeat(IEventTracer tracer, double threshold)
+    {
+        var description = threshold switch
+        {
+            >= 75.0 => "starting to show wear",
+            >= 50.0 => "getting difficult to cast",
+            >= 25.0 => "starting to splinter",
+            _ => "barely holding together"
+        };
+        using (tracer.PushPhase(TracePhase.WorldTick))
+            tracer.BeatWorld($"The fishing rod is {description}.", subjectId: "item:fishing_pole", priority: 30);
+    }
+
+    protected override void EmitBrokenBeat(IEventTracer tracer)
+    {
+        using (tracer.PushPhase(TracePhase.WorldTick))
+            tracer.BeatWorld("The fishing rod snaps and becomes unusable.", subjectId: "item:fishing_pole", priority: 40);
     }
 
     public override void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -110,11 +130,25 @@ public class FishingPoleItem : ToolItem
                             {
                                 src.ReleaseReservation(key); // no shared pile — return fish to ocean
                             }
+
+                            using (effectCtx.Tracer.PushPhase(TracePhase.ActionCompleted))
+                            {
+                                var actorName = effectCtx.ActorId.Value;
+                                effectCtx.Tracer.BeatActor(actorName,
+                                    tier == RollOutcomeTier.CriticalSuccess
+                                        ? $"{actorName} hauls in two fish—a great catch."
+                                        : $"{actorName} pulls a fish from the water.",
+                                    subjectId: "resource:fish", priority: 60);
+                            }
                         }
                         else
                         {
                             // Failure: return all reserved fish to the ocean
                             src.ReleaseReservation(key);
+                            using (effectCtx.Tracer.PushPhase(TracePhase.ActionCompleted))
+                                effectCtx.Tracer.BeatActor(effectCtx.ActorId.Value,
+                                    "The line comes back empty.",
+                                    subjectId: "resource:fish", priority: 50);
                         }
                     })
                 ));

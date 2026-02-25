@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Telemetry;
 
 namespace JohnnyLike.Domain.Island.Items;
 
@@ -19,6 +20,12 @@ public class CalendarItem : WorldItem, ITickableWorldItem
         {
             TimeOfDay -= 1.0;
             DayCount++;
+
+            using (world.Tracer.PushPhase(TracePhase.WorldTick))
+                world.Tracer.BeatWorld(
+                    $"A new day dawns—day {DayCount} on the island.",
+                    subjectId: "calendar:day",
+                    priority: 30);
         }
 
         return new List<TraceEvent>();

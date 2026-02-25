@@ -115,6 +115,13 @@ var traceToJobTask = Task.Run(async () =>
     {
         await foreach (var evt in traceSink.Events.ReadAllAsync(cts.Token))
         {
+            // Debug log: print domain beats as they arrive
+            if (evt.EventType == "NarrationBeat" && evt.Details.TryGetValue("text", out var beatText))
+            {
+                var phase = evt.Details.TryGetValue("phase", out var p) ? p : "?";
+                Console.WriteLine($"[beat] t={evt.Time:F1} [{phase}] {beatText}");
+            }
+
             var job = extractor.Consume(evt);
             if (job != null)
                 await jobChannel.Writer.WriteAsync(job, cts.Token).ConfigureAwait(false);

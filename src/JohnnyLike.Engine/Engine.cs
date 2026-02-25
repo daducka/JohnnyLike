@@ -12,6 +12,7 @@ public class Engine
     private readonly ReservationTable _reservations;
     private readonly VarietyMemory _varietyMemory;
     private readonly ITraceSink _traceSink;
+    private readonly EventTracer _eventTracer;
     private readonly Random _rng;
     private readonly Queue<Signal> _signalQueue;
     private readonly Dictionary<ActionId, object?> _effectHandlers; // Maps action IDs to their effect handlers
@@ -29,6 +30,7 @@ public class Engine
         _reservations = new ReservationTable();
         _varietyMemory = new VarietyMemory();
         _traceSink = traceSink ?? new InMemoryTraceSink();
+        _eventTracer = new EventTracer();
         _director = new Director(domainPack, _reservations, _varietyMemory, _traceSink);
         _rng = new Random(seed);
         _signalQueue = new Queue<Signal>();
@@ -55,11 +57,15 @@ public class Engine
         _currentTime += dtSeconds;
 
         // Tick world state and record trace events
+        _worldState.Tracer = _eventTracer;
         var worldTraceEvents = _domainPack.TickWorldState(_worldState, dtSeconds, _reservations);
+        _worldState.Tracer = NullEventTracer.Instance;
         foreach (var evt in worldTraceEvents)
         {
             _traceSink.Record(evt);
         }
+        // Flush any narration beats emitted during world tick
+        EmitBeats(_eventTracer.Drain(), defaultActorId: null);
 
         // Process pending signals
         while (_signalQueue.Count > 0 && _signalQueue.Peek().Timestamp <= _currentTime)
@@ -173,7 +179,11 @@ public class Engine
 
         // Apply effects (domain pack may populate ResultData)
         var rngStream = new RandomRngStream(_rng);
+        _worldState.Tracer = _eventTracer;
         _domainPack.ApplyActionEffects(actorId, outcome, actorState, _worldState, rngStream, _reservations, effectHandler);
+        _worldState.Tracer = NullEventTracer.Instance;
+        // Flush any narration beats emitted during action execution
+        EmitBeats(_eventTracer.Drain(), defaultActorId: actorId.Value);
 
         // Build details dictionary including all data from ResultData
         var details = new Dictionary<string, object>
@@ -292,5 +302,29 @@ public class Engine
 
         // Delegate signal handling to the domain pack
         _domainPack.OnSignal(signal, targetActorState, _worldState, _currentTime);
+    }
+
+    /// <summary>
+    /// Converts drained <see cref="NarrationBeat"/>s to <c>NarrationBeat</c>
+    /// <see cref="TraceEvent"/>s and records them in the trace sink.
+    /// </summary>
+    private void EmitBeats(List<NarrationBeat> beats, string? defaultActorId)
+    {
+        foreach (var beat in beats)
+        {
+            var actorStr = beat.ActorId ?? defaultActorId;
+            ActorId? actorId = actorStr != null ? new ActorId(actorStr) : null;
+
+            var details = new Dictionary<string, object>
+            {
+                ["text"] = beat.Text,
+                ["phase"] = beat.Phase.ToString(),
+                ["priority"] = beat.Priority
+            };
+            if (beat.SubjectId != null)
+                details["subjectId"] = beat.SubjectId;
+
+            _traceSink.Record(new TraceEvent(_currentTime, actorId, "NarrationBeat", details));
+        }
     }
 }

@@ -264,7 +264,8 @@ public class IslandDomainPack : IDomainPack
             World = (IslandWorldState)worldState,
             Tier = null,
             Rng = rng,
-            Reservations = resourceAvailability
+            Reservations = resourceAvailability,
+            Tracer = worldState.Tracer
         };
 
         return preAction(effectCtx);
@@ -305,7 +306,8 @@ public class IslandDomainPack : IDomainPack
             World = islandWorld,
             Tier = GetTierFromOutcome(outcome),
             Rng = rng,
-            Reservations = resourceAvailability
+            Reservations = resourceAvailability,
+            Tracer = islandWorld.Tracer
         };
 
         // Effect handler should always be provided via ActionCandidate.EffectHandler

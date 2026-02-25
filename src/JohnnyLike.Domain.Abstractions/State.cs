@@ -23,6 +23,13 @@ public abstract class ActorState
 
 public abstract class WorldState
 {
+    /// <summary>
+    /// Active tracer for emitting narration beats from within world-tick handlers.
+    /// Set by the engine before calling <c>TickWorldState</c> and cleared afterwards.
+    /// Defaults to <see cref="NullEventTracer.Instance"/> when no tracer is wired up.
+    /// </summary>
+    public IEventTracer Tracer { get; set; } = NullEventTracer.Instance;
+
     public abstract string Serialize();
     public abstract void Deserialize(string json);
 }

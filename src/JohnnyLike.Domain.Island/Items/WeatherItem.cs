@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Telemetry;
 
 namespace JohnnyLike.Domain.Island.Items;
 
@@ -32,9 +33,20 @@ public class WeatherItem : WorldItem, ITickableWorldItem
 
         var hour = calendar.HourOfDay;
 
+        var prevTemp = Temperature;
         Temperature = (hour < 8.0 || hour >= 19.0)
             ? TemperatureBand.Cold
             : TemperatureBand.Hot;
+
+        // Emit beat on temperature transition (Cold → Hot or Hot → Cold)
+        if (Temperature != prevTemp)
+        {
+            var text = Temperature == TemperatureBand.Hot
+                ? "The sun climbs higher; the island grows warm."
+                : "The air cools as the sun dips toward the horizon.";
+            using (world.Tracer.PushPhase(TracePhase.WorldTick))
+                world.Tracer.BeatWorld(text, subjectId: "weather:temperature", priority: 15);
+        }
 
         // Precipitation does not change automatically yet (future PR)
 

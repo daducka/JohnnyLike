@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Telemetry;
 
 namespace JohnnyLike.Domain.Island.Recipes;
 
@@ -17,7 +18,8 @@ public static class RecipeDiscoverySystem
         IslandActorState actor,
         IslandWorldState world,
         IRngStream rng,
-        DiscoveryTrigger trigger)
+        DiscoveryTrigger trigger,
+        string? actorId = null)
     {
         var discoverableRecipes = new List<(string Id, RecipeDefinition Recipe)>();
 
@@ -52,5 +54,18 @@ public static class RecipeDiscoverySystem
             .First();
 
         actor.KnownRecipeIds.Add(topRecipe.Id);
+
+        // Emit a narration beat for the discovery
+        var tracer = world.Tracer;
+        using (tracer.PushPhase(TracePhase.ActionCompleted))
+        {
+            var recipeName = topRecipe.Id.Replace('_', ' ');
+            var actorLabel = actorId ?? "Someone";
+            tracer.Beat(
+                $"{actorLabel} realizes how to make a {recipeName}.",
+                subjectId: $"recipe:{topRecipe.Id}",
+                priority: 70,
+                actorId: actorId);
+        }
     }
 }

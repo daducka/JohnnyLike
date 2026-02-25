@@ -72,6 +72,33 @@ public sealed class NarrationPromptBuilder
     }
 
     /// <summary>
+    /// Builds a prompt for a domain-authored NarrationBeat event.
+    /// </summary>
+    public string BuildNarrationBeatPrompt(
+        Beat beat,
+        string domainText,
+        CanonicalFacts facts,
+        IReadOnlyList<Beat> recentBeats,
+        bool requestSummaryUpdate)
+    {
+        var sb = new StringBuilder();
+        AppendSystemInstructions(sb, requestSummaryUpdate);
+        sb.AppendLine();
+        AppendTone(sb);
+        sb.AppendLine($"## Domain: {facts.Domain}");
+        AppendRecentBeats(sb, recentBeats);
+        AppendCurrentSummary(sb);
+        sb.AppendLine("## Domain Beat");
+        sb.AppendLine(domainText);
+        if (beat.ActorId != null)
+            sb.AppendLine($"Actor: \"{beat.ActorId}\"");
+        if (!string.IsNullOrEmpty(beat.ActionKind))
+            sb.AppendLine($"Phase: {beat.ActionKind}");
+        sb.AppendLine("Narrate this beat in one or two sentences from the observer's perspective.");
+        return sb.ToString();
+    }
+
+    /// <summary>
     /// Builds a prompt for a world/environment event that has no actor subject.
     /// </summary>
     public string BuildWorldEventPrompt(
@@ -139,12 +166,28 @@ public sealed class NarrationPromptBuilder
     private static void AppendRecentBeats(StringBuilder sb, IReadOnlyList<Beat> recentBeats)
     {
         if (recentBeats.Count == 0) return;
-        sb.AppendLine("## Recent events (oldest first)");
-        foreach (var b in recentBeats)
+
+        // Separate domain beats (NarrationBeat) from action events for clarity
+        var domainBeats = recentBeats.Where(b => b.EventType == "NarrationBeat").ToList();
+        var actionBeats = recentBeats.Where(b => b.EventType != "NarrationBeat").ToList();
+
+        if (domainBeats.Count > 0)
         {
-            var subject = b.ActorId ?? $"[{b.SubjectKind}]";
-            var outcome = b.Success.HasValue ? (b.Success.Value ? " [success]" : " [failed]") : "";
-            sb.AppendLine($"  t={b.SimTime:F1} {subject} {b.EventType} {b.Subject}{outcome}");
+            sb.AppendLine("## Domain beats (oldest first)");
+            foreach (var b in domainBeats)
+                sb.AppendLine($"  - {b.Subject}");
+            sb.AppendLine();
+        }
+
+        if (actionBeats.Count > 0)
+        {
+            sb.AppendLine("## Recent events (oldest first)");
+            foreach (var b in actionBeats)
+            {
+                var subject = b.ActorId ?? $"[{b.SubjectKind}]";
+                var outcome = b.Success.HasValue ? (b.Success.Value ? " [success]" : " [failed]") : "";
+                sb.AppendLine($"  t={b.SimTime:F1} {subject} {b.EventType} {b.Subject}{outcome}");
+            }
         }
     }
 

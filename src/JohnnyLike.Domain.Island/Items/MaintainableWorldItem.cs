@@ -1,14 +1,20 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Telemetry;
 using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island;
 
 public abstract class MaintainableWorldItem : WorldItem, IIslandActionCandidate
 {
+    // Quality thresholds that trigger a narration beat (descending order).
+    private static readonly double[] QualityThresholds = { 75.0, 50.0, 25.0, 10.0 };
+
     public double Quality { get; set; } = 100.0;
     public double BaseDecayPerSecond { get; set; } = 0.01;
     public bool IsExpired { get; protected set; } = false;
+    /// <summary>Tracks the last threshold crossed so we only emit each beat once.</summary>
+    private double _lastThresholdEmitted = 100.0;
 
     protected MaintainableWorldItem(string id, string type, double baseDecayPerSecond = 0.01)
         : base(id, type)
@@ -18,7 +24,53 @@ public abstract class MaintainableWorldItem : WorldItem, IIslandActionCandidate
 
     public virtual void Tick(double dtSeconds, IslandWorldState world)
     {
+        var prevQuality = Quality;
         Quality = Math.Max(0.0, Quality - BaseDecayPerSecond * dtSeconds);
+
+        // Emit a beat only when crossing a threshold for the first time (descending).
+        foreach (var threshold in QualityThresholds)
+        {
+            if (prevQuality > threshold && Quality <= threshold && _lastThresholdEmitted > threshold)
+            {
+                _lastThresholdEmitted = threshold;
+                EmitDegradationBeat(world.Tracer, threshold);
+                break; // Only one beat per tick
+            }
+        }
+
+        // Broken transition
+        if (prevQuality > 0.0 && Quality <= 0.0 && _lastThresholdEmitted > 0.0)
+        {
+            _lastThresholdEmitted = 0.0;
+            EmitBrokenBeat(world.Tracer);
+        }
+    }
+
+    /// <summary>
+    /// Override to provide a domain-specific degradation message.
+    /// Default produces a generic message using the item type.
+    /// </summary>
+    protected virtual void EmitDegradationBeat(IEventTracer tracer, double threshold)
+    {
+        var description = threshold switch
+        {
+            >= 75.0 => "showing early wear",
+            >= 50.0 => "noticeably worn",
+            >= 25.0 => "in poor condition",
+            _ => "barely holding together"
+        };
+        using (tracer.PushPhase(TracePhase.WorldTick))
+            tracer.BeatWorld($"The {Type} is {description}.", subjectId: $"item:{Id}", priority: 30);
+    }
+
+    /// <summary>
+    /// Override to provide a domain-specific broken/destroyed message.
+    /// Default produces a generic message using the item type.
+    /// </summary>
+    protected virtual void EmitBrokenBeat(IEventTracer tracer)
+    {
+        using (tracer.PushPhase(TracePhase.WorldTick))
+            tracer.BeatWorld($"The {Type} has fallen apart and is no longer usable.", subjectId: $"item:{Id}", priority: 40);
     }
 
     /// <summary>
@@ -54,5 +106,8 @@ public abstract class MaintainableWorldItem : WorldItem, IIslandActionCandidate
         base.DeserializeFromDict(data);
         Quality = data["Quality"].GetDouble();
         BaseDecayPerSecond = data["BaseDecayPerSecond"].GetDouble();
+        // Restore threshold tracker to the current quality level so we don't
+        // immediately re-emit beats when deserializing degraded items.
+        _lastThresholdEmitted = Quality;
     }
 }

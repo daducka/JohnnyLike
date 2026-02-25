@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Supply;
+using JohnnyLike.Domain.Island.Telemetry;
 using JohnnyLike.Domain.Kit.Dice;
 using System.Text.Json;
 
@@ -29,6 +30,11 @@ public class CampfireItem : ToolItem
             if (FuelSeconds <= 0.0)
             {
                 IsLit = false;
+                using (world.Tracer.PushPhase(TracePhase.WorldTick))
+                    world.Tracer.BeatWorld(
+                        "The campfire sputters out, leaving only glowing embers.",
+                        subjectId: "item:campfire",
+                        priority: 35);
             }
         }
 

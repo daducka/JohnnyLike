@@ -63,6 +63,9 @@ public sealed class TraceBeatExtractor
             case "ActionCompleted":
                 return HandleActionCompleted(evt);
 
+            case "NarrationBeat":
+                return HandleNarrationBeat(evt);
+
             default:
                 if (_worldEventHandlers.TryGetValue(evt.EventType, out var handler))
                 {
@@ -72,6 +75,44 @@ public sealed class TraceBeatExtractor
                 }
                 return null;
         }
+    }
+
+    private NarrationJob? HandleNarrationBeat(TraceEvent evt)
+    {
+        var text = GetString(evt.Details, "text");
+        if (string.IsNullOrEmpty(text))
+            return null;
+
+        var subjectId = evt.Details.TryGetValue("subjectId", out var sid) ? sid?.ToString() : null;
+        var phase = GetString(evt.Details, "phase");
+        var actorId = evt.ActorId.HasValue ? evt.ActorId.Value.Value : null;
+
+        var beat = new Beat(
+            evt.Time,
+            actorId,
+            "DomainBeat",
+            evt.EventType,
+            phase,
+            text,   // Subject = the domain-authored text for display in prompts
+            Success: null,
+            StatsAfter: null);
+
+        AddBeat(beat);
+
+        _beatsSinceLastSummary++;
+        bool wantSummary = _beatsSinceLastSummary >= _summaryRefreshEveryN;
+        if (wantSummary) _beatsSinceLastSummary = 0;
+
+        var prompt = _promptBuilder.BuildNarrationBeatPrompt(beat, text, _facts, _recentBeats, wantSummary);
+
+        return new NarrationJob(
+            JobId: Guid.NewGuid(),
+            PlayAtSimTime: evt.Time,
+            DeadlineSimTime: evt.Time + 12.0,
+            Kind: NarrationJobKind.WorldEvent,
+            SubjectId: subjectId ?? actorId,
+            Prompt: prompt
+        );
     }
 
     private NarrationJob? HandleActionAssigned(TraceEvent evt)
