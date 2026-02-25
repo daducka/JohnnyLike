@@ -23,7 +23,7 @@ public class CalendarItem : WorldItem, ITickableWorldItem
 
             using (world.Tracer.PushPhase(TracePhase.WorldTick))
                 world.Tracer.BeatWorld(
-                    $"A new day dawns—day {DayCount} on the island.",
+                    $"Day {DayCount} has begun.",
                     subjectId: "calendar:day",
                     priority: 30);
         }

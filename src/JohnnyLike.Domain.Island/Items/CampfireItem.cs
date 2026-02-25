@@ -32,7 +32,7 @@ public class CampfireItem : ToolItem
                 IsLit = false;
                 using (world.Tracer.PushPhase(TracePhase.WorldTick))
                     world.Tracer.BeatWorld(
-                        "The campfire sputters out, leaving only glowing embers.",
+                        "The campfire has gone out.",
                         subjectId: "item:campfire",
                         priority: 35);
             }

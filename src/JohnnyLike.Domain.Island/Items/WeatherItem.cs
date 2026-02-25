@@ -42,8 +42,8 @@ public class WeatherItem : WorldItem, ITickableWorldItem
         if (Temperature != prevTemp)
         {
             var text = Temperature == TemperatureBand.Hot
-                ? "The sun climbs higher; the island grows warm."
-                : "The air cools as the sun dips toward the horizon.";
+                ? "The temperature rises; it is getting warm."
+                : "The temperature drops; it is getting cold.";
             using (world.Tracer.PushPhase(TracePhase.WorldTick))
                 world.Tracer.BeatWorld(text, subjectId: "weather:temperature", priority: 15);
         }

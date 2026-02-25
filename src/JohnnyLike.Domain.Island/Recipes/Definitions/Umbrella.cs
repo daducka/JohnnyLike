@@ -79,7 +79,10 @@ public static class Umbrella
                         pile.GetQuantity<PalmFrondSupply>() > 0;
                 },
 
-                BaseChance = 0.25
+                BaseChance = 0.25,
+
+                DiscoveryBeatText = actorName =>
+                    $"{actorName} realizes that an umbrella might be useful now and considers how they could build one."
             },
 
             SupplyCosts: supplyCosts

@@ -47,6 +47,7 @@ public static class RecipeDiscoverySystem
             .Select(x => new
             {
                 x.Id,
+                x.Recipe,
                 Score = IslandDomainPack.ScoreByQualities(actor, x.Recipe.IntrinsicScore, x.Recipe.Qualities)
             })
             .OrderByDescending(x => x.Score)
@@ -59,10 +60,12 @@ public static class RecipeDiscoverySystem
         var tracer = world.Tracer;
         using (tracer.PushPhase(TracePhase.ActionCompleted))
         {
-            var recipeName = topRecipe.Id.Replace('_', ' ');
             var actorLabel = actorId ?? "Someone";
+            // Use recipe-specific beat text if provided; otherwise fall back to a generic one.
+            var text = topRecipe.Recipe.Discovery?.DiscoveryBeatText?.Invoke(actorLabel)
+                ?? $"{actorLabel} realizes how to make a {topRecipe.Id.Replace('_', ' ')}.";
             tracer.Beat(
-                $"{actorLabel} realizes how to make a {recipeName}.",
+                text,
                 subjectId: $"recipe:{topRecipe.Id}",
                 priority: 70,
                 actorId: actorId);
