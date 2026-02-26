@@ -80,7 +80,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                     {
                         RollOutcomeTier.CriticalFailure => 40.0,
                         RollOutcomeTier.PartialSuccess => 25.0,
-                        RollOutcomeTier.Failure => 30.0,
+                        RollOutcomeTier.Failure => 15.0,
                         _ => 0.0
                     };
 

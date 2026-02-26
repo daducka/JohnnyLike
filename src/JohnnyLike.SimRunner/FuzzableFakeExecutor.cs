@@ -21,11 +21,12 @@ public class FuzzableFakeExecutor
     public void AdvanceTicks(long ticks)
     {
         _engine.AdvanceTicks(ticks);
+        DoUpdate();
     }
 
     public void Update(double dtSeconds) => AdvanceTicks((long)(dtSeconds * Engine.Engine.TickHz));
 
-    private void _doUpdate()
+    private void DoUpdate()
     {
 
         // Randomly inject no-shows and busy locks
