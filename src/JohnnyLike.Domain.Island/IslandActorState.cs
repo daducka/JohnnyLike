@@ -40,8 +40,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
     public double Morale   { get => _morale;  set => _morale  = Math.Clamp(value, 0.0, 100.0); }
     public double Health   { get => _health;  set => _health  = Math.Clamp(value, 0.0, 100.0); }
 
-    public double LastPlaneSightingTime { get; set; } = double.NegativeInfinity;
-    public double LastMermaidEncounterTime { get; set; } = double.NegativeInfinity;
+    public long LastPlaneSightingTick { get; set; } = -1L;
+    public long LastMermaidEncounterTick { get; set; } = -1L;
 
     public List<ActiveBuff> ActiveBuffs { get; set; } = new();
     public Queue<PendingIntent> PendingChatActions { get; set; } = new();
@@ -88,7 +88,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Status,
             CurrentAction = CurrentAction?.Id.Value,
             CurrentScene = CurrentScene?.Value,
-            LastDecisionTime,
+            LastDecisionTick,
             STR,
             DEX,
             CON,
@@ -99,8 +99,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Energy,
             Morale,
             Health,
-            LastPlaneSightingTime,
-            LastMermaidEncounterTime,
+            LastPlaneSightingTick,
+            LastMermaidEncounterTick,
             ActiveBuffs,
             PendingChatActions = PendingChatActions.ToList(),
             KnownRecipeIds = KnownRecipeIds.ToList()
@@ -129,7 +129,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Status = (ActorStatus)data["Status"].GetInt32();
         }
         
-        LastDecisionTime = data["LastDecisionTime"].GetDouble();
+        LastDecisionTick = data.TryGetValue("LastDecisionTick", out var ldt) ? ldt.GetInt64() : 0L;
         STR = data["STR"].GetInt32();
         DEX = data["DEX"].GetInt32();
         CON = data["CON"].GetInt32();
@@ -142,45 +142,11 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         if (data.TryGetValue("Health", out var health))
             Health = health.GetDouble();
 
-        if (data.TryGetValue("LastPlaneSightingTime", out var lastPlane))
-        {
-            // Handle both number and string representations (e.g., "-Infinity")
-            if (lastPlane.ValueKind == JsonValueKind.String)
-            {
-                var strVal = lastPlane.GetString();
-                LastPlaneSightingTime = strVal switch
-                {
-                    "-Infinity" => double.NegativeInfinity,
-                    "Infinity" => double.PositiveInfinity,
-                    "NaN" => double.NaN,
-                    _ => double.Parse(strVal!)
-                };
-            }
-            else
-            {
-                LastPlaneSightingTime = lastPlane.GetDouble();
-            }
-        }
+        if (data.TryGetValue("LastPlaneSightingTick", out var lastPlane))
+            LastPlaneSightingTick = lastPlane.GetInt64();
 
-        if (data.TryGetValue("LastMermaidEncounterTime", out var lastMermaid))
-        {
-            // Handle both number and string representations (e.g., "-Infinity")
-            if (lastMermaid.ValueKind == JsonValueKind.String)
-            {
-                var strVal = lastMermaid.GetString();
-                LastMermaidEncounterTime = strVal switch
-                {
-                    "-Infinity" => double.NegativeInfinity,
-                    "Infinity" => double.PositiveInfinity,
-                    "NaN" => double.NaN,
-                    _ => double.Parse(strVal!)
-                };
-            }
-            else
-            {
-                LastMermaidEncounterTime = lastMermaid.GetDouble();
-            }
-        }
+        if (data.TryGetValue("LastMermaidEncounterTick", out var lastMermaid))
+            LastMermaidEncounterTick = lastMermaid.GetInt64();
 
         if (data.TryGetValue("ActiveBuffs", out var buffs))
         {
@@ -214,7 +180,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("idle"),
                 ActionKind.Wait,
                 EmptyActionParameters.Instance,
-                5.0
+                100L
             ),
             0.3,
             "Idle"
@@ -263,7 +229,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("build_sand_castle"),
                 ActionKind.Interact,
                 parameters,
-                20.0 + ctx.Random.NextDouble() * 10.0,
+                400L + (long)(ctx.Random.NextDouble() * 200),
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach:sandcastle_spot")) }
             ),
@@ -318,7 +284,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("think_about_supplies"),
                 ActionKind.Wait,
                 EmptyActionParameters.Instance,
-                10.0 + ctx.Random.NextDouble() * 5.0
+                200L + (long)(ctx.Random.NextDouble() * 100)
             ),
             0.2,
             "Think about supplies",
@@ -356,7 +322,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             new ActionId("write_name_sand"),
                             ActionKind.Emote,
                             new EmoteActionParameters("write_name", name, "beach"),
-                            8.0
+                            160L
                         ),
                         2.0, // High priority
                         $"Write {name}'s name in sand (chat redeem)",
@@ -379,7 +345,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             new ActionId("clap_emote"),
                             ActionKind.Emote,
                             new EmoteActionParameters("clap"),
-                            2.0
+                            40L
                         ),
                         2.0, // High priority
                         "Clap emote (sub/cheer)",
@@ -406,7 +372,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("sleep_under_tree"),
                 ActionKind.Interact,
                 new LocationActionParameters("tree"),
-                30.0 + ctx.Rng.NextDouble() * 10.0
+                600L + (long)(ctx.Rng.NextDouble() * 200)
             ),
             0.35,
             "Sleep under tree",
@@ -437,7 +403,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("swim"),
                 ActionKind.Interact,
                 parameters,
-                15.0 + ctx.Random.NextDouble() * 5.0,
+                300L + (long)(ctx.Random.NextDouble() * 100),
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) }
             ),
@@ -500,13 +466,13 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             var duration = 60.0 + effectCtx.Rng.NextDouble() * 120.0;
                             var shark = new Items.SharkItem
                             {
-                                ExpiresAt = effectCtx.World.CurrentTime + duration
+                                ExpiresAtTick = effectCtx.World.CurrentTick + (long)(duration * 20)
                             };
                             
                             // Try to reserve the water resource
                             var waterResource = new ResourceId("island:resource:water");
                             var utilityId = $"world_item:shark:{shark.Id}";
-                            var reserved = effectCtx.Reservations.TryReserve(waterResource, utilityId, shark.ExpiresAt);
+                            var reserved = effectCtx.Reservations.TryReserve(waterResource, utilityId, shark.ExpiresAtTick);
                             
                             if (reserved)
                             {
@@ -542,7 +508,7 @@ public class ActiveBuff
     public BuffType Type { get; set; }
     public SkillType? SkillType { get; set; }
     public int Value { get; set; }
-    public double ExpiresAt { get; set; }
+    public long ExpiresAtTick { get; set; }
 }
 
 public class PendingIntent
@@ -550,5 +516,5 @@ public class PendingIntent
     public string ActionId { get; set; } = "";
     public string Type { get; set; } = "";
     public Dictionary<string, object> Data { get; set; } = new();
-    public double EnqueuedAt { get; set; }
+    public long EnqueuedAtTick { get; set; }
 }

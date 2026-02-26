@@ -17,7 +17,7 @@ public class WorldTickTraceTests
         var domainPack = new IslandDomainPack();
         var world = (IslandWorldState)domainPack.CreateInitialWorldState();
         world.WorldItems.Add(new CampfireItem("main_campfire"));
-        world.CurrentTime = 0.0;
+        world.CurrentTick = 0L;
         var reservations = new EmptyResourceAvailability();
 
         // Set campfire to have very little fuel
@@ -27,7 +27,7 @@ public class WorldTickTraceTests
         campfire.FuelSeconds = 5.0; // Only 5 seconds of fuel
 
         // Act - Tick for 10 seconds (campfire should go out)
-        var events = domainPack.TickWorldState(world, 10.0, reservations);
+        var events = domainPack.TickWorldState(world, 200L, reservations);
 
         // Assert
         Assert.False(campfire.IsLit);
@@ -43,19 +43,19 @@ public class WorldTickTraceTests
         // Arrange
         var domainPack = new IslandDomainPack();
         var world = (IslandWorldState)domainPack.CreateInitialWorldState();
-        world.CurrentTime = 100.0;
+        world.CurrentTick = 2000L;
         var reservations = new EmptyResourceAvailability();
 
         // Add a shark that should expire
         var shark = new Items.SharkItem("test_shark");
-        shark.ExpiresAt = 105.0; // Expires at time 105
+        shark.ExpiresAtTick = 2100L; // Expires at tick 2100 (= 105s)
         world.WorldItems.Add(shark);
 
-        // Act - Tick forward 10 seconds (shark should expire at time 110)
-        var events = domainPack.TickWorldState(world, 10.0, reservations);
+        // Act - Tick forward to tick 2200 (= 110s)
+        var events = domainPack.TickWorldState(world, 2200L, reservations);
 
         // Assert
-        Assert.Equal(110.0, world.CurrentTime);
+        Assert.Equal(2200L, world.CurrentTick);
         Assert.DoesNotContain(shark, world.WorldItems); // Shark should be removed
         var expiryEvent = events.FirstOrDefault(e => e.EventType == "WorldItemExpired");
         Assert.NotNull(expiryEvent);
@@ -69,14 +69,14 @@ public class WorldTickTraceTests
         // Arrange
         var domainPack = new IslandDomainPack();
         var world = (IslandWorldState)domainPack.CreateInitialWorldState();
-        world.CurrentTime = 0.0;
+        world.CurrentTick = 0L;
         var reservations = new EmptyResourceAvailability();
 
         var calendar = world.GetItem<CalendarItem>("calendar")!;
         calendar.TimeOfDay = 0.5; // noon
 
         // Act - Tick for 6 hours
-        domainPack.TickWorldState(world, 21600.0, reservations);
+        domainPack.TickWorldState(world, 432000L, reservations);
 
         // Assert - time should have advanced ~0.25 of a day
         Assert.InRange(calendar.TimeOfDay, 0.74, 0.76);
@@ -88,14 +88,14 @@ public class WorldTickTraceTests
         // Arrange
         var domainPack = new IslandDomainPack();
         var world = (IslandWorldState)domainPack.CreateInitialWorldState();
-        world.CurrentTime = 0.0;
+        world.CurrentTick = 0L;
         var reservations = new EmptyResourceAvailability();
 
         var calendar = world.GetItem<CalendarItem>("calendar")!;
         calendar.TimeOfDay = 0.9;
 
         // Act - tick enough to cross midnight
-        domainPack.TickWorldState(world, 8640.0, reservations);
+        domainPack.TickWorldState(world, 172800L, reservations);
 
         // Assert
         Assert.Equal(1, calendar.DayCount);
@@ -114,7 +114,7 @@ public class WorldTickTraceTests
         calendar.TimeOfDay = 0.9;
 
         // Act
-        engine.AdvanceTime(12960.0);
+        engine.AdvanceTicks((long)(12960.0 * 20));
 
         // Assert - calendar should have advanced past midnight
         Assert.Equal(1, calendar.DayCount);

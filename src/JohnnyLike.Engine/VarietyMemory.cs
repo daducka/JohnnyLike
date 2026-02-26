@@ -2,47 +2,39 @@ namespace JohnnyLike.Engine;
 
 public class VarietyMemory
 {
-    private readonly Dictionary<string, List<(double Time, string ActionType)>> _history = new();
-    private readonly double _memoryWindowSeconds;
+    private readonly Dictionary<string, List<(long Tick, string ActionType)>> _history = new();
+    private readonly long _memoryWindowTicks;
 
-    public VarietyMemory(double memoryWindowSeconds = 300.0)
+    public VarietyMemory(long memoryWindowTicks = 6000L) // 300s * 20 Hz
     {
-        _memoryWindowSeconds = memoryWindowSeconds;
+        _memoryWindowTicks = memoryWindowTicks;
     }
 
-    public void RecordAction(string actorId, string actionType, double time)
+    public void RecordAction(string actorId, string actionType, long tick)
     {
         if (!_history.ContainsKey(actorId))
-        {
             _history[actorId] = new();
-        }
-
-        _history[actorId].Add((time, actionType));
+        _history[actorId].Add((tick, actionType));
     }
 
-    public double GetRepetitionPenalty(string actorId, string actionType, double currentTime)
+    public double GetRepetitionPenalty(string actorId, string actionType, long currentTick)
     {
         if (!_history.TryGetValue(actorId, out var history))
-        {
             return 0.0;
-        }
 
-        var cutoff = currentTime - _memoryWindowSeconds;
-        var recentCount = history.Count(h => h.Time >= cutoff && h.ActionType == actionType);
-
+        var cutoff = currentTick - _memoryWindowTicks;
+        var recentCount = history.Count(h => h.Tick >= cutoff && h.ActionType == actionType);
         return recentCount * 0.2;
     }
 
-    public void Cleanup(double currentTime)
+    public void Cleanup(long currentTick)
     {
-        var cutoff = currentTime - _memoryWindowSeconds;
+        var cutoff = currentTick - _memoryWindowTicks;
         foreach (var key in _history.Keys.ToList())
         {
-            _history[key] = _history[key].Where(h => h.Time >= cutoff).ToList();
+            _history[key] = _history[key].Where(h => h.Tick >= cutoff).ToList();
             if (_history[key].Count == 0)
-            {
                 _history.Remove(key);
-            }
         }
     }
 }

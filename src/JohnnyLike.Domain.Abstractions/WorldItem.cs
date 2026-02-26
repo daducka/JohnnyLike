@@ -6,6 +6,7 @@ public abstract class WorldItem
 {
     public string Id { get; set; } = "";
     public string Type { get; set; } = "";
+    public string RoomId { get; set; } = "";
 
     protected WorldItem(string id, string type)
     {
@@ -18,7 +19,8 @@ public abstract class WorldItem
         return new Dictionary<string, object>
         {
             ["Id"] = Id,
-            ["Type"] = Type
+            ["Type"] = Type,
+            ["RoomId"] = RoomId
         };
     }
 
@@ -26,5 +28,7 @@ public abstract class WorldItem
     {
         Id = data["Id"].GetString()!;
         Type = data["Type"].GetString()!;
+        if (data.TryGetValue("RoomId", out var roomId))
+            RoomId = roomId.GetString() ?? "";
     }
 }

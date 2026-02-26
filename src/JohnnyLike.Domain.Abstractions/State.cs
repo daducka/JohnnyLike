@@ -15,7 +15,8 @@ public abstract class ActorState
     public ActorStatus Status { get; set; }
     public ActionSpec? CurrentAction { get; set; }
     public SceneId? CurrentScene { get; set; }
-    public double LastDecisionTime { get; set; }
+    public long LastDecisionTick { get; set; }
+    public string CurrentRoomId { get; set; } = "beach";
 
     public abstract string Serialize();
     public abstract void Deserialize(string json);

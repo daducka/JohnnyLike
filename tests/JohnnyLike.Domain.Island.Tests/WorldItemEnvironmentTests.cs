@@ -29,7 +29,7 @@ public class WorldItemEnvironmentTests
         calendar.TimeOfDay = 0.5;
         var world = new IslandWorldState();
 
-        calendar.Tick(21600.0, world, 0.0); // 6 hours
+        calendar.Tick((long)(21600.0 * 20), world); // 6 hours
 
         Assert.InRange(calendar.TimeOfDay, 0.74, 0.76);
     }
@@ -40,7 +40,7 @@ public class WorldItemEnvironmentTests
         var calendar = new CalendarItem("calendar") { TimeOfDay = 0.9, DayCount = 0 };
         var world = new IslandWorldState();
 
-        calendar.Tick(8640.0, world, 0.0); // 2.4 hours
+        calendar.Tick((long)(8640.0 * 20), world); // 2.4 hours
 
         Assert.Equal(1, calendar.DayCount);
         Assert.InRange(calendar.TimeOfDay, 0.0, 0.1);
@@ -56,7 +56,7 @@ public class WorldItemEnvironmentTests
         world.WorldItems.Add(calendar);
         var weather = new WeatherItem("weather");
 
-        weather.Tick(0.0, world, 0.0);
+        weather.Tick((long)(0.0 * 20), world);
 
         Assert.Equal(TemperatureBand.Cold, weather.Temperature);
     }
@@ -69,7 +69,7 @@ public class WorldItemEnvironmentTests
         world.WorldItems.Add(calendar);
         var weather = new WeatherItem("weather");
 
-        weather.Tick(0.0, world, 0.0);
+        weather.Tick((long)(0.0 * 20), world);
 
         Assert.Equal(TemperatureBand.Hot, weather.Temperature);
     }
@@ -82,7 +82,7 @@ public class WorldItemEnvironmentTests
         world.WorldItems.Add(calendar);
         var weather = new WeatherItem("weather");
 
-        weather.Tick(0.0, world, 0.0);
+        weather.Tick((long)(0.0 * 20), world);
 
         // hour 6.0 < 8.0, therefore Cold
         Assert.Equal(TemperatureBand.Cold, weather.Temperature);
@@ -100,7 +100,7 @@ public class WorldItemEnvironmentTests
         var actor = new IslandActorState { Id = new ActorId("test_actor") };
         var rng = new Random(0);
         var ctx = new Candidates.IslandContext(
-            actor.Id, actor, world, 0.0,
+            actor.Id, actor, world, 0L,
             new RandomRngStream(rng), rng,
             new EmptyResourceAvailability());
 
@@ -114,7 +114,7 @@ public class WorldItemEnvironmentTests
         var effectCtx = new EffectContext
         {
             ActorId = actor.Id,
-            Outcome = new ActionOutcome(new ActionId("explore_beach"), ActionOutcomeType.Success, 0.0),
+            Outcome = new ActionOutcome(new ActionId("explore_beach"), ActionOutcomeType.Success, 0L),
             Actor = actor,
             World = world,
             Tier = RollOutcomeTier.Success,
@@ -141,7 +141,7 @@ public class WorldItemEnvironmentTests
         var beach = new BeachItem("beach");
         world.WorldItems.Add(beach);
 
-        beach.Tick(0.0, world, 0.0);
+        beach.Tick((long)(0.0 * 20), world);
 
         Assert.Equal(TideLevel.High, beach.Tide);
     }
@@ -194,7 +194,7 @@ public class WorldItemEnvironmentTests
         ((ISupplyBounty)ocean).GetSupply<FishSupply>("fish")!.Quantity = 50.0;
         world.WorldItems.Add(ocean);
 
-        ocean.Tick(60.0, world, 0.0); // 1 minute
+        ocean.Tick((long)(60.0 * 20), world); // 1 minute
 
         Assert.Equal(55.0, ((ISupplyBounty)ocean).GetQuantity<FishSupply>("fish"), 1);
     }
@@ -208,7 +208,7 @@ public class WorldItemEnvironmentTests
         var ocean = new OceanItem("ocean") { FishRegenRatePerMinute = 10.0 };
         ((ISupplyBounty)ocean).GetSupply<FishSupply>("fish")!.Quantity = 95.0;
 
-        ocean.Tick(60.0, world, 0.0);
+        ocean.Tick((long)(60.0 * 20), world);
 
         Assert.Equal(100.0, ((ISupplyBounty)ocean).GetQuantity<FishSupply>("fish"));
     }
@@ -236,7 +236,7 @@ public class WorldItemEnvironmentTests
 
         var rng = new Random(42);
         var ctx = new Candidates.IslandContext(
-            actor.Id, actor, world, 0.0,
+            actor.Id, actor, world, 0L,
             new RandomRngStream(rng), rng,
             new EmptyResourceAvailability());
 
@@ -258,7 +258,7 @@ public class WorldItemEnvironmentTests
 
         var rng = new Random(42);
         var ctx = new Candidates.IslandContext(
-            actor.Id, actor, world, 0.0,
+            actor.Id, actor, world, 0L,
             new RandomRngStream(rng), rng,
             new EmptyResourceAvailability());
 
@@ -283,7 +283,7 @@ public class WorldItemEnvironmentTests
         var actor = new IslandActorState { Id = new ActorId("test_actor") };
         var rng = new Random(0);
         var ctx = new Candidates.IslandContext(
-            actor.Id, actor, world, 0.0,
+            actor.Id, actor, world, 0L,
             new RandomRngStream(rng), rng,
             new EmptyResourceAvailability());
 
@@ -314,7 +314,7 @@ public class WorldItemEnvironmentTests
         var actor = new IslandActorState { Id = new ActorId("test_actor") };
         var rng = new Random(0);
         var ctx = new Candidates.IslandContext(
-            actor.Id, actor, world, 0.0,
+            actor.Id, actor, world, 0L,
             new RandomRngStream(rng), rng,
             new EmptyResourceAvailability());
 

@@ -103,7 +103,7 @@ public class EventTracerTests
         var engine = new Engine(domain, 42, traceSink);
 
         // Act
-        engine.AdvanceTime(1.0);
+        engine.AdvanceTicks(20L);
 
         // Assert: a NarrationBeat event should appear in the trace
         var events = traceSink.GetEvents();
@@ -128,7 +128,7 @@ public class EventTracerTests
         // Act
         engine.ReportActionComplete(
             new ActorId("TestActor"),
-            new ActionOutcome(action!.Id, ActionOutcomeType.Success, 1.0));
+            new ActionOutcome(action!.Id, ActionOutcomeType.Success, 20L));
 
         // Assert: a NarrationBeat event should appear
         var events = traceSink.GetEvents();
@@ -151,12 +151,11 @@ public class EventTracerTests
             => new TestActorState { Id = actorId };
 
         public List<ActionCandidate> GenerateCandidates(
-            ActorId actorId, ActorState actorState, WorldState worldState,
-            double currentTime, Random rng, IResourceAvailability resourceAvailability)
+            ActorId actorId, ActorState actorState, WorldState worldState, long currentTick, Random rng, IResourceAvailability resourceAvailability)
             => new List<ActionCandidate>
             {
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("idle"), ActionKind.Wait, EmptyActionParameters.Instance, 1.0),
+                    new ActionSpec(new ActionId("idle"), ActionKind.Wait, EmptyActionParameters.Instance, 20L),
                     1.0,
                     EffectHandler: new Action<EffectContext<TestActorState, TestWorldState>>(ctx =>
                         ctx.Tracer.Beat("Effect applied."))
@@ -182,13 +181,13 @@ public class EventTracerTests
             }
         }
 
-        public List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability)
+        public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability)
         {
             worldState.Tracer.Beat("World ticked.");
             return new List<TraceEvent>();
         }
 
-        public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime) { }
+        public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, long currentTick) { }
         public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
         public bool ValidateContent(out List<string> errors) { errors = new(); return true; }
         public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState) => new();

@@ -26,7 +26,7 @@ public static class FishingPole
 
             Location: "camp",
 
-            Duration: 40.0,
+            Duration: 800L,
 
             IntrinsicScore: 0.7,
 

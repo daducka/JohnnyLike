@@ -8,7 +8,7 @@ public class IslandContext
     public IslandWorldState World { get; }
     public IslandActorState Actor { get; }
     public ActorId ActorId { get; }
-    public double NowSeconds { get; }
+    public long NowTick { get; }
     public IRngStream Rng { get; }
     public Random Random { get; }
     public IResourceAvailability ResourceAvailability { get; }
@@ -17,7 +17,7 @@ public class IslandContext
         ActorId actorId,
         IslandActorState actor,
         IslandWorldState world,
-        double nowSeconds,
+        long nowTick,
         IRngStream rng,
         Random random,
         IResourceAvailability resourceAvailability)
@@ -25,7 +25,7 @@ public class IslandContext
         ActorId = actorId;
         Actor = actor;
         World = world;
-        NowSeconds = nowSeconds;
+        NowTick = nowTick;
         Rng = rng;
         Random = random;
         ResourceAvailability = resourceAvailability;

@@ -29,7 +29,7 @@ public class NarrationBeatEmissionTests
         calendar.DayCount = 0;
 
         // Act: advance enough time to cross midnight (> 8.64 s = 1/10000 day)
-        engine.AdvanceTime(10.0);
+        engine.AdvanceTicks((long)(10.0 * 20));
 
         // Assert
         var beats = sink.GetEvents()
@@ -56,7 +56,7 @@ public class NarrationBeatEmissionTests
         calendar.TimeOfDay = 5.9997 / 24.0;
 
         // Act
-        engine.AdvanceTime(10.0);
+        engine.AdvanceTicks((long)(10.0 * 20));
 
         // Assert
         var beats = sink.GetEvents()
@@ -85,7 +85,7 @@ public class NarrationBeatEmissionTests
         pole.Quality = 75.04;
 
         // Act: tick 10 seconds → quality drops 0.005 * 10 = 0.05, crossing below 75.0
-        engine.AdvanceTime(10.0);
+        engine.AdvanceTicks((long)(10.0 * 20));
 
         // Assert: should have a NarrationBeat about the fishing rod
         var beats = sink.GetEvents()

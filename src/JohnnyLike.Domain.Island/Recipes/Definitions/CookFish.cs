@@ -25,7 +25,7 @@ public static class CookFish
 
             Location: "campfire",
 
-            Duration: 25.0,
+            Duration: 500L,
 
             IntrinsicScore: 0.4,
 

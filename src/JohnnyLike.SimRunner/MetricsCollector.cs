@@ -63,7 +63,7 @@ public class MetricsCollector
                     var actorKey = evt.ActorId.Value.Value;
                     _metrics.ActorTaskCompletions.TryGetValue(actorKey, out var count);
                     _metrics.ActorTaskCompletions[actorKey] = count + 1;
-                    _metrics.ActorLastCompletionTime[actorKey] = evt.Time;
+                    _metrics.ActorLastCompletionTime[actorKey] = evt.TimeSeconds;
                 }
                 
                 if (evt.Details.TryGetValue("outcomeType", out var outcome) && 
@@ -94,7 +94,7 @@ public class MetricsCollector
 
     public InvariantViolation? CheckInvariants(
         double currentTime,
-        JohnnyLike.Engine.Engine engine,
+        Engine.Engine engine,
         ReservationTable reservations,
         Director director)
     {
@@ -124,7 +124,7 @@ public class MetricsCollector
             if (scene.Status != Domain.Abstractions.SceneStatus.Complete && 
                 scene.Status != Domain.Abstractions.SceneStatus.Aborted)
             {
-                var lifetime = currentTime - scene.ProposedTime;
+                var lifetime = currentTime - scene.ProposedTick / (double)Engine.Engine.TickHz;
                 if (lifetime > _config.MaxSceneLifetimeSeconds)
                 {
                     return new InvariantViolation

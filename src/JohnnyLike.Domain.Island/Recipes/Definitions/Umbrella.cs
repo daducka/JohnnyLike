@@ -26,7 +26,7 @@ public static class Umbrella
 
             Location: "camp",
 
-            Duration: 30.0,
+            Duration: 600L,
 
             IntrinsicScore: 0.5,
 

@@ -20,6 +20,7 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
         : base(id, "supply_pile")
     {
         AccessControl = accessControl;
+        RoomId = "beach";
     }
 
     /// <summary>

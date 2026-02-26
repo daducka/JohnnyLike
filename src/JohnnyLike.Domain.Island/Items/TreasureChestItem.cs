@@ -18,6 +18,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
     public TreasureChestItem(string id = "treasure_chest") 
         : base(id, "treasure_chest")
     {
+        RoomId = "beach";
     }
 
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -40,7 +41,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                 new ActionId("bash_open_treasure_chest"),
                 ActionKind.Interact,
                 parameters,
-                20.0 + ctx.Random.NextDouble() * 5.0,
+                400L + (long)(ctx.Random.NextDouble() * 100),
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(TreasureChestResource) }
             ),
@@ -79,7 +80,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                     {
                         RollOutcomeTier.CriticalFailure => 40.0,
                         RollOutcomeTier.PartialSuccess => 25.0,
-                        RollOutcomeTier.Failure => 15.0,
+                        RollOutcomeTier.Failure => 30.0,
                         _ => 0.0
                     };
 

@@ -31,17 +31,18 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
     public CoconutTreeItem(string id = "palm_tree")
         : base(id, "palm_tree")
     {
+        RoomId = "beach";
     }
 
     // ITickableWorldItem
     public IEnumerable<string> GetDependencies() => new[] { "calendar" };
 
-    public List<TraceEvent> Tick(double dtSeconds, IslandWorldState world, double currentTime)
+    public List<TraceEvent> Tick(long currentTick, WorldState worldState)
     {
+        var world = (IslandWorldState)worldState;
         var calendar = world.GetItem<CalendarItem>("calendar");
         if (calendar != null && calendar.DayCount > _lastDayCount)
         {
-            // Regenerate coconuts and fronds daily (capped)
             var coconuts = Bounty.GetOrCreateSupply(() => new CoconutSupply());
             coconuts.Quantity = Math.Min(10, coconuts.Quantity + 3);
 
@@ -84,7 +85,7 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 new ActionId("shake_tree_coconut"),
                 ActionKind.Interact,
                 parameters,
-                10.0 + ctx.Random.NextDouble() * 5.0,
+                200L + (long)(ctx.Random.NextDouble() * 100), // 10-15s * 20 Hz
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(PalmTreeResource) }
             ),

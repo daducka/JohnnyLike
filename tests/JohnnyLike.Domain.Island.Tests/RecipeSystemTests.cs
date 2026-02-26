@@ -21,7 +21,7 @@ public class RecipeSystemTests
             new ActorId("test_actor"),
             actor,
             world,
-            0.0,
+            0L,
             new RandomRngStream(rng),
             rng,
             new EmptyResourceAvailability()
@@ -625,7 +625,7 @@ public class RecipeSystemTests
         {
             Name = UmbrellaItem.RainProtectionBuffName,
             Type = BuffType.RainProtection,
-            ExpiresAt = double.MaxValue
+            ExpiresAtTick = long.MaxValue
         });
 
         var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
@@ -649,7 +649,7 @@ public class RecipeSystemTests
         {
             Name = UmbrellaItem.RainProtectionBuffName,
             Type = BuffType.RainProtection,
-            ExpiresAt = double.MaxValue
+            ExpiresAtTick = long.MaxValue
         });
 
         var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
@@ -691,7 +691,7 @@ public class RecipeSystemTests
         return new EffectContext
         {
             ActorId = actor.Id,
-            Outcome = new ActionOutcome(new ActionId("test"), ActionOutcomeType.Success, 0.0),
+            Outcome = new ActionOutcome(new ActionId("test"), ActionOutcomeType.Success, 0L),
             Actor = actor,
             World = world,
             Tier = null,

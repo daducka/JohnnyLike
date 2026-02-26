@@ -10,8 +10,8 @@ public record SceneTemplate(
     string SceneType,
     List<SceneRoleSpec> Roles,
     Dictionary<string, object> RequiredResources,
-    double JoinWindowSeconds,
-    double MaxDurationSeconds,
+    long JoinWindowTicks,
+    long MaxDurationTicks,
     Dictionary<string, object> Metadata
 );
 
@@ -29,9 +29,9 @@ public class SceneInstance
     public SceneId Id { get; set; }
     public SceneTemplate Template { get; set; } = null!;
     public SceneStatus Status { get; set; }
-    public double ProposedTime { get; set; }
-    public double? StartTime { get; set; }
-    public double? EndTime { get; set; }
+    public long ProposedTick { get; set; }
+    public long? StartTick { get; set; }
+    public long? EndTick { get; set; }
     public Dictionary<string, ActorId> RoleAssignments { get; set; } = new();
     public HashSet<ActorId> JoinedActors { get; set; } = new();
     public List<ResourceId> ReservedResources { get; set; } = new();

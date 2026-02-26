@@ -16,14 +16,14 @@ public enum ActionKind
 /// </summary>
 public sealed record ResourceRequirement(
     ResourceId ResourceId,
-    double? DurationOverride = null
+    long? DurationTicksOverride = null
 );
 
 public record ActionSpec(
     ActionId Id,
     ActionKind Kind,
     ActionParameters Parameters,
-    double EstimatedDuration,
+    long EstimatedDurationTicks,
     Dictionary<string, object>? ResultData = null,
     IReadOnlyList<ResourceRequirement>? ResourceRequirements = null
 );
@@ -39,6 +39,6 @@ public enum ActionOutcomeType
 public record ActionOutcome(
     ActionId ActionId,
     ActionOutcomeType Type,
-    double ActualDuration,
+    long ActualDurationTicks,
     Dictionary<string, object>? ResultData = null
 );

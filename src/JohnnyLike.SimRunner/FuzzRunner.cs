@@ -1,5 +1,4 @@
 using JohnnyLike.Domain.Abstractions;
-using JohnnyLike.Domain.Office;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Engine;
 using System.Text.Json;
@@ -22,7 +21,7 @@ public class FuzzRunner
 {
     public static FuzzRunResult Run(FuzzConfig config, IDomainPack? domainPack = null)
     {
-        domainPack ??= new OfficeDomainPack();
+        domainPack ??= new IslandDomainPack();
         
         var result = new FuzzRunResult
         {

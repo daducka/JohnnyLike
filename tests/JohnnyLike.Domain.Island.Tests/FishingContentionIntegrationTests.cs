@@ -100,7 +100,7 @@ public class FishingContentionIntegrationTests
         // Complete Actor1's action
         engine.ReportActionComplete(
             new ActorId("Actor1"),
-            new ActionOutcome(action1.Id, ActionOutcomeType.Success, 15.0, null)
+            new ActionOutcome(action1.Id, ActionOutcomeType.Success, 300L, null)
         );
         
         // Actor1 should now be able to fish again with their own pole

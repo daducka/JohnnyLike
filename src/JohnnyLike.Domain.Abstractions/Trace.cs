@@ -1,16 +1,19 @@
 namespace JohnnyLike.Domain.Abstractions;
 
 public record TraceEvent(
-    double Time,
+    long Tick,
     ActorId? ActorId,
     string EventType,
     Dictionary<string, object> Details
 )
 {
+    /// <summary>Display-only helper: converts tick to seconds at 20 Hz.</summary>
+    public double TimeSeconds => (double)Tick / 20.0;
+
     public override string ToString()
     {
         var actorStr = ActorId.HasValue ? ActorId.Value.ToString() : "SYSTEM";
-        var baseStr = $"[{Time:F2}] {actorStr} - {EventType}";
+        var baseStr = $"[{TimeSeconds:F2}s] {actorStr} - {EventType}";
         
         if (Details.Count > 0)
         {

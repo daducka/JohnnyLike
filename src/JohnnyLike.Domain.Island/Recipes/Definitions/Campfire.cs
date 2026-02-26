@@ -27,7 +27,7 @@ public static class Campfire
 
             Location: "camp",
 
-            Duration: 60.0,
+            Duration: 1200L,
 
             IntrinsicScore: 0.8,
 

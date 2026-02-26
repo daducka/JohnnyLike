@@ -10,7 +10,7 @@ public static class TraceHelper
         var sb = new StringBuilder();
         foreach (var evt in events)
         {
-            sb.AppendLine($"{evt.Time:F6}|{evt.ActorId?.ToString() ?? ""}|{evt.EventType}");
+            sb.AppendLine($"{evt.Tick}|{evt.ActorId?.ToString() ?? ""}|{evt.EventType}");
             foreach (var kvp in evt.Details.OrderBy(x => x.Key))
             {
                 sb.AppendLine($"  {kvp.Key}={kvp.Value}");

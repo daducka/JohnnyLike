@@ -15,6 +15,7 @@ public class PlaneItem : ExpirableWorldItem
     public PlaneItem(string id = "plane")
         : base(id, "plane")
     {
+        RoomId = "beach";
     }
 
     public override void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -28,7 +29,7 @@ public class PlaneItem : ExpirableWorldItem
                 new ActionId("try_to_signal_plane"),
                 ActionKind.Interact,
                 parameters,
-                10.0,
+                200L,
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(BeachOpenArea) }
             ),

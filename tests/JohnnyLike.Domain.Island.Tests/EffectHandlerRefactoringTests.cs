@@ -24,7 +24,7 @@ public class EffectHandlerRefactoringTests
         // Add wood to the shared pile (minimum 3.0 required for add fuel action)
         world.SharedSupplyPile!.AddSupply("wood", 20.0, id => new WoodSupply(id));
         
-        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
         
         var addFuelCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "add_fuel_campfire");
         
@@ -48,7 +48,7 @@ public class EffectHandlerRefactoringTests
         var initialQuality = campfire.Quality;
         campfire.Quality = 50.0;
         
-        var candidates = domain.GenerateCandidates(actorId, actor, world, 0.0, new Random(42), new EmptyResourceAvailability());
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
         
         var repairCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "repair_campfire");
         
@@ -60,8 +60,7 @@ public class EffectHandlerRefactoringTests
         resultData["tier"] = "Success";
         var outcome = new ActionOutcome(
             repairCandidate.Action.Id,
-            ActionOutcomeType.Success,
-            25.0,
+            ActionOutcomeType.Success, 500L,
             resultData
         );
         

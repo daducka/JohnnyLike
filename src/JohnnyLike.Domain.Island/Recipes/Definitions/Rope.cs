@@ -24,7 +24,7 @@ public static class Rope
 
             Location: "camp",
 
-            Duration: 20.0,
+            Duration: 400L,
 
             IntrinsicScore: 0.4,
 

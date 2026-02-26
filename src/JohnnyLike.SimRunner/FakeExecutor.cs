@@ -5,23 +5,23 @@ namespace JohnnyLike.SimRunner;
 public class FakeExecutor
 {
     private readonly Engine.Engine _engine;
-    private readonly Dictionary<ActorId, (ActionSpec Action, double StartTime)> _runningActions = new();
+    private readonly Dictionary<ActorId, (ActionSpec Action, long StartTick)> _runningActions = new();
 
     public FakeExecutor(Engine.Engine engine)
     {
         _engine = engine;
     }
 
-    public void Update(double dtSeconds)
+    public void AdvanceTicks(long ticks)
     {
-        _engine.AdvanceTime(dtSeconds);
+        _engine.AdvanceTicks(ticks);
 
         // Complete any finished actions
         var completed = new List<ActorId>();
         foreach (var kvp in _runningActions)
         {
-            var elapsed = _engine.CurrentTime - kvp.Value.StartTime;
-            if (elapsed >= kvp.Value.Action.EstimatedDuration)
+            var elapsed = _engine.CurrentTick - kvp.Value.StartTick;
+            if (elapsed >= kvp.Value.Action.EstimatedDurationTicks)
             {
                 completed.Add(kvp.Key);
             }
@@ -29,12 +29,13 @@ public class FakeExecutor
 
         foreach (var actorId in completed)
         {
-            var (action, startTime) = _runningActions[actorId];
-            var actualDuration = _engine.CurrentTime - startTime;
+            var (action, startTick) = _runningActions[actorId];
+            var actualDurationTicks = _engine.CurrentTick - startTick;
+
             _engine.ReportActionComplete(actorId, new ActionOutcome(
                 action.Id,
                 ActionOutcomeType.Success,
-                actualDuration,
+                actualDurationTicks,
                 action.ResultData
             ));
             _runningActions.Remove(actorId);
@@ -50,9 +51,12 @@ public class FakeExecutor
             {
                 if (_engine.TryGetNextAction(actorId, out var action) && action != null)
                 {
-                    _runningActions[actorId] = (action, _engine.CurrentTime);
+                    _runningActions[actorId] = (action, _engine.CurrentTick);
                 }
             }
         }
     }
+
+    /// <summary>Backward-compat helper: converts seconds to ticks.</summary>
+    public void Update(double dtSeconds) => AdvanceTicks((long)(dtSeconds * Engine.Engine.TickHz));
 }

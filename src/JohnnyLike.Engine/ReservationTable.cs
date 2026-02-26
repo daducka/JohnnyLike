@@ -4,18 +4,12 @@ namespace JohnnyLike.Engine;
 
 public class ReservationTable : IResourceAvailability
 {
-    private readonly Dictionary<ResourceId, (string UtilityId, double Until)> _reservations = new();
+    private readonly Dictionary<ResourceId, (string UtilityId, long Until)> _reservations = new();
 
-    /// <summary>
-    /// Reserve a resource with a utility ID for debugging/tracking.
-    /// </summary>
-    public bool TryReserve(ResourceId resourceId, string utilityId, double until)
+    public bool TryReserve(ResourceId resourceId, string utilityId, long until)
     {
         if (_reservations.ContainsKey(resourceId))
-        {
             return false;
-        }
-
         _reservations[resourceId] = (utilityId, until);
         return true;
     }
@@ -25,10 +19,6 @@ public class ReservationTable : IResourceAvailability
         _reservations.Remove(resourceId);
     }
 
-    /// <summary>
-    /// Releases all resources that have a utilityId starting with the given prefix.
-    /// Used for batch release (e.g., all resources for a scene or actor).
-    /// </summary>
     public void ReleaseByPrefix(string utilityIdPrefix)
     {
         var toRelease = _reservations
@@ -37,9 +27,7 @@ public class ReservationTable : IResourceAvailability
             .ToList();
 
         foreach (var rid in toRelease)
-        {
             _reservations.Remove(rid);
-        }
     }
 
     public bool IsReserved(ResourceId resourceId)
@@ -47,16 +35,14 @@ public class ReservationTable : IResourceAvailability
         return _reservations.ContainsKey(resourceId);
     }
 
-    public void CleanupExpired(double currentTime)
+    public void CleanupExpired(long currentTick)
     {
         var expired = _reservations
-            .Where(kvp => kvp.Value.Until < currentTime)
+            .Where(kvp => kvp.Value.Until < currentTick)
             .Select(kvp => kvp.Key)
             .ToList();
 
         foreach (var rid in expired)
-        {
             _reservations.Remove(rid);
-        }
     }
 }

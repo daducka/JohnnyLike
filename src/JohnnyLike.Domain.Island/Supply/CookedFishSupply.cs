@@ -28,7 +28,7 @@ public class CookedFishSupply : SupplyItem, ISupplyActionCandidate
                 new ActionId("eat_cooked_fish"),
                 ActionKind.Interact,
                 new LocationActionParameters("camp"),
-                8.0 + ctx.Random.NextDouble() * 2.0
+                160L + (long)(ctx.Random.NextDouble() * 40)
             ),
             0.6,
             "Eat cooked fish",

@@ -24,3 +24,8 @@ public readonly record struct AnchorId(string Value)
 {
     public override string ToString() => Value;
 }
+
+public readonly record struct RoomId(string Value)
+{
+    public override string ToString() => Value;
+}

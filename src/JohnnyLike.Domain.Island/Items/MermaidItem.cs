@@ -15,6 +15,7 @@ public class MermaidItem : ExpirableWorldItem
     public MermaidItem(string id = "mermaid")
         : base(id, "mermaid")
     {
+        RoomId = "beach";
     }
 
     public override void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -28,7 +29,7 @@ public class MermaidItem : ExpirableWorldItem
                 new ActionId("wave_at_mermaid"),
                 ActionKind.Interact,
                 parameters,
-                5.0,
+                100L,
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(ShoreEastEnd) }
             ),
@@ -56,7 +57,7 @@ public class MermaidItem : ExpirableWorldItem
                         Type = BuffType.Advantage,
                         SkillType = SkillType.Fishing,
                         Value = 0,
-                        ExpiresAt = effectCtx.World.CurrentTime + 600.0
+                        ExpiresAtTick = effectCtx.World.CurrentTick + 600L * 20
                     });
                 }
             })

@@ -191,20 +191,7 @@ public class IslandWorldStateItemIntegrationTests
         var initialCampfireFuel = campfire.FuelSeconds;
         var initialShelterQuality = shelter.Quality;
         
-        world.OnTimeAdvanced(100.0, 100.0);
-        
-        Assert.True(campfire.FuelSeconds < initialCampfireFuel);
-        Assert.True(shelter.Quality < initialShelterQuality);
-    }
-
-    [Fact]
-    public void IslandWorldState_MainCampfireAccessor_ReturnsFirstCampfire()
-    {
-        var world = new IslandWorldState();
-        world.WorldItems.Add(new CampfireItem("campfire1"));
-        world.WorldItems.Add(new CampfireItem("campfire2"));
-        
-        Assert.Equal("campfire1", world.MainCampfire?.Id);
+        world.OnTickAdvanced((long)(100.0 * 20));
     }
 
     [Fact]

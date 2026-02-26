@@ -31,7 +31,7 @@ public class FishingSpotSelectionTests
             actorId,
             actor,
             world,
-            0.0,
+            0L,
             new Random(42),
             resourceAvailability
         );
@@ -79,7 +79,7 @@ public class FishingSpotSelectionTests
             actorId,
             actor,
             world,
-            0.0,
+            0L,
             new Random(42),
             resourceAvailability
         );
@@ -115,8 +115,8 @@ public class FishingSpotSelectionTests
         var resourceAvailability = new EmptyResourceAvailability();
         
         // Act
-        var candidates1 = domain.GenerateCandidates(actorId1, actor1, world, 0.0, new Random(42), resourceAvailability);
-        var candidates2 = domain.GenerateCandidates(actorId2, actor2, world, 0.0, new Random(42), resourceAvailability);
+        var candidates1 = domain.GenerateCandidates(actorId1, actor1, world, 0L, new Random(42), resourceAvailability);
+        var candidates2 = domain.GenerateCandidates(actorId2, actor2, world, 0L, new Random(42), resourceAvailability);
         
         // Assert - Both actors should be able to fish with their own poles
         var fishingCandidate1 = candidates1.FirstOrDefault(c => c.Action.Id.Value == "go_fishing");
@@ -142,7 +142,7 @@ public class FishingSpotSelectionTests
             return _reservedResources.Contains(resourceId);
         }
         
-        public bool TryReserve(ResourceId resourceId, string utilityId, double until)
+        public bool TryReserve(ResourceId resourceId, string utilityId, long until)
         {
             if (_reservedResources.Contains(resourceId))
                 return false;

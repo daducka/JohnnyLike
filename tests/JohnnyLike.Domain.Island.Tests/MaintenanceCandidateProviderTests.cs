@@ -19,7 +19,7 @@ public class CampfireMaintenanceCandidateProviderTests
         
         world.MainCampfire!.FuelSeconds = 1200.0;
         
-        var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         world.MainCampfire.AddCandidates(ctx, candidates);
@@ -39,7 +39,7 @@ public class CampfireMaintenanceCandidateProviderTests
         world.MainCampfire!.IsLit = false;
         world.MainCampfire.Quality = 50.0;
         
-        var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         world.MainCampfire.AddCandidates(ctx, candidates);
@@ -58,7 +58,7 @@ public class CampfireMaintenanceCandidateProviderTests
         
         world.MainCampfire!.Quality = 50.0;
         
-        var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         world.MainCampfire.AddCandidates(ctx, candidates);
@@ -77,7 +77,7 @@ public class CampfireMaintenanceCandidateProviderTests
         
         world.MainCampfire!.Quality = 5.0;
         
-        var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         world.MainCampfire.AddCandidates(ctx, candidates);
@@ -103,9 +103,9 @@ public class CampfireMaintenanceCandidateProviderTests
             new Dictionary<string, object> { ["WIS"] = 18, ["STR"] = 16 }
         );
         
-        var ctxLow = new IslandContext(new ActorId("LowSkill"), lowSkillActor, world, 0.0, 
+        var ctxLow = new IslandContext(new ActorId("LowSkill"), lowSkillActor, world, 0L, 
             new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var ctxHigh = new IslandContext(new ActorId("HighSkill"), highSkillActor, world, 0.0, 
+        var ctxHigh = new IslandContext(new ActorId("HighSkill"), highSkillActor, world, 0L, 
             new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         
         var candidatesLow = new List<ActionCandidate>();
@@ -128,7 +128,7 @@ public class CampfireMaintenanceCandidateProviderTests
         var domain = new IslandDomainPack();
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
-        var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         if (world.MainCampfire != null)
@@ -153,7 +153,7 @@ public class ShelterMaintenanceCandidateProviderTests
         
         world.MainShelter!.Quality = 50.0;
         
-        var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         world.MainShelter.AddCandidates(ctx, candidates);
@@ -172,7 +172,7 @@ public class ShelterMaintenanceCandidateProviderTests
         
         world.MainShelter!.Quality = 40.0;
         
-        var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         world.MainShelter.AddCandidates(ctx, candidates);
@@ -191,7 +191,7 @@ public class ShelterMaintenanceCandidateProviderTests
         
         world.MainShelter!.Quality = 10.0;
         
-        var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         world.MainShelter.AddCandidates(ctx, candidates);
@@ -215,9 +215,9 @@ public class ShelterMaintenanceCandidateProviderTests
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
-        var ctxClear = new IslandContext(actorId, actor, worldClear, 0.0, 
+        var ctxClear = new IslandContext(actorId, actor, worldClear, 0L, 
             new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var ctxRainy = new IslandContext(actorId, actor, worldRainy, 0.0, 
+        var ctxRainy = new IslandContext(actorId, actor, worldRainy, 0L, 
             new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         
         var candidatesClear = new List<ActionCandidate>();
@@ -250,9 +250,9 @@ public class ShelterMaintenanceCandidateProviderTests
             new Dictionary<string, object> { ["WIS"] = 18, ["STR"] = 16 }
         );
         
-        var ctxLow = new IslandContext(new ActorId("LowSkill"), lowSkillActor, world, 0.0, 
+        var ctxLow = new IslandContext(new ActorId("LowSkill"), lowSkillActor, world, 0L, 
             new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var ctxHigh = new IslandContext(new ActorId("HighSkill"), highSkillActor, world, 0.0, 
+        var ctxHigh = new IslandContext(new ActorId("HighSkill"), highSkillActor, world, 0L, 
             new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         
         var candidatesLow = new List<ActionCandidate>();
@@ -275,7 +275,7 @@ public class ShelterMaintenanceCandidateProviderTests
         var domain = new IslandDomainPack();
         var actor = (IslandActorState)domain.CreateActorState(actorId);
         
-        var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         if (world.MainShelter != null)

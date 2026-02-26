@@ -1,5 +1,4 @@
 ﻿using JohnnyLike.Domain.Abstractions;
-using JohnnyLike.Domain.Office;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.SimRunner;
 using System.Text.Json;
@@ -92,7 +91,7 @@ IDomainPack CreateDomainPack(string domainName)
 {
     return domainName switch
     {
-        "office" => new OfficeDomainPack(),
+        "office" => new IslandDomainPack(), // office domain removed; default to island
         "island" => new IslandDomainPack(),
         _ => throw new ArgumentException($"Unknown domain: {domainName}. Valid domains: office, island")
     };
@@ -123,7 +122,7 @@ void RunScenario(string path, bool trace, string domainName)
     {
         engine.EnqueueSignal(new Signal(
             signal.Type,
-            signal.AtTime,
+            (long)(signal.AtTime * 20),
             string.IsNullOrEmpty(signal.TargetActor) ? null : new ActorId(signal.TargetActor),
             signal.Data
         ));
@@ -139,7 +138,7 @@ void RunScenario(string path, bool trace, string domainName)
         elapsed += timeStep;
     }
     
-    Console.WriteLine($"\nSimulation completed at t={engine.CurrentTime:F2}s");
+    Console.WriteLine($"\nSimulation completed at t={engine.CurrentSeconds:F2}s");
     Console.WriteLine($"Total events: {traceSink.GetEvents().Count}");
     
     if (trace)
@@ -204,7 +203,7 @@ void RunDefault(int seed, double duration, bool trace, string domainName)
         elapsed += timeStep;
     }
     
-    Console.WriteLine($"\nSimulation completed at t={engine.CurrentTime:F2}s");
+    Console.WriteLine($"\nSimulation completed at t={engine.CurrentSeconds:F2}s");
     Console.WriteLine($"Total events: {traceSink.GetEvents().Count}");
     
     if (trace)

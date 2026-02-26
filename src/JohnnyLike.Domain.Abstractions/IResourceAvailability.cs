@@ -20,7 +20,7 @@ public interface IResourceAvailability
     /// <param name="utilityId">Unique identifier for the entity reserving (for debugging).</param>
     /// <param name="until">Time until which the resource should be reserved.</param>
     /// <returns>True if reservation succeeded, false if resource is already reserved.</returns>
-    bool TryReserve(ResourceId resourceId, string utilityId, double until);
+    bool TryReserve(ResourceId resourceId, string utilityId, long until);
 
     /// <summary>
     /// Releases a resource reservation.

@@ -7,13 +7,19 @@ public class CalendarItem : WorldItem, ITickableWorldItem
 {
     public double TimeOfDay { get; set; } = 0.5;
     public int DayCount { get; set; } = 0;
+    private long _lastTick = 0;
 
-    public CalendarItem(string id = "calendar") : base(id, "calendar") { }
+    public CalendarItem(string id = "calendar") : base(id, "calendar") { RoomId = "beach"; }
 
     public IEnumerable<string> GetDependencies() => Enumerable.Empty<string>();
 
-    public List<TraceEvent> Tick(double dtSeconds, IslandWorldState world, double currentTime)
+    public List<TraceEvent> Tick(long currentTick, WorldState worldState)
     {
+        var world = (IslandWorldState)worldState;
+        var dtTicks = currentTick - _lastTick;
+        _lastTick = currentTick;
+        var dtSeconds = (double)dtTicks / 20.0;
+
         TimeOfDay += dtSeconds / 86400.0;
 
         if (TimeOfDay >= 1.0)
@@ -38,6 +44,7 @@ public class CalendarItem : WorldItem, ITickableWorldItem
         var dict = base.SerializeToDict();
         dict["TimeOfDay"] = TimeOfDay;
         dict["DayCount"] = DayCount;
+        dict["LastTick"] = _lastTick;
         return dict;
     }
 
@@ -46,5 +53,6 @@ public class CalendarItem : WorldItem, ITickableWorldItem
         base.DeserializeFromDict(data);
         if (data.TryGetValue("TimeOfDay", out var tod)) TimeOfDay = tod.GetDouble();
         if (data.TryGetValue("DayCount", out var dc)) DayCount = dc.GetInt32();
+        if (data.TryGetValue("LastTick", out var lt)) _lastTick = lt.GetInt64();
     }
 }

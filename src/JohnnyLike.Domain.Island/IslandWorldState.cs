@@ -7,7 +7,9 @@ namespace JohnnyLike.Domain.Island;
 
 public class IslandWorldState : WorldState
 {
-    public double CurrentTime { get; set; } = 0.0;
+    /// <summary>Current tick (set by engine via OnTickAdvanced).</summary>
+    public long CurrentTick { get; set; } = 0L;
+    private long _prevTick = 0L;
 
     public List<WorldItem> WorldItems { get; set; } = new();
 
@@ -18,17 +20,11 @@ public class IslandWorldState : WorldState
     public SupplyPile? SharedSupplyPile => WorldItems.OfType<SupplyPile>()
         .FirstOrDefault(p => p.AccessControl == "shared");
 
-    /// <summary>
-    /// Get a WorldItem by its ID and type.
-    /// </summary>
     public T? GetItem<T>(string id) where T : WorldItem
     {
         return WorldItems.OfType<T>().FirstOrDefault(x => x.Id == id);
     }
 
-    /// <summary>
-    /// Get all supply piles that the given actor can access
-    /// </summary>
     public List<SupplyPile> GetAccessiblePiles(ActorId actorId)
     {
         return WorldItems.OfType<SupplyPile>()
@@ -36,12 +32,10 @@ public class IslandWorldState : WorldState
             .ToList();
     }
 
-    /// <summary>
-    /// Topologically sort ITickableWorldItems based on their dependencies.
-    /// </summary>
-    private List<ITickableWorldItem> TopologicalSortTickables()
+    /// <summary>Topologically sort ITickableWorldItems, then stable-sort by Id.</summary>
+    public List<ITickableWorldItem> TopologicalSortTickables()
     {
-        var tickables = WorldItems.OfType<ITickableWorldItem>().ToList();
+        var tickables = WorldItems.OfType<ITickableWorldItem>().OrderBy(t => ((WorldItem)t).Id).ToList();
         var sorted = new List<ITickableWorldItem>();
         var visited = new HashSet<string>();
         var visiting = new HashSet<string>();
@@ -84,34 +78,35 @@ public class IslandWorldState : WorldState
         return sorted;
     }
 
-    public List<TraceEvent> OnTimeAdvanced(double currentTime, double dt, IResourceAvailability? resourceAvailability = null)
+    public List<TraceEvent> OnTickAdvanced(long currentTick, IResourceAvailability? resourceAvailability = null)
     {
-        CurrentTime = currentTime;
+        CurrentTick = currentTick;
+        var dtTicks = currentTick - _prevTick;
+        _prevTick = currentTick;
+        var dtSeconds = (double)dtTicks / 20.0; // TickHz = 20
         var traceEvents = new List<TraceEvent>();
 
-        // Tick all ITickableWorldItems in dependency order
+        // Tick all ITickableWorldItems in dependency + stable order
         var sortedTickables = TopologicalSortTickables();
         foreach (var tickable in sortedTickables)
         {
-            var events = tickable.Tick(dt, this, currentTime);
+            var events = tickable.Tick(currentTick, this);
             traceEvents.AddRange(events);
         }
 
-        // Track campfire state before ticking items
         var campfireLitBeforeTick = MainCampfire?.IsLit ?? false;
 
-        // Tick maintainable items
-        foreach (var item in WorldItems.OfType<MaintainableWorldItem>())
+        // Tick maintainable items in stable order
+        foreach (var item in WorldItems.OfType<MaintainableWorldItem>().OrderBy(i => i.Id))
         {
-            item.Tick(dt, this);
+            item.Tick(dtSeconds, this);
         }
 
-        // Campfire extinguished trace event
         var campfire = MainCampfire;
         if (campfireLitBeforeTick && campfire != null && !campfire.IsLit)
         {
             traceEvents.Add(new TraceEvent(
-                currentTime,
+                currentTick,
                 null,
                 "CampfireExtinguished",
                 new Dictionary<string, object>
@@ -122,12 +117,11 @@ public class IslandWorldState : WorldState
             ));
         }
 
-        // Remove expired maintainable items after tick cycle
         var expiredItems = WorldItems.OfType<MaintainableWorldItem>().Where(item => item.IsExpired).ToList();
         foreach (var item in expiredItems)
         {
             traceEvents.Add(new TraceEvent(
-                currentTime,
+                currentTick,
                 null,
                 "WorldItemExpired",
                 new Dictionary<string, object>
@@ -156,6 +150,7 @@ public class IslandWorldState : WorldState
 
         return JsonSerializer.Serialize(new
         {
+            CurrentTick,
             WorldItems = serializedItems
         }, options);
     }
@@ -164,6 +159,12 @@ public class IslandWorldState : WorldState
     {
         var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
         if (data == null) return;
+
+        if (data.TryGetValue("CurrentTick", out var tickEl))
+        {
+            CurrentTick = tickEl.GetInt64();
+            _prevTick = CurrentTick;
+        }
 
         WorldItems.Clear();
         if (data.TryGetValue("WorldItems", out var itemsElement))
@@ -190,6 +191,7 @@ public class IslandWorldState : WorldState
                         "beach"          => new BeachItem(id),
                         "palm_tree"      => new CoconutTreeItem(id),
                         "ocean"          => new OceanItem(id),
+                        "stalactite"     => new StalactiteItem(id),
                         _                => null
                     };
 

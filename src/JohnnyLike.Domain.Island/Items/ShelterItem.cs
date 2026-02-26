@@ -12,6 +12,7 @@ public class ShelterItem : ToolItem
     public ShelterItem(string id = "main_shelter") 
         : base(id, "shelter", OwnershipType.Shared, baseDecayPerSecond: 0.015)
     {
+        RoomId = "beach";
     }
 
     public override void Tick(double dtSeconds, IslandWorldState world)
@@ -57,7 +58,7 @@ public class ShelterItem : ToolItem
                     new ActionId("repair_shelter"),
                     ActionKind.Interact,
                     parameters,
-                    30.0 + ctx.Random.NextDouble() * 10.0,
+                    600L + (long)(ctx.Random.NextDouble() * 200),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
@@ -81,7 +82,7 @@ public class ShelterItem : ToolItem
                     new ActionId("reinforce_shelter"),
                     ActionKind.Interact,
                     parameters,
-                    40.0 + ctx.Random.NextDouble() * 10.0,
+                    800L + (long)(ctx.Random.NextDouble() * 200),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
@@ -104,7 +105,7 @@ public class ShelterItem : ToolItem
                     new ActionId("rebuild_shelter"),
                     ActionKind.Interact,
                     parameters,
-                    90.0 + ctx.Random.NextDouble() * 30.0,
+                    1800L + (long)(ctx.Random.NextDouble() * 600),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),

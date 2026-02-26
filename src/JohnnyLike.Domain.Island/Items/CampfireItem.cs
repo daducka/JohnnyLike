@@ -17,6 +17,7 @@ public class CampfireItem : ToolItem
     public CampfireItem(string id = "main_campfire") 
         : base(id, "campfire", OwnershipType.Shared, baseDecayPerSecond: 0.02)
     {
+        RoomId = "beach";
     }
 
     public override void Tick(double dtSeconds, IslandWorldState world)
@@ -75,7 +76,7 @@ public class CampfireItem : ToolItem
                     new ActionId("add_fuel_campfire"),
                     ActionKind.Interact,
                     parameters,
-                    20.0 + ctx.Random.NextDouble() * 5.0,
+                    400L + (long)(ctx.Random.NextDouble() * 100), // 20-25s * 20 Hz
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
@@ -99,7 +100,7 @@ public class CampfireItem : ToolItem
                     new ActionId("relight_campfire"),
                     ActionKind.Interact,
                     parameters,
-                    30.0 + ctx.Random.NextDouble() * 10.0,
+                    600L + (long)(ctx.Random.NextDouble() * 200), // 30-40s * 20 Hz
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
@@ -123,7 +124,7 @@ public class CampfireItem : ToolItem
                     new ActionId("repair_campfire"),
                     ActionKind.Interact,
                     parameters,
-                    25.0 + ctx.Random.NextDouble() * 5.0,
+                    500L + (long)(ctx.Random.NextDouble() * 100), // 25-30s * 20 Hz
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
@@ -146,7 +147,7 @@ public class CampfireItem : ToolItem
                     new ActionId("rebuild_campfire"),
                     ActionKind.Interact,
                     parameters,
-                    60.0 + ctx.Random.NextDouble() * 20.0,
+                    1200L + (long)(ctx.Random.NextDouble() * 400), // 60-80s * 20 Hz
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
