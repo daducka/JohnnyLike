@@ -244,4 +244,111 @@ public class TraceBeatExtractorTests
         var evt = new TraceEvent(7.0, null, "TideTurned", new Dictionary<string, object>());
         Assert.Null(extractor.Consume(evt));
     }
+
+    // ── NarrationBeat (domain-generic) support ────────────────────────────────
+
+    private static TraceEvent MakeNarrationBeat(
+        double t, string text, string? subjectId = null, string phase = "WorldTick", string? actorId = null)
+    {
+        var details = new Dictionary<string, object>
+        {
+            ["text"] = text,
+            ["phase"] = phase,
+            ["priority"] = 50
+        };
+        if (subjectId != null) details["subjectId"] = subjectId;
+        var actor = actorId != null ? (ActorId?)new ActorId(actorId) : null;
+        return new TraceEvent(t, actor, "NarrationBeat", details);
+    }
+
+    [Fact]
+    public void Consume_NarrationBeat_ReturnsWorldEventJob()
+    {
+        var extractor = MakeExtractor();
+        var evt = MakeNarrationBeat(10.0, "The tide turns, rising from low to high.", subjectId: "beach:tide");
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Equal(NarrationJobKind.WorldEvent, job!.Kind);
+        Assert.Equal(10.0, job.PlayAtSimTime);
+        Assert.Equal("beach:tide", job.SubjectId);
+    }
+
+    [Fact]
+    public void Consume_NarrationBeat_WithActorId_SetsSubjectId()
+    {
+        var extractor = MakeExtractor();
+        var evt = MakeNarrationBeat(5.0, "Johnny pulls a fish from the water.",
+            subjectId: "resource:fish", actorId: "Johnny");
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Equal("resource:fish", job!.SubjectId);
+    }
+
+    [Fact]
+    public void Consume_NarrationBeat_NoSubjectId_FallsBackToActorId()
+    {
+        var extractor = MakeExtractor();
+        var evt = MakeNarrationBeat(3.0, "Johnny casts the line.", actorId: "Johnny");
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Equal("Johnny", job!.SubjectId);
+    }
+
+    [Fact]
+    public void Consume_NarrationBeat_AddsBeatToRecentBeats()
+    {
+        var extractor = MakeExtractor();
+        var evt = MakeNarrationBeat(8.0, "The campfire sputters out.", subjectId: "item:campfire");
+
+        extractor.Consume(evt);
+
+        var recent = extractor.RecentBeats;
+        Assert.NotEmpty(recent);
+        var beat = recent.Last();
+        Assert.Equal("DomainBeat", beat.SubjectKind);
+        Assert.Equal("NarrationBeat", beat.EventType);
+        Assert.Equal("The campfire sputters out.", beat.Subject);
+    }
+
+    [Fact]
+    public void Consume_NarrationBeat_EmptyText_ReturnsNull()
+    {
+        var extractor = MakeExtractor();
+        var details = new Dictionary<string, object> { ["text"] = "", ["phase"] = "WorldTick", ["priority"] = 50 };
+        var evt = new TraceEvent(1.0, null, "NarrationBeat", details);
+
+        Assert.Null(extractor.Consume(evt));
+    }
+
+    [Fact]
+    public void Consume_NarrationBeat_PromptIncludesDomainBeatText()
+    {
+        var extractor = MakeExtractor();
+        var evt = MakeNarrationBeat(5.0, "A new day dawns on the island.", subjectId: "calendar:day");
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Contains("A new day dawns on the island.", job!.Prompt);
+    }
+
+    [Fact]
+    public void Consume_NarrationBeat_RequiresNoRegistration()
+    {
+        // Verifies that NarrationBeat events are handled without any domain-specific handler registration
+        var extractor = MakeExtractor();
+        // NOTE: we do NOT call RegisterWorldEventHandler here
+        var evt = MakeNarrationBeat(2.0, "Storm incoming.", subjectId: "weather:precipitation");
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Equal(NarrationJobKind.WorldEvent, job!.Kind);
+    }
 }

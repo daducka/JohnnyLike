@@ -16,4 +16,9 @@ public class EffectContext<TActorState, TWorldState>
     public required TWorldState World { get; init; }
     public required IRngStream Rng { get; init; }
     public required IResourceAvailability Reservations { get; init; }
+    /// <summary>
+    /// Tracer for emitting narration beats from within effect handlers.
+    /// Defaults to <see cref="NullEventTracer.Instance"/> when not wired up.
+    /// </summary>
+    public IEventTracer Tracer { get; init; } = NullEventTracer.Instance;
 }

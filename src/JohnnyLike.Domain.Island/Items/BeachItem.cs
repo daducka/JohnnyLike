@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Supply;
+using JohnnyLike.Domain.Island.Telemetry;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Items;
@@ -40,7 +41,17 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
             return new List<TraceEvent>();
 
         var tidePhase = calendar.HourOfDay % 12;
+        var prevTide = Tide;
         Tide = tidePhase >= 6 ? TideLevel.High : TideLevel.Low;
+
+        if (Tide != prevTide)
+        {
+            var text = Tide == TideLevel.High
+                ? "The tide turns, rising from low to high."
+                : "The tide pulls back, exposing the lower beach.";
+            using (world.Tracer.PushPhase(TracePhase.WorldTick))
+                world.Tracer.BeatWorld(text, subjectId: "beach:tide", priority: 20);
+        }
 
         double regenRate = 0.1;
 

@@ -327,7 +327,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 // Use effect-time Rng (not the candidate-generation ctx) for deterministic rolls.
                 RecipeDiscoverySystem.TryDiscover(
                     effectCtx.Actor, effectCtx.World, effectCtx.Rng,
-                    DiscoveryTrigger.ThinkAboutSupplies);
+                    DiscoveryTrigger.ThinkAboutSupplies,
+                    actorId: effectCtx.ActorId.Value);
             }),
             Qualities: new Dictionary<QualityType, double>
             {

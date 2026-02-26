@@ -860,6 +860,47 @@ public class RecipeSystemTests
         Assert.Contains(candidates, c => c.Action.Id.Value == "cook_fish");
     }
 
+    // ── recipe-specific discovery beat text ──────────────────────────────────
+
+    [Fact]
+    public void Umbrella_Discovery_UsesCustomBeatText()
+    {
+        // Arrange: umbrella recipe has a custom DiscoveryBeatText
+        var registry = IslandRecipeRegistry.All;
+        Assert.True(registry.ContainsKey("umbrella"));
+        var umbrella = registry["umbrella"];
+        Assert.NotNull(umbrella.Discovery?.DiscoveryBeatText);
+
+        var customText = umbrella.Discovery!.DiscoveryBeatText!.Invoke("Johnny");
+        Assert.Contains("umbrella", customText.ToLowerInvariant());
+        Assert.Contains("Johnny", customText);
+    }
+
+    [Fact]
+    public void RecipeDiscoverySystem_EmitsCustomBeatText_ForUmbrella()
+    {
+        int lowSeed = FindSeedBelow(0.25);
+        var (actor, world) = MakeBase();
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply("stick", 1, id => new StickSupply(id));
+        pile.AddSupply("palm_frond", 1, id => new PalmFrondSupply(id));
+
+        // Use an EventTracer to capture emitted beats
+        var tracer = new JohnnyLike.Engine.EventTracer();
+        world.Tracer = tracer;
+
+        RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(lowSeed)),
+            DiscoveryTrigger.ThinkAboutSupplies, actorId: "Johnny");
+
+        var beats = tracer.Drain();
+        Assert.NotEmpty(beats);
+        var beat = beats.Single(b => b.SubjectId == "recipe:umbrella");
+        Assert.Contains("umbrella", beat.Text.ToLowerInvariant());
+        // Should use the custom text, not the generic fallback
+        Assert.DoesNotContain("realizes how to make a", beat.Text);
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private static int FindSeedBelow(double threshold)

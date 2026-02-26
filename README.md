@@ -188,6 +188,23 @@ CI runs fuzz tests automatically.
 
 ---
 
+## Narration Beat System
+
+JohnnyLike includes a narration pipeline that converts simulation events into spoken narration via an LLM and TTS engine.
+
+Domain code emits concise, factual **narration beats** at meaningful transitions:
+
+```csharp
+using (world.Tracer.PushPhase(TracePhase.WorldTick))
+    world.Tracer.BeatWorld("The tide turns, rising from low to high.", subjectId: "beach:tide");
+```
+
+The engine flushes beats as `NarrationBeat` trace events at tick and action boundaries. The narration pipeline consumes them generically — no domain-specific handler registration is required.
+
+See [`docs/narration-beats.md`](docs/narration-beats.md) for the style guide and authoring instructions.
+
+---
+
 # Project Structure
 
 ```
