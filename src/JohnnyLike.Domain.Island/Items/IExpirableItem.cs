@@ -17,9 +17,9 @@ public abstract class ExpirableWorldItem : MaintainableWorldItem, IExpirableItem
     {
     }
 
-    public override void Tick(double dtSeconds, IslandWorldState world)
+    public override void Tick(long dtTicks, IslandWorldState world)
     {
-        base.Tick(dtSeconds, world);
+        base.Tick(dtTicks, world);
 
         if (world.CurrentTick >= ExpiresAtTick)
         {

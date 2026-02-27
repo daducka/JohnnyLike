@@ -92,11 +92,9 @@ public class IslandDomainPack : IDomainPack
 
         // Generate candidates using all registered providers
         var candidates = new List<ActionCandidate>();
-        var actorRoom = islandActorState.CurrentRoomId;
 
-        // Generate candidates from items in the actor's current room (room-scoped candidate gathering).
-        // Items with an empty RoomId are treated as room-agnostic and always included.
-        // Items are iterated in stable (sorted-by-Id) order for determinism.
+        // Iterate items in stable (sorted-by-Id) order for determinism.
+        // Tag each candidate with the ProviderItemId for engine-level room filtering and tie-breaking.
         foreach (var item in islandWorld.WorldItems
             .OfType<IIslandActionCandidate>()
             .Cast<WorldItem>()
@@ -104,12 +102,17 @@ public class IslandDomainPack : IDomainPack
             .Cast<IIslandActionCandidate>())
         {
             var wi = (WorldItem)item;
-            if (string.IsNullOrEmpty(wi.RoomId) || wi.RoomId == actorRoom)
-                item.AddCandidates(ctx, candidates);
+            var itemCandidates = new List<ActionCandidate>();
+            item.AddCandidates(ctx, itemCandidates);
+            foreach (var c in itemCandidates)
+                candidates.Add(c with { ProviderItemId = wi.Id });
         }
         
-        // Generate candidates from the actor itself (e.g., idle action)
-        islandActorState.AddCandidates(ctx, candidates);
+        // Generate candidates from the actor itself (e.g., idle action), tagged with actor ID
+        var actorCandidates = new List<ActionCandidate>();
+        islandActorState.AddCandidates(ctx, actorCandidates);
+        foreach (var c in actorCandidates)
+            candidates.Add(c with { ProviderItemId = actorId.Value });
 
         // Post-pass: compute final Score from IntrinsicScore and Quality weights
         var model = BuildQualityModel(ctx.Actor);
@@ -297,7 +300,7 @@ public class IslandDomainPack : IDomainPack
         // This method only applies action-specific effects and actor passive decay
 
         // Apply passive actor decay based on action duration
-        var dtSeconds = (double)outcome.ActualDurationTicks / 20.0;
+        var dtSeconds = (double)outcome.ActualDurationTicks / (double)EngineConstants.TickHz;
         islandActorState.Satiety -= dtSeconds * 0.5;
         islandActorState.Energy -= dtSeconds * 0.3;
         islandActorState.Morale -= dtSeconds * 0.4;
@@ -340,11 +343,6 @@ public class IslandDomainPack : IDomainPack
                 return parsedTier;
         }
         return null;
-    }
-
-    public List<SceneTemplate> GetSceneTemplates()
-    {
-        return new List<SceneTemplate>();
     }
 
     public bool ValidateContent(out List<string> errors)

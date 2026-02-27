@@ -20,9 +20,11 @@ public class CampfireItem : ToolItem
         RoomId = "beach";
     }
 
-    public override void Tick(double dtSeconds, IslandWorldState world)
+    public override void Tick(long dtTicks, IslandWorldState world)
     {
-        base.Tick(dtSeconds, world);
+        base.Tick(dtTicks, world);
+
+        var dtSeconds = dtTicks / (double)EngineConstants.TickHz;
 
         if (IsLit)
         {

@@ -10,6 +10,7 @@ namespace JohnnyLike.Domain.Abstractions;
 /// <param name="PreAction">Optional callback executed at action start (before the action duration begins).</param>
 /// <param name="Qualities">Optional per-quality weights for domain-level scoring post-pass</param>
 /// <param name="Score">Final computed score assigned by the domain after gathering all candidates</param>
+/// <param name="ProviderItemId">Item ID of the world item that generated this candidate, used for deterministic tie-breaking and room filtering</param>
 public record ActionCandidate(
     ActionSpec Action,
     double IntrinsicScore,
@@ -17,9 +18,11 @@ public record ActionCandidate(
     object? EffectHandler = null,
     object? PreAction = null,
     IReadOnlyDictionary<QualityType, double>? Qualities = null,
-    double Score = 0.0
+    double Score = 0.0,
+    string? ProviderItemId = null
 );
 
+/// <summary>Domain plug-in: world model, actor model, candidate generation, effect application.</summary>
 public interface IDomainPack
 {
     string DomainName { get; }
@@ -46,8 +49,6 @@ public interface IDomainPack
     
     void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, long currentTick);
     
-    List<SceneTemplate> GetSceneTemplates();
-    
     bool ValidateContent(out List<string> errors);
     
     /// <summary>
@@ -58,6 +59,7 @@ public interface IDomainPack
     /// <summary>
     /// Ticks the world state forward to the specified absolute tick.
     /// Returns a list of trace events for significant world state changes.
+    /// Note: ITickableWorldItem ticking is handled by the engine via WorldItemTickOrchestrator.
     /// </summary>
     List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability);
 
@@ -73,3 +75,4 @@ public interface IDomainPack
         IResourceAvailability resourceAvailability,
         object? preActionHandler) => true;
 }
+

@@ -45,14 +45,14 @@ public class ReservationTableTests
     public void ReleaseByScene_RemovesAllSceneReservations()
     {
         var table = new ReservationTable();
-        var sceneId = new SceneId("scene1");
+        var groupId = "scene1";
         var res1 = new ResourceId("printer");
         var res2 = new ResourceId("desk");
 
-        table.TryReserve(res1, "scene:" + sceneId.Value + ":actor:Jim", 2000L);
-        table.TryReserve(res2, "scene:" + sceneId.Value + ":actor:Jim", 2000L);
+        table.TryReserve(res1, "scene:" + groupId + ":actor:Jim", 2000L);
+        table.TryReserve(res2, "scene:" + groupId + ":actor:Jim", 2000L);
 
-        table.ReleaseByPrefix("scene:" + sceneId.Value + ":");
+        table.ReleaseByPrefix("scene:" + groupId + ":");
 
         Assert.False(table.IsReserved(res1));
         Assert.False(table.IsReserved(res2));
@@ -71,28 +71,26 @@ public class ReservationTableTests
     }
 
     [Fact]
-    public void ReleaseByScene_WithNullActorId_RemovesReservations()
+    public void ReleaseByGroup_WithNullActorId_RemovesReservations()
     {
         var table = new ReservationTable();
-        var sceneId = new SceneId("scene1");
+        var groupId = "scene1";
         var res1 = new ResourceId("printer");
         var res2 = new ResourceId("desk");
 
-        table.TryReserve(res1, "scene:" + sceneId.Value + ":world_item:item1", 2000L);
-        table.TryReserve(res2, "scene:" + sceneId.Value + ":world_item:item2", 2000L);
+        table.TryReserve(res1, "scene:" + groupId + ":world_item:item1", 2000L);
+        table.TryReserve(res2, "scene:" + groupId + ":world_item:item2", 2000L);
 
-        table.ReleaseByPrefix("scene:" + sceneId.Value + ":");
+        table.ReleaseByPrefix("scene:" + groupId + ":");
 
         Assert.False(table.IsReserved(res1));
         Assert.False(table.IsReserved(res2));
     }
 
     [Fact]
-    public void ReleaseByScene_OnlyReleasesResourcesForSpecificScene()
+    public void ReleaseByGroup_OnlyReleasesResourcesForSpecificGroup()
     {
         var table = new ReservationTable();
-        var scene1 = new SceneId("scene1");
-        var scene2 = new SceneId("scene2");
         var res1 = new ResourceId("printer");
         var res2 = new ResourceId("desk");
         var res3 = new ResourceId("phone");
@@ -101,7 +99,7 @@ public class ReservationTableTests
         table.TryReserve(res2, "scene:scene1:actor:Pam", 2000L);
         table.TryReserve(res3, "scene:scene2:actor:Dwight", 2000L);
 
-        table.ReleaseByPrefix("scene:" + scene1.Value + ":");
+        table.ReleaseByPrefix("scene:scene1:");
 
         Assert.False(table.IsReserved(res1));
         Assert.False(table.IsReserved(res2));
@@ -109,19 +107,19 @@ public class ReservationTableTests
     }
 
     [Fact]
-    public void ReleaseByScene_WithMixedActorIds_RemovesAllSceneReservations()
+    public void ReleaseByGroup_WithMixedActorIds_RemovesAllGroupReservations()
     {
         var table = new ReservationTable();
-        var sceneId = new SceneId("scene1");
+        var groupId = "scene1";
         var res1 = new ResourceId("printer");
         var res2 = new ResourceId("desk");
         var res3 = new ResourceId("phone");
 
-        table.TryReserve(res1, "scene:" + sceneId.Value + ":actor:Jim", 2000L);
-        table.TryReserve(res2, "scene:" + sceneId.Value + ":world_item:desk_item", 2000L);
-        table.TryReserve(res3, "scene:" + sceneId.Value + ":actor:Pam", 2000L);
+        table.TryReserve(res1, "scene:" + groupId + ":actor:Jim", 2000L);
+        table.TryReserve(res2, "scene:" + groupId + ":world_item:desk_item", 2000L);
+        table.TryReserve(res3, "scene:" + groupId + ":actor:Pam", 2000L);
 
-        table.ReleaseByPrefix("scene:" + sceneId.Value + ":");
+        table.ReleaseByPrefix("scene:" + groupId + ":");
 
         Assert.False(table.IsReserved(res1));
         Assert.False(table.IsReserved(res2));
@@ -321,8 +319,6 @@ public class SignalHandlingTests
             LastTargetActor = targetActor;
         }
 
-        public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
-        
         public bool ValidateContent(out List<string> errors)
         {
             errors = new List<string>();
@@ -348,6 +344,7 @@ public class SignalHandlingTests
 
     private class TestWorldState : WorldState
     {
+        public override IReadOnlyList<WorldItem> GetAllItems() => Array.Empty<WorldItem>();
         public override string Serialize() => "{}";
         public override void Deserialize(string json) { }
     }
@@ -414,8 +411,6 @@ public class ActorStateSnapshotTests
         {
         }
 
-        public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
-        
         public bool ValidateContent(out List<string> errors)
         {
             errors = new List<string>();
@@ -444,6 +439,7 @@ public class ActorStateSnapshotTests
 
     private class TestWorldState : WorldState
     {
+        public override IReadOnlyList<WorldItem> GetAllItems() => Array.Empty<WorldItem>();
         public override string Serialize() => "{}";
         public override void Deserialize(string json) { }
     }

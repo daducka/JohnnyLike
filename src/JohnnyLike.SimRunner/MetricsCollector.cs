@@ -15,9 +15,6 @@ public class FuzzMetrics
     public int TotalActions { get; set; }
     public int CompletedActions { get; set; }
     public int FailedActions { get; set; }
-    public int ScenesProposed { get; set; }
-    public int ScenesCompleted { get; set; }
-    public int ScenesAborted { get; set; }
     public int SignalsProcessed { get; set; }
     public int ReservationConflicts { get; set; }
     public Dictionary<string, int> ActorTaskCompletions { get; set; } = new();
@@ -49,7 +46,6 @@ public class MetricsCollector
             _recentEvents.RemoveAt(0);
         }
 
-        // Update metrics based on event type
         switch (evt.EventType)
         {
             case "ActionAssigned":
@@ -73,19 +69,6 @@ public class MetricsCollector
                 }
                 break;
             
-            case "SceneProposed":
-                _metrics.ScenesProposed++;
-                break;
-            
-            case "SceneStarted":
-            case "SceneCompleted":
-                _metrics.ScenesCompleted++;
-                break;
-            
-            case "SceneAborted":
-                _metrics.ScenesAborted++;
-                break;
-            
             case "SignalProcessed":
                 _metrics.SignalsProcessed++;
                 break;
@@ -95,14 +78,8 @@ public class MetricsCollector
     public InvariantViolation? CheckInvariants(
         double currentTime,
         Engine.Engine engine,
-        ReservationTable reservations,
-        Director director)
+        ReservationTable reservations)
     {
-        // Check reservation conflicts
-        var resourceHolders = new Dictionary<string, List<string>>();
-        
-        // This is a simplified check - in a real implementation, we'd need access to ReservationTable internals
-        // For now, we track conflicts via metrics
         if (_metrics.ReservationConflicts > _config.MaxAllowedReservationConflicts)
         {
             return new InvariantViolation
@@ -117,32 +94,6 @@ public class MetricsCollector
             };
         }
 
-        // Check scene lifetime
-        var scenes = director.GetScenes();
-        foreach (var scene in scenes.Values)
-        {
-            if (scene.Status != Domain.Abstractions.SceneStatus.Complete && 
-                scene.Status != Domain.Abstractions.SceneStatus.Aborted)
-            {
-                var lifetime = currentTime - scene.ProposedTick / (double)Engine.Engine.TickHz;
-                if (lifetime > _config.MaxSceneLifetimeSeconds)
-                {
-                    return new InvariantViolation
-                    {
-                        Reason = "Scene exceeded maximum lifetime",
-                        TimeSeconds = currentTime,
-                        Details = new Dictionary<string, object>
-                        {
-                            ["sceneId"] = scene.Id.Value,
-                            ["lifetime"] = lifetime,
-                            ["maxLifetime"] = _config.MaxSceneLifetimeSeconds
-                        }
-                    };
-                }
-            }
-        }
-
-        // Check starvation
         foreach (var actor in engine.Actors)
         {
             var actorKey = actor.Key.Value;
@@ -166,7 +117,6 @@ public class MetricsCollector
             }
             else if (currentTime > _config.StarvationThresholdSeconds)
             {
-                // Actor has never completed a task
                 return new InvariantViolation
                 {
                     Reason = "Actor has never completed a task",
@@ -180,7 +130,6 @@ public class MetricsCollector
             }
         }
 
-        // Check signal backlog
         _metrics.MaxSignalBacklog = Math.Max(_metrics.MaxSignalBacklog, _metrics.SignalBacklogSize);
         if (_metrics.SignalBacklogSize > _config.MaxActorQueueLength * 2)
         {

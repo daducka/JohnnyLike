@@ -19,9 +19,9 @@ public class FishingPoleItem : ToolItem
         RoomId = "beach";
     }
 
-    public override void Tick(double dtSeconds, IslandWorldState world)
+    public override void Tick(long dtTicks, IslandWorldState world)
     {
-        base.Tick(dtSeconds, world);
+        base.Tick(dtTicks, world);
         
         // Fishing poles degrade slower than other tools but can break if quality is too low
         if (Quality < BreakageQualityThreshold && !IsBroken)

@@ -5,8 +5,7 @@ namespace JohnnyLike.Domain.Abstractions;
 public enum ActorStatus
 {
     Ready,      // Can receive new task
-    Busy,       // Executing action
-    Waiting     // Waiting to join scene
+    Busy        // Executing action
 }
 
 public abstract class ActorState
@@ -14,7 +13,6 @@ public abstract class ActorState
     public ActorId Id { get; set; }
     public ActorStatus Status { get; set; }
     public ActionSpec? CurrentAction { get; set; }
-    public SceneId? CurrentScene { get; set; }
     public long LastDecisionTick { get; set; }
     public string CurrentRoomId { get; set; } = "beach";
 
@@ -31,6 +29,10 @@ public abstract class WorldState
     /// </summary>
     public IEventTracer Tracer { get; set; } = NullEventTracer.Instance;
 
+    /// <summary>Returns all world items for engine-level tick orchestration.</summary>
+    public abstract IReadOnlyList<WorldItem> GetAllItems();
+
     public abstract string Serialize();
     public abstract void Deserialize(string json);
 }
+

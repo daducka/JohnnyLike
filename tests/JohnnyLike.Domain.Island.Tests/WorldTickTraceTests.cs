@@ -75,8 +75,11 @@ public class WorldTickTraceTests
         var calendar = world.GetItem<CalendarItem>("calendar")!;
         calendar.TimeOfDay = 0.5; // noon
 
-        // Act - Tick for 6 hours
-        domainPack.TickWorldState(world, 432000L, reservations);
+        // Act - Tick ITickableWorldItems first (as engine does), then domain tick
+        var tick = 432000L;
+        foreach (var tickable in world.TopologicalSortTickables())
+            tickable.Tick(tick, world);
+        domainPack.TickWorldState(world, tick, reservations);
 
         // Assert - time should have advanced ~0.25 of a day
         Assert.InRange(calendar.TimeOfDay, 0.74, 0.76);
@@ -94,8 +97,11 @@ public class WorldTickTraceTests
         var calendar = world.GetItem<CalendarItem>("calendar")!;
         calendar.TimeOfDay = 0.9;
 
-        // Act - tick enough to cross midnight
-        domainPack.TickWorldState(world, 172800L, reservations);
+        // Act - Tick ITickableWorldItems first (as engine does), then domain tick
+        var tick = 172800L;
+        foreach (var tickable in world.TopologicalSortTickables())
+            tickable.Tick(tick, world);
+        domainPack.TickWorldState(world, tick, reservations);
 
         // Assert
         Assert.Equal(1, calendar.DayCount);

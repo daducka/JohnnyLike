@@ -7,8 +7,7 @@ public enum ActionKind
     Emote,
     Interact,
     Speak,
-    LookAt,
-    JoinScene
+    LookAt
 }
 
 /// <summary>

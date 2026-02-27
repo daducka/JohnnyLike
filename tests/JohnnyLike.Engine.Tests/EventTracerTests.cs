@@ -188,7 +188,6 @@ public class EventTracerTests
         }
 
         public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, long currentTick) { }
-        public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
         public bool ValidateContent(out List<string> errors) { errors = new(); return true; }
         public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState) => new();
     }
@@ -201,6 +200,7 @@ public class EventTracerTests
 
     private class TestWorldState : WorldState
     {
+        public override IReadOnlyList<WorldItem> GetAllItems() => Array.Empty<WorldItem>();
         public override string Serialize() => "{}";
         public override void Deserialize(string json) { }
     }

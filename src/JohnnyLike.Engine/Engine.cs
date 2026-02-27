@@ -3,6 +3,15 @@ using System.Text.Json;
 
 namespace JohnnyLike.Engine;
 
+/// <summary>
+/// Core simulation loop for v0.2.
+/// Each call to <see cref="AdvanceTicks"/> performs:
+///   1. Engine-level topo-sort and tick of all <see cref="ITickableWorldItem"/> items.
+///   2. Domain-level world tick (passive decay, expiration, supply regeneration).
+///   3. Signal processing.
+///   4. Housekeeping (expired reservations, variety memory cleanup).
+/// Actor actions are planned lazily on demand via <see cref="TryGetNextAction"/>.
+/// </summary>
 public class Engine
 {
     private readonly IDomainPack _domainPack;
@@ -18,7 +27,7 @@ public class Engine
     private readonly Dictionary<ActionId, object?> _effectHandlers;
     private long _currentTick;
 
-    public const int TickHz = 20;
+    public const int TickHz = EngineConstants.TickHz;
 
     public long CurrentTick => _currentTick;
     public double CurrentSeconds => (double)_currentTick / TickHz;
@@ -59,7 +68,14 @@ public class Engine
     {
         _currentTick += ticks;
 
+        // Tick ITickableWorldItems in topo-sorted order (engine owns orchestration)
         _worldState.Tracer = _eventTracer;
+        var tickableEvents = WorldItemTickOrchestrator.Tick(_worldState.GetAllItems(), _currentTick, _worldState);
+        foreach (var evt in tickableEvents)
+            _traceSink.Record(evt);
+        EmitBeats(_eventTracer.Drain(), defaultActorId: null);
+
+        // Domain-level world tick (passive decay, expiration, supply regen)
         var worldTraceEvents = _domainPack.TickWorldState(_worldState, _currentTick, _reservations);
         _worldState.Tracer = NullEventTracer.Instance;
         foreach (var evt in worldTraceEvents)
@@ -72,7 +88,6 @@ public class Engine
             ProcessSignal(signal);
         }
 
-        _director.UpdateScenes(_currentTick);
         _reservations.CleanupExpired(_currentTick);
         _varietyMemory.Cleanup(_currentTick);
     }
@@ -185,37 +200,6 @@ public class Engine
         ));
 
         _varietyMemory.RecordAction(actorId.Value, outcome.ActionId.Value, _currentTick);
-
-        if (actorState.CurrentAction?.Kind == ActionKind.JoinScene)
-        {
-            if (outcome.Type == ActionOutcomeType.Success &&
-                actorState.CurrentAction.Parameters is JoinSceneActionParameters joinParams)
-            {
-                var sceneId = new SceneId(joinParams.SceneId);
-                _director.HandleSceneJoin(actorId, sceneId, _currentTick);
-                actorState.CurrentScene = sceneId;
-            }
-
-            if (actorState.CurrentScene.HasValue)
-            {
-                var scenes = _director.GetScenes();
-                if (scenes.TryGetValue(actorState.CurrentScene.Value, out var scene))
-                {
-                    var allComplete = scene.JoinedActors.All(aid =>
-                    {
-                        if (_actors.TryGetValue(aid, out var as2))
-                            return as2.CurrentAction == null || as2.Status == ActorStatus.Ready;
-                        return false;
-                    });
-
-                    if (allComplete && scene.Status == SceneStatus.Running)
-                    {
-                        _director.CompleteScene(scene.Id, _currentTick);
-                        actorState.CurrentScene = null;
-                    }
-                }
-            }
-        }
 
         actorState.Status = ActorStatus.Ready;
         actorState.CurrentAction = null;

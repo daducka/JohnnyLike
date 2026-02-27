@@ -15,18 +15,18 @@ public class ShelterItem : ToolItem
         RoomId = "beach";
     }
 
-    public override void Tick(double dtSeconds, IslandWorldState world)
+    public override void Tick(long dtTicks, IslandWorldState world)
     {
-        base.Tick(dtSeconds, world);
+        base.Tick(dtTicks, world);
 
         var weather = world.GetItem<WeatherItem>("weather");
         if (weather?.Temperature == TemperatureBand.Cold)
         {
-            Quality = Math.Max(0.0, Quality - 0.03 * dtSeconds);
+            Quality = Math.Max(0.0, Quality - 0.03 * (dtTicks / (double)EngineConstants.TickHz));
         }
         if (weather?.Precipitation == PrecipitationBand.Rainy)
         {
-            Quality = Math.Max(0.0, Quality - 0.02 * dtSeconds);
+            Quality = Math.Max(0.0, Quality - 0.02 * (dtTicks / (double)EngineConstants.TickHz));
         }
     }
 

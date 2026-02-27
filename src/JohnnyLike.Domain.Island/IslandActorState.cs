@@ -87,7 +87,6 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Id = Id.Value,
             Status,
             CurrentAction = CurrentAction?.Id.Value,
-            CurrentScene = CurrentScene?.Value,
             LastDecisionTick,
             STR,
             DEX,

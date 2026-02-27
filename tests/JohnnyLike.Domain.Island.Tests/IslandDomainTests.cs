@@ -255,7 +255,11 @@ public class IslandWorldStateTests
         var calendar = new CalendarItem("calendar") { TimeOfDay = 0.9, DayCount = 0 };
         world.WorldItems.Add(calendar);
 
-        world.OnTickAdvanced(172800L); // 0.1 day = 8640s = 172800 ticks
+        // Tick ITickableWorldItems first (as engine does), then domain tick
+        var tick = 172800L;
+        foreach (var tickable in world.TopologicalSortTickables())
+            tickable.Tick(tick, world);
+        world.OnTickAdvanced(tick); // 0.1 day = 8640s = 172800 ticks
         Assert.InRange(calendar.TimeOfDay, 0.0, 0.1);
     }
 
@@ -269,7 +273,11 @@ public class IslandWorldStateTests
         ((ISupplyBounty)tree).GetSupply<CoconutSupply>("coconut")!.Quantity = 0;
         world.WorldItems.Add(tree);
 
-        world.OnTickAdvanced(1728000L); // advance 1 day = 86400s = 1728000 ticks
+        // Tick ITickableWorldItems first (as engine does), then domain tick
+        var tick = 1728000L;
+        foreach (var tickable in world.TopologicalSortTickables())
+            tickable.Tick(tick, world);
+        world.OnTickAdvanced(tick); // advance 1 day = 86400s = 1728000 ticks
 
         // Calendar should have incremented the day count (TimeOfDay wraps around midnight)
         Assert.True(calendar.DayCount >= 1, "Calendar should have advanced at least 1 day");

@@ -83,23 +83,17 @@ public class IslandWorldState : WorldState
         CurrentTick = currentTick;
         var dtTicks = currentTick - _prevTick;
         _prevTick = currentTick;
-        var dtSeconds = (double)dtTicks / 20.0; // TickHz = 20
         var traceEvents = new List<TraceEvent>();
 
-        // Tick all ITickableWorldItems in dependency + stable order
-        var sortedTickables = TopologicalSortTickables();
-        foreach (var tickable in sortedTickables)
-        {
-            var events = tickable.Tick(currentTick, this);
-            traceEvents.AddRange(events);
-        }
+        // Note: ITickableWorldItem ticking is handled by the engine via WorldItemTickOrchestrator
+        // before this method is called.
 
         var campfireLitBeforeTick = MainCampfire?.IsLit ?? false;
 
         // Tick maintainable items in stable order
         foreach (var item in WorldItems.OfType<MaintainableWorldItem>().OrderBy(i => i.Id))
         {
-            item.Tick(dtSeconds, this);
+            item.Tick(dtTicks, this);
         }
 
         var campfire = MainCampfire;
@@ -138,6 +132,8 @@ public class IslandWorldState : WorldState
 
         return traceEvents;
     }
+
+    public override IReadOnlyList<WorldItem> GetAllItems() => WorldItems;
 
     public override string Serialize()
     {

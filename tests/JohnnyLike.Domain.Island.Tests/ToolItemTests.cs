@@ -227,7 +227,7 @@ public class FishingPoleItemTests
         fishingPole.IsBroken = false;
         
         // Tick enough to drop quality below breakage threshold
-        fishingPole.Tick(500.0, world);
+        fishingPole.Tick(10000L, world);
         
         Assert.True(fishingPole.IsBroken);
         Assert.True(fishingPole.Quality < FishingPoleItem.BreakageQualityThreshold);

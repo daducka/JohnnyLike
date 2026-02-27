@@ -205,7 +205,6 @@ public class ActionReservationTests
         
         public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability, object? effectHandler = null) { }
         public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, long currentTick) { }
-        public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
         public bool ValidateContent(out List<string> errors) { errors = new List<string>(); return true; }
         public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState) => new Dictionary<string, object>();
         public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability) => new List<TraceEvent>();
@@ -270,7 +269,6 @@ public class ActionReservationTests
         
         public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability, object? effectHandler = null) { }
         public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, long currentTick) { }
-        public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
         public bool ValidateContent(out List<string> errors) { errors = new List<string>(); return true; }
         public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState) => new Dictionary<string, object>();
         public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability) => new List<TraceEvent>();
@@ -284,6 +282,7 @@ public class ActionReservationTests
     
     private class TestWorldState : WorldState
     {
+        public override IReadOnlyList<WorldItem> GetAllItems() => Array.Empty<WorldItem>();
         public override string Serialize() => "{}";
         public override void Deserialize(string json) { }
     }

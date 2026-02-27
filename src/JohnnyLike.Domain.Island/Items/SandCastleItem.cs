@@ -20,7 +20,7 @@ public class SandCastleItem : MaintainableWorldItem
         Quality = 100.0;
     }
 
-    public override void Tick(double dtSeconds, IslandWorldState world)
+    public override void Tick(long dtTicks, IslandWorldState world)
     {
         // Calculate decay rate based on environmental conditions
         var decayRate = BaseDecayPerSecond;
@@ -40,7 +40,7 @@ public class SandCastleItem : MaintainableWorldItem
         }
         
         // Apply decay
-        Quality = Math.Max(0.0, Quality - decayRate * dtSeconds);
+        Quality = Math.Max(0.0, Quality - decayRate * (dtTicks / (double)EngineConstants.TickHz));
         
         // Mark as expired when quality reaches 0
         if (Quality <= 0.0)
