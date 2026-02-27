@@ -139,4 +139,47 @@ public class JimPamHighFiveScenarioTests
         var events = traceSink.GetEvents();
         Assert.Contains(events, e => e.EventType == "StalactiteDrip");
     }
+
+    [Fact]
+    public void Rooms_ActorInBeach_DoesNotSeeCaveCandidates()
+    {
+        // Actors default to "beach" room. Cave items (stalactite) must not appear as candidates.
+        var domainPack = new IslandDomainPack();
+        var traceSink = new InMemoryTraceSink();
+        var engine = new JohnnyLike.Engine.Engine(domainPack, 42, traceSink);
+
+        engine.AddActor(new ActorId("Jim"), new Dictionary<string, object>());
+        var executor = new FakeExecutor(engine);
+
+        // Advance enough ticks for Jim to make decisions
+        executor.AdvanceTicks(200L);
+
+        var events = traceSink.GetEvents();
+
+        // StalactiteDrip events should exist (cave item still ticks globally)
+        Assert.Contains(events, e => e.EventType == "StalactiteDrip");
+
+        // Jim should never be assigned an action originating from the stalactite (cave item)
+        var jimAssignedActions = events
+            .Where(e => e.EventType == "ActionAssigned" && e.ActorId?.Value == "Jim")
+            .Select(e => e.Details.TryGetValue("actionId", out var id) ? id?.ToString() : null)
+            .ToList();
+        Assert.DoesNotContain(jimAssignedActions, id => id != null && id.Contains("stalactite"));
+    }
+
+    [Fact]
+    public void Rooms_StalactiteDrips_TwiceBy121Ticks()
+    {
+        var domainPack = new IslandDomainPack();
+        var traceSink = new InMemoryTraceSink();
+        var engine = new JohnnyLike.Engine.Engine(domainPack, 42, traceSink);
+
+        engine.AddActor(new ActorId("Jim"), new Dictionary<string, object>());
+        var executor = new FakeExecutor(engine);
+
+        executor.AdvanceTicks(121L); // past second drip
+
+        var drips = traceSink.GetEvents().Where(e => e.EventType == "StalactiteDrip").ToList();
+        Assert.Equal(2, drips.Count);
+    }
 }

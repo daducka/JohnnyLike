@@ -92,11 +92,20 @@ public class IslandDomainPack : IDomainPack
 
         // Generate candidates using all registered providers
         var candidates = new List<ActionCandidate>();
-        
-        // Generate candidates from all items implementing IIslandActionCandidate
-        foreach (var item in islandWorld.WorldItems.OfType<IIslandActionCandidate>())
+        var actorRoom = islandActorState.CurrentRoomId;
+
+        // Generate candidates from items in the actor's current room (room-scoped candidate gathering).
+        // Items with an empty RoomId are treated as room-agnostic and always included.
+        // Items are iterated in stable (sorted-by-Id) order for determinism.
+        foreach (var item in islandWorld.WorldItems
+            .OfType<IIslandActionCandidate>()
+            .Cast<WorldItem>()
+            .OrderBy(wi => wi.Id)
+            .Cast<IIslandActionCandidate>())
         {
-            item.AddCandidates(ctx, candidates);
+            var wi = (WorldItem)item;
+            if (string.IsNullOrEmpty(wi.RoomId) || wi.RoomId == actorRoom)
+                item.AddCandidates(ctx, candidates);
         }
         
         // Generate candidates from the actor itself (e.g., idle action)
