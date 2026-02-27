@@ -97,13 +97,16 @@ public sealed class TraceBeatExtractor
             Success: null,
             StatsAfter: null);
 
-        AddBeat(beat);
-
         _beatsSinceLastSummary++;
         bool wantSummary = _beatsSinceLastSummary >= _summaryRefreshEveryN;
         if (wantSummary) _beatsSinceLastSummary = 0;
 
         var prompt = _promptBuilder.BuildNarrationBeatPrompt(beat, text, _facts, _recentBeats, wantSummary);
+
+        // Add the beat after building the prompt so the current beat appears only once
+        // (in the dedicated "## Domain Beat" section) instead of being duplicated in
+        // both that section and "## Domain beats" recent history.
+        AddBeat(beat);
 
         return new NarrationJob(
             JobId: Guid.NewGuid(),
