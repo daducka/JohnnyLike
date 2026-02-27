@@ -33,14 +33,12 @@ public class Director
     {
         var allCandidates = _domainPack.GenerateCandidates(actorId, actorState, worldState, currentTick, rng, _reservations);
 
-        // Filter candidates by actor's current room using ProviderItemId
+        // Filter candidates by actor's current room
         var actorRoom = actorState.CurrentRoomId;
-        var itemIndex = worldState.GetAllItems().ToDictionary(i => i.Id, i => i.RoomId);
         allCandidates = allCandidates.Where(c =>
             c.ProviderItemId == null ||
-            !itemIndex.TryGetValue(c.ProviderItemId, out var roomId) ||
-            string.IsNullOrEmpty(roomId) ||
-            roomId == actorRoom
+            worldState.GetItemRoomId(c.ProviderItemId) == null ||
+            worldState.GetItemRoomId(c.ProviderItemId) == actorRoom
         ).ToList();
 
         // Apply variety penalty

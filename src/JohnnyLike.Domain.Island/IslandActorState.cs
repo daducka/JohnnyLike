@@ -228,7 +228,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("build_sand_castle"),
                 ActionKind.Interact,
                 parameters,
-                400L + (long)(ctx.Random.NextDouble() * 200),
+                EngineConstants.TimeToTicks(20.0, 30.0, ctx.Random),
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach:sandcastle_spot")) }
             ),
@@ -246,19 +246,19 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                     case RollOutcomeTier.CriticalSuccess:
                         effectCtx.Actor.Morale += 25.0;
                         // Create sand castle
-                        effectCtx.World.WorldItems.Add(new Items.SandCastleItem());
+                        effectCtx.World.AddWorldItem(new Items.SandCastleItem(), effectCtx.Actor.CurrentRoomId);
                         break;
 
                     case RollOutcomeTier.Success:
                         effectCtx.Actor.Morale += 15.0;
                         // Create sand castle
-                        effectCtx.World.WorldItems.Add(new Items.SandCastleItem());
+                        effectCtx.World.AddWorldItem(new Items.SandCastleItem(), effectCtx.Actor.CurrentRoomId);
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
                         effectCtx.Actor.Morale += 5.0;
                         // Create sand castle
-                        effectCtx.World.WorldItems.Add(new Items.SandCastleItem());
+                        effectCtx.World.AddWorldItem(new Items.SandCastleItem(), effectCtx.Actor.CurrentRoomId);
                         break;
 
                     case RollOutcomeTier.Failure:
@@ -283,7 +283,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("think_about_supplies"),
                 ActionKind.Wait,
                 EmptyActionParameters.Instance,
-                200L + (long)(ctx.Random.NextDouble() * 100)
+                EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random)
             ),
             0.2,
             "Think about supplies",
@@ -402,7 +402,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("swim"),
                 ActionKind.Interact,
                 parameters,
-                300L + (long)(ctx.Random.NextDouble() * 100),
+                EngineConstants.TimeToTicks(15.0, 20.0, ctx.Random),
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) }
             ),
@@ -430,7 +430,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                                 Health = 100.0,
                                 Position = "shore"
                             };
-                            effectCtx.World.WorldItems.Add(chest);
+                            effectCtx.World.AddWorldItem(chest, effectCtx.Actor.CurrentRoomId);
                             
                             if (effectCtx.Outcome.ResultData != null)
                             {
@@ -476,7 +476,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             if (reserved)
                             {
                                 shark.ReservedResourceId = waterResource;
-                                effectCtx.World.WorldItems.Add(shark);
+                                effectCtx.World.AddWorldItem(shark, effectCtx.Actor.CurrentRoomId);
                                 effectCtx.Actor.Morale -= 15.0;
                                 
                                 if (effectCtx.Outcome.ResultData != null)

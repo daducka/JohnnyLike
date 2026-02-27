@@ -27,7 +27,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
 
     public TideLevel Tide { get; private set; }
 
-    public BeachItem(string id = "beach") : base(id, "beach") { RoomId = "beach"; }
+    public BeachItem(string id = "beach") : base(id, "beach") { }
 
     // ITickableWorldItem
     public IEnumerable<string> GetDependencies() => new[] { "calendar" };
@@ -98,7 +98,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 new ActionId("explore_beach"),
                 ActionKind.Interact,
                 parameters,
-                400L + (long)(ctx.Random.NextDouble() * 200), // 20-30s * 20 Hz
+                EngineConstants.TimeToTicks(20.0, 30.0, ctx.Random),
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(BeachResource) }
             ),

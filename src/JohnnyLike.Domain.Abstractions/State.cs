@@ -29,6 +29,45 @@ public abstract class WorldState
     /// </summary>
     public IEventTracer Tracer { get; set; } = NullEventTracer.Instance;
 
+    /// <summary>
+    /// Room index. Maps room ID strings to Room objects.
+    /// The engine uses this to scope candidate visibility by actor room.
+    /// </summary>
+    public Dictionary<string, Room> Rooms { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Returns the room the given item belongs to, or null if the item is not in any room.
+    /// </summary>
+    public string? GetItemRoomId(string itemId)
+    {
+        foreach (var room in Rooms.Values)
+            if (room.Contains(itemId))
+                return room.RoomId;
+        return null;
+    }
+
+    /// <summary>
+    /// Adds an item to the specified room, creating the room if it doesn't exist.
+    /// </summary>
+    public void AddItemToRoom(string roomId, string itemId)
+    {
+        if (!Rooms.TryGetValue(roomId, out var room))
+        {
+            room = new Room(roomId);
+            Rooms[roomId] = room;
+        }
+        room.AddItem(itemId);
+    }
+
+    /// <summary>
+    /// Removes an item from whatever room it currently belongs to.
+    /// </summary>
+    public void RemoveItemFromRooms(string itemId)
+    {
+        foreach (var room in Rooms.Values)
+            room.RemoveItem(itemId);
+    }
+
     /// <summary>Returns all world items for engine-level tick orchestration.</summary>
     public abstract IReadOnlyList<WorldItem> GetAllItems();
 

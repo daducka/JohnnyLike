@@ -16,7 +16,6 @@ public class FishingPoleItem : ToolItem
         : base(id, "fishing_pole", OwnershipType.Exclusive, baseDecayPerSecond: 0.005, maxOwners: 1)
     {
         OwnerActorId = ownerActorId;
-        RoomId = "beach";
     }
 
     public override void Tick(long dtTicks, IslandWorldState world)
@@ -86,7 +85,7 @@ public class FishingPoleItem : ToolItem
                         new ActionId("go_fishing"),
                         ActionKind.Interact,
                         parameters,
-                        900L + (long)(ctx.Random.NextDouble() * 300),
+                        EngineConstants.TimeToTicks(45.0, 60.0, ctx.Random),
                         parameters.ToResultData(),
                         new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                     ),
@@ -170,7 +169,7 @@ public class FishingPoleItem : ToolItem
                     new ActionId("maintain_rod"),
                     ActionKind.Interact,
                     parameters,
-                    400L + (long)(ctx.Random.NextDouble() * 100),
+                    EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
@@ -193,7 +192,7 @@ public class FishingPoleItem : ToolItem
                     new ActionId("repair_rod"),
                     ActionKind.Interact,
                     parameters,
-                    800L + (long)(ctx.Random.NextDouble() * 200),
+                    EngineConstants.TimeToTicks(40.0, 50.0, ctx.Random),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),

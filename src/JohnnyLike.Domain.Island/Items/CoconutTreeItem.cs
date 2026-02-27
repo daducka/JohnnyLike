@@ -31,7 +31,6 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
     public CoconutTreeItem(string id = "palm_tree")
         : base(id, "palm_tree")
     {
-        RoomId = "beach";
     }
 
     // ITickableWorldItem
@@ -85,7 +84,7 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 new ActionId("shake_tree_coconut"),
                 ActionKind.Interact,
                 parameters,
-                200L + (long)(ctx.Random.NextDouble() * 100), // 10-15s * 20 Hz
+                EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random),
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(PalmTreeResource) }
             ),

@@ -9,7 +9,7 @@ public class CalendarItem : WorldItem, ITickableWorldItem
     public int DayCount { get; set; } = 0;
     private long _lastTick = 0;
 
-    public CalendarItem(string id = "calendar") : base(id, "calendar") { RoomId = "beach"; }
+    public CalendarItem(string id = "calendar") : base(id, "calendar") { }
 
     public IEnumerable<string> GetDependencies() => Enumerable.Empty<string>();
 

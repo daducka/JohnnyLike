@@ -8,7 +8,7 @@ if (args.Length == 0)
     Console.WriteLine("JohnnyLike SimRunner");
     Console.WriteLine("Usage: SimRunner [options]");
     Console.WriteLine("  --scenario <path>   Load and run scenario from JSON file");
-    Console.WriteLine("  --domain <name>     Domain to use: office, island (default: office)");
+    Console.WriteLine("  --domain <name>     Domain to use: island (default: island)");
     Console.WriteLine("  --seed <number>     Random seed (default: 42)");
     Console.WriteLine("  --duration <sec>    Simulation duration in seconds");
     Console.WriteLine("  --trace             Output detailed trace");
@@ -23,7 +23,7 @@ if (args.Length == 0)
 }
 
 var scenarioPath = "";
-var domainName = "office";
+var domainName = "island";
 var seed = 42;
 var duration = 60.0;
 var outputTrace = false;
@@ -91,9 +91,8 @@ IDomainPack CreateDomainPack(string domainName)
 {
     return domainName switch
     {
-        "office" => new IslandDomainPack(), // office domain removed; default to island
         "island" => new IslandDomainPack(),
-        _ => throw new ArgumentException($"Unknown domain: {domainName}. Valid domains: office, island")
+        _ => throw new ArgumentException($"Unknown domain: {domainName}. Valid domains: island")
     };
 }
 
@@ -163,21 +162,7 @@ void RunDefault(int seed, double duration, bool trace, string domainName)
     var traceSink = new InMemoryTraceSink();
     var engine = new JohnnyLike.Engine.Engine(domainPack, seed, traceSink);
     
-    if (domainName == "office")
-    {
-        engine.AddActor(new ActorId("Jim"), new Dictionary<string, object>
-        {
-            ["satiety"] = 80.0,
-            ["energy"] = 80.0
-        });
-        
-        engine.AddActor(new ActorId("Pam"), new Dictionary<string, object>
-        {
-            ["satiety"] = 60.0,
-            ["energy"] = 90.0
-        });
-    }
-    else if (domainName == "island")
+    if (domainName == "island")
     {
         engine.AddActor(new ActorId("Johnny"), new Dictionary<string, object>
         {

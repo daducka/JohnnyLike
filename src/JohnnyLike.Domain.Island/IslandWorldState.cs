@@ -89,9 +89,24 @@ public class IslandWorldState : WorldState
 
     public override IReadOnlyList<WorldItem> GetAllItems() => WorldItems;
 
+    /// <summary>
+    /// Adds a world item to the item list and registers it in the specified room.
+    /// Use this instead of WorldItems.Add() whenever room membership is relevant.
+    /// </summary>
+    public void AddWorldItem(WorldItem item, string roomId)
+    {
+        WorldItems.Add(item);
+        AddItemToRoom(roomId, item.Id);
+    }
+
     public override string Serialize()
     {
         var serializedItems = WorldItems.Select(item => item.SerializeToDict()).ToList();
+
+        var roomData = Rooms.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.ItemIds.ToList()
+        );
 
         var options = new JsonSerializerOptions
         {
@@ -101,7 +116,8 @@ public class IslandWorldState : WorldState
         return JsonSerializer.Serialize(new
         {
             CurrentTick,
-            WorldItems = serializedItems
+            WorldItems = serializedItems,
+            Rooms = roomData
         }, options);
     }
 
@@ -133,6 +149,19 @@ public class IslandWorldState : WorldState
                         item.DeserializeFromDict(itemData);
                         WorldItems.Add(item);
                     }
+                }
+            }
+        }
+
+        if (data.TryGetValue("Rooms", out var roomsElement))
+        {
+            var roomsData = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(roomsElement.GetRawText());
+            if (roomsData != null)
+            {
+                foreach (var (roomId, itemIds) in roomsData)
+                {
+                    foreach (var itemId in itemIds)
+                        AddItemToRoom(roomId, itemId);
                 }
             }
         }

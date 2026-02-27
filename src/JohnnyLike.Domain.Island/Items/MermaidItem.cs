@@ -15,7 +15,6 @@ public class MermaidItem : ExpirableWorldItem
     public MermaidItem(string id = "mermaid")
         : base(id, "mermaid")
     {
-        RoomId = "beach";
     }
 
     public override void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -29,7 +28,7 @@ public class MermaidItem : ExpirableWorldItem
                 new ActionId("wave_at_mermaid"),
                 ActionKind.Interact,
                 parameters,
-                100L,
+                EngineConstants.TimeToTicks(5.0),
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(ShoreEastEnd) }
             ),

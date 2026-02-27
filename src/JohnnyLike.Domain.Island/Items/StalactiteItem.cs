@@ -12,7 +12,6 @@ public class StalactiteItem : WorldItem, ITickableWorldItem
 
     public StalactiteItem(string id = "stalactite") : base(id, "stalactite")
     {
-        RoomId = "cave";
     }
 
     public IEnumerable<string> GetDependencies() => Enumerable.Empty<string>();

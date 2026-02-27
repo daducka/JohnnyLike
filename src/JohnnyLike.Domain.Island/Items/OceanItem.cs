@@ -12,7 +12,7 @@ public class OceanItem : WorldItem, ITickableWorldItem, ISupplyBounty
     public double FishRegenRatePerMinute { get; set; } = 5.0;
     private long _lastTick = 0;
 
-    public OceanItem(string id = "ocean") : base(id, "ocean") { RoomId = "beach"; }
+    public OceanItem(string id = "ocean") : base(id, "ocean") { }
 
     public IEnumerable<string> GetDependencies() => new[] { "calendar" };
 

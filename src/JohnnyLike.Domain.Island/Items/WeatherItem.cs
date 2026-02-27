@@ -11,7 +11,7 @@ public class WeatherItem : WorldItem, ITickableWorldItem
     public TemperatureBand Temperature { get; set; } = TemperatureBand.Hot;
     public PrecipitationBand Precipitation { get; set; } = PrecipitationBand.Clear;
 
-    public WeatherItem(string id = "weather") : base(id, "weather") { RoomId = "beach"; }
+    public WeatherItem(string id = "weather") : base(id, "weather") { }
 
     public IEnumerable<string> GetDependencies() => new[] { "calendar" };
 

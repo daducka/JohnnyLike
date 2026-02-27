@@ -60,7 +60,7 @@ public class TopoSortTests
     private class CyclicItemA : WorldItem, ITickableWorldItem
     {
         private readonly string _depId;
-        public CyclicItemA(string id, string depId) : base(id, "cyclic_a") { _depId = depId; RoomId = "beach"; }
+        public CyclicItemA(string id, string depId) : base(id, "cyclic_a") { _depId = depId; }
         public IEnumerable<string> GetDependencies() => new[] { _depId };
         public List<TraceEvent> Tick(long currentTick, WorldState worldState) => new();
     }
@@ -68,7 +68,7 @@ public class TopoSortTests
     private class CyclicItemB : WorldItem, ITickableWorldItem
     {
         private readonly string _depId;
-        public CyclicItemB(string id, string depId) : base(id, "cyclic_b") { _depId = depId; RoomId = "beach"; }
+        public CyclicItemB(string id, string depId) : base(id, "cyclic_b") { _depId = depId; }
         public IEnumerable<string> GetDependencies() => new[] { _depId };
         public List<TraceEvent> Tick(long currentTick, WorldState worldState) => new();
     }

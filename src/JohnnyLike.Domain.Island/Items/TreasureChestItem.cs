@@ -18,7 +18,6 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
     public TreasureChestItem(string id = "treasure_chest") 
         : base(id, "treasure_chest")
     {
-        RoomId = "beach";
     }
 
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -41,7 +40,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                 new ActionId("bash_open_treasure_chest"),
                 ActionKind.Interact,
                 parameters,
-                400L + (long)(ctx.Random.NextDouble() * 100),
+                EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(TreasureChestResource) }
             ),

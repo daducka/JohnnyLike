@@ -16,7 +16,6 @@ public class SandCastleItem : MaintainableWorldItem
     public SandCastleItem(string id = "sandcastle")
         : base(id, "sandcastle", baseDecayPerSecond: 0.02)
     {
-        RoomId = "beach";
         Quality = 100.0;
     }
 
@@ -63,7 +62,7 @@ public class SandCastleItem : MaintainableWorldItem
                 new ActionId("stomp_on_sandcastle"),
                 ActionKind.Interact,
                 parameters,
-                100L,
+                EngineConstants.TimeToTicks(5.0),
                 null,
                 new List<ResourceRequirement> { new ResourceRequirement(BeachSandcastleArea) }
             ),

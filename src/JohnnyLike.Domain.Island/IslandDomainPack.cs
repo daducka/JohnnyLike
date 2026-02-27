@@ -18,17 +18,17 @@ public class IslandDomainPack : IDomainPack
     {
         var world = new IslandWorldState();
 
-        world.WorldItems.Add(new CalendarItem("calendar"));
-        world.WorldItems.Add(new WeatherItem("weather"));
-        world.WorldItems.Add(new BeachItem("beach"));
-        world.WorldItems.Add(new OceanItem("ocean"));
-        world.WorldItems.Add(new CoconutTreeItem("palm_tree"));
-        world.WorldItems.Add(new ShelterItem("main_shelter"));
-        world.WorldItems.Add(new StalactiteItem("stalactite"));
+        world.AddWorldItem(new CalendarItem("calendar"), "beach");
+        world.AddWorldItem(new WeatherItem("weather"), "beach");
+        world.AddWorldItem(new BeachItem("beach"), "beach");
+        world.AddWorldItem(new OceanItem("ocean"), "beach");
+        world.AddWorldItem(new CoconutTreeItem("palm_tree"), "beach");
+        world.AddWorldItem(new ShelterItem("main_shelter"), "beach");
+        world.AddWorldItem(new StalactiteItem("stalactite"), "cave");
 
         var supplies = new SupplyPile("shared_supplies", "shared");
         supplies.AddSupply(20.0, () => new WoodSupply());
-        world.WorldItems.Add(supplies);
+        world.AddWorldItem(supplies, "beach");
 
         return world;
     }
@@ -57,9 +57,8 @@ public class IslandDomainPack : IDomainPack
     /// </summary>
     public void InitializeActorItems(ActorId actorId, IslandWorldState world)
     {
-        // Create a fishing pole for this actor
         var fishingPole = new FishingPoleItem($"fishing_pole_{actorId.Value}", actorId);
-        world.WorldItems.Add(fishingPole);
+        world.AddWorldItem(fishingPole, "beach");
     }
 
     public List<ActionCandidate> GenerateCandidates(

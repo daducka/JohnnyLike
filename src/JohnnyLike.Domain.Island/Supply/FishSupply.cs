@@ -29,7 +29,7 @@ public class FishSupply : SupplyItem, ISupplyActionCandidate
                 new ActionId("eat_raw_fish"),
                 ActionKind.Interact,
                 new LocationActionParameters("camp"),
-                100L + (long)(ctx.Random.NextDouble() * 40)
+                EngineConstants.TimeToTicks(5.0, 7.0, ctx.Random)
             ),
             0.4,
             "Eat raw fish",

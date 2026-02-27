@@ -14,7 +14,6 @@ public class SharkItem : ExpirableWorldItem
     public SharkItem(string id = "shark") 
         : base(id, "shark")
     {
-        RoomId = "beach";
     }
 
     public override void PerformExpiration(IslandWorldState world, IResourceAvailability? resourceAvailability)

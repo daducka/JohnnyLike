@@ -16,7 +16,6 @@ public class UmbrellaItem : ToolItem
         : base(id, "umbrella_tool", OwnershipType.Exclusive, baseDecayPerSecond: 0.0, maxOwners: 1)
     {
         OwnerActorId = ownerActorId;
-        RoomId = "beach";
     }
 
     public override void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
@@ -36,7 +35,7 @@ public class UmbrellaItem : ToolItem
                     new ActionId("deploy_umbrella"),
                     ActionKind.Interact,
                     new LocationActionParameters("camp"),
-                    100L
+                    EngineConstants.TimeToTicks(5.0)
                 ),
                 0.7,
                 "Deploy umbrella (rain protection)",
@@ -68,7 +67,7 @@ public class UmbrellaItem : ToolItem
                     new ActionId("holster_umbrella"),
                     ActionKind.Interact,
                     new LocationActionParameters("camp"),
-                    60L
+                    EngineConstants.TimeToTicks(3.0)
                 ),
                 0.4,
                 "Holster umbrella",
