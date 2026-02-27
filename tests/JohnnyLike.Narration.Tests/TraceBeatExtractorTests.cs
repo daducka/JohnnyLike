@@ -339,6 +339,22 @@ public class TraceBeatExtractorTests
     }
 
     [Fact]
+    public void Consume_NarrationBeat_PromptDoesNotDuplicateCurrentBeatInRecentDomainBeats()
+    {
+        var extractor = MakeExtractor();
+
+        // Seed recent history with one prior domain beat.
+        extractor.Consume(MakeNarrationBeat(1.0, "The tide turns.", subjectId: "beach:tide"));
+
+        // Current beat should appear exactly once in the generated prompt.
+        var currentText = "The campfire has gone out.";
+        var job = extractor.Consume(MakeNarrationBeat(2.0, currentText, subjectId: "item:campfire"));
+
+        Assert.NotNull(job);
+        Assert.Equal(1, job!.Prompt.Split(currentText).Length - 1);
+    }
+
+    [Fact]
     public void Consume_NarrationBeat_RequiresNoRegistration()
     {
         // Verifies that NarrationBeat events are handled without any domain-specific handler registration
