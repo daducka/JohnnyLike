@@ -51,11 +51,12 @@ public class Director
             adjustedCandidates.Add(candidate with { Score = candidate.Score - penalty });
         }
 
-        // Deterministic tie-break: Score desc, then ActionId asc, then ProviderItemId asc
+        // Deterministic tie-break: Score desc, then ActionId asc, then ProviderItemId asc.
+        // Null ProviderItemId sorts before any non-null value (empty string < any letter).
         var sortedCandidates = adjustedCandidates
             .OrderByDescending(c => c.Score)
             .ThenBy(c => c.Action.Id.Value)
-            .ThenBy(c => c.ProviderItemId ?? "")
+            .ThenBy(c => c.ProviderItemId ?? "")  // null providers sort first (stable fallback)
             .ToList();
 
         foreach (var candidate in sortedCandidates)

@@ -108,7 +108,10 @@ public class IslandDomainPack : IDomainPack
                 candidates.Add(c with { ProviderItemId = wi.Id });
         }
         
-        // Generate candidates from the actor itself (e.g., idle action), tagged with actor ID
+        // Generate candidates from the actor itself (e.g., idle action).
+        // Actor-self candidates use the actor's own Id as ProviderItemId.
+        // The room filter in the Director treats actor-self candidates (not in the world item list)
+        // as always room-agnostic, so they are never filtered out regardless of CurrentRoomId.
         var actorCandidates = new List<ActionCandidate>();
         islandActorState.AddCandidates(ctx, actorCandidates);
         foreach (var c in actorCandidates)
@@ -407,7 +410,7 @@ public class IslandDomainPack : IDomainPack
             Type = BuffType.SkillBonus,
             SkillType = null, // null means applies to all skills
             Value = 1,
-            ExpiresAtTick = currentTick + 300L * 20 // 5 minutes
+            ExpiresAtTick = currentTick + 300L * EngineConstants.TickHz // 5 minutes
         });
 
         // Enqueue clap emote intent
