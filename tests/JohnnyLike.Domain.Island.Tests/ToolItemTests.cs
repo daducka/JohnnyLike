@@ -125,7 +125,7 @@ public class FishingPoleItemTests
         fishingPole.Quality = 80.0;
         world.WorldItems.Add(fishingPole);
         
-        var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         fishingPole.AddCandidates(ctx, candidates);
@@ -146,7 +146,7 @@ public class FishingPoleItemTests
         fishingPole.Quality = 80.0;
         world.WorldItems.Add(fishingPole);
         
-        var ctx = new IslandContext(nonOwner, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(nonOwner, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         fishingPole.AddCandidates(ctx, candidates);
@@ -167,7 +167,7 @@ public class FishingPoleItemTests
         fishingPole.IsBroken = false;
         world.WorldItems.Add(fishingPole);
         
-        var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         fishingPole.AddCandidates(ctx, candidates);
@@ -188,7 +188,7 @@ public class FishingPoleItemTests
         fishingPole.IsBroken = true;
         world.WorldItems.Add(fishingPole);
         
-        var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         fishingPole.AddCandidates(ctx, candidates);
@@ -209,7 +209,7 @@ public class FishingPoleItemTests
         fishingPole.IsBroken = true;
         world.WorldItems.Add(fishingPole);
         
-        var ctx = new IslandContext(actorId, actor, world, 0.0, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         
         fishingPole.AddCandidates(ctx, candidates);
@@ -227,7 +227,7 @@ public class FishingPoleItemTests
         fishingPole.IsBroken = false;
         
         // Tick enough to drop quality below breakage threshold
-        fishingPole.Tick(500.0, world);
+        fishingPole.Tick(10000L, world);
         
         Assert.True(fishingPole.IsBroken);
         Assert.True(fishingPole.Quality < FishingPoleItem.BreakageQualityThreshold);

@@ -4,33 +4,24 @@ using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island.Items;
 
-/// <summary>
-/// Represents the ocean surrounding the island.
-/// Maintains a FishSupply bounty that regenerates over time.
-/// The fishing action consumes fish from this bounty.
-/// </summary>
 public class OceanItem : WorldItem, ITickableWorldItem, ISupplyBounty
 {
-    // ISupplyBounty — all method logic comes from the interface's default implementations
-    public List<SupplyItem> BountySupplies { get; set; } = new()
-    {
-        new FishSupply(100)
-    };
-
+    public List<SupplyItem> BountySupplies { get; set; } = new() { new FishSupply(100) };
     public Dictionary<string, Dictionary<string, double>> ActiveReservations { get; } = new();
-
-    // Shorthand so internal methods can call ISupplyBounty defaults without explicit casts
     private ISupplyBounty Bounty => this;
-
     public double FishRegenRatePerMinute { get; set; } = 5.0;
+    private long _lastTick = 0;
 
     public OceanItem(string id = "ocean") : base(id, "ocean") { }
 
-    // ITickableWorldItem
     public IEnumerable<string> GetDependencies() => new[] { "calendar" };
 
-    public List<TraceEvent> Tick(double dtSeconds, IslandWorldState world, double currentTime)
+    public List<TraceEvent> Tick(long currentTick, WorldState worldState)
     {
+        var dtTicks = currentTick - _lastTick;
+        _lastTick = currentTick;
+        var dtSeconds = (double)dtTicks / 20.0;
+
         var fish = Bounty.GetSupply<FishSupply>();
         if (fish != null)
         {
@@ -41,7 +32,7 @@ public class OceanItem : WorldItem, ITickableWorldItem, ISupplyBounty
             {
                 return new List<TraceEvent>
                 {
-                    new TraceEvent(currentTime, null, "FishRegenerated", new Dictionary<string, object>
+                    new TraceEvent(currentTick, null, "FishRegenerated", new Dictionary<string, object>
                     {
                         ["oldAvailable"] = Math.Round(oldAmount, 2),
                         ["newAvailable"] = Math.Round(fish.Quantity, 2),
@@ -58,6 +49,7 @@ public class OceanItem : WorldItem, ITickableWorldItem, ISupplyBounty
         var dict = base.SerializeToDict();
         dict["FishRegenRatePerMinute"] = FishRegenRatePerMinute;
         dict["BountySupplies"] = BountySupplies.Select(s => s.SerializeToDict()).ToList();
+        dict["LastTick"] = _lastTick;
         return dict;
     }
 
@@ -66,6 +58,7 @@ public class OceanItem : WorldItem, ITickableWorldItem, ISupplyBounty
         base.DeserializeFromDict(data);
         if (data.TryGetValue("FishRegenRatePerMinute", out var rate))
             FishRegenRatePerMinute = rate.GetDouble();
+        if (data.TryGetValue("LastTick", out var lt)) _lastTick = lt.GetInt64();
         if (data.TryGetValue("BountySupplies", out var bountyEl))
         {
             var list = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(bountyEl.GetRawText());

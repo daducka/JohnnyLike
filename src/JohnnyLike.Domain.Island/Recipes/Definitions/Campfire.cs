@@ -27,7 +27,7 @@ public static class Campfire
 
             Location: "camp",
 
-            Duration: 60.0,
+            Duration: EngineConstants.TimeToTicks(60.0),
 
             IntrinsicScore: 0.8,
 
@@ -58,7 +58,7 @@ public static class Campfire
 
             Effect: effectCtx =>
             {
-                effectCtx.World.WorldItems.Add(new CampfireItem("main_campfire"));
+                effectCtx.World.AddWorldItem(new CampfireItem("main_campfire"), "beach");
             },
 
             Discovery: new RecipeDiscoverySpec

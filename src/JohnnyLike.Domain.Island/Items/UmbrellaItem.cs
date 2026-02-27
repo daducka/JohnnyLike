@@ -35,7 +35,7 @@ public class UmbrellaItem : ToolItem
                     new ActionId("deploy_umbrella"),
                     ActionKind.Interact,
                     new LocationActionParameters("camp"),
-                    5.0
+                    EngineConstants.TimeToTicks(5.0)
                 ),
                 0.7,
                 "Deploy umbrella (rain protection)",
@@ -47,7 +47,7 @@ public class UmbrellaItem : ToolItem
                         Type = BuffType.RainProtection,
                         SkillType = null,
                         Value = 1,
-                        ExpiresAt = double.MaxValue
+                        ExpiresAtTick = long.MaxValue
                     });
                     effectCtx.Actor.Morale += 5.0;
                 }),
@@ -67,7 +67,7 @@ public class UmbrellaItem : ToolItem
                     new ActionId("holster_umbrella"),
                     ActionKind.Interact,
                     new LocationActionParameters("camp"),
-                    3.0
+                    EngineConstants.TimeToTicks(3.0)
                 ),
                 0.4,
                 "Holster umbrella",

@@ -26,7 +26,7 @@ public static class FishingPole
 
             Location: "camp",
 
-            Duration: 40.0,
+            Duration: EngineConstants.TimeToTicks(40.0),
 
             IntrinsicScore: 0.7,
 
@@ -61,7 +61,7 @@ public static class FishingPole
                     .Count(p => p.OwnerActorId == effectCtx.ActorId);
 
                 var poleId = $"fishing_pole_{effectCtx.ActorId.Value}_{existingForActor + 1}";
-                effectCtx.World.WorldItems.Add(new FishingPoleItem(poleId, effectCtx.ActorId));
+                effectCtx.World.AddWorldItem(new FishingPoleItem(poleId, effectCtx.ActorId), "beach");
             },
 
             Discovery: new RecipeDiscoverySpec

@@ -19,9 +19,11 @@ public class CampfireItem : ToolItem
     {
     }
 
-    public override void Tick(double dtSeconds, IslandWorldState world)
+    public override void Tick(long dtTicks, IslandWorldState world)
     {
-        base.Tick(dtSeconds, world);
+        base.Tick(dtTicks, world);
+
+        var dtSeconds = dtTicks / (double)EngineConstants.TickHz;
 
         if (IsLit)
         {
@@ -75,7 +77,7 @@ public class CampfireItem : ToolItem
                     new ActionId("add_fuel_campfire"),
                     ActionKind.Interact,
                     parameters,
-                    20.0 + ctx.Random.NextDouble() * 5.0,
+                    EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
@@ -99,7 +101,7 @@ public class CampfireItem : ToolItem
                     new ActionId("relight_campfire"),
                     ActionKind.Interact,
                     parameters,
-                    30.0 + ctx.Random.NextDouble() * 10.0,
+                    EngineConstants.TimeToTicks(30.0, 40.0, ctx.Random),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
@@ -123,7 +125,7 @@ public class CampfireItem : ToolItem
                     new ActionId("repair_campfire"),
                     ActionKind.Interact,
                     parameters,
-                    25.0 + ctx.Random.NextDouble() * 5.0,
+                    EngineConstants.TimeToTicks(25.0, 30.0, ctx.Random),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
@@ -146,7 +148,7 @@ public class CampfireItem : ToolItem
                     new ActionId("rebuild_campfire"),
                     ActionKind.Interact,
                     parameters,
-                    60.0 + ctx.Random.NextDouble() * 20.0,
+                    EngineConstants.TimeToTicks(60.0, 80.0, ctx.Random),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),

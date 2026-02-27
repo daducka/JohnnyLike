@@ -59,7 +59,7 @@ public class EventSchedule
                     var emotes = new[] { "wave", "dance", "cheer", "laugh", "point" };
                     signal = new Signal(
                         "chat_redeem",
-                        currentTime,
+                        (long)(currentTime * 20),
                         targetActor,
                         new Dictionary<string, object>
                         {
@@ -72,7 +72,7 @@ public class EventSchedule
                 case 1: // Cheer
                     signal = new Signal(
                         "cheer",
-                        currentTime,
+                        (long)(currentTime * 20),
                         targetActor,
                         new Dictionary<string, object>
                         {
@@ -85,7 +85,7 @@ public class EventSchedule
                 case 2: // Printer jam (world signal, no specific actor)
                     signal = new Signal(
                         "printer_jam",
-                        currentTime,
+                        (long)(currentTime * 20),
                         null,
                         new Dictionary<string, object>
                         {

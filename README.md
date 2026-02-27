@@ -2,300 +2,104 @@
 
 JohnnyLike is a deterministic autonomy simulation engine for autonomous actors living in dynamic worlds.
 
-It is inspired by systems like **Johnny Castaway**, **The Sims autonomy model**, and idle simulations—but designed first and foremost as a fully deterministic, testable, headless simulation engine.
+Inspired by **Johnny Castaway**, **The Sims autonomy model**, and idle simulations—but designed first and foremost as a fully deterministic, testable, headless simulation engine.
 
 The engine runs without Unity and is intended to serve as a reusable autonomy core for games, simulations, and streaming integrations.
 
-The flagship domain is a castaway survival simulation, where Johnny must fish, explore, maintain shelter, react to environmental hazards, and experience rare vignette events—all governed by a DnD-style skill system.
+The flagship domain is a castaway survival simulation where Johnny must fish, explore, maintain shelter, react to environmental hazards, and experience rare vignette events—all governed by a DnD-style skill system.
 
 ---
 
-# Key Features
+## v0.2 Architecture
 
-## Deterministic Simulation
-
-Given:
-
-- Seed  
-- Initial state  
-- Signal schedule  
-
-JohnnyLike produces identical behavior and identical trace output.
-
-This enables:
-
-- Replay debugging  
-- Fuzz testing  
-- CI validation  
-- Regression detection  
-
----
-
-## Autonomous Actor Model
-
-Actors:
-
-- Select actions based on needs, environment, and skill probability  
-- Execute actions to completion (no interruption model)  
-- Adapt behavior over time using memory and variety systems  
-- Participate in coordinated multi-actor scenes  
-
----
-
-## Pluggable Domain Packs
-
-The engine is domain-agnostic. All behavior is defined by domain packs.
-
-Domains define:
-
-- Actor state  
-- World state  
-- Candidate actions  
-- Skill checks  
-- Action effects  
-- Scene templates  
-- Signal handling  
-
-Current domains:
-
-- JohnnyLike.Domain.Office — coordination demo  
-- JohnnyLike.Domain.Island — survival simulation (primary domain)  
-
----
-
-## DnD-Style Dice and Skill System
-
-JohnnyLike includes a reusable dice toolkit:
-
-- D20 rolls  
-- Advantage / disadvantage  
-- Skill modifiers  
-- Critical success / failure  
-- Probability estimation for scoring  
-
-Located in:
+### Dependency Graph
 
 ```
-src/JohnnyLike.Domain.Kit.Dice
+Domain.Abstractions   (no dependencies)
+       ↑
+Domain.Island         (depends on Abstractions)
+Domain.Kit.Dice       (depends on Abstractions)
+       ↑
+Engine                (depends on Abstractions)
+       ↑
+SimRunner             (depends on Engine + Domain.Island)
 ```
 
-Used extensively by the Island domain.
+### Core Loop (`Engine.AdvanceTicks`)
+
+Each call to `AdvanceTicks` performs the following in order:
+
+1. **ITickableWorldItem ticking** — `WorldItemTickOrchestrator` topologically sorts all items implementing `ITickableWorldItem` and ticks them in stable deterministic order. The engine owns this orchestration; domains must not tick tickables themselves.
+2. **Domain world tick** — `IDomainPack.TickWorldState` handles domain-specific passive updates: quality decay on `MaintainableWorldItem` instances, item expiration, and supply regeneration.
+3. **Signal processing** — Queued signals whose tick has arrived are dequeued and dispatched to the domain.
+4. **Housekeeping** — Expired reservations are cleaned up; variety memory is trimmed.
+
+### Action Planning (`Director.PlanNextAction`)
+
+1. **Generate candidates** — `IDomainPack.GenerateCandidates` produces all possible actions for the actor. Candidates are tagged with `ProviderItemId` for room filtering.
+2. **Room filter** — The engine filters candidates to those whose provider item is in the actor's current room (or is room-agnostic).
+3. **Variety penalty** — Recent action history applies a repetition penalty to discourage monotonous loops.
+4. **Deterministic sort** — Candidates are sorted by `Score` desc, then `ActionId` asc, then `ProviderItemId` asc for fully stable tie-breaking.
+5. **Resource reservation** — For each candidate in order, the director attempts to reserve required resources. The first candidate whose resources are all available is chosen.
+
+### Key Abstractions
+
+| Type | Location | Purpose |
+|---|---|---|
+| `WorldItem` | Domain.Abstractions | Base class for all world objects |
+| `ITickableWorldItem` | Domain.Abstractions | Items ticked by engine each step |
+| `MaintainableWorldItem` | Domain.Island | Items with quality decay over time |
+| `ActionCandidate` | Domain.Abstractions | A possible action with score and provider info |
+| `IDomainPack` | Domain.Abstractions | Domain plugin interface |
+| `Director` | Engine | Action planning and resource reservation |
+| `WorldItemTickOrchestrator` | Engine | Topo-sort and tick of ITickableWorldItems |
+| `EngineConstants` | Domain.Abstractions | Shared constants (TickHz = 20) |
+
+### Constants
+
+- `EngineConstants.TickHz = 20` — 20 simulation ticks per second. All time calculations use `ticks / (double)EngineConstants.TickHz` for conversion. Never hardcode `20.0`.
+
+### Determinism
+
+Given the same seed, initial state, and signal schedule, JohnnyLike produces identical trace output. This enables:
+
+- Replay debugging
+- Fuzz testing
+- CI regression detection
 
 ---
 
-## Persistent World Simulation
-
-Island world includes persistent objects:
-
-- Campfires (fuel, decay, maintenance)  
-- Shelter (quality, weather damage)  
-- Treasure chests (spawn from swim critical success)  
-- Sharks (spawn from swim critical failure)  
-- Fish and coconut resources with regeneration  
-- Weather and tide systems  
-- Day/night cycle  
-
-World state evolves continuously and is fully deterministic.
-
----
-
-## Rich Skill-Driven Survival Gameplay
-
-Johnny must balance:
-
-- Hunger  
-- Energy  
-- Morale  
-- Boredom  
-
-Actions include:
-
-- Fishing  
-- Coconut gathering  
-- Swimming  
-- Sleeping  
-- Sand castle building  
-- Chest discovery and opening  
-- Campfire maintenance  
-- Shelter maintenance  
-
-Rare vignette events:
-
-- Plane sightings  
-- Mermaid encounters  
-
-All governed by skill checks with probability-aware scoring.
-
----
-
-## Fully Instrumented Trace System
-
-Every action generates structured trace output including:
-
-- Action ID  
-- Duration  
-- Skill DC  
-- Modifier  
-- Dice roll  
-- Total roll  
-- Outcome tier  
-- World effects  
-
-Example:
-
-```
-[1234.50] Johnny - ActionCompleted (
-  actionId=fish_for_food,
-  outcomeType=Success,
-  actualDuration=18.5,
-  dc=15,
-  modifier=4,
-  roll=13,
-  total=17,
-  tier=Success
-)
-```
-
-Trace is deterministic and replayable.
-
----
-
-## Fuzz Testing Infrastructure
-
-JohnnyLike includes full fuzz testing support.
-
-Fuzz tests:
-
-- Generate deterministic random signal schedules  
-- Inject failures, delays, and contention  
-- Validate invariants  
-- Detect rare edge cases  
-- Produce reproducible traces  
-
-Profiles:
-
-- smoke  
-- extended  
-- nightly  
-
-Located in:
-
-```
-src/JohnnyLike.SimRunner/FuzzRunner.cs
-```
-
-CI runs fuzz tests automatically.
-
----
-
-## Narration Beat System
-
-JohnnyLike includes a narration pipeline that converts simulation events into spoken narration via an LLM and TTS engine.
-
-Domain code emits concise, factual **narration beats** at meaningful transitions:
-
-```csharp
-using (world.Tracer.PushPhase(TracePhase.WorldTick))
-    world.Tracer.BeatWorld("The tide turns, rising from low to high.", subjectId: "beach:tide");
-```
-
-The engine flushes beats as `NarrationBeat` trace events at tick and action boundaries. The narration pipeline consumes them generically — no domain-specific handler registration is required.
-
-See [`docs/narration-beats.md`](docs/narration-beats.md) for the style guide and authoring instructions.
-
----
-
-# Project Structure
+## Project Structure
 
 ```
 src/
-  JohnnyLike.Engine/
-  JohnnyLike.Domain.Abstractions/
-  JohnnyLike.Domain.Kit.Dice/
-  JohnnyLike.Domain.Office/
-  JohnnyLike.Domain.Island/
-  JohnnyLike.SimRunner/
-
+  JohnnyLike.Domain.Abstractions/   Core interfaces and base types
+  JohnnyLike.Domain.Island/         Castaway survival domain
+  JohnnyLike.Domain.Kit.Dice/       DnD-style dice and skill checks
+  JohnnyLike.Engine/                Simulation engine
+  JohnnyLike.SimRunner/             Fuzz runner and scenario loader
+  JohnnyLike.Narration/             LLM narration pipeline
 tests/
   JohnnyLike.Engine.Tests/
-  JohnnyLike.Domain.Kit.Dice.Tests/
-  JohnnyLike.Domain.Office.Tests/
   JohnnyLike.Domain.Island.Tests/
   JohnnyLike.Scenario.Tests/
-
-scenarios/
+  JohnnyLike.Narration.Tests/
 ```
 
 ---
 
-# Running the Simulation
+## Running
 
-Build:
-
+```bash
+# Build
 dotnet build
 
-Run Island simulation:
+# Test
+dotnet test
 
+# Fuzz run (smoke profile)
+dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --profile smoke
+
+# Run a scenario
+dotnet run --project src/JohnnyLike.SimRunner -- --scenario scenarios/basic.json
 ```
-dotnet run --project src/JohnnyLike.SimRunner -- --domain island --duration 120 --seed 42 --trace
-```
-
-Run fuzz tests:
-
-```
-dotnet run --project src/JohnnyLike.SimRunner -- --fuzz --domain island --runs 10 --profile smoke
-```
-
----
-
-# Creating a New Domain
-
-Implement:
-
-IDomainPack
-
-Define:
-
-- ActorState  
-- WorldState  
-- Candidate generation  
-- Skill resolution  
-- Action effects  
-- Scene templates  
-
-The engine handles everything else.
-
----
-
-# Design Philosophy
-
-JohnnyLike is built on:
-
-- Determinism first  
-- Domain isolation  
-- Testability  
-- Reproducibility  
-- Extensibility  
-- Simulation correctness  
-
-Rendering is optional and external.
-
----
-
-# Current Status
-
-JohnnyLike is fully functional and actively evolving.
-
-The Island domain serves as the primary reference implementation and demonstrates:
-
-- Skill-driven autonomy  
-- Persistent world state  
-- Resource systems  
-- Hazard systems  
-- Rare event systems  
-- Fuzz-validated stability  
-
----
-
-
-JohnnyLike is a foundation for building deterministic autonomous worlds.

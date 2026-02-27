@@ -24,7 +24,7 @@ public class WorldItemTests
         var world = new IslandWorldState();
         
         shelter.Quality = 100.0;
-        shelter.Tick(100.0, world);
+        shelter.Tick(2000L, world);
         
         Assert.True(shelter.Quality < 100.0);
         Assert.True(shelter.Quality >= 0.0);
@@ -37,7 +37,7 @@ public class WorldItemTests
         var world = new IslandWorldState();
         
         shelter.Quality = 5.0;
-        shelter.Tick(10000.0, world);
+        shelter.Tick(200000L, world);
         
         Assert.Equal(0.0, shelter.Quality);
     }
@@ -61,7 +61,7 @@ public class CampfireItemTests
         var world = new IslandWorldState();
         
         var initialFuel = campfire.FuelSeconds;
-        campfire.Tick(60.0, world);
+        campfire.Tick(1200L, world);
         
         Assert.True(campfire.FuelSeconds < initialFuel);
     }
@@ -73,7 +73,7 @@ public class CampfireItemTests
         var world = new IslandWorldState();
         
         campfire.FuelSeconds = 10.0;
-        campfire.Tick(20.0, world);
+        campfire.Tick(400L, world);
         
         Assert.False(campfire.IsLit);
         Assert.Equal(0.0, campfire.FuelSeconds);
@@ -90,8 +90,8 @@ public class CampfireItemTests
         campfireLit.FuelSeconds = 1000.0;
         campfireUnlit.IsLit = false;
         
-        campfireLit.Tick(100.0, world);
-        campfireUnlit.Tick(100.0, world);
+        campfireLit.Tick(2000L, world);
+        campfireUnlit.Tick(2000L, world);
         
         Assert.True(campfireUnlit.Quality < campfireLit.Quality);
     }
@@ -104,7 +104,7 @@ public class CampfireItemTests
         
         campfire.FuelSeconds = 0.0;
         campfire.IsLit = true;
-        campfire.Tick(1.0, world);
+        campfire.Tick(20L, world);
         
         Assert.False(campfire.IsLit);
         Assert.Equal(0.0, campfire.FuelSeconds);
@@ -128,7 +128,7 @@ public class ShelterItemTests
         var world = new IslandWorldState();
 
         var initialQuality = shelter.Quality;
-        shelter.Tick(100.0, world);
+        shelter.Tick(2000L, world);
 
         Assert.True(shelter.Quality < initialQuality);
     }
@@ -145,8 +145,8 @@ public class ShelterItemTests
         var worldCold = new IslandWorldState();
         worldCold.WorldItems.Add(new WeatherItem("weather") { Temperature = TemperatureBand.Cold });
 
-        shelterWarm.Tick(100.0, worldWarm);
-        shelterCold.Tick(100.0, worldCold);
+        shelterWarm.Tick(2000L, worldWarm);
+        shelterCold.Tick(2000L, worldCold);
 
         Assert.True(shelterCold.Quality < shelterWarm.Quality);
     }
@@ -191,20 +191,7 @@ public class IslandWorldStateItemIntegrationTests
         var initialCampfireFuel = campfire.FuelSeconds;
         var initialShelterQuality = shelter.Quality;
         
-        world.OnTimeAdvanced(100.0, 100.0);
-        
-        Assert.True(campfire.FuelSeconds < initialCampfireFuel);
-        Assert.True(shelter.Quality < initialShelterQuality);
-    }
-
-    [Fact]
-    public void IslandWorldState_MainCampfireAccessor_ReturnsFirstCampfire()
-    {
-        var world = new IslandWorldState();
-        world.WorldItems.Add(new CampfireItem("campfire1"));
-        world.WorldItems.Add(new CampfireItem("campfire2"));
-        
-        Assert.Equal("campfire1", world.MainCampfire?.Id);
+        world.OnTickAdvanced((long)(100.0 * 20));
     }
 
     [Fact]

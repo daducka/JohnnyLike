@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Threading.Channels;
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
-using JohnnyLike.Domain.Office;
 using JohnnyLike.Engine;
 using JohnnyLike.Llm;
 using JohnnyLike.Narration;
@@ -64,7 +63,7 @@ Console.WriteLine($"  buffer watermarks low={lowWater}s high={highWater}s  slowd
 IDomainPack domainPack = domain switch
 {
     "island" => new IslandDomainPack(),
-    "office" => new OfficeDomainPack(),
+    "office" => new JohnnyLike.Domain.Island.IslandDomainPack(),
     _ => throw new ArgumentException($"Unknown domain: {domain}")
 };
 
@@ -119,7 +118,7 @@ var traceToJobTask = Task.Run(async () =>
             if (evt.EventType == "NarrationBeat" && evt.Details.TryGetValue("text", out var beatText))
             {
                 var phase = evt.Details.TryGetValue("phase", out var p) ? p : "?";
-                Console.WriteLine($"[beat] t={evt.Time:F1} [{phase}] {beatText}");
+                Console.WriteLine($"[beat] t={evt.TimeSeconds:F1} [{phase}] {beatText}");
             }
 
             var job = extractor.Consume(evt);
@@ -176,7 +175,7 @@ var playbackTask = Task.Run(async () =>
         await foreach (var clip in audioChannel.Reader.ReadAllAsync(cts.Token))
         {
             // Wait until sim time reaches the scheduled play time
-            while (engine.CurrentTime < clip.PlayAtSimTime && !cts.Token.IsCancellationRequested)
+            while (engine.CurrentSeconds < clip.PlayAtSimTime && !cts.Token.IsCancellationRequested)
                 await Task.Delay(50, cts.Token).ConfigureAwait(false);
 
             if (cts.Token.IsCancellationRequested) break;
@@ -201,7 +200,7 @@ var executor = new FakeExecutor(engine);
 var sw = Stopwatch.StartNew();
 var lastElapsed = 0.0;
 
-while (engine.CurrentTime < duration)
+while (engine.CurrentSeconds < duration)
 {
     var wallNow = sw.Elapsed.TotalSeconds;
     var dtWall = (wallNow - lastElapsed) * realtimeFactor;
@@ -219,7 +218,7 @@ while (engine.CurrentTime < duration)
     await Task.Delay(16).ConfigureAwait(false);
 }
 
-Console.WriteLine($"\nSim completed at t={engine.CurrentTime:F2}s");
+Console.WriteLine($"\nSim completed at t={engine.CurrentSeconds:F2}s");
 traceSink.CompleteAdding(); // signals traceToJobTask to finish cleanly
 cts.Cancel();
 try { await Task.WhenAll(traceToJobTask, jobToAudioTask, playbackTask); } catch { }

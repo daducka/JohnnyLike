@@ -52,7 +52,7 @@ public class ActionReservationTests
         // Complete the action
         engine.ReportActionComplete(
             new ActorId("TestActor"),
-            new ActionOutcome(action!.Id, ActionOutcomeType.Success, 10.0, null)
+            new ActionOutcome(action!.Id, ActionOutcomeType.Success, 200L, null)
         );
         
         // Assert - Resource should be released
@@ -118,9 +118,7 @@ public class ActionReservationTests
         // Pre-reserve one of the resources externally
         reservationTable.TryReserve(
             new ResourceId("test:resource:2"),
-            "actor:External",
-            100.0
-        );
+            "actor:External", 2000L);
         
         engine.AddActor(new ActorId("TestActor"));
         
@@ -166,7 +164,7 @@ public class ActionReservationTests
             ActorId actorId,
             ActorState actorState,
             WorldState worldState,
-            double currentTime,
+            long currentTick,
             Random rng,
             IResourceAvailability resourceAvailability)
         {
@@ -180,7 +178,7 @@ public class ActionReservationTests
                         new ActionId("action_with_resource"),
                         ActionKind.Interact,
                         EmptyActionParameters.Instance,
-                        10.0,
+                        200L,
                         null,
                         new List<ResourceRequirement>
                         {
@@ -197,9 +195,7 @@ public class ActionReservationTests
                 new ActionSpec(
                     new ActionId("action_without_resource"),
                     ActionKind.Wait,
-                    EmptyActionParameters.Instance,
-                    5.0
-                ),
+                    EmptyActionParameters.Instance, 100L),
                 0.5,
                 "Action without resource"
             ));
@@ -208,11 +204,10 @@ public class ActionReservationTests
         }
         
         public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability, object? effectHandler = null) { }
-        public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime) { }
-        public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
+        public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, long currentTick) { }
         public bool ValidateContent(out List<string> errors) { errors = new List<string>(); return true; }
         public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState) => new Dictionary<string, object>();
-        public List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability) => new List<TraceEvent>();
+        public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability) => new List<TraceEvent>();
     }
     
     // Test domain pack that provides actions requiring multiple resources
@@ -231,7 +226,7 @@ public class ActionReservationTests
             ActorId actorId,
             ActorState actorState,
             WorldState worldState,
-            double currentTime,
+            long currentTick,
             Random rng,
             IResourceAvailability resourceAvailability)
         {
@@ -246,7 +241,7 @@ public class ActionReservationTests
                         new ActionId("action_with_multiple_resources"),
                         ActionKind.Interact,
                         EmptyActionParameters.Instance,
-                        10.0,
+                        200L,
                         null,
                         new List<ResourceRequirement>
                         {
@@ -264,9 +259,7 @@ public class ActionReservationTests
                 new ActionSpec(
                     new ActionId("action_without_resource"),
                     ActionKind.Wait,
-                    EmptyActionParameters.Instance,
-                    5.0
-                ),
+                    EmptyActionParameters.Instance, 100L),
                 0.5,
                 "Action without resource"
             ));
@@ -275,11 +268,10 @@ public class ActionReservationTests
         }
         
         public void ApplyActionEffects(ActorId actorId, ActionOutcome outcome, ActorState actorState, WorldState worldState, IRngStream rng, IResourceAvailability resourceAvailability, object? effectHandler = null) { }
-        public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime) { }
-        public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
+        public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, long currentTick) { }
         public bool ValidateContent(out List<string> errors) { errors = new List<string>(); return true; }
         public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState) => new Dictionary<string, object>();
-        public List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability) => new List<TraceEvent>();
+        public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability) => new List<TraceEvent>();
     }
     
     private class TestActorState : ActorState
@@ -290,6 +282,7 @@ public class ActionReservationTests
     
     private class TestWorldState : WorldState
     {
+        public override IReadOnlyList<WorldItem> GetAllItems() => Array.Empty<WorldItem>();
         public override string Serialize() => "{}";
         public override void Deserialize(string json) { }
     }

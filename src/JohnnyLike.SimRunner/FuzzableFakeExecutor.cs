@@ -7,8 +7,8 @@ public class FuzzableFakeExecutor
     private readonly Engine.Engine _engine;
     private readonly FuzzConfig _config;
     private readonly Random _rng;
-    private readonly Dictionary<ActorId, (ActionSpec Action, double StartTime, double AdjustedDuration)> _runningActions = new();
-    private readonly Dictionary<ActorId, double> _noShowUntil = new();
+    private readonly Dictionary<ActorId, (ActionSpec Action, long StartTick, long AdjustedDurationTicks)> _runningActions = new();
+    private readonly Dictionary<ActorId, long> _noShowUntil = new();
     private readonly Dictionary<ActorId, bool> _busyLocked = new();
 
     public FuzzableFakeExecutor(Engine.Engine engine, FuzzConfig config, Random rng)
@@ -18,9 +18,16 @@ public class FuzzableFakeExecutor
         _rng = rng;
     }
 
-    public void Update(double dtSeconds)
+    public void AdvanceTicks(long ticks)
     {
-        _engine.AdvanceTime(dtSeconds);
+        _engine.AdvanceTicks(ticks);
+        DoUpdate();
+    }
+
+    public void Update(double dtSeconds) => AdvanceTicks((long)(dtSeconds * Engine.Engine.TickHz));
+
+    private void DoUpdate()
+    {
 
         // Randomly inject no-shows and busy locks
         InjectFuzzBehaviors();
@@ -29,8 +36,8 @@ public class FuzzableFakeExecutor
         var completed = new List<ActorId>();
         foreach (var kvp in _runningActions)
         {
-            var elapsed = _engine.CurrentTime - kvp.Value.StartTime;
-            if (elapsed >= kvp.Value.AdjustedDuration)
+            var elapsed = _engine.CurrentTick - kvp.Value.StartTick;
+            if (elapsed >= kvp.Value.AdjustedDurationTicks)
             {
                 completed.Add(kvp.Key);
             }
@@ -38,7 +45,7 @@ public class FuzzableFakeExecutor
 
         foreach (var actorId in completed)
         {
-            var (action, startTime, adjustedDuration) = _runningActions[actorId];
+            var (action, startTick, adjustedDurationTicks) = _runningActions[actorId];
             
             // Determine outcome with task failure rate
             var outcomeType = _rng.NextDouble() < _config.TaskFailureRate 
@@ -48,7 +55,7 @@ public class FuzzableFakeExecutor
             _engine.ReportActionComplete(actorId, new ActionOutcome(
                 action.Id,
                 outcomeType,
-                adjustedDuration,
+                _engine.CurrentTick - startTick,
                 action.ResultData
             ));
             _runningActions.Remove(actorId);
@@ -67,7 +74,7 @@ public class FuzzableFakeExecutor
             var actorState = kvp.Value;
 
             // Skip if actor is in no-show period
-            if (_noShowUntil.TryGetValue(actorId, out var noShowTime) && _engine.CurrentTime < noShowTime)
+            if (_noShowUntil.TryGetValue(actorId, out var noShowTime) && _engine.CurrentTick < noShowTime)
             {
                 continue;
             }
@@ -82,16 +89,16 @@ public class FuzzableFakeExecutor
                 {
                     // Apply jitter to duration
                     var jitter = 1.0 + (_rng.NextDouble() * 2.0 - 1.0) * (_config.ActionDurationJitterPct / 100.0);
-                    var adjustedDuration = action.EstimatedDuration * jitter;
+                    var adjustedDurationTicks = (long)(action.EstimatedDurationTicks * jitter);
 
                     // Add travel time jitter for MoveTo actions
                     if (action.Kind == ActionKind.MoveTo)
                     {
                         var travelJitter = 1.0 + (_rng.NextDouble() * 2.0 - 1.0) * (_config.TravelTimeJitterPct / 100.0);
-                        adjustedDuration *= travelJitter;
+                        adjustedDurationTicks = (long)(adjustedDurationTicks * travelJitter);
                     }
 
-                    _runningActions[actorId] = (action, _engine.CurrentTime, adjustedDuration);
+                    _runningActions[actorId] = (action, _engine.CurrentTick, adjustedDurationTicks);
                 }
             }
         }
@@ -113,8 +120,8 @@ public class FuzzableFakeExecutor
             // Randomly inject no-show
             if (actorState.Status == ActorStatus.Ready && _rng.NextDouble() < _config.NoShowProbability * 0.01)
             {
-                var noShowDuration = _rng.Next(10, 60);
-                _noShowUntil[actorId] = _engine.CurrentTime + noShowDuration;
+                var noShowDuration = (long)(_rng.Next(10, 60) * Engine.Engine.TickHz);
+                _noShowUntil[actorId] = _engine.CurrentTick + noShowDuration;
 
                 // Create a "no-show" idle action
                 var idleAction = new ActionSpec(
@@ -124,14 +131,14 @@ public class FuzzableFakeExecutor
                     noShowDuration
                 );
 
-                _runningActions[actorId] = (idleAction, _engine.CurrentTime, noShowDuration);
+                _runningActions[actorId] = (idleAction, _engine.CurrentTick, noShowDuration);
                 continue;
             }
 
             // Randomly inject busy lock
             if (actorState.Status == ActorStatus.Ready && _rng.NextDouble() < _config.BusyLockProbability * 0.01)
             {
-                var busyDuration = _rng.Next(30, 120);
+                var busyDuration = (long)(_rng.Next(30, 120) * Engine.Engine.TickHz);
                 _busyLocked[actorId] = true;
 
                 var busyAction = new ActionSpec(
@@ -141,7 +148,7 @@ public class FuzzableFakeExecutor
                     busyDuration
                 );
 
-                _runningActions[actorId] = (busyAction, _engine.CurrentTime, busyDuration);
+                _runningActions[actorId] = (busyAction, _engine.CurrentTick, busyDuration);
             }
         }
     }

@@ -22,10 +22,10 @@ public abstract class MaintainableWorldItem : WorldItem, IIslandActionCandidate
         BaseDecayPerSecond = baseDecayPerSecond;
     }
 
-    public virtual void Tick(double dtSeconds, IslandWorldState world)
+    public virtual void Tick(long dtTicks, IslandWorldState world)
     {
         var prevQuality = Quality;
-        Quality = Math.Max(0.0, Quality - BaseDecayPerSecond * dtSeconds);
+        Quality = Math.Max(0.0, Quality - BaseDecayPerSecond * (dtTicks / (double)EngineConstants.TickHz));
 
         // Emit a beat only when crossing a threshold for the first time (descending).
         foreach (var threshold in QualityThresholds)

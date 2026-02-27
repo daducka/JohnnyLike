@@ -32,8 +32,15 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
     // ITickableWorldItem
     public IEnumerable<string> GetDependencies() => new[] { "calendar" };
 
-    public List<TraceEvent> Tick(double dtSeconds, IslandWorldState world, double currentTime)
+    private long _lastTick = 0;
+
+    public List<TraceEvent> Tick(long currentTick, WorldState worldState)
     {
+        var world = (IslandWorldState)worldState;
+        var dtTicks = currentTick - _lastTick;
+        _lastTick = currentTick;
+        var dtSeconds = (double)dtTicks / 20.0;
+
         var calendar = world.GetItem<CalendarItem>("calendar");
         var weather = world.GetItem<WeatherItem>("weather");
 
@@ -91,7 +98,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 new ActionId("explore_beach"),
                 ActionKind.Interact,
                 parameters,
-                20.0 + ctx.Random.NextDouble() * 10.0,
+                EngineConstants.TimeToTicks(20.0, 30.0, ctx.Random),
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(BeachResource) }
             ),
@@ -175,6 +182,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
         var dict = base.SerializeToDict();
         dict["Tide"] = Tide.ToString();
         dict["BountySupplies"] = BountySupplies.Select(s => s.SerializeToDict()).ToList();
+        dict["LastTick"] = _lastTick;
         return dict;
     }
 
@@ -183,6 +191,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
         base.DeserializeFromDict(data);
         if (data.TryGetValue("Tide", out var tideEl))
             Tide = Enum.Parse<TideLevel>(tideEl.GetString()!);
+        if (data.TryGetValue("LastTick", out var lt)) _lastTick = lt.GetInt64();
         if (data.TryGetValue("BountySupplies", out var bountyEl))
         {
             var list = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, System.Text.Json.JsonElement>>>(bountyEl.GetRawText());

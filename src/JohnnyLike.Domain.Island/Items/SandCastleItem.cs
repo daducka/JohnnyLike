@@ -19,7 +19,7 @@ public class SandCastleItem : MaintainableWorldItem
         Quality = 100.0;
     }
 
-    public override void Tick(double dtSeconds, IslandWorldState world)
+    public override void Tick(long dtTicks, IslandWorldState world)
     {
         // Calculate decay rate based on environmental conditions
         var decayRate = BaseDecayPerSecond;
@@ -39,7 +39,7 @@ public class SandCastleItem : MaintainableWorldItem
         }
         
         // Apply decay
-        Quality = Math.Max(0.0, Quality - decayRate * dtSeconds);
+        Quality = Math.Max(0.0, Quality - decayRate * (dtTicks / (double)EngineConstants.TickHz));
         
         // Mark as expired when quality reaches 0
         if (Quality <= 0.0)
@@ -62,7 +62,7 @@ public class SandCastleItem : MaintainableWorldItem
                 new ActionId("stomp_on_sandcastle"),
                 ActionKind.Interact,
                 parameters,
-                5.0,
+                EngineConstants.TimeToTicks(5.0),
                 null,
                 new List<ResourceRequirement> { new ResourceRequirement(BeachSandcastleArea) }
             ),

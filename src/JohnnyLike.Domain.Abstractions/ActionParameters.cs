@@ -22,23 +22,6 @@ public record EmptyActionParameters : ActionParameters
 }
 
 /// <summary>
-/// Parameters for joining a scene.
-/// </summary>
-public record JoinSceneActionParameters(
-    string SceneId,
-    string Role,
-    double Timeout
-) : ActionParameters
-{
-    public override Dictionary<string, object> ToDictionary() => new()
-    {
-        ["sceneId"] = SceneId,
-        ["role"] = Role,
-        ["timeout"] = Timeout
-    };
-}
-
-/// <summary>
 /// Generic single-value parameters with a reason/description.
 /// </summary>
 public record ReasonActionParameters(

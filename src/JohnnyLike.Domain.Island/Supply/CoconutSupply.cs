@@ -32,7 +32,7 @@ public class CoconutSupply : SupplyItem, ISupplyActionCandidate
                 new ActionId("bash_and_eat_coconut"),
                 ActionKind.Interact,
                 parameters,
-                8.0 + ctx.Random.NextDouble() * 4.0,
+                EngineConstants.TimeToTicks(8.0, 12.0, ctx.Random),
                 parameters.ToResultData()
             ),
             0.5,

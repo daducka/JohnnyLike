@@ -26,7 +26,7 @@ public static class Umbrella
 
             Location: "camp",
 
-            Duration: 30.0,
+            Duration: EngineConstants.TimeToTicks(30.0),
 
             IntrinsicScore: 0.5,
 
@@ -57,7 +57,7 @@ public static class Umbrella
             Effect: effectCtx =>
             {
                 var toolId = $"umbrella_{effectCtx.ActorId.Value}";
-                effectCtx.World.WorldItems.Add(new UmbrellaItem(toolId, effectCtx.ActorId));
+                effectCtx.World.AddWorldItem(new UmbrellaItem(toolId, effectCtx.ActorId), "beach");
             },
 
             Discovery: new RecipeDiscoverySpec

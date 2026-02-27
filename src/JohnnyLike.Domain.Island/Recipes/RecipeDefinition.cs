@@ -16,7 +16,7 @@ public sealed record RecipeDefinition(
 
     string Location,
 
-    double Duration,
+    long Duration,
 
     double IntrinsicScore,
 

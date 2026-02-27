@@ -14,18 +14,18 @@ public class ShelterItem : ToolItem
     {
     }
 
-    public override void Tick(double dtSeconds, IslandWorldState world)
+    public override void Tick(long dtTicks, IslandWorldState world)
     {
-        base.Tick(dtSeconds, world);
+        base.Tick(dtTicks, world);
 
         var weather = world.GetItem<WeatherItem>("weather");
         if (weather?.Temperature == TemperatureBand.Cold)
         {
-            Quality = Math.Max(0.0, Quality - 0.03 * dtSeconds);
+            Quality = Math.Max(0.0, Quality - 0.03 * (dtTicks / (double)EngineConstants.TickHz));
         }
         if (weather?.Precipitation == PrecipitationBand.Rainy)
         {
-            Quality = Math.Max(0.0, Quality - 0.02 * dtSeconds);
+            Quality = Math.Max(0.0, Quality - 0.02 * (dtTicks / (double)EngineConstants.TickHz));
         }
     }
 
@@ -57,7 +57,7 @@ public class ShelterItem : ToolItem
                     new ActionId("repair_shelter"),
                     ActionKind.Interact,
                     parameters,
-                    30.0 + ctx.Random.NextDouble() * 10.0,
+                    EngineConstants.TimeToTicks(30.0, 40.0, ctx.Random),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
@@ -81,7 +81,7 @@ public class ShelterItem : ToolItem
                     new ActionId("reinforce_shelter"),
                     ActionKind.Interact,
                     parameters,
-                    40.0 + ctx.Random.NextDouble() * 10.0,
+                    EngineConstants.TimeToTicks(40.0, 50.0, ctx.Random),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
@@ -104,7 +104,7 @@ public class ShelterItem : ToolItem
                     new ActionId("rebuild_shelter"),
                     ActionKind.Interact,
                     parameters,
-                    90.0 + ctx.Random.NextDouble() * 30.0,
+                    EngineConstants.TimeToTicks(90.0, 120.0, ctx.Random),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),

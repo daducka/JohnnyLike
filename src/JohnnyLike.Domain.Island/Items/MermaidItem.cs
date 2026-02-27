@@ -28,7 +28,7 @@ public class MermaidItem : ExpirableWorldItem
                 new ActionId("wave_at_mermaid"),
                 ActionKind.Interact,
                 parameters,
-                5.0,
+                EngineConstants.TimeToTicks(5.0),
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(ShoreEastEnd) }
             ),
@@ -56,7 +56,7 @@ public class MermaidItem : ExpirableWorldItem
                         Type = BuffType.Advantage,
                         SkillType = SkillType.Fishing,
                         Value = 0,
-                        ExpiresAt = effectCtx.World.CurrentTime + 600.0
+                        ExpiresAtTick = effectCtx.World.CurrentTick + 600L * 20
                     });
                 }
             })

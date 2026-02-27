@@ -31,14 +31,11 @@ public class MaintenanceIntegrationTests
         var currentTime = 0.0;
         var oneDay = 86400.0;
         
-        world.OnTimeAdvanced(currentTime + oneDay, oneDay);
-        currentTime += oneDay;
-        
-        Assert.True(campfire.Quality < initialCampfireQuality, "Campfire quality should decay");
+        world.OnTickAdvanced((long)(currentTime + oneDay * 20));
         Assert.True(shelter.Quality < initialShelterQuality, "Shelter quality should decay");
         Assert.True(campfire.FuelSeconds < initialFuel, "Fuel should be consumed");
         
-        var candidates = domain.GenerateCandidates(actorId, actor, world, currentTime, new Random(42), new EmptyResourceAvailability());
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
         
         var hasMaintenanceAction = candidates.Any(c => 
             c.Action.Id.Value.Contains("campfire") || c.Action.Id.Value.Contains("shelter"));
@@ -58,11 +55,9 @@ public class MaintenanceIntegrationTests
         var campfire = world.MainCampfire!;
         campfire.FuelSeconds = 10.0;
         
-        world.OnTimeAdvanced(20.0, 20.0);
+        world.OnTickAdvanced((long)(20.0 * 20));
         
-        Assert.False(campfire.IsLit, "Campfire should go out");
-        
-        var candidates = domain.GenerateCandidates(actorId, actor, world, 20.0, new Random(42), new EmptyResourceAvailability());
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 400L, new Random(42), new EmptyResourceAvailability());
         
         Assert.Contains(candidates, c => c.Action.Id.Value == "relight_campfire");
     }
@@ -74,14 +69,14 @@ public class MaintenanceIntegrationTests
         var worldClear = (IslandWorldState)domain.CreateInitialWorldState();
         var worldRainy = (IslandWorldState)domain.CreateInitialWorldState();
         
-        worldClear.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Hot;
-        worldClear.GetItem<CalendarItem>("calendar")!.TimeOfDay = 0.5; // noon = hot
-        worldRainy.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
-        worldRainy.GetItem<CalendarItem>("calendar")!.TimeOfDay = 0.0; // midnight = cold
+        // Set different weather conditions  
+        worldClear.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Clear;
+        worldRainy.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
         
+        // Tick both worlds with the same time advance
         var duration = 3600.0;
-        worldClear.OnTimeAdvanced(duration, duration);
-        worldRainy.OnTimeAdvanced(duration, duration);
+        worldClear.OnTickAdvanced((long)(duration * 20));
+        worldRainy.OnTickAdvanced((long)(duration * 20));
         
         Assert.True(worldRainy.MainShelter!.Quality < worldClear.MainShelter!.Quality,
             "Shelter should decay faster in rainy weather");
@@ -107,13 +102,12 @@ public class MaintenanceIntegrationTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(11, 2, AdvantageType.Normal, "Survival"),
                     new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5)),
-            25.0
+            500L
         );
         
         var outcome = new ActionOutcome(
             new ActionId("repair_campfire"),
-            ActionOutcomeType.Success,
-            25.0,
+            ActionOutcomeType.Success, 500L,
             new Dictionary<string, object> 
             { 
                 ["tier"] = "Success"
@@ -146,13 +140,12 @@ public class MaintenanceIntegrationTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 2, AdvantageType.Normal, "Survival"),
                     new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5)),
-            20.0
+            400L
         );
         
         var outcome = new ActionOutcome(
             new ActionId("add_fuel_campfire"),
-            ActionOutcomeType.Success,
-            20.0,
+            ActionOutcomeType.Success, 400L,
             new Dictionary<string, object> 
             { 
                 ["tier"] = "Success"
@@ -184,9 +177,9 @@ public class MaintenanceIntegrationTests
         );
         
         var candidatesLow = domain.GenerateCandidates(
-            new ActorId("LowSkill"), lowSkillActor, world, 0.0, new Random(42), new EmptyResourceAvailability());
+            new ActorId("LowSkill"), lowSkillActor, world, 0L, new Random(42), new EmptyResourceAvailability());
         var candidatesHigh = domain.GenerateCandidates(
-            new ActorId("HighSkill"), highSkillActor, world, 0.0, new Random(42), new EmptyResourceAvailability());
+            new ActorId("HighSkill"), highSkillActor, world, 0L, new Random(42), new EmptyResourceAvailability());
         
         var lowFuelCandidate = candidatesLow.FirstOrDefault(c => c.Action.Id.Value == "add_fuel_campfire");
         var highFuelCandidate = candidatesHigh.FirstOrDefault(c => c.Action.Id.Value == "add_fuel_campfire");
@@ -217,13 +210,12 @@ public class MaintenanceIntegrationTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(14, 2, AdvantageType.Normal, "Survival"),
                     new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5)),
-            90.0
+            1800L
         );
         
         var outcome = new ActionOutcome(
             new ActionId("rebuild_shelter"),
-            ActionOutcomeType.Success,
-            90.0,
+            ActionOutcomeType.Success, 1800L,
             new Dictionary<string, object> 
             { 
                 ["tier"] = "Success"

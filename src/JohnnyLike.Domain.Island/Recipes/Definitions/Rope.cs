@@ -24,7 +24,7 @@ public static class Rope
 
             Location: "camp",
 
-            Duration: 20.0,
+            Duration: EngineConstants.TimeToTicks(20.0),
 
             IntrinsicScore: 0.4,
 

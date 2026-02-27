@@ -18,9 +18,9 @@ public class FishingPoleItem : ToolItem
         OwnerActorId = ownerActorId;
     }
 
-    public override void Tick(double dtSeconds, IslandWorldState world)
+    public override void Tick(long dtTicks, IslandWorldState world)
     {
-        base.Tick(dtSeconds, world);
+        base.Tick(dtTicks, world);
         
         // Fishing poles degrade slower than other tools but can break if quality is too low
         if (Quality < BreakageQualityThreshold && !IsBroken)
@@ -85,7 +85,7 @@ public class FishingPoleItem : ToolItem
                         new ActionId("go_fishing"),
                         ActionKind.Interact,
                         parameters,
-                        45.0 + ctx.Random.NextDouble() * 15.0,
+                        EngineConstants.TimeToTicks(45.0, 60.0, ctx.Random),
                         parameters.ToResultData(),
                         new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                     ),
@@ -169,7 +169,7 @@ public class FishingPoleItem : ToolItem
                     new ActionId("maintain_rod"),
                     ActionKind.Interact,
                     parameters,
-                    20.0 + ctx.Random.NextDouble() * 5.0,
+                    EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
@@ -192,7 +192,7 @@ public class FishingPoleItem : ToolItem
                     new ActionId("repair_rod"),
                     ActionKind.Interact,
                     parameters,
-                    40.0 + ctx.Random.NextDouble() * 10.0,
+                    EngineConstants.TimeToTicks(40.0, 50.0, ctx.Random),
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),

@@ -13,7 +13,7 @@ public class TraceBeatExtractorTests
     }
 
     private static TraceEvent MakeAssigned(double t, string actor, string actionId = "act1", string kind = "Interact") =>
-        new(t, new ActorId(actor), "ActionAssigned",
+        new((long)(t * 20), new ActorId(actor), "ActionAssigned",
             new Dictionary<string, object> { ["actionId"] = actionId, ["actionKind"] = kind });
 
     private static TraceEvent MakeCompleted(double t, string actor, string actionId = "act1",
@@ -28,7 +28,7 @@ public class TraceBeatExtractorTests
         // Use generic actor_* keys — the domain decides what to expose
         if (satiety.HasValue) details["actor_satiety"] = satiety.Value;
         if (energy.HasValue) details["actor_energy"] = energy.Value;
-        return new TraceEvent(t, new ActorId(actor), "ActionCompleted", details);
+        return new TraceEvent((long)(t * 20), new ActorId(actor), "ActionCompleted", details);
     }
 
     // ── Basic job emission ────────────────────────────────────────────────────
@@ -199,7 +199,7 @@ public class TraceBeatExtractorTests
     public void Consume_AssignedWithNoActorId_ReturnsNull()
     {
         var extractor = MakeExtractor();
-        var evt = new TraceEvent(1.0, null, "ActionAssigned",
+        var evt = new TraceEvent((long)(1.0 * 20), null, "ActionAssigned",
             new Dictionary<string, object> { ["actionId"] = "x", ["actionKind"] = "Wait" });
 
         Assert.Null(extractor.Consume(evt));
@@ -213,10 +213,10 @@ public class TraceBeatExtractorTests
         var extractor = MakeExtractor();
 
         extractor.RegisterWorldEventHandler("CampfireExtinguished", evt =>
-            new Beat(evt.Time, null, "World", evt.EventType, "", "campfire",
+            new Beat(evt.TimeSeconds, null, "World", evt.EventType, "", "campfire",
                 Success: null, StatsAfter: null));
 
-        var worldEvt = new TraceEvent(10.0, null, "CampfireExtinguished",
+        var worldEvt = new TraceEvent((long)(10.0 * 20), null, "CampfireExtinguished",
             new Dictionary<string, object> { ["objectId"] = "campfire" });
 
         var job = extractor.Consume(worldEvt);
@@ -231,7 +231,7 @@ public class TraceBeatExtractorTests
     public void Consume_UnregisteredWorldEvent_ReturnsNull()
     {
         var extractor = MakeExtractor();
-        var evt = new TraceEvent(5.0, null, "WeatherChanged", new Dictionary<string, object>());
+        var evt = new TraceEvent((long)(5.0 * 20), null, "WeatherChanged", new Dictionary<string, object>());
         Assert.Null(extractor.Consume(evt));
     }
 
@@ -241,7 +241,7 @@ public class TraceBeatExtractorTests
         var extractor = MakeExtractor();
         extractor.RegisterWorldEventHandler("TideTurned", _ => null);
 
-        var evt = new TraceEvent(7.0, null, "TideTurned", new Dictionary<string, object>());
+        var evt = new TraceEvent((long)(7.0 * 20), null, "TideTurned", new Dictionary<string, object>());
         Assert.Null(extractor.Consume(evt));
     }
 
@@ -258,7 +258,7 @@ public class TraceBeatExtractorTests
         };
         if (subjectId != null) details["subjectId"] = subjectId;
         var actor = actorId != null ? (ActorId?)new ActorId(actorId) : null;
-        return new TraceEvent(t, actor, "NarrationBeat", details);
+        return new TraceEvent((long)(t * 20), actor, "NarrationBeat", details);
     }
 
     [Fact]
@@ -321,7 +321,7 @@ public class TraceBeatExtractorTests
     {
         var extractor = MakeExtractor();
         var details = new Dictionary<string, object> { ["text"] = "", ["phase"] = "WorldTick", ["priority"] = 50 };
-        var evt = new TraceEvent(1.0, null, "NarrationBeat", details);
+        var evt = new TraceEvent((long)(1.0 * 20), null, "NarrationBeat", details);
 
         Assert.Null(extractor.Consume(evt));
     }

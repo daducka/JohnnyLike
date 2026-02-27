@@ -2,6 +2,11 @@ using System.Text.Json;
 
 namespace JohnnyLike.Domain.Abstractions;
 
+/// <summary>
+/// Base class for all objects that exist within a <see cref="WorldState"/>.
+/// Each item has a stable string <see cref="Id"/> and a domain-defined <see cref="Type"/> tag.
+/// Room membership is managed by <see cref="WorldState.Rooms"/>, not by the item itself.
+/// </summary>
 public abstract class WorldItem
 {
     public string Id { get; set; } = "";

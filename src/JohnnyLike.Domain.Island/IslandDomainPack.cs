@@ -18,16 +18,17 @@ public class IslandDomainPack : IDomainPack
     {
         var world = new IslandWorldState();
 
-        world.WorldItems.Add(new CalendarItem("calendar"));
-        world.WorldItems.Add(new WeatherItem("weather"));
-        world.WorldItems.Add(new BeachItem("beach"));
-        world.WorldItems.Add(new OceanItem("ocean"));
-        world.WorldItems.Add(new CoconutTreeItem("palm_tree"));
-        world.WorldItems.Add(new ShelterItem("main_shelter"));
+        world.AddWorldItem(new CalendarItem("calendar"), "beach");
+        world.AddWorldItem(new WeatherItem("weather"), "beach");
+        world.AddWorldItem(new BeachItem("beach"), "beach");
+        world.AddWorldItem(new OceanItem("ocean"), "beach");
+        world.AddWorldItem(new CoconutTreeItem("palm_tree"), "beach");
+        world.AddWorldItem(new ShelterItem("main_shelter"), "beach");
+        world.AddWorldItem(new StalactiteItem("stalactite"), "cave");
 
         var supplies = new SupplyPile("shared_supplies", "shared");
         supplies.AddSupply(20.0, () => new WoodSupply());
-        world.WorldItems.Add(supplies);
+        world.AddWorldItem(supplies, "beach");
 
         return world;
     }
@@ -56,16 +57,15 @@ public class IslandDomainPack : IDomainPack
     /// </summary>
     public void InitializeActorItems(ActorId actorId, IslandWorldState world)
     {
-        // Create a fishing pole for this actor
         var fishingPole = new FishingPoleItem($"fishing_pole_{actorId.Value}", actorId);
-        world.WorldItems.Add(fishingPole);
+        world.AddWorldItem(fishingPole, "beach");
     }
 
     public List<ActionCandidate> GenerateCandidates(
         ActorId actorId,
         ActorState actorState,
         WorldState worldState,
-        double currentTime,
+        long currentTick,
         Random rng,
         IResourceAvailability resourceAvailability)
     {
@@ -76,14 +76,14 @@ public class IslandDomainPack : IDomainPack
         // Note: World state time advancement is now handled by TickWorldState in Engine.AdvanceTime
         // No need to call OnTimeAdvanced here
 
-        islandActorState.ActiveBuffs.RemoveAll(b => b.ExpiresAt <= currentTime);
+        islandActorState.ActiveBuffs.RemoveAll(b => b.ExpiresAtTick <= currentTick);
 
         // Create context for providers
         var ctx = new IslandContext(
             actorId,
             islandActorState,
             islandWorld,
-            currentTime,
+            currentTick,
             rngStream,
             rng,
             resourceAvailability
@@ -91,15 +91,30 @@ public class IslandDomainPack : IDomainPack
 
         // Generate candidates using all registered providers
         var candidates = new List<ActionCandidate>();
-        
-        // Generate candidates from all items implementing IIslandActionCandidate
-        foreach (var item in islandWorld.WorldItems.OfType<IIslandActionCandidate>())
+
+        // Iterate items in stable (sorted-by-Id) order for determinism.
+        // Tag each candidate with the ProviderItemId for engine-level room filtering and tie-breaking.
+        foreach (var item in islandWorld.WorldItems
+            .OfType<IIslandActionCandidate>()
+            .Cast<WorldItem>()
+            .OrderBy(wi => wi.Id)
+            .Cast<IIslandActionCandidate>())
         {
-            item.AddCandidates(ctx, candidates);
+            var wi = (WorldItem)item;
+            var itemCandidates = new List<ActionCandidate>();
+            item.AddCandidates(ctx, itemCandidates);
+            foreach (var c in itemCandidates)
+                candidates.Add(c with { ProviderItemId = wi.Id });
         }
         
-        // Generate candidates from the actor itself (e.g., idle action)
-        islandActorState.AddCandidates(ctx, candidates);
+        // Generate candidates from the actor itself (e.g., idle action).
+        // Actor-self candidates use the actor's own Id as ProviderItemId.
+        // The room filter in the Director treats actor-self candidates (not in the world item list)
+        // as always room-agnostic, so they are never filtered out regardless of CurrentRoomId.
+        var actorCandidates = new List<ActionCandidate>();
+        islandActorState.AddCandidates(ctx, actorCandidates);
+        foreach (var c in actorCandidates)
+            candidates.Add(c with { ProviderItemId = actorId.Value });
 
         // Post-pass: compute final Score from IntrinsicScore and Quality weights
         var model = BuildQualityModel(ctx.Actor);
@@ -259,7 +274,7 @@ public class IslandDomainPack : IDomainPack
         {
             ActorId = actorId,
             // Use a placeholder outcome: PreAction only reads world/actor state, not outcome data
-            Outcome = new ActionOutcome(new ActionId("preaction_placeholder"), ActionOutcomeType.Success, 0.0),
+            Outcome = new ActionOutcome(new ActionId("preaction_placeholder"), ActionOutcomeType.Success, 0L),
             Actor = (IslandActorState)actorState,
             World = (IslandWorldState)worldState,
             Tier = null,
@@ -287,9 +302,10 @@ public class IslandDomainPack : IDomainPack
         // This method only applies action-specific effects and actor passive decay
 
         // Apply passive actor decay based on action duration
-        islandActorState.Satiety -= outcome.ActualDuration * 0.5;
-        islandActorState.Energy -= outcome.ActualDuration * 0.3;
-        islandActorState.Morale -= outcome.ActualDuration * 0.4;
+        var dtSeconds = (double)outcome.ActualDurationTicks / (double)EngineConstants.TickHz;
+        islandActorState.Satiety -= dtSeconds * 0.5;
+        islandActorState.Energy -= dtSeconds * 0.3;
+        islandActorState.Morale -= dtSeconds * 0.4;
 
         if (outcome.Type != ActionOutcomeType.Success)
         {
@@ -331,18 +347,13 @@ public class IslandDomainPack : IDomainPack
         return null;
     }
 
-    public List<SceneTemplate> GetSceneTemplates()
-    {
-        return new List<SceneTemplate>();
-    }
-
     public bool ValidateContent(out List<string> errors)
     {
         errors = new List<string>();
         return true;
     }
 
-    public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime)
+    public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, long currentTick)
     {
         if (targetActor == null)
         {
@@ -360,16 +371,16 @@ public class IslandDomainPack : IDomainPack
         switch (signal.Type)
         {
             case "chat_redeem":
-                HandleChatRedeem(signal, islandActorState, currentTime);
+                HandleChatRedeem(signal, islandActorState, currentTick);
                 break;
             case "sub":
             case "cheer":
-                HandleSubOrCheer(signal, islandActorState, currentTime);
+                HandleSubOrCheer(signal, islandActorState, currentTick);
                 break;
         }
     }
 
-    private void HandleChatRedeem(Signal signal, IslandActorState state, double currentTime)
+    private void HandleChatRedeem(Signal signal, IslandActorState state, long currentTick)
     {
         if (signal.Data.TryGetValue("redeem_name", out var redeemName))
         {
@@ -383,13 +394,13 @@ public class IslandDomainPack : IDomainPack
                     ActionId = "write_name_sand",
                     Type = "chat_redeem",
                     Data = new Dictionary<string, object>(signal.Data),
-                    EnqueuedAt = currentTime
+                    EnqueuedAtTick = currentTick
                 });
             }
         }
     }
 
-    private void HandleSubOrCheer(Signal signal, IslandActorState state, double currentTime)
+    private void HandleSubOrCheer(Signal signal, IslandActorState state, long currentTick)
     {
         // Add Inspiration buff for subs/cheers (applies to all skills as a general morale boost)
         state.ActiveBuffs.Add(new ActiveBuff
@@ -398,7 +409,7 @@ public class IslandDomainPack : IDomainPack
             Type = BuffType.SkillBonus,
             SkillType = null, // null means applies to all skills
             Value = 1,
-            ExpiresAt = currentTime + 300.0 // 5 minutes
+            ExpiresAtTick = currentTick + 300L * EngineConstants.TickHz // 5 minutes
         });
 
         // Enqueue clap emote intent
@@ -407,7 +418,7 @@ public class IslandDomainPack : IDomainPack
             ActionId = "clap_emote",
             Type = signal.Type,
             Data = new Dictionary<string, object>(signal.Data),
-            EnqueuedAt = currentTime
+            EnqueuedAtTick = currentTick
         });
     }
 
@@ -425,20 +436,15 @@ public class IslandDomainPack : IDomainPack
         if (islandActorState.ActiveBuffs.Count > 0)
         {
             snapshot["active_buffs"] = string.Join(", ", 
-                islandActorState.ActiveBuffs.Select(b => $"{b.Name}({b.ExpiresAt:F1})"));
+                islandActorState.ActiveBuffs.Select(b => $"{b.Name}({b.ExpiresAtTick})"));
         }
         
         return snapshot;
     }
 
-    public List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability)
+    public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability)
     {
         var islandWorld = (IslandWorldState)worldState;
-        var newCurrentTime = islandWorld.CurrentTime + dtSeconds;
-        
-        // OnTimeAdvanced now returns all trace events (from stats and items)
-        var traceEvents = islandWorld.OnTimeAdvanced(newCurrentTime, dtSeconds, resourceAvailability);
-        
-        return traceEvents;
+        return islandWorld.OnTickAdvanced(currentTick, resourceAvailability);
     }
 }

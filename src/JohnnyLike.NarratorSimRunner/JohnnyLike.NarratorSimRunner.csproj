@@ -9,9 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\JohnnyLike.Engine\JohnnyLike.Engine.csproj" />
-    <ProjectReference Include="..\JohnnyLike.Domain.Island\JohnnyLike.Domain.Island.csproj" />
-    <ProjectReference Include="..\JohnnyLike.Domain.Office\JohnnyLike.Domain.Office.csproj" />
-    <ProjectReference Include="..\JohnnyLike.Narration\JohnnyLike.Narration.csproj" />
+    <ProjectReference Include="..\JohnnyLike.Domain.Island\JohnnyLike.Domain.Island.csproj" />    <ProjectReference Include="..\JohnnyLike.Narration\JohnnyLike.Narration.csproj" />
     <ProjectReference Include="..\JohnnyLike.Llm\JohnnyLike.Llm.csproj" />
     <ProjectReference Include="..\JohnnyLike.Tts\JohnnyLike.Tts.csproj" />
     <ProjectReference Include="..\JohnnyLike.SimRunner\JohnnyLike.SimRunner.csproj" />

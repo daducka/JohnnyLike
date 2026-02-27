@@ -53,7 +53,7 @@ public sealed class TraceBeatExtractor
     public NarrationJob? Consume(TraceEvent evt)
     {
         // Always keep CurrentSimTime up to date
-        _facts.CurrentSimTime = evt.Time;
+        _facts.CurrentSimTime = evt.TimeSeconds;
 
         switch (evt.EventType)
         {
@@ -88,7 +88,7 @@ public sealed class TraceBeatExtractor
         var actorId = evt.ActorId.HasValue ? evt.ActorId.Value.Value : null;
 
         var beat = new Beat(
-            evt.Time,
+            evt.TimeSeconds,
             actorId,
             "DomainBeat",
             evt.EventType,
@@ -107,8 +107,8 @@ public sealed class TraceBeatExtractor
 
         return new NarrationJob(
             JobId: Guid.NewGuid(),
-            PlayAtSimTime: evt.Time,
-            DeadlineSimTime: evt.Time + 12.0,
+            PlayAtSimTime: evt.TimeSeconds,
+            DeadlineSimTime: evt.TimeSeconds + 12.0,
             Kind: NarrationJobKind.WorldEvent,
             SubjectId: subjectId ?? actorId,
             Prompt: prompt
@@ -123,7 +123,7 @@ public sealed class TraceBeatExtractor
         var actionKind = GetString(evt.Details, "actionKind");
         var actionId = GetString(evt.Details, "actionId");
 
-        var beat = new Beat(evt.Time, actorId, "Actor", evt.EventType, actionKind, actionId);
+        var beat = new Beat(evt.TimeSeconds, actorId, "Actor", evt.EventType, actionKind, actionId);
         AddBeat(beat);
 
         _beatsSinceLastSummary++;
@@ -134,8 +134,8 @@ public sealed class TraceBeatExtractor
 
         return new NarrationJob(
             JobId: Guid.NewGuid(),
-            PlayAtSimTime: evt.Time,
-            DeadlineSimTime: evt.Time + 10.0,
+            PlayAtSimTime: evt.TimeSeconds,
+            DeadlineSimTime: evt.TimeSeconds + 10.0,
             Kind: NarrationJobKind.Attempt,
             SubjectId: actorId,
             Prompt: prompt
@@ -160,7 +160,7 @@ public sealed class TraceBeatExtractor
         var mergedStats = MergeStats(existing?.Stats, statsAfter);
         _facts.UpdateActor(new ActorFacts(actorId, mergedStats, actionKind, actionId));
 
-        var beat = new Beat(evt.Time, actorId, "Actor", evt.EventType, actionKind, actionId,
+        var beat = new Beat(evt.TimeSeconds, actorId, "Actor", evt.EventType, actionKind, actionId,
             Success: isSuccess, OutcomeType: outcomeStr,
             StatsAfter: statsAfter.Count > 0 ? statsAfter : null);
         AddBeat(beat);
@@ -174,8 +174,8 @@ public sealed class TraceBeatExtractor
 
         return new NarrationJob(
             JobId: Guid.NewGuid(),
-            PlayAtSimTime: evt.Time,
-            DeadlineSimTime: evt.Time + 15.0,
+            PlayAtSimTime: evt.TimeSeconds,
+            DeadlineSimTime: evt.TimeSeconds + 15.0,
             Kind: NarrationJobKind.Outcome,
             SubjectId: actorId,
             Prompt: prompt

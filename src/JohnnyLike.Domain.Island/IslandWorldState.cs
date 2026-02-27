@@ -7,7 +7,9 @@ namespace JohnnyLike.Domain.Island;
 
 public class IslandWorldState : WorldState
 {
-    public double CurrentTime { get; set; } = 0.0;
+    /// <summary>Current tick (set by engine via OnTickAdvanced).</summary>
+    public long CurrentTick { get; set; } = 0L;
+    private long _prevTick = 0L;
 
     public List<WorldItem> WorldItems { get; set; } = new();
 
@@ -18,17 +20,11 @@ public class IslandWorldState : WorldState
     public SupplyPile? SharedSupplyPile => WorldItems.OfType<SupplyPile>()
         .FirstOrDefault(p => p.AccessControl == "shared");
 
-    /// <summary>
-    /// Get a WorldItem by its ID and type.
-    /// </summary>
     public T? GetItem<T>(string id) where T : WorldItem
     {
         return WorldItems.OfType<T>().FirstOrDefault(x => x.Id == id);
     }
 
-    /// <summary>
-    /// Get all supply piles that the given actor can access
-    /// </summary>
     public List<SupplyPile> GetAccessiblePiles(ActorId actorId)
     {
         return WorldItems.OfType<SupplyPile>()
@@ -36,82 +32,29 @@ public class IslandWorldState : WorldState
             .ToList();
     }
 
-    /// <summary>
-    /// Topologically sort ITickableWorldItems based on their dependencies.
-    /// </summary>
-    private List<ITickableWorldItem> TopologicalSortTickables()
+    public List<TraceEvent> OnTickAdvanced(long currentTick, IResourceAvailability? resourceAvailability = null)
     {
-        var tickables = WorldItems.OfType<ITickableWorldItem>().ToList();
-        var sorted = new List<ITickableWorldItem>();
-        var visited = new HashSet<string>();
-        var visiting = new HashSet<string>();
-        var itemById = tickables
-            .Select(t => (item: t, id: ((WorldItem)t).Id))
-            .ToDictionary(x => x.id, x => x.item);
-        var path = new List<string>();
-
-        void Visit(ITickableWorldItem tickable)
-        {
-            var id = ((WorldItem)tickable).Id;
-            if (visited.Contains(id)) return;
-
-            if (visiting.Contains(id))
-            {
-                var cycleStart = path.IndexOf(id);
-                var cycle = string.Join(" -> ", path.Skip(cycleStart).Append(id));
-                throw new InvalidOperationException(
-                    $"Circular dependency detected in WorldItems: {cycle}");
-            }
-
-            visiting.Add(id);
-            path.Add(id);
-
-            foreach (var depId in tickable.GetDependencies())
-            {
-                if (itemById.TryGetValue(depId, out var dep))
-                    Visit(dep);
-            }
-
-            path.RemoveAt(path.Count - 1);
-            visiting.Remove(id);
-            visited.Add(id);
-            sorted.Add(tickable);
-        }
-
-        foreach (var tickable in tickables)
-            Visit(tickable);
-
-        return sorted;
-    }
-
-    public List<TraceEvent> OnTimeAdvanced(double currentTime, double dt, IResourceAvailability? resourceAvailability = null)
-    {
-        CurrentTime = currentTime;
+        CurrentTick = currentTick;
+        var dtTicks = currentTick - _prevTick;
+        _prevTick = currentTick;
         var traceEvents = new List<TraceEvent>();
 
-        // Tick all ITickableWorldItems in dependency order
-        var sortedTickables = TopologicalSortTickables();
-        foreach (var tickable in sortedTickables)
-        {
-            var events = tickable.Tick(dt, this, currentTime);
-            traceEvents.AddRange(events);
-        }
+        // Note: ITickableWorldItem ticking is handled by the engine via WorldItemTickOrchestrator
+        // before this method is called.
 
-        // Track campfire state before ticking items
         var campfireLitBeforeTick = MainCampfire?.IsLit ?? false;
 
-        // Tick maintainable items
-        foreach (var item in WorldItems.OfType<MaintainableWorldItem>())
+        // Tick maintainable items in stable order
+        foreach (var item in WorldItems.OfType<MaintainableWorldItem>().OrderBy(i => i.Id))
         {
-            item.Tick(dt, this);
+            item.Tick(dtTicks, this);
         }
 
-        // Campfire extinguished trace event
         var campfire = MainCampfire;
         if (campfireLitBeforeTick && campfire != null && !campfire.IsLit)
         {
             traceEvents.Add(new TraceEvent(
-                currentTime,
+                currentTick,
                 null,
                 "CampfireExtinguished",
                 new Dictionary<string, object>
@@ -122,12 +65,11 @@ public class IslandWorldState : WorldState
             ));
         }
 
-        // Remove expired maintainable items after tick cycle
         var expiredItems = WorldItems.OfType<MaintainableWorldItem>().Where(item => item.IsExpired).ToList();
         foreach (var item in expiredItems)
         {
             traceEvents.Add(new TraceEvent(
-                currentTime,
+                currentTick,
                 null,
                 "WorldItemExpired",
                 new Dictionary<string, object>
@@ -145,9 +87,26 @@ public class IslandWorldState : WorldState
         return traceEvents;
     }
 
+    public override IReadOnlyList<WorldItem> GetAllItems() => WorldItems;
+
+    /// <summary>
+    /// Adds a world item to the item list and registers it in the specified room.
+    /// Use this instead of WorldItems.Add() whenever room membership is relevant.
+    /// </summary>
+    public void AddWorldItem(WorldItem item, string roomId)
+    {
+        WorldItems.Add(item);
+        AddItemToRoom(roomId, item.Id);
+    }
+
     public override string Serialize()
     {
         var serializedItems = WorldItems.Select(item => item.SerializeToDict()).ToList();
+
+        var roomData = Rooms.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.ItemIds.ToList()
+        );
 
         var options = new JsonSerializerOptions
         {
@@ -156,7 +115,9 @@ public class IslandWorldState : WorldState
 
         return JsonSerializer.Serialize(new
         {
-            WorldItems = serializedItems
+            CurrentTick,
+            WorldItems = serializedItems,
+            Rooms = roomData
         }, options);
     }
 
@@ -164,6 +125,12 @@ public class IslandWorldState : WorldState
     {
         var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
         if (data == null) return;
+
+        if (data.TryGetValue("CurrentTick", out var tickEl))
+        {
+            CurrentTick = tickEl.GetInt64();
+            _prevTick = CurrentTick;
+        }
 
         WorldItems.Clear();
         if (data.TryGetValue("WorldItems", out var itemsElement))
@@ -176,28 +143,25 @@ public class IslandWorldState : WorldState
                     var type = itemData["Type"].GetString()!;
                     var id = itemData["Id"].GetString()!;
 
-                    WorldItem? item = type switch
-                    {
-                        "campfire"       => new CampfireItem(id),
-                        "shelter"        => new ShelterItem(id),
-                        "fishing_pole"   => new FishingPoleItem(id),
-                        "treasure_chest" => new TreasureChestItem(id),
-                        "shark"          => new SharkItem(id),
-                        "supply_pile"    => new SupplyPile(id),
-                        "umbrella_tool"  => new UmbrellaItem(id),
-                        "calendar"       => new CalendarItem(id),
-                        "weather"        => new WeatherItem(id),
-                        "beach"          => new BeachItem(id),
-                        "palm_tree"      => new CoconutTreeItem(id),
-                        "ocean"          => new OceanItem(id),
-                        _                => null
-                    };
-
+                    var item = WorldItemTypeRegistry.Create(type, id);
                     if (item != null)
                     {
                         item.DeserializeFromDict(itemData);
                         WorldItems.Add(item);
                     }
+                }
+            }
+        }
+
+        if (data.TryGetValue("Rooms", out var roomsElement))
+        {
+            var roomsData = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(roomsElement.GetRawText());
+            if (roomsData != null)
+            {
+                foreach (var (roomId, itemIds) in roomsData)
+                {
+                    foreach (var itemId in itemIds)
+                        AddItemToRoom(roomId, itemId);
                 }
             }
         }

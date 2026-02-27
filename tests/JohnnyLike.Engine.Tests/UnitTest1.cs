@@ -11,9 +11,7 @@ public class ReservationTableTests
         var table = new ReservationTable();
         var result = table.TryReserve(
             new ResourceId("printer"),
-            "actor:Jim",
-            100.0
-        );
+            "actor:Jim", 2000L);
 
         Assert.True(result);
         Assert.True(table.IsReserved(new ResourceId("printer")));
@@ -25,8 +23,8 @@ public class ReservationTableTests
         var table = new ReservationTable();
         var resourceId = new ResourceId("printer");
         
-        table.TryReserve(resourceId, "actor:Jim", 100.0);
-        var result = table.TryReserve(resourceId, "actor:Pam", 100.0);
+        table.TryReserve(resourceId, "actor:Jim", 2000L);
+        var result = table.TryReserve(resourceId, "actor:Pam", 2000L);
 
         Assert.False(result);
     }
@@ -37,7 +35,7 @@ public class ReservationTableTests
         var table = new ReservationTable();
         var resourceId = new ResourceId("printer");
         
-        table.TryReserve(resourceId, "actor:Jim", 100.0);
+        table.TryReserve(resourceId, "actor:Jim", 2000L);
         table.Release(resourceId);
 
         Assert.False(table.IsReserved(resourceId));
@@ -47,14 +45,14 @@ public class ReservationTableTests
     public void ReleaseByScene_RemovesAllSceneReservations()
     {
         var table = new ReservationTable();
-        var sceneId = new SceneId("scene1");
+        var groupId = "scene1";
         var res1 = new ResourceId("printer");
         var res2 = new ResourceId("desk");
 
-        table.TryReserve(res1, "scene:" + sceneId.Value + ":actor:Jim", 100.0);
-        table.TryReserve(res2, "scene:" + sceneId.Value + ":actor:Jim", 100.0);
+        table.TryReserve(res1, "scene:" + groupId + ":actor:Jim", 2000L);
+        table.TryReserve(res2, "scene:" + groupId + ":actor:Jim", 2000L);
 
-        table.ReleaseByPrefix("scene:" + sceneId.Value + ":");
+        table.ReleaseByPrefix("scene:" + groupId + ":");
 
         Assert.False(table.IsReserved(res1));
         Assert.False(table.IsReserved(res2));
@@ -66,44 +64,42 @@ public class ReservationTableTests
         var table = new ReservationTable();
         var resourceId = new ResourceId("printer");
         
-        table.TryReserve(resourceId, "actor:Jim", 50.0);
-        table.CleanupExpired(100.0);
+        table.TryReserve(resourceId, "actor:Jim", 1000L);
+        table.CleanupExpired(2000L);
 
         Assert.False(table.IsReserved(resourceId));
     }
 
     [Fact]
-    public void ReleaseByScene_WithNullActorId_RemovesReservations()
+    public void ReleaseByGroup_WithNullActorId_RemovesReservations()
     {
         var table = new ReservationTable();
-        var sceneId = new SceneId("scene1");
+        var groupId = "scene1";
         var res1 = new ResourceId("printer");
         var res2 = new ResourceId("desk");
 
-        table.TryReserve(res1, "scene:" + sceneId.Value + ":world_item:item1", 100.0);
-        table.TryReserve(res2, "scene:" + sceneId.Value + ":world_item:item2", 100.0);
+        table.TryReserve(res1, "scene:" + groupId + ":world_item:item1", 2000L);
+        table.TryReserve(res2, "scene:" + groupId + ":world_item:item2", 2000L);
 
-        table.ReleaseByPrefix("scene:" + sceneId.Value + ":");
+        table.ReleaseByPrefix("scene:" + groupId + ":");
 
         Assert.False(table.IsReserved(res1));
         Assert.False(table.IsReserved(res2));
     }
 
     [Fact]
-    public void ReleaseByScene_OnlyReleasesResourcesForSpecificScene()
+    public void ReleaseByGroup_OnlyReleasesResourcesForSpecificGroup()
     {
         var table = new ReservationTable();
-        var scene1 = new SceneId("scene1");
-        var scene2 = new SceneId("scene2");
         var res1 = new ResourceId("printer");
         var res2 = new ResourceId("desk");
         var res3 = new ResourceId("phone");
 
-        table.TryReserve(res1, "scene:scene1:actor:Jim", 100.0);
-        table.TryReserve(res2, "scene:scene1:actor:Pam", 100.0);
-        table.TryReserve(res3, "scene:scene2:actor:Dwight", 100.0);
+        table.TryReserve(res1, "scene:scene1:actor:Jim", 2000L);
+        table.TryReserve(res2, "scene:scene1:actor:Pam", 2000L);
+        table.TryReserve(res3, "scene:scene2:actor:Dwight", 2000L);
 
-        table.ReleaseByPrefix("scene:" + scene1.Value + ":");
+        table.ReleaseByPrefix("scene:scene1:");
 
         Assert.False(table.IsReserved(res1));
         Assert.False(table.IsReserved(res2));
@@ -111,19 +107,19 @@ public class ReservationTableTests
     }
 
     [Fact]
-    public void ReleaseByScene_WithMixedActorIds_RemovesAllSceneReservations()
+    public void ReleaseByGroup_WithMixedActorIds_RemovesAllGroupReservations()
     {
         var table = new ReservationTable();
-        var sceneId = new SceneId("scene1");
+        var groupId = "scene1";
         var res1 = new ResourceId("printer");
         var res2 = new ResourceId("desk");
         var res3 = new ResourceId("phone");
 
-        table.TryReserve(res1, "scene:" + sceneId.Value + ":actor:Jim", 100.0);
-        table.TryReserve(res2, "scene:" + sceneId.Value + ":world_item:desk_item", 100.0);
-        table.TryReserve(res3, "scene:" + sceneId.Value + ":actor:Pam", 100.0);
+        table.TryReserve(res1, "scene:" + groupId + ":actor:Jim", 2000L);
+        table.TryReserve(res2, "scene:" + groupId + ":world_item:desk_item", 2000L);
+        table.TryReserve(res3, "scene:" + groupId + ":actor:Pam", 2000L);
 
-        table.ReleaseByPrefix("scene:" + sceneId.Value + ":");
+        table.ReleaseByPrefix("scene:" + groupId + ":");
 
         Assert.False(table.IsReserved(res1));
         Assert.False(table.IsReserved(res2));
@@ -137,7 +133,7 @@ public class VarietyMemoryTests
     public void GetRepetitionPenalty_NoHistory_ReturnsZero()
     {
         var memory = new VarietyMemory();
-        var penalty = memory.GetRepetitionPenalty("Jim", "eat_snack", 10.0);
+        var penalty = memory.GetRepetitionPenalty("Jim", "eat_snack", 200L);
 
         Assert.Equal(0.0, penalty);
     }
@@ -147,10 +143,10 @@ public class VarietyMemoryTests
     {
         var memory = new VarietyMemory();
         
-        memory.RecordAction("Jim", "eat_snack", 10.0);
-        memory.RecordAction("Jim", "eat_snack", 20.0);
+        memory.RecordAction("Jim", "eat_snack", 200L);
+        memory.RecordAction("Jim", "eat_snack", 400L);
         
-        var penalty = memory.GetRepetitionPenalty("Jim", "eat_snack", 30.0);
+        var penalty = memory.GetRepetitionPenalty("Jim", "eat_snack", 600L);
 
         Assert.True(penalty > 0.0);
     }
@@ -158,12 +154,12 @@ public class VarietyMemoryTests
     [Fact]
     public void Cleanup_RemovesOldEntries()
     {
-        var memory = new VarietyMemory(memoryWindowSeconds: 60.0);
+        var memory = new VarietyMemory(memoryWindowTicks: 1200L);
         
-        memory.RecordAction("Jim", "eat_snack", 10.0);
-        memory.Cleanup(200.0);
+        memory.RecordAction("Jim", "eat_snack", 200L);
+        memory.Cleanup(4000L);
         
-        var penalty = memory.GetRepetitionPenalty("Jim", "eat_snack", 200.0);
+        var penalty = memory.GetRepetitionPenalty("Jim", "eat_snack", 4000L);
 
         Assert.Equal(0.0, penalty);
     }
@@ -191,7 +187,7 @@ public class DeterminismTests
 
     private string RunSimulation(int seed)
     {
-        var domainPack = new Domain.Office.OfficeDomainPack();
+        var domainPack = new Domain.Island.IslandDomainPack();
         var traceSink = new InMemoryTraceSink();
         var engine = new JohnnyLike.Engine.Engine(domainPack, seed, traceSink);
 
@@ -274,13 +270,13 @@ public class SignalHandlingTests
         
         var signal = new Signal(
             "test_signal",
-            0.0,
+            0L,
             new ActorId("TestActor"),
             new Dictionary<string, object> { ["data"] = "test" }
         );
         
         engine.EnqueueSignal(signal);
-        engine.AdvanceTime(1.0);
+        engine.AdvanceTicks(20L);
         
         Assert.True(domainPack.OnSignalCalled);
         Assert.Equal("test_signal", domainPack.LastSignalType);
@@ -301,12 +297,12 @@ public class SignalHandlingTests
             return new TestActorState { Id = actorId };
         }
 
-        public List<ActionCandidate> GenerateCandidates(ActorId actorId, ActorState actorState, WorldState worldState, double currentTime, Random rng, IResourceAvailability resourceAvailability)
+        public List<ActionCandidate> GenerateCandidates(ActorId actorId, ActorState actorState, WorldState worldState, long currentTick, Random rng, IResourceAvailability resourceAvailability)
         {
             return new List<ActionCandidate>
             {
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("idle"), ActionKind.Wait, EmptyActionParameters.Instance, 1.0),
+                    new ActionSpec(new ActionId("idle"), ActionKind.Wait, EmptyActionParameters.Instance, 20L),
                     1.0
                 )
             };
@@ -316,15 +312,13 @@ public class SignalHandlingTests
         {
         }
 
-        public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime)
+        public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, long currentTick)
         {
             OnSignalCalled = true;
             LastSignalType = signal.Type;
             LastTargetActor = targetActor;
         }
 
-        public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
-        
         public bool ValidateContent(out List<string> errors)
         {
             errors = new List<string>();
@@ -336,7 +330,7 @@ public class SignalHandlingTests
             return new Dictionary<string, object>();
         }
 
-        public List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability)
+        public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability)
         {
             return new List<TraceEvent>();
         }
@@ -350,6 +344,7 @@ public class SignalHandlingTests
 
     private class TestWorldState : WorldState
     {
+        public override IReadOnlyList<WorldItem> GetAllItems() => Array.Empty<WorldItem>();
         public override string Serialize() => "{}";
         public override void Deserialize(string json) { }
     }
@@ -374,7 +369,7 @@ public class ActorStateSnapshotTests
         
         engine.ReportActionComplete(
             new ActorId("TestActor"),
-            new ActionOutcome(action!.Id, ActionOutcomeType.Success, 1.0, null)
+            new ActionOutcome(action!.Id, ActionOutcomeType.Success, 20L, null)
         );
         
         // Assert - Check that the trace event contains actor state snapshot
@@ -397,12 +392,12 @@ public class ActorStateSnapshotTests
             return new TestActorState { Id = actorId };
         }
 
-        public List<ActionCandidate> GenerateCandidates(ActorId actorId, ActorState actorState, WorldState worldState, double currentTime, Random rng, IResourceAvailability resourceAvailability)
+        public List<ActionCandidate> GenerateCandidates(ActorId actorId, ActorState actorState, WorldState worldState, long currentTick, Random rng, IResourceAvailability resourceAvailability)
         {
             return new List<ActionCandidate>
             {
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("test_action"), ActionKind.Wait, EmptyActionParameters.Instance, 1.0),
+                    new ActionSpec(new ActionId("test_action"), ActionKind.Wait, EmptyActionParameters.Instance, 20L),
                     1.0
                 )
             };
@@ -412,12 +407,10 @@ public class ActorStateSnapshotTests
         {
         }
 
-        public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, double currentTime)
+        public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, long currentTick)
         {
         }
 
-        public List<SceneTemplate> GetSceneTemplates() => new List<SceneTemplate>();
-        
         public bool ValidateContent(out List<string> errors)
         {
             errors = new List<string>();
@@ -432,7 +425,7 @@ public class ActorStateSnapshotTests
             };
         }
 
-        public List<TraceEvent> TickWorldState(WorldState worldState, double dtSeconds, IResourceAvailability resourceAvailability)
+        public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability)
         {
             return new List<TraceEvent>();
         }
@@ -446,6 +439,7 @@ public class ActorStateSnapshotTests
 
     private class TestWorldState : WorldState
     {
+        public override IReadOnlyList<WorldItem> GetAllItems() => Array.Empty<WorldItem>();
         public override string Serialize() => "{}";
         public override void Deserialize(string json) { }
     }

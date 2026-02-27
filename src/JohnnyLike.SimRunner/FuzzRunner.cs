@@ -1,5 +1,4 @@
 using JohnnyLike.Domain.Abstractions;
-using JohnnyLike.Domain.Office;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Engine;
 using System.Text.Json;
@@ -22,7 +21,7 @@ public class FuzzRunner
 {
     public static FuzzRunResult Run(FuzzConfig config, IDomainPack? domainPack = null)
     {
-        domainPack ??= new OfficeDomainPack();
+        domainPack ??= new IslandDomainPack();
         
         var result = new FuzzRunResult
         {
@@ -219,9 +218,6 @@ public class FuzzRunner
         Console.WriteLine($"Total Actions: {result.Metrics.TotalActions}");
         Console.WriteLine($"Completed: {result.Metrics.CompletedActions}");
         Console.WriteLine($"Failed: {result.Metrics.FailedActions}");
-        Console.WriteLine($"Scenes Proposed: {result.Metrics.ScenesProposed}");
-        Console.WriteLine($"Scenes Completed: {result.Metrics.ScenesCompleted}");
-        Console.WriteLine($"Scenes Aborted: {result.Metrics.ScenesAborted}");
         Console.WriteLine($"Signals Processed: {result.Metrics.SignalsProcessed}");
         Console.WriteLine($"Max Signal Backlog: {result.Metrics.MaxSignalBacklog}");
 
