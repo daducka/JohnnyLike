@@ -39,7 +39,5 @@ public abstract class ExpirableWorldItem : MaintainableWorldItem, IExpirableItem
         base.DeserializeFromDict(data);
         if (data.TryGetValue("ExpiresAtTick", out var eat))
             ExpiresAtTick = eat.GetInt64();
-        else if (data.TryGetValue("ExpiresAt", out var ea)) // backward compat
-            ExpiresAtTick = (long)(ea.GetDouble() * 20.0);
     }
 }

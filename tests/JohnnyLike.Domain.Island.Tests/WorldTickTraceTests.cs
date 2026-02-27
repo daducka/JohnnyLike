@@ -77,7 +77,7 @@ public class WorldTickTraceTests
 
         // Act - Tick ITickableWorldItems first (as engine does), then domain tick
         var tick = 432000L;
-        foreach (var tickable in world.TopologicalSortTickables())
+        foreach (var tickable in WorldItemTickOrchestrator.TopologicalSort(world.WorldItems))
             tickable.Tick(tick, world);
         domainPack.TickWorldState(world, tick, reservations);
 
@@ -99,7 +99,7 @@ public class WorldTickTraceTests
 
         // Act - Tick ITickableWorldItems first (as engine does), then domain tick
         var tick = 172800L;
-        foreach (var tickable in world.TopologicalSortTickables())
+        foreach (var tickable in WorldItemTickOrchestrator.TopologicalSort(world.WorldItems))
             tickable.Tick(tick, world);
         domainPack.TickWorldState(world, tick, reservations);
 

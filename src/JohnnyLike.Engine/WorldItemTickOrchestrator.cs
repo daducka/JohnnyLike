@@ -8,7 +8,7 @@ namespace JohnnyLike.Engine;
 /// Domains register items via <see cref="WorldState.GetAllItems"/>; the engine calls this
 /// once per <c>AdvanceTicks</c> before the domain's own <c>TickWorldState</c>.
 /// </summary>
-internal static class WorldItemTickOrchestrator
+public static class WorldItemTickOrchestrator
 {
     public static List<TraceEvent> Tick(IReadOnlyList<WorldItem> worldItems, long currentTick, WorldState worldState)
     {

@@ -257,7 +257,7 @@ public class IslandWorldStateTests
 
         // Tick ITickableWorldItems first (as engine does), then domain tick
         var tick = 172800L;
-        foreach (var tickable in world.TopologicalSortTickables())
+        foreach (var tickable in WorldItemTickOrchestrator.TopologicalSort(world.WorldItems))
             tickable.Tick(tick, world);
         world.OnTickAdvanced(tick); // 0.1 day = 8640s = 172800 ticks
         Assert.InRange(calendar.TimeOfDay, 0.0, 0.1);
@@ -275,7 +275,7 @@ public class IslandWorldStateTests
 
         // Tick ITickableWorldItems first (as engine does), then domain tick
         var tick = 1728000L;
-        foreach (var tickable in world.TopologicalSortTickables())
+        foreach (var tickable in WorldItemTickOrchestrator.TopologicalSort(world.WorldItems))
             tickable.Tick(tick, world);
         world.OnTickAdvanced(tick); // advance 1 day = 86400s = 1728000 ticks
 

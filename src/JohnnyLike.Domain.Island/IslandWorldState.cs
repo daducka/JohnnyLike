@@ -32,52 +32,6 @@ public class IslandWorldState : WorldState
             .ToList();
     }
 
-    /// <summary>Topologically sort ITickableWorldItems, then stable-sort by Id.</summary>
-    public List<ITickableWorldItem> TopologicalSortTickables()
-    {
-        var tickables = WorldItems.OfType<ITickableWorldItem>().OrderBy(t => ((WorldItem)t).Id).ToList();
-        var sorted = new List<ITickableWorldItem>();
-        var visited = new HashSet<string>();
-        var visiting = new HashSet<string>();
-        var itemById = tickables
-            .Select(t => (item: t, id: ((WorldItem)t).Id))
-            .ToDictionary(x => x.id, x => x.item);
-        var path = new List<string>();
-
-        void Visit(ITickableWorldItem tickable)
-        {
-            var id = ((WorldItem)tickable).Id;
-            if (visited.Contains(id)) return;
-
-            if (visiting.Contains(id))
-            {
-                var cycleStart = path.IndexOf(id);
-                var cycle = string.Join(" -> ", path.Skip(cycleStart).Append(id));
-                throw new InvalidOperationException(
-                    $"Circular dependency detected in WorldItems: {cycle}");
-            }
-
-            visiting.Add(id);
-            path.Add(id);
-
-            foreach (var depId in tickable.GetDependencies())
-            {
-                if (itemById.TryGetValue(depId, out var dep))
-                    Visit(dep);
-            }
-
-            path.RemoveAt(path.Count - 1);
-            visiting.Remove(id);
-            visited.Add(id);
-            sorted.Add(tickable);
-        }
-
-        foreach (var tickable in tickables)
-            Visit(tickable);
-
-        return sorted;
-    }
-
     public List<TraceEvent> OnTickAdvanced(long currentTick, IResourceAvailability? resourceAvailability = null)
     {
         CurrentTick = currentTick;
@@ -173,24 +127,7 @@ public class IslandWorldState : WorldState
                     var type = itemData["Type"].GetString()!;
                     var id = itemData["Id"].GetString()!;
 
-                    WorldItem? item = type switch
-                    {
-                        "campfire"       => new CampfireItem(id),
-                        "shelter"        => new ShelterItem(id),
-                        "fishing_pole"   => new FishingPoleItem(id),
-                        "treasure_chest" => new TreasureChestItem(id),
-                        "shark"          => new SharkItem(id),
-                        "supply_pile"    => new SupplyPile(id),
-                        "umbrella_tool"  => new UmbrellaItem(id),
-                        "calendar"       => new CalendarItem(id),
-                        "weather"        => new WeatherItem(id),
-                        "beach"          => new BeachItem(id),
-                        "palm_tree"      => new CoconutTreeItem(id),
-                        "ocean"          => new OceanItem(id),
-                        "stalactite"     => new StalactiteItem(id),
-                        _                => null
-                    };
-
+                    var item = WorldItemTypeRegistry.Create(type, id);
                     if (item != null)
                     {
                         item.DeserializeFromDict(itemData);
