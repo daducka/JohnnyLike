@@ -13,13 +13,24 @@ public sealed class OllamaLlmClient : ILlmClient
     private readonly string _model;
     private readonly int _maxRetries;
     private readonly TimeSpan _retryDelay;
+    private readonly TimeSpan _requestTimeout;
 
-    public OllamaLlmClient(string model, HttpClient? http = null, int maxRetries = 3, TimeSpan? retryDelay = null)
+    public OllamaLlmClient(
+        string model,
+        HttpClient? http = null,
+        int maxRetries = 3,
+        TimeSpan? retryDelay = null,
+        TimeSpan? requestTimeout = null)
     {
         _model = model;
-        _http = http ?? new HttpClient { BaseAddress = new Uri("http://localhost:11434") };
         _maxRetries = maxRetries;
         _retryDelay = retryDelay ?? TimeSpan.FromSeconds(1);
+        _requestTimeout = requestTimeout ?? TimeSpan.FromSeconds(20);
+        _http = http ?? new HttpClient
+        {
+            BaseAddress = new Uri("http://localhost:11434"),
+            Timeout = _requestTimeout
+        };
     }
 
     public async Task<string> GenerateAsync(string prompt, CancellationToken ct = default)
@@ -30,15 +41,24 @@ public sealed class OllamaLlmClient : ILlmClient
         {
             try
             {
-                var response = await _http.PostAsJsonAsync("/api/generate", request, ct).ConfigureAwait(false);
+                using var requestCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                requestCts.CancelAfter(_requestTimeout);
+
+                var response = await _http.PostAsJsonAsync("/api/generate", request, requestCts.Token).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var result = await response.Content.ReadFromJsonAsync<OllamaResponse>(cancellationToken: ct).ConfigureAwait(false);
+                var result = await response.Content.ReadFromJsonAsync<OllamaResponse>(cancellationToken: requestCts.Token).ConfigureAwait(false);
                 return result?.Response ?? string.Empty;
             }
             catch (OperationCanceledException)
             {
-                throw;
+                if (ct.IsCancellationRequested)
+                    throw;
+                // Treat request timeout as retryable when caller cancellation was not requested.
+                if (attempt < _maxRetries)
+                    await Task.Delay(_retryDelay, ct).ConfigureAwait(false);
+                else
+                    throw;
             }
             catch (Exception) when (attempt < _maxRetries)
             {

@@ -62,6 +62,28 @@ public class TraceBeatExtractorTests
     }
 
     [Fact]
+    public void Consume_ActionCompleted_MissingActionKind_StillReturnsOutcomeJob()
+    {
+        var extractor = MakeExtractor();
+        var evt = new TraceEvent((long)(5.0 * 20), new ActorId("Bob"), "ActionCompleted",
+            new Dictionary<string, object>
+            {
+                ["actionId"] = "sleep_under_tree",
+                ["outcomeType"] = "Success",
+                ["actualDurationTicks"] = 440,
+                ["actor_satiety"] = 59,
+                ["actor_energy"] = 73.4,
+                ["actor_morale"] = 76.2
+            });
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Equal(NarrationJobKind.Outcome, job!.Kind);
+        Assert.Equal("Bob", job.SubjectId);
+    }
+
+    [Fact]
     public void Consume_UnknownEvent_ReturnsNull()
     {
         var extractor = MakeExtractor();

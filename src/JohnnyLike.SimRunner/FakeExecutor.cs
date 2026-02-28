@@ -6,6 +6,7 @@ public class FakeExecutor
 {
     private readonly Engine.Engine _engine;
     private readonly Dictionary<ActorId, (ActionSpec Action, long StartTick)> _runningActions = new();
+    private double _tickRemainder;
 
     public FakeExecutor(Engine.Engine engine)
     {
@@ -58,5 +59,14 @@ public class FakeExecutor
     }
 
     /// <summary>Backward-compat helper: converts seconds to ticks.</summary>
-    public void Update(double dtSeconds) => AdvanceTicks((long)(dtSeconds * Engine.Engine.TickHz));
+    public void Update(double dtSeconds)
+    {
+        // Preserve fractional ticks across frames so sub-50ms updates still advance sim time.
+        var exactTicks = dtSeconds * Engine.Engine.TickHz + _tickRemainder;
+        var wholeTicks = (long)Math.Floor(exactTicks);
+        _tickRemainder = exactTicks - wholeTicks;
+
+        if (wholeTicks > 0)
+            AdvanceTicks(wholeTicks);
+    }
 }
