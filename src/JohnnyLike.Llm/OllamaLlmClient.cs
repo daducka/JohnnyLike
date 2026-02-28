@@ -57,6 +57,8 @@ public sealed class OllamaLlmClient : ILlmClient
                 // Treat request timeout as retryable when caller cancellation was not requested.
                 if (attempt < _maxRetries)
                     await Task.Delay(_retryDelay, ct).ConfigureAwait(false);
+                else
+                    throw;
             }
             catch (Exception) when (attempt < _maxRetries)
             {

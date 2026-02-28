@@ -57,7 +57,7 @@ for (int i = 0; i < args.Length; i++)
 var enableAudio = piperProvided && voiceProvided;
 
 // Startup validation
-if (piperProvided ^ voiceProvided)
+if (piperProvided != voiceProvided)
 {
     Console.Error.WriteLine("[warn] Audio disabled: provide both --piper-exe and --voice to enable voice output.");
 }
