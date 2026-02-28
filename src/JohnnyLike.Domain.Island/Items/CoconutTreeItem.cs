@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Supply;
+using JohnnyLike.Domain.Island.Telemetry;
 using JohnnyLike.Domain.Kit.Dice;
 using System.Text.Json;
 
@@ -86,7 +87,8 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 parameters,
                 EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random),
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(PalmTreeResource) }
+                new List<ResourceRequirement> { new ResourceRequirement(PalmTreeResource) },
+                NarrationDescription: "shake the palm tree to knock down coconuts"
             ),
             baseScore,
             $"Get coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -117,24 +119,33 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 var sharedPile = effectCtx.World.SharedSupplyPile;
                 if (sharedPile == null) { src.ReleaseReservation(key); return; }
 
+                var actor = effectCtx.ActorId.Value;
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
                         src.CommitReservation<CoconutSupply>(key, 2.0, sharedPile, () => new CoconutSupply());
                         src.CommitReservation<PalmFrondSupply>(key, 2.0, sharedPile, () => new PalmFrondSupply());
                         effectCtx.Actor.Morale += 5.0;
+                        effectCtx.Tracer.BeatActor(actor, $"two coconuts tumble to the ground under {actor}'s hands", priority: 50);
                         break;
 
                     case RollOutcomeTier.Success:
                         src.CommitReservation<CoconutSupply>(key, 1.0, sharedPile, () => new CoconutSupply());
                         src.CommitReservation<PalmFrondSupply>(key, 1.0, sharedPile, () => new PalmFrondSupply());
                         effectCtx.Actor.Morale += 3.0;
+                        effectCtx.Tracer.BeatActor(actor, $"{actor} knocks a single coconut loose", priority: 50);
                         break;
 
-                    default: // PartialSuccess / Failure / CriticalFailure — wasted
+                    case RollOutcomeTier.PartialSuccess:
                         src.ReleaseReservation(key);
-                        if (tier == RollOutcomeTier.PartialSuccess) effectCtx.Actor.Morale += 2.0;
-                        else if (tier == RollOutcomeTier.CriticalFailure) effectCtx.Actor.Morale -= 5.0;
+                        effectCtx.Actor.Morale += 2.0;
+                        effectCtx.Tracer.BeatActor(actor, $"{actor} shakes and shakes, and eventually one coconut wobbles free", priority: 50);
+                        break;
+
+                    default: // Failure / CriticalFailure — wasted
+                        src.ReleaseReservation(key);
+                        if (tier == RollOutcomeTier.CriticalFailure) effectCtx.Actor.Morale -= 5.0;
+                        effectCtx.Tracer.BeatActor(actor, $"{actor} shakes and shakes, but nothing falls", priority: 50);
                         break;
                 }
             })

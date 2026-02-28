@@ -136,6 +136,9 @@ public class Engine
                 ["estimatedDurationTicks"] = plannedAction.EstimatedDurationTicks
             };
 
+            if (!string.IsNullOrEmpty(plannedAction.NarrationDescription))
+                details["narrationDescription"] = plannedAction.NarrationDescription;
+
             if (plannedAction.ResourceRequirements != null && plannedAction.ResourceRequirements.Count > 0)
             {
                 details["resourceRequirements"] = string.Join(", ",
@@ -178,9 +181,14 @@ public class Engine
         var details = new Dictionary<string, object>
         {
             ["actionId"] = outcome.ActionId.Value,
+            ["actionKind"] = actorState.CurrentAction?.Kind.ToString() ?? string.Empty,
             ["outcomeType"] = outcome.Type.ToString(),
             ["actualDurationTicks"] = outcome.ActualDurationTicks
         };
+
+        var narrationDesc = actorState.CurrentAction?.NarrationDescription;
+        if (!string.IsNullOrEmpty(narrationDesc))
+            details["narrationDescription"] = narrationDesc;
 
         if (outcome.ResultData != null)
         {

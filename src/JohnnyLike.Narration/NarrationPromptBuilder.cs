@@ -32,11 +32,12 @@ public sealed class NarrationPromptBuilder
         AppendSystemInstructions(sb, requestSummaryUpdate);
         sb.AppendLine();
         AppendTone(sb);
+        AppendCanonicalFacts(sb, facts);
         AppendActorFacts(sb, facts, beat.ActorId);
         AppendRecentBeats(sb, recentBeats);
         AppendCurrentSummary(sb);
         sb.AppendLine("## Current Event");
-        sb.AppendLine($"Actor \"{beat.ActorId}\" is about to attempt action \"{beat.Subject}\" " +
+        sb.AppendLine($"Actor \"{beat.ActorId}\" is about to: {beat.Subject} " +
                       $"(kind: {beat.ActionKind}) at sim-time {beat.SimTime:F1}.");
         sb.AppendLine("Write the ATTEMPT narration line. Do NOT reveal the outcome.");
         return sb.ToString();
@@ -52,12 +53,13 @@ public sealed class NarrationPromptBuilder
         AppendSystemInstructions(sb, requestSummaryUpdate);
         sb.AppendLine();
         AppendTone(sb);
+        AppendCanonicalFacts(sb, facts);
         AppendActorFacts(sb, facts, beat.ActorId);
         AppendRecentBeats(sb, recentBeats);
         AppendCurrentSummary(sb);
         sb.AppendLine("## Current Event");
         var outcomeWord = beat.Success == true ? "succeeded" : "failed";
-        sb.AppendLine($"Actor \"{beat.ActorId}\" has {outcomeWord} at action \"{beat.Subject}\" " +
+        sb.AppendLine($"Actor \"{beat.ActorId}\" has {outcomeWord}: {beat.Subject} " +
                       $"(kind: {beat.ActionKind}) at sim-time {beat.SimTime:F1}.");
 
         // Domain-provided stats — output whatever was snapshotted, with no hardcoded names
@@ -86,6 +88,7 @@ public sealed class NarrationPromptBuilder
         sb.AppendLine();
         AppendTone(sb);
         sb.AppendLine($"## Domain: {facts.Domain}");
+        AppendCanonicalFacts(sb, facts);
         AppendRecentBeats(sb, recentBeats);
         AppendCurrentSummary(sb);
         sb.AppendLine("## Domain Beat");
@@ -112,6 +115,7 @@ public sealed class NarrationPromptBuilder
         sb.AppendLine();
         AppendTone(sb);
         sb.AppendLine($"## Domain: {facts.Domain}");
+        AppendCanonicalFacts(sb, facts);
         AppendRecentBeats(sb, recentBeats);
         AppendCurrentSummary(sb);
         sb.AppendLine("## Current Event");
@@ -134,6 +138,13 @@ public sealed class NarrationPromptBuilder
         else
             sb.AppendLine("    \"updatedSummary\": null");
         sb.AppendLine("  }");
+        sb.AppendLine("Avoid mentioning numeric values for stats or durations in your narration; describe states qualitatively.");
+    }
+
+    private static void AppendCanonicalFacts(StringBuilder sb, CanonicalFacts facts)
+    {
+        if (!string.IsNullOrEmpty(facts.CurrentDayPhase))
+            sb.AppendLine($"It is currently {facts.CurrentDayPhase.ToLowerInvariant()}.");
     }
 
     private void AppendTone(StringBuilder sb)

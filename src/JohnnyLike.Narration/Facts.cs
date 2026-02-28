@@ -24,6 +24,12 @@ public sealed class CanonicalFacts
     public IReadOnlyDictionary<string, ActorFacts> Actors => _actors;
     public string Domain { get; set; } = string.Empty;
     public double CurrentSimTime { get; set; }
+    /// <summary>
+    /// The current time-of-day phase (e.g. "Morning", "Afternoon", "Night").
+    /// Set when a <c>DayPhaseChanged</c> trace event is consumed.
+    /// Null until the first phase change is observed.
+    /// </summary>
+    public string? CurrentDayPhase { get; set; }
 
     public void UpdateActor(ActorFacts facts) => _actors[facts.ActorId] = facts;
 

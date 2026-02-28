@@ -24,7 +24,8 @@ public record ActionSpec(
     ActionParameters Parameters,
     long EstimatedDurationTicks,
     Dictionary<string, object>? ResultData = null,
-    IReadOnlyList<ResourceRequirement>? ResourceRequirements = null
+    IReadOnlyList<ResourceRequirement>? ResourceRequirements = null,
+    string? NarrationDescription = null
 );
 
 public enum ActionOutcomeType

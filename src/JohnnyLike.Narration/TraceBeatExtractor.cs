@@ -66,6 +66,9 @@ public sealed class TraceBeatExtractor
             case "NarrationBeat":
                 return HandleNarrationBeat(evt);
 
+            case "DayPhaseChanged":
+                return HandleDayPhaseChanged(evt);
+
             default:
                 if (_worldEventHandlers.TryGetValue(evt.EventType, out var handler))
                 {
@@ -125,15 +128,20 @@ public sealed class TraceBeatExtractor
         var actorId = evt.ActorId.Value.Value;
         var actionKind = GetString(evt.Details, "actionKind");
         var actionId = GetString(evt.Details, "actionId");
+        var narrationDescription = GetString(evt.Details, "narrationDescription");
+        var displaySubject = !string.IsNullOrEmpty(narrationDescription) ? narrationDescription : actionId;
 
-        var beat = new Beat(evt.TimeSeconds, actorId, "Actor", evt.EventType, actionKind, actionId);
-        AddBeat(beat);
+        var beat = new Beat(evt.TimeSeconds, actorId, "Actor", evt.EventType, actionKind, displaySubject);
 
         _beatsSinceLastSummary++;
         bool wantSummary = _beatsSinceLastSummary >= _summaryRefreshEveryN;
         if (wantSummary) _beatsSinceLastSummary = 0;
 
         var prompt = _promptBuilder.BuildAttemptPrompt(beat, _facts, _recentBeats, wantSummary);
+
+        // Add the beat after building the prompt so the current action is not included in
+        // the "## Recent events" section (mirrors the NarrationBeat handler pattern).
+        AddBeat(beat);
 
         return new NarrationJob(
             JobId: Guid.NewGuid(),
@@ -154,6 +162,8 @@ public sealed class TraceBeatExtractor
         var actionId = GetString(evt.Details, "actionId");
         var outcomeStr = GetString(evt.Details, "outcomeType");
         var isSuccess = IsSuccessOutcome(outcomeStr);
+        var narrationDescription = GetString(evt.Details, "narrationDescription");
+        var displaySubject = !string.IsNullOrEmpty(narrationDescription) ? narrationDescription : actionId;
 
         // Collect all actor_* keys generically — the domain decides what to expose
         var statsAfter = CollectActorStats(evt.Details);
@@ -163,10 +173,9 @@ public sealed class TraceBeatExtractor
         var mergedStats = MergeStats(existing?.Stats, statsAfter);
         _facts.UpdateActor(new ActorFacts(actorId, mergedStats, actionKind, actionId));
 
-        var beat = new Beat(evt.TimeSeconds, actorId, "Actor", evt.EventType, actionKind, actionId,
+        var beat = new Beat(evt.TimeSeconds, actorId, "Actor", evt.EventType, actionKind, displaySubject,
             Success: isSuccess, OutcomeType: outcomeStr,
             StatsAfter: statsAfter.Count > 0 ? statsAfter : null);
-        AddBeat(beat);
 
         // Apply summary cadence to outcomes too
         _beatsSinceLastSummary++;
@@ -175,12 +184,44 @@ public sealed class TraceBeatExtractor
 
         var prompt = _promptBuilder.BuildOutcomePrompt(beat, _facts, _recentBeats, wantSummary);
 
+        // Add the beat after building the prompt so the current action is not included in
+        // the "## Recent events" section (mirrors the NarrationBeat handler pattern).
+        AddBeat(beat);
+
         return new NarrationJob(
             JobId: Guid.NewGuid(),
             PlayAtSimTime: evt.TimeSeconds,
             DeadlineSimTime: evt.TimeSeconds + 15.0,
             Kind: NarrationJobKind.Outcome,
             SubjectId: actorId,
+            Prompt: prompt
+        );
+    }
+
+    private NarrationJob HandleDayPhaseChanged(TraceEvent evt)
+    {
+        var dayPhase = GetString(evt.Details, "dayPhase");
+        var text = GetString(evt.Details, "text");
+
+        // Update canonical facts so the day phase is available for all subsequent prompts.
+        _facts.CurrentDayPhase = dayPhase;
+
+        var beat = new Beat(evt.TimeSeconds, null, "World", evt.EventType, "", text);
+
+        _beatsSinceLastSummary++;
+        bool wantSummary = _beatsSinceLastSummary >= _summaryRefreshEveryN;
+        if (wantSummary) _beatsSinceLastSummary = 0;
+
+        var prompt = _promptBuilder.BuildWorldEventPrompt(beat, _facts, _recentBeats, wantSummary);
+
+        AddBeat(beat);
+
+        return new NarrationJob(
+            JobId: Guid.NewGuid(),
+            PlayAtSimTime: evt.TimeSeconds,
+            DeadlineSimTime: evt.TimeSeconds + 12.0,
+            Kind: NarrationJobKind.WorldEvent,
+            SubjectId: "calendar:day_phase",
             Prompt: prompt
         );
     }

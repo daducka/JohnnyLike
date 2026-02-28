@@ -100,7 +100,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 parameters,
                 EngineConstants.TimeToTicks(20.0, 30.0, ctx.Random),
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(BeachResource) }
+                new List<ResourceRequirement> { new ResourceRequirement(BeachResource) },
+                NarrationDescription: "explore the beach for useful materials"
             ),
             0.5,
             $"Explore beach (sticks: {sticks:F0}, wood: {wood:F0}, DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -135,6 +136,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 var pile = effectCtx.World.SharedSupplyPile;
                 if (pile == null) { src.ReleaseReservation(key); return; }
 
+                var actor = effectCtx.ActorId.Value;
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
@@ -143,6 +145,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                         src.CommitReservation<RocksSupply>(key, 2.0, pile, () => new RocksSupply());
                         effectCtx.Actor.Morale += 8.0;
                         effectCtx.Actor.Energy -= 8.0;
+                        effectCtx.Tracer.BeatActor(actor, $"{actor} returns from the beach arms full of driftwood, sticks, and rocks", priority: 50);
                         break;
 
                     case RollOutcomeTier.Success:
@@ -151,6 +154,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                         src.CommitReservation<RocksSupply>(key, 1.0, pile, () => new RocksSupply());
                         effectCtx.Actor.Morale += 5.0;
                         effectCtx.Actor.Energy -= 10.0;
+                        effectCtx.Tracer.BeatActor(actor, $"{actor} picks through the tideline and gathers a useful armful of materials", priority: 50);
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
@@ -159,6 +163,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                         src.ReleaseReservation(key); // return reserved rocks (not committed at this tier)
                         effectCtx.Actor.Morale += 2.0;
                         effectCtx.Actor.Energy -= 12.0;
+                        effectCtx.Tracer.BeatActor(actor, $"{actor} finds a few sticks and a bit of wood, but not much else", priority: 50);
                         break;
 
                     default: // Failure or CriticalFailure: everything returned
@@ -166,6 +171,11 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                         effectCtx.Actor.Energy -= tier == RollOutcomeTier.Failure ? 12.0 : 15.0;
                         if (tier == RollOutcomeTier.CriticalFailure)
                             effectCtx.Actor.Morale -= 5.0;
+                        effectCtx.Tracer.BeatActor(actor,
+                            tier == RollOutcomeTier.CriticalFailure
+                                ? $"{actor} searches the beach for an hour and comes back empty-handed and discouraged"
+                                : $"{actor} scours the beach but finds nothing useful",
+                            priority: 50);
                         break;
                 }
             }),

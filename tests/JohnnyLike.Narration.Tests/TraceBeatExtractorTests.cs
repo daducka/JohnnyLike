@@ -389,4 +389,160 @@ public class TraceBeatExtractorTests
         Assert.NotNull(job);
         Assert.Equal(NarrationJobKind.WorldEvent, job!.Kind);
     }
+
+    // ── Recent-events ordering (current beat must not appear in recent history) ──
+
+    [Fact]
+    public void Consume_ActionAssigned_CurrentBeatNotInRecentBeats()
+    {
+        var extractor = MakeExtractor();
+        // Seed one prior beat so RecentBeats is non-empty after it.
+        extractor.Consume(MakeAssigned(1.0, "Alice", "prior_action"));
+
+        var job = extractor.Consume(MakeAssigned(2.0, "Alice", "current_action"));
+
+        Assert.NotNull(job);
+        // The prompt is built before AddBeat, so "current_action" must appear exactly once
+        // (in "## Current Event", not also in "## Recent events").
+        Assert.Equal(1, job!.Prompt.Split("current_action").Length - 1);
+        // The prior action should be in recent events, the current one should not
+        Assert.Contains("prior_action", job.Prompt);
+    }
+
+    [Fact]
+    public void Consume_ActionCompleted_CurrentBeatNotInRecentBeats()
+    {
+        var extractor = MakeExtractor();
+        // Seed one prior completed beat.
+        extractor.Consume(MakeCompleted(1.0, "Bob", "prior_action"));
+
+        var job = extractor.Consume(MakeCompleted(2.0, "Bob", "current_action"));
+
+        Assert.NotNull(job);
+        // "current_action" must appear exactly once in the prompt (Current Event section only).
+        Assert.Equal(1, job!.Prompt.Split("current_action").Length - 1);
+        Assert.Contains("prior_action", job.Prompt);
+    }
+
+    // ── Qualitative stats ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void Consume_ActionCompleted_WithQualitativeStats_PromptContainsDescriptors()
+    {
+        var extractor = MakeExtractor();
+        // Use stats that map to known descriptors: satiety=25 → "hungry", energy=85 → "energetic"
+        var evt = MakeCompleted(3.0, "Carol", satiety: 25.0, energy: 85.0);
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        // Raw numeric values from the test event should appear as-is (test bypasses
+        // GetActorStateSnapshot), but the system instruction must forbid numbers.
+        Assert.Contains("Avoid mentioning numeric values", job!.Prompt);
+    }
+
+    [Fact]
+    public void AppendSystemInstructions_ContainsQualitativeInstruction()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
+
+        var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false);
+
+        Assert.Contains("Avoid mentioning numeric values", prompt);
+    }
+
+    // ── NarrationDescription ──────────────────────────────────────────────────
+
+    [Fact]
+    public void Consume_ActionAssigned_WithNarrationDescription_UsesDescriptionInPrompt()
+    {
+        var extractor = MakeExtractor();
+        var evt = new TraceEvent((long)(1.0 * 20), new ActorId("Alice"), "ActionAssigned",
+            new Dictionary<string, object>
+            {
+                ["actionId"] = "shake_tree_coconut",
+                ["actionKind"] = "Interact",
+                ["narrationDescription"] = "shake the palm tree to knock down coconuts"
+            });
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Contains("shake the palm tree to knock down coconuts", job!.Prompt);
+        Assert.DoesNotContain("shake_tree_coconut", job.Prompt);
+    }
+
+    [Fact]
+    public void Consume_ActionAssigned_WithoutNarrationDescription_FallsBackToActionId()
+    {
+        var extractor = MakeExtractor();
+        var evt = MakeAssigned(1.0, "Alice", "my_action_id");
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Contains("my_action_id", job!.Prompt);
+    }
+
+    // ── Day phase ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Consume_DayPhaseChanged_UpdatesCanonicalFactsCurrentDayPhase()
+    {
+        var extractor = MakeExtractor();
+        var evt = new TraceEvent(0, null, "DayPhaseChanged",
+            new Dictionary<string, object>
+            {
+                ["dayPhase"] = "Morning",
+                ["text"]     = "Morning light spreads across the beach."
+            });
+
+        extractor.Consume(evt);
+
+        Assert.Equal("Morning", extractor.Facts.CurrentDayPhase);
+    }
+
+    [Fact]
+    public void Consume_DayPhaseChanged_ReturnsWorldEventJob()
+    {
+        var extractor = MakeExtractor();
+        var evt = new TraceEvent(0, null, "DayPhaseChanged",
+            new Dictionary<string, object>
+            {
+                ["dayPhase"] = "Night",
+                ["text"]     = "Night falls over the island."
+            });
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Equal(NarrationJobKind.WorldEvent, job!.Kind);
+        Assert.Equal("calendar:day_phase", job.SubjectId);
+    }
+
+    [Fact]
+    public void BuildAttemptPrompt_WithDayPhase_IncludesDayPhaseLine()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test", CurrentDayPhase = "Morning" };
+        var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
+
+        var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false);
+
+        Assert.Contains("It is currently morning.", prompt);
+    }
+
+    [Fact]
+    public void BuildAttemptPrompt_WithoutDayPhase_NoDayPhaseLine()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };  // no CurrentDayPhase
+        var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
+
+        var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false);
+
+        Assert.DoesNotContain("It is currently", prompt);
+    }
 }
