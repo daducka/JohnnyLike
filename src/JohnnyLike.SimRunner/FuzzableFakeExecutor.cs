@@ -7,6 +7,7 @@ public class FuzzableFakeExecutor
     private readonly Engine.Engine _engine;
     private readonly FuzzConfig _config;
     private readonly Random _rng;
+    private double _tickRemainder;
     private readonly Dictionary<ActorId, (ActionSpec Action, long StartTick, long AdjustedDurationTicks)> _runningActions = new();
     private readonly Dictionary<ActorId, long> _noShowUntil = new();
     private readonly Dictionary<ActorId, bool> _busyLocked = new();
@@ -24,7 +25,16 @@ public class FuzzableFakeExecutor
         DoUpdate();
     }
 
-    public void Update(double dtSeconds) => AdvanceTicks((long)(dtSeconds * Engine.Engine.TickHz));
+    public void Update(double dtSeconds)
+    {
+        // Preserve fractional ticks across frames so sub-50ms updates still advance sim time.
+        var exactTicks = dtSeconds * Engine.Engine.TickHz + _tickRemainder;
+        var wholeTicks = (long)Math.Floor(exactTicks);
+        _tickRemainder = exactTicks - wholeTicks;
+
+        if (wholeTicks > 0)
+            AdvanceTicks(wholeTicks);
+    }
 
     private void DoUpdate()
     {
