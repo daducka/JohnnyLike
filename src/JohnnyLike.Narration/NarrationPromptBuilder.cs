@@ -26,7 +26,8 @@ public sealed class NarrationPromptBuilder
         Beat beat,
         CanonicalFacts facts,
         IReadOnlyList<Beat> recentBeats,
-        bool requestSummaryUpdate)
+        bool requestSummaryUpdate,
+        IReadOnlyList<string>? previousNarrations = null)
     {
         var sb = new StringBuilder();
         AppendSystemInstructions(sb, requestSummaryUpdate);
@@ -36,6 +37,7 @@ public sealed class NarrationPromptBuilder
         AppendActorFacts(sb, facts, beat.ActorId);
         AppendRecentBeats(sb, recentBeats);
         AppendCurrentSummary(sb);
+        AppendPreviousNarrations(sb, previousNarrations);
         sb.AppendLine("## Current Event");
         sb.AppendLine($"Actor \"{beat.ActorId}\" is about to: {beat.Subject} " +
                       $"(kind: {beat.ActionKind}) at sim-time {beat.SimTime:F1}.");
@@ -47,7 +49,8 @@ public sealed class NarrationPromptBuilder
         Beat beat,
         CanonicalFacts facts,
         IReadOnlyList<Beat> recentBeats,
-        bool requestSummaryUpdate)
+        bool requestSummaryUpdate,
+        IReadOnlyList<string>? previousNarrations = null)
     {
         var sb = new StringBuilder();
         AppendSystemInstructions(sb, requestSummaryUpdate);
@@ -57,6 +60,7 @@ public sealed class NarrationPromptBuilder
         AppendActorFacts(sb, facts, beat.ActorId);
         AppendRecentBeats(sb, recentBeats);
         AppendCurrentSummary(sb);
+        AppendPreviousNarrations(sb, previousNarrations);
         sb.AppendLine("## Current Event");
         var outcomeWord = beat.Success == true ? "succeeded" : "failed";
         sb.AppendLine($"Actor \"{beat.ActorId}\" has {outcomeWord}: {beat.Subject} " +
@@ -88,7 +92,8 @@ public sealed class NarrationPromptBuilder
         string domainText,
         CanonicalFacts facts,
         IReadOnlyList<Beat> recentBeats,
-        bool requestSummaryUpdate)
+        bool requestSummaryUpdate,
+        IReadOnlyList<string>? previousNarrations = null)
     {
         var sb = new StringBuilder();
         AppendSystemInstructions(sb, requestSummaryUpdate);
@@ -98,6 +103,7 @@ public sealed class NarrationPromptBuilder
         AppendCanonicalFacts(sb, facts);
         AppendRecentBeats(sb, recentBeats);
         AppendCurrentSummary(sb);
+        AppendPreviousNarrations(sb, previousNarrations);
         sb.AppendLine("## Domain Beat");
         sb.AppendLine(domainText);
         if (beat.ActorId != null)
@@ -115,7 +121,8 @@ public sealed class NarrationPromptBuilder
         Beat beat,
         CanonicalFacts facts,
         IReadOnlyList<Beat> recentBeats,
-        bool requestSummaryUpdate)
+        bool requestSummaryUpdate,
+        IReadOnlyList<string>? previousNarrations = null)
     {
         var sb = new StringBuilder();
         AppendSystemInstructions(sb, requestSummaryUpdate);
@@ -125,6 +132,7 @@ public sealed class NarrationPromptBuilder
         AppendCanonicalFacts(sb, facts);
         AppendRecentBeats(sb, recentBeats);
         AppendCurrentSummary(sb);
+        AppendPreviousNarrations(sb, previousNarrations);
         sb.AppendLine("## Current Event");
         sb.AppendLine($"World event \"{beat.EventType}\" at sim-time {beat.SimTime:F1}.");
         if (beat.Subject.Length > 0)
@@ -146,6 +154,8 @@ public sealed class NarrationPromptBuilder
             sb.AppendLine("    \"updatedSummary\": null");
         sb.AppendLine("  }");
         sb.AppendLine("Avoid mentioning numeric values for stats or durations in your narration; describe states qualitatively.");
+        sb.AppendLine("Vary your sentence openings and phrasing; do not start every line the same way.");
+        sb.AppendLine("If previous narration lines are provided, continue the story naturally from them without repeating exact phrases.");
     }
 
     private static void AppendCanonicalFacts(StringBuilder sb, CanonicalFacts facts)
@@ -214,6 +224,15 @@ public sealed class NarrationPromptBuilder
         if (string.IsNullOrWhiteSpace(_storySummary)) return;
         sb.AppendLine("## Story so far");
         sb.AppendLine(_storySummary);
+        sb.AppendLine();
+    }
+
+    private static void AppendPreviousNarrations(StringBuilder sb, IReadOnlyList<string>? previousNarrations)
+    {
+        if (previousNarrations == null || previousNarrations.Count == 0) return;
+        sb.AppendLine("## Previous Narration");
+        foreach (var line in previousNarrations)
+            sb.AppendLine($"- {line}");
         sb.AppendLine();
     }
 }

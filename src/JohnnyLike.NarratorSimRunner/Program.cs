@@ -229,6 +229,7 @@ var jobToAudioTask = Task.Run(async () =>
                 if (parsed.UpdatedSummary != null)
                     promptBuilder.UpdateSummary(parsed.UpdatedSummary);
 
+                extractor.AddNarrationToHistory(parsed.Narration);
                 Console.WriteLine($"[narration] t={narJob.PlayAtSimTime:F1} [{narJob.Kind}] {parsed.Narration}");
                 Interlocked.Increment(ref narrationJobsCompleted);
 

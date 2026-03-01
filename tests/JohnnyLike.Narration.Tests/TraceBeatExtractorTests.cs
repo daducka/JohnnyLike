@@ -612,4 +612,140 @@ public class TraceBeatExtractorTests
         Assert.Contains("Alice knocks a single coconut loose.", job!.Prompt);
         Assert.Contains("## Outcome Context", job.Prompt);
     }
+
+    // ── Narration history ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void BuildAttemptPrompt_WithPreviousNarrations_IncludesPreviousNarrationSection()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
+        var history = new List<string> { "Alice wanders down the beach.", "She spots a coconut tree." };
+
+        var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false, history);
+
+        Assert.Contains("## Previous Narration", prompt);
+        Assert.Contains("- Alice wanders down the beach.", prompt);
+        Assert.Contains("- She spots a coconut tree.", prompt);
+    }
+
+    [Fact]
+    public void BuildOutcomePrompt_WithPreviousNarrations_IncludesPreviousNarrationSection()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(2.0, "Alice", "Actor", "ActionCompleted", "Interact", "eat food", Success: true);
+        var history = new List<string> { "Alice reaches for the coconut." };
+
+        var prompt = builder.BuildOutcomePrompt(beat, facts, new List<Beat>(), false, history);
+
+        Assert.Contains("## Previous Narration", prompt);
+        Assert.Contains("- Alice reaches for the coconut.", prompt);
+    }
+
+    [Fact]
+    public void BuildNarrationBeatPrompt_WithPreviousNarrations_IncludesPreviousNarrationSection()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(3.0, null, "DomainBeat", "NarrationBeat", "", "A cloud drifts past.");
+        var history = new List<string> { "The sun beats down." };
+
+        var prompt = builder.BuildNarrationBeatPrompt(beat, "A cloud drifts past.", facts, new List<Beat>(), false, history);
+
+        Assert.Contains("## Previous Narration", prompt);
+        Assert.Contains("- The sun beats down.", prompt);
+    }
+
+    [Fact]
+    public void BuildWorldEventPrompt_WithPreviousNarrations_IncludesPreviousNarrationSection()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(4.0, null, "World", "DayPhaseChanged", "", "Morning arrives.");
+        var history = new List<string> { "Darkness gave way to pink hues." };
+
+        var prompt = builder.BuildWorldEventPrompt(beat, facts, new List<Beat>(), false, history);
+
+        Assert.Contains("## Previous Narration", prompt);
+        Assert.Contains("- Darkness gave way to pink hues.", prompt);
+    }
+
+    [Fact]
+    public void BuildAttemptPrompt_WithEmptyPreviousNarrations_NoPreviousNarrationSection()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
+
+        var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false, new List<string>());
+
+        Assert.DoesNotContain("## Previous Narration", prompt);
+    }
+
+    [Fact]
+    public void AppendSystemInstructions_ContainsVariedPhrasingGuidance()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
+
+        var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false);
+
+        Assert.Contains("Vary your sentence openings", prompt);
+        Assert.Contains("continue the story naturally", prompt);
+    }
+
+    [Fact]
+    public void AddNarrationToHistory_BufferCapIsRespected()
+    {
+        var extractor = MakeExtractor();
+
+        extractor.AddNarrationToHistory("Line one.");
+        extractor.AddNarrationToHistory("Line two.");
+        extractor.AddNarrationToHistory("Line three.");
+        extractor.AddNarrationToHistory("Line four."); // should evict "Line one."
+
+        Assert.Equal(3, extractor.NarrationHistory.Count);
+        Assert.DoesNotContain("Line one.", extractor.NarrationHistory);
+        Assert.Contains("Line four.", extractor.NarrationHistory);
+    }
+
+    [Fact]
+    public void AddNarrationToHistory_EmptyStringIgnored()
+    {
+        var extractor = MakeExtractor();
+        extractor.AddNarrationToHistory("");
+        extractor.AddNarrationToHistory("   ");
+        extractor.AddNarrationToHistory("Valid line.");
+
+        Assert.Equal(1, extractor.NarrationHistory.Count);
+    }
+
+    [Fact]
+    public void Consume_ActionAssigned_PromptIncludesNarrationHistory()
+    {
+        var extractor = MakeExtractor();
+        extractor.AddNarrationToHistory("A prior narration line.");
+
+        var job = extractor.Consume(MakeAssigned(1.0, "Alice", "eat"));
+
+        Assert.NotNull(job);
+        Assert.Contains("## Previous Narration", job!.Prompt);
+        Assert.Contains("- A prior narration line.", job.Prompt);
+    }
+
+    [Fact]
+    public void Consume_ActionCompleted_PromptIncludesNarrationHistory()
+    {
+        var extractor = MakeExtractor();
+        extractor.AddNarrationToHistory("Alice grabbed the fruit.");
+
+        var job = extractor.Consume(MakeCompleted(2.0, "Alice", "eat"));
+
+        Assert.NotNull(job);
+        Assert.Contains("## Previous Narration", job!.Prompt);
+        Assert.Contains("- Alice grabbed the fruit.", job.Prompt);
+    }
 }
