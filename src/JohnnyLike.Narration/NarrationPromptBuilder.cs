@@ -154,8 +154,12 @@ public sealed class NarrationPromptBuilder
             sb.AppendLine("    \"updatedSummary\": null");
         sb.AppendLine("  }");
         sb.AppendLine("Avoid mentioning numeric values for stats or durations in your narration; describe states qualitatively.");
-        sb.AppendLine("Vary your sentence openings and phrasing; do not start every line the same way.");
+        sb.AppendLine("Consult your previous narrations for context and continuity. Vary your sentence openings and phrasing; do NOT start every line the same way.");
         sb.AppendLine("If previous narration lines are provided, continue the story naturally from them without repeating exact phrases.");
+        sb.AppendLine("Avoid using passive language; narrate in an active voice. Focus on the most interesting or dramatic aspects of the event, and use vivid language to bring it to life.");
+        sb.AppendLine("Do not narrate from the perspective of any particular character; maintain an observer's perspective. Do not use second-person \"you\" phrasing.");
+        sb.AppendLine("When writing the narration, do NOT start the sentence with \"As\". For example, avoid \"As Johnny tries to climb the tree, he slips.\" Instead, say \"Johnny tries to climb the tree but slips.\"");
+        sb.AppendLine("If consecutive events are thematically the same, make sure to mention it in the narration. For example, if Johnny previously interacted with the palm tree, and is about to immediately try it again, then the narrations could be: \"The coconut tree continues to draw Johnny's attention, as he decides to give it one more shake.\"");
     }
 
     private static void AppendCanonicalFacts(StringBuilder sb, CanonicalFacts facts)
