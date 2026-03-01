@@ -186,7 +186,8 @@ public class ActionReservationTests
                         }
                     ),
                     1.0,
-                    "Action with resource"
+                    new Dictionary<QualityType, double>(),
+                    Reason: "Action with resource"
                 ));
             }
             
@@ -197,7 +198,8 @@ public class ActionReservationTests
                     ActionKind.Wait,
                     EmptyActionParameters.Instance, 100L),
                 0.5,
-                "Action without resource"
+                new Dictionary<QualityType, double>(),
+                Reason: "Action without resource"
             ));
             
             return candidates;
@@ -250,7 +252,8 @@ public class ActionReservationTests
                         }
                     ),
                     1.0,
-                    "Action with multiple resources"
+                    new Dictionary<QualityType, double>(),
+                    Reason: "Action with multiple resources"
                 ));
             }
             
@@ -261,7 +264,8 @@ public class ActionReservationTests
                     ActionKind.Wait,
                     EmptyActionParameters.Instance, 100L),
                 0.5,
-                "Action without resource"
+                new Dictionary<QualityType, double>(),
+                Reason: "Action without resource"
             ));
             
             return candidates;

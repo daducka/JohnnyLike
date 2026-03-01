@@ -182,7 +182,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 100L
             ),
             0.3,
-            "Idle",
+            Reason: "Idle",
             Qualities: new Dictionary<QualityType, double>
             {
                 [QualityType.Rest]       = 0.6,
@@ -239,7 +239,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach:sandcastle_spot")) }
             ),
             baseScore,
-            $"Build sand castle (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            Reason: $"Build sand castle (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 if (effectCtx.Tier == null)
@@ -292,7 +292,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random)
             ),
             0.2,
-            "Think about supplies",
+            Reason: "Think about supplies",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 // Use effect-time Rng (not the candidate-generation ctx) for deterministic rolls.
@@ -330,7 +330,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             160L
                         ),
                         2.0, // High priority
-                        $"Write {name}'s name in sand (chat redeem)",
+                        Reason: $"Write {name}'s name in sand (chat redeem)",
                         EffectHandler: new Action<EffectContext>(effectCtx =>
                         {
                             // Dequeue the completed chat action intent
@@ -358,7 +358,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             40L
                         ),
                         2.0, // High priority
-                        "Clap emote (sub/cheer)",
+                        Reason: "Clap emote (sub/cheer)",
                         EffectHandler: new Action<EffectContext>(effectCtx =>
                         {
                             // Dequeue the completed chat action intent
@@ -390,7 +390,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 600L + (long)(ctx.Rng.NextDouble() * 200)
             ),
             0.35,
-            "Sleep under tree",
+            Reason: "Sleep under tree",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 effectCtx.Actor.Energy += 40.0;
@@ -422,7 +422,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) }
             ),
             0.5,
-            $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            Reason: $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 if (effectCtx.Tier == null)

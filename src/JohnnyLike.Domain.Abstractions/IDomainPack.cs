@@ -5,19 +5,19 @@ namespace JohnnyLike.Domain.Abstractions;
 /// </summary>
 /// <param name="Action">The action specification including ID, kind, parameters, and resource requirements</param>
 /// <param name="IntrinsicScore">Baseline desirability / opportunity score provided by candidate generators</param>
+/// <param name="Qualities">Per-quality weights for domain-level scoring post-pass</param>
 /// <param name="Reason">Optional human-readable explanation for why this action was suggested</param>
 /// <param name="EffectHandler">Optional effect handler to execute when this action completes.</param>
 /// <param name="PreAction">Optional callback executed at action start (before the action duration begins).</param>
-/// <param name="Qualities">Optional per-quality weights for domain-level scoring post-pass</param>
 /// <param name="Score">Final computed score assigned by the domain after gathering all candidates</param>
 /// <param name="ProviderItemId">Item ID of the world item that generated this candidate, used for deterministic tie-breaking and room filtering</param>
 public record ActionCandidate(
     ActionSpec Action,
     double IntrinsicScore,
+    IReadOnlyDictionary<QualityType, double> Qualities,
     string? Reason = null,
     object? EffectHandler = null,
     object? PreAction = null,
-    IReadOnlyDictionary<QualityType, double>? Qualities = null,
     double Score = 0.0,
     string? ProviderItemId = null
 );

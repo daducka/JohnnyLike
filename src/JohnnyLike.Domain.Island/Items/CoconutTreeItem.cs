@@ -85,7 +85,7 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 new List<ResourceRequirement> { new ResourceRequirement(PalmTreeResource) }
             ),
             0.6,
-            $"Get coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            Reason: $"Get coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             PreAction: new Func<EffectContext, bool>(_ =>
             {
                 // Reserve the MAX possible payout (CriticalSuccess = 2 coconuts + 2 fronds).

@@ -33,7 +33,7 @@ public class MermaidItem : ExpirableWorldItem
                 new List<ResourceRequirement> { new ResourceRequirement(ShoreEastEnd) }
             ),
             baseScore,
-            $"Wave at mermaid (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            Reason: $"Wave at mermaid (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 if (effectCtx.Tier == null)

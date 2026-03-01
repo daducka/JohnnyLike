@@ -38,7 +38,7 @@ public class UmbrellaItem : ToolItem
                     EngineConstants.TimeToTicks(5.0)
                 ),
                 0.7,
-                "Deploy umbrella (rain protection)",
+                Reason: "Deploy umbrella (rain protection)",
                 EffectHandler: new Action<EffectContext>(effectCtx =>
                 {
                     effectCtx.Actor.ActiveBuffs.Add(new ActiveBuff
@@ -70,7 +70,7 @@ public class UmbrellaItem : ToolItem
                     EngineConstants.TimeToTicks(3.0)
                 ),
                 0.4,
-                "Holster umbrella",
+                Reason: "Holster umbrella",
                 EffectHandler: new Action<EffectContext>(effectCtx =>
                 {
                     effectCtx.Actor.ActiveBuffs.RemoveAll(b => b.Name == RainProtectionBuffName);

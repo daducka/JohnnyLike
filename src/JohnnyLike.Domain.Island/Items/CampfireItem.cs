@@ -70,7 +70,7 @@ public class CampfireItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 0.6,
-                $"Add fuel to campfire (fuel: {FuelSeconds:F0}s, wood: {currentWood:F1}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                Reason: $"Add fuel to campfire (fuel: {FuelSeconds:F0}s, wood: {currentWood:F1}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyAddFuelEffect),
                 Qualities: new Dictionary<QualityType, double>
                 {
@@ -97,7 +97,7 @@ public class CampfireItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 0.6,
-                $"Relight campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                Reason: $"Relight campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyRelightEffect),
                 Qualities: new Dictionary<QualityType, double>
                 {
@@ -124,7 +124,7 @@ public class CampfireItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 0.5,
-                $"Repair campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                Reason: $"Repair campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyRepairEffect),
                 Qualities: new Dictionary<QualityType, double>
                 {
@@ -151,7 +151,7 @@ public class CampfireItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 0.7,
-                $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                Reason: $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyRebuildEffect),
                 Qualities: new Dictionary<QualityType, double>
                 {

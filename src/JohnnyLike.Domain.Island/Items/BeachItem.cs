@@ -103,7 +103,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 new List<ResourceRequirement> { new ResourceRequirement(BeachResource) }
             ),
             0.5,
-            $"Explore beach (sticks: {sticks:F0}, wood: {wood:F0}, DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            Reason: $"Explore beach (sticks: {sticks:F0}, wood: {wood:F0}, DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             PreAction: new Func<EffectContext, bool>(_ =>
             {
                 // Reserve the MAX possible payout (CriticalSuccess upper-bound) so other actors

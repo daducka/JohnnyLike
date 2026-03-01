@@ -45,7 +45,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                 new List<ResourceRequirement> { new ResourceRequirement(TreasureChestResource) }
             ),
             baseScore,
-            $"Bash open treasure chest (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            Reason: $"Bash open treasure chest (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 if (effectCtx.Tier == null)

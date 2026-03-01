@@ -53,7 +53,7 @@ public class ShelterItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 0.5,
-                $"Repair shelter (quality: {Quality:F0}%, {(isCold ? "cold" : "warm")}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                Reason: $"Repair shelter (quality: {Quality:F0}%, {(isCold ? "cold" : "warm")}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyRepairShelterEffect),
                 Qualities: new Dictionary<QualityType, double>
                 {
@@ -80,7 +80,7 @@ public class ShelterItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 0.6,
-                $"Reinforce shelter (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                Reason: $"Reinforce shelter (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyReinforceShelterEffect),
                 Qualities: new Dictionary<QualityType, double>
                 {
@@ -107,7 +107,7 @@ public class ShelterItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 0.7,
-                $"Rebuild shelter from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                Reason: $"Rebuild shelter from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyRebuildShelterEffect),
                 Qualities: new Dictionary<QualityType, double>
                 {

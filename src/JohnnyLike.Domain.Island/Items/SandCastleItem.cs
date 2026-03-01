@@ -67,7 +67,7 @@ public class SandCastleItem : MaintainableWorldItem
                 new List<ResourceRequirement> { new ResourceRequirement(BeachSandcastleArea) }
             ),
             baseScore,
-            "Stomp on sandcastle",
+            Reason: "Stomp on sandcastle",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 // Destroy the sand castle

@@ -33,7 +33,7 @@ public class PlaneItem : ExpirableWorldItem
                 new List<ResourceRequirement> { new ResourceRequirement(BeachOpenArea) }
             ),
             baseScore,
-            $"Try to signal plane (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            Reason: $"Try to signal plane (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 if (effectCtx.Tier == null)

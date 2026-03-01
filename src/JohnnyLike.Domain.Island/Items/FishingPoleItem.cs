@@ -85,7 +85,7 @@ public class FishingPoleItem : ToolItem
                         new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                     ),
                     0.5,
-                    $"Go fishing with pole (quality: {Quality:F0}%, fish available: {fishAvailable:F0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                    Reason: $"Go fishing with pole (quality: {Quality:F0}%, fish available: {fishAvailable:F0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                     PreAction: new Func<EffectContext, bool>(_ =>
                     {
                         if (ocean == null) return false;
@@ -172,7 +172,7 @@ public class FishingPoleItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
                 0.4,
-                $"Maintain fishing rod (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                Reason: $"Maintain fishing rod (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyMaintainRodEffect),
                 Qualities: new Dictionary<QualityType, double>
                 {
@@ -198,7 +198,7 @@ public class FishingPoleItem : ToolItem
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
                 0.3,
-                $"Repair fishing rod{(IsBroken ? " (broken)" : "")} (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                Reason: $"Repair fishing rod{(IsBroken ? " (broken)" : "")} (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyRepairRodEffect),
                 Qualities: new Dictionary<QualityType, double>
                 {

@@ -32,7 +32,7 @@ public class FishSupply : SupplyItem, ISupplyActionCandidate
                 EngineConstants.TimeToTicks(5.0, 7.0, ctx.Random)
             ),
             0.4,
-            "Eat raw fish",
+            Reason: "Eat raw fish",
             EffectHandler: (Action<EffectContext>)(effectCtx =>
             {
                 effectCtx.Actor.Satiety += 10.0;
