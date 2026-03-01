@@ -720,7 +720,7 @@ public class TraceBeatExtractorTests
         extractor.AddNarrationToHistory("   ");
         extractor.AddNarrationToHistory("Valid line.");
 
-        Assert.Equal(1, extractor.NarrationHistory.Count);
+        Assert.Single(extractor.NarrationHistory);
     }
 
     [Fact]
