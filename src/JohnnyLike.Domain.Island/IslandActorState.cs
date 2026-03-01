@@ -184,7 +184,13 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 NarrationDescription: "wait and rest for a moment"
             ),
             0.3,
-            "Idle"
+            Reason: "Idle",
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Rest]       = 0.6,
+                [QualityType.Comfort]    = 0.3,
+                [QualityType.Efficiency] = -0.5
+            }
         ));
         
         // Sleep under tree
@@ -236,7 +242,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 NarrationDescription: "build a sand castle on the beach"
             ),
             baseScore,
-            $"Build sand castle (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            Reason: $"Build sand castle (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 if (effectCtx.Tier == null)
@@ -295,7 +301,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random)
             ),
             0.2,
-            "Think about supplies",
+            Reason: "Think about supplies",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 // Use effect-time Rng (not the candidate-generation ctx) for deterministic rolls.
@@ -333,7 +339,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             160L
                         ),
                         2.0, // High priority
-                        $"Write {name}'s name in sand (chat redeem)",
+                        Reason: $"Write {name}'s name in sand (chat redeem)",
                         EffectHandler: new Action<EffectContext>(effectCtx =>
                         {
                             // Dequeue the completed chat action intent
@@ -343,7 +349,12 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             }
                             
                             effectCtx.Actor.Morale += 10.0;
-                        })
+                        }),
+                        Qualities: new Dictionary<QualityType, double>
+                        {
+                            [QualityType.Fun]    = 0.8,
+                            [QualityType.Comfort] = 0.2
+                        }
                     ));
                 }
                 else if (intent.ActionId == "clap_emote")
@@ -356,7 +367,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             40L
                         ),
                         2.0, // High priority
-                        "Clap emote (sub/cheer)",
+                        Reason: "Clap emote (sub/cheer)",
                         EffectHandler: new Action<EffectContext>(effectCtx =>
                         {
                             // Dequeue the completed chat action intent
@@ -366,7 +377,12 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             }
                             
                             effectCtx.Actor.Morale += 3.0;
-                        })
+                        }),
+                        Qualities: new Dictionary<QualityType, double>
+                        {
+                            [QualityType.Fun]    = 0.8,
+                            [QualityType.Comfort] = 0.2
+                        }
                     ));
                 }
             }
@@ -384,7 +400,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 NarrationDescription: "take a nap under the shade of a tree"
             ),
             0.35,
-            "Sleep under tree",
+            Reason: "Sleep under tree",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 effectCtx.Actor.Energy += 40.0;
@@ -407,7 +423,6 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         var baseDC = 10;
 
         var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
-        var baseScore = 0.35 + (Morale < 30 ? 0.2 : 0.0);
 
         output.Add(new ActionCandidate(
             new ActionSpec(
@@ -419,8 +434,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) },
                 NarrationDescription: "swim in the ocean"
             ),
-            baseScore,
-            $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            0.5,
+            Reason: $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 if (effectCtx.Tier == null)
@@ -508,7 +523,13 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                         }
                         break;
                 }
-            })
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Fun]    = 0.8,
+                [QualityType.Comfort] = 0.3,
+                [QualityType.Safety] = -0.5
+            }
         ));
     }
 }

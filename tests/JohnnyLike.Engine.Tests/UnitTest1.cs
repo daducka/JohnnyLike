@@ -303,7 +303,8 @@ public class SignalHandlingTests
             {
                 new ActionCandidate(
                     new ActionSpec(new ActionId("idle"), ActionKind.Wait, EmptyActionParameters.Instance, 20L),
-                    1.0
+                    1.0,
+                    new Dictionary<QualityType, double>()
                 )
             };
         }
@@ -398,7 +399,8 @@ public class ActorStateSnapshotTests
             {
                 new ActionCandidate(
                     new ActionSpec(new ActionId("test_action"), ActionKind.Wait, EmptyActionParameters.Instance, 20L),
-                    1.0
+                    1.0,
+                    new Dictionary<QualityType, double>()
                 )
             };
         }

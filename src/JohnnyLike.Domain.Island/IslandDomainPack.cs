@@ -245,7 +245,7 @@ public class IslandDomainPack : IDomainPack
 
     private static double ScoreCandidate(ActionCandidate candidate, QualityModel model)
     {
-        if (candidate.Qualities == null || candidate.Qualities.Count == 0)
+        if (candidate.Qualities.Count == 0)
             return candidate.IntrinsicScore;
 
         var qualitySum = 0.0;

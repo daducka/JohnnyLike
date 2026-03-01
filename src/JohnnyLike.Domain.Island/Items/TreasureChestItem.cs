@@ -45,7 +45,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                 new List<ResourceRequirement> { new ResourceRequirement(TreasureChestResource) }
             ),
             baseScore,
-            $"Bash open treasure chest (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            Reason: $"Bash open treasure chest (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 if (effectCtx.Tier == null)
@@ -94,7 +94,13 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                         effectCtx.Outcome.ResultData["chest_health_after"] = Health;
                     }
                 }
-            })
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.ResourcePreservation] = 1.0,
+                [QualityType.Mastery]              = 0.4,
+                [QualityType.Fun]                  = 0.2
+            }
         ));
     }
 

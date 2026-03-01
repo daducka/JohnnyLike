@@ -157,6 +157,7 @@ public class EventTracerTests
                 new ActionCandidate(
                     new ActionSpec(new ActionId("idle"), ActionKind.Wait, EmptyActionParameters.Instance, 20L),
                     1.0,
+                    new Dictionary<QualityType, double>(),
                     EffectHandler: new Action<EffectContext<TestActorState, TestWorldState>>(ctx =>
                         ctx.Tracer.Beat("Effect applied."))
                 )

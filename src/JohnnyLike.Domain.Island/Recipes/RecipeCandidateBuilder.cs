@@ -24,10 +24,10 @@ public static class RecipeCandidateBuilder
                 recipe.Duration
             ),
             recipe.IntrinsicScore,
-            recipe.DisplayName,
+            recipe.Qualities.ToDictionary(x => x.Key, x => x.Value),
+            Reason: recipe.DisplayName,
             EffectHandler: recipe.Effect,
-            PreAction: recipe.PreAction,
-            Qualities: recipe.Qualities.ToDictionary(x => x.Key, x => x.Value)
+            PreAction: recipe.PreAction
         ));
     }
 }

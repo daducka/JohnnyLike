@@ -33,7 +33,7 @@ public class MermaidItem : ExpirableWorldItem
                 new List<ResourceRequirement> { new ResourceRequirement(ShoreEastEnd) }
             ),
             baseScore,
-            $"Wave at mermaid (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            Reason: $"Wave at mermaid (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 if (effectCtx.Tier == null)
@@ -59,7 +59,12 @@ public class MermaidItem : ExpirableWorldItem
                         ExpiresAtTick = effectCtx.World.CurrentTick + 600L * 20
                     });
                 }
-            })
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Fun]    = 0.8,
+                [QualityType.Comfort] = 0.2
+            }
         ));
     }
 }
