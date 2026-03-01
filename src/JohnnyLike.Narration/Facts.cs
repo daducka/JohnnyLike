@@ -24,6 +24,13 @@ public sealed class CanonicalFacts
     public IReadOnlyDictionary<string, ActorFacts> Actors => _actors;
     public string Domain { get; set; } = string.Empty;
     public double CurrentSimTime { get; set; }
+    /// <summary>
+    /// Generic key-value store for world-state context facts (e.g. time of day, weather).
+    /// Domain code populates this via <c>TraceBeatExtractor.RegisterContextUpdateHandler</c>
+    /// so the narration layer stays domain-agnostic.
+    /// Values should be complete, LLM-ready sentences or short phrases.
+    /// </summary>
+    public Dictionary<string, string> WorldContext { get; } = new();
 
     public void UpdateActor(ActorFacts facts) => _actors[facts.ActorId] = facts;
 
@@ -45,6 +52,11 @@ public sealed class CanonicalFacts
 /// For world-event beats: the world-object or entity identifier set by the domain handler.
 /// </param>
 /// <param name="OutcomeType">Raw outcome string from the trace (e.g. Success, CriticalSuccess, Failed).</param>
+/// <param name="OutcomeNarration">
+/// Optional domain-authored narrative context describing what happened
+/// (e.g. "Johnny knocks a single coconut loose"). Set by the effect handler via
+/// <c>EffectContext.SetOutcomeNarration</c> and passed through the trace to the prompt builder.
+/// </param>
 public sealed record Beat(
     double SimTime,
     string? ActorId,
@@ -58,5 +70,6 @@ public sealed record Beat(
     /// Generic stat snapshot after the action (mirrors the domain's
     /// <c>GetActorStateSnapshot</c> output).  <c>null</c> for world-event beats.
     /// </summary>
-    IReadOnlyDictionary<string, string>? StatsAfter = null
+    IReadOnlyDictionary<string, string>? StatsAfter = null,
+    string? OutcomeNarration = null
 );

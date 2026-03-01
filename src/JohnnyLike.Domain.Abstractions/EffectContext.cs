@@ -21,4 +21,20 @@ public class EffectContext<TActorState, TWorldState>
     /// Defaults to <see cref="NullEventTracer.Instance"/> when not wired up.
     /// </summary>
     public IEventTracer Tracer { get; init; } = NullEventTracer.Instance;
+
+    /// <summary>
+    /// Domain-authored narrative context describing what happened during the action.
+    /// Call <see cref="SetOutcomeNarration"/> from within an effect handler to populate this.
+    /// The engine propagates it into the <c>ActionCompleted</c> trace event so the
+    /// narration prompt builder can include it as an <c>## Outcome Context</c> section.
+    /// </summary>
+    public string? OutcomeNarration { get; private set; }
+
+    /// <summary>
+    /// Sets a vivid, domain-authored sentence describing what just happened.
+    /// Use this instead of <see cref="IEventTracer.Beat"/> for outcome-specific narrative
+    /// so that the description is tied to the <c>ActionCompleted</c> event rather than
+    /// generating a separate <c>NarrationBeat</c> world-event narration.
+    /// </summary>
+    public void SetOutcomeNarration(string text) => OutcomeNarration = text;
 }

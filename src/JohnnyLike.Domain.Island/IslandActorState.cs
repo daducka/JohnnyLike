@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Recipes;
+using JohnnyLike.Domain.Island.Telemetry;
 using JohnnyLike.Domain.Kit.Dice;
 using System.Text.Json;
 
@@ -179,7 +180,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("idle"),
                 ActionKind.Wait,
                 EmptyActionParameters.Instance,
-                100L
+                100L,
+                NarrationDescription: "wait and rest for a moment"
             ),
             0.3,
             "Idle"
@@ -230,7 +232,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 parameters,
                 EngineConstants.TimeToTicks(20.0, 30.0, ctx.Random),
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach:sandcastle_spot")) }
+                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach:sandcastle_spot")) },
+                NarrationDescription: "build a sand castle on the beach"
             ),
             baseScore,
             $"Build sand castle (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -240,6 +243,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                     return;
 
                 var tier = effectCtx.Tier.Value;
+                var actor = effectCtx.ActorId.Value;
 
                 switch (tier)
                 {
@@ -247,25 +251,30 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                         effectCtx.Actor.Morale += 25.0;
                         // Create sand castle
                         effectCtx.World.AddWorldItem(new Items.SandCastleItem(), effectCtx.Actor.CurrentRoomId);
+                        effectCtx.SetOutcomeNarration($"{actor} sculpts an impressive sand castle complete with towers and a moat.");
                         break;
 
                     case RollOutcomeTier.Success:
                         effectCtx.Actor.Morale += 15.0;
                         // Create sand castle
                         effectCtx.World.AddWorldItem(new Items.SandCastleItem(), effectCtx.Actor.CurrentRoomId);
+                        effectCtx.SetOutcomeNarration($"{actor} pats the last handful of sand into place and steps back to admire the castle.");
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
                         effectCtx.Actor.Morale += 5.0;
                         // Create sand castle
                         effectCtx.World.AddWorldItem(new Items.SandCastleItem(), effectCtx.Actor.CurrentRoomId);
+                        effectCtx.SetOutcomeNarration($"{actor} manages a lopsided but recognisable sand castle.");
                         break;
 
                     case RollOutcomeTier.Failure:
+                        effectCtx.SetOutcomeNarration($"{actor}'s sand castle collapses before it can take shape.");
                         break;
 
                     case RollOutcomeTier.CriticalFailure:
                         effectCtx.Actor.Morale -= 5.0;
+                        effectCtx.SetOutcomeNarration($"{actor} kicks the sand in frustration as the whole thing crumbles.");
                         break;
                 }
             }),
@@ -371,13 +380,16 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("sleep_under_tree"),
                 ActionKind.Interact,
                 new LocationActionParameters("tree"),
-                600L + (long)(ctx.Rng.NextDouble() * 200)
+                600L + (long)(ctx.Rng.NextDouble() * 200),
+                NarrationDescription: "take a nap under the shade of a tree"
             ),
             0.35,
             "Sleep under tree",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 effectCtx.Actor.Energy += 40.0;
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.SetOutcomeNarration($"{actor} stirs awake, feeling well-rested.");
             }),
             Qualities: new Dictionary<QualityType, double>
             {
@@ -404,7 +416,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 parameters,
                 EngineConstants.TimeToTicks(15.0, 20.0, ctx.Random),
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) }
+                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) },
+                NarrationDescription: "swim in the ocean"
             ),
             baseScore,
             $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -414,12 +427,14 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                     return;
 
                 var tier = effectCtx.Tier.Value;
+                var actor = effectCtx.ActorId.Value;
 
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
                         effectCtx.Actor.Morale += 20.0;
                         effectCtx.Actor.Energy -= 5.0;
+                        effectCtx.SetOutcomeNarration($"{actor} glides through the water effortlessly, feeling exhilarated.");
                         
                         // Spawn treasure chest if not already present
                         if (effectCtx.World.TreasureChest == null)
@@ -443,21 +458,25 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                     case RollOutcomeTier.Success:
                         effectCtx.Actor.Morale += 10.0;
                         effectCtx.Actor.Energy -= 10.0;
+                        effectCtx.SetOutcomeNarration($"{actor} has a pleasant swim, washing off the island grime.");
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
                         effectCtx.Actor.Morale += 3.0;
                         effectCtx.Actor.Energy -= 15.0;
+                        effectCtx.SetOutcomeNarration($"{actor} manages to stay afloat but struggles against the current.");
                         break;
 
                     case RollOutcomeTier.Failure:
                         effectCtx.Actor.Energy -= 15.0;
                         effectCtx.Actor.Morale -= 5.0;
+                        effectCtx.SetOutcomeNarration($"{actor} is pushed back by the waves, exhausted and discouraged.");
                         break;
 
                     case RollOutcomeTier.CriticalFailure:
                         effectCtx.Actor.Energy -= 25.0;
                         effectCtx.Actor.Morale -= 15.0;
+                        effectCtx.SetOutcomeNarration($"{actor} barely makes it back to shore, heart pounding.");
                         
                         // Spawn shark if not already present
                         if (effectCtx.World.Shark == null)

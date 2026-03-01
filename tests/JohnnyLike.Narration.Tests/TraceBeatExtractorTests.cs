@@ -389,4 +389,363 @@ public class TraceBeatExtractorTests
         Assert.NotNull(job);
         Assert.Equal(NarrationJobKind.WorldEvent, job!.Kind);
     }
+
+    // ── Recent-events ordering (current beat must not appear in recent history) ──
+
+    [Fact]
+    public void Consume_ActionAssigned_CurrentBeatNotInRecentBeats()
+    {
+        var extractor = MakeExtractor();
+        // Seed one prior beat so RecentBeats is non-empty after it.
+        extractor.Consume(MakeAssigned(1.0, "Alice", "prior_action"));
+
+        var job = extractor.Consume(MakeAssigned(2.0, "Alice", "current_action"));
+
+        Assert.NotNull(job);
+        // The prompt is built before AddBeat, so "current_action" must appear exactly once
+        // (in "## Current Event", not also in "## Recent events").
+        Assert.Equal(1, job!.Prompt.Split("current_action").Length - 1);
+        // The prior action should be in recent events, the current one should not
+        Assert.Contains("prior_action", job.Prompt);
+    }
+
+    [Fact]
+    public void Consume_ActionCompleted_CurrentBeatNotInRecentBeats()
+    {
+        var extractor = MakeExtractor();
+        // Seed one prior completed beat.
+        extractor.Consume(MakeCompleted(1.0, "Bob", "prior_action"));
+
+        var job = extractor.Consume(MakeCompleted(2.0, "Bob", "current_action"));
+
+        Assert.NotNull(job);
+        // "current_action" must appear exactly once in the prompt (Current Event section only).
+        Assert.Equal(1, job!.Prompt.Split("current_action").Length - 1);
+        Assert.Contains("prior_action", job.Prompt);
+    }
+
+    // ── Qualitative stats ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void Consume_ActionCompleted_WithQualitativeStats_PromptContainsDescriptors()
+    {
+        var extractor = MakeExtractor();
+        // Use stats that map to known descriptors: satiety=25 → "hungry", energy=85 → "energetic"
+        var evt = MakeCompleted(3.0, "Carol", satiety: 25.0, energy: 85.0);
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        // Raw numeric values from the test event should appear as-is (test bypasses
+        // GetActorStateSnapshot), but the system instruction must forbid numbers.
+        Assert.Contains("Avoid mentioning numeric values", job!.Prompt);
+    }
+
+    [Fact]
+    public void AppendSystemInstructions_ContainsQualitativeInstruction()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
+
+        var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false);
+
+        Assert.Contains("Avoid mentioning numeric values", prompt);
+    }
+
+    // ── NarrationDescription ──────────────────────────────────────────────────
+
+    [Fact]
+    public void Consume_ActionAssigned_WithNarrationDescription_UsesDescriptionInPrompt()
+    {
+        var extractor = MakeExtractor();
+        var evt = new TraceEvent((long)(1.0 * 20), new ActorId("Alice"), "ActionAssigned",
+            new Dictionary<string, object>
+            {
+                ["actionId"] = "shake_tree_coconut",
+                ["actionKind"] = "Interact",
+                ["narrationDescription"] = "shake the palm tree to knock down coconuts"
+            });
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Contains("shake the palm tree to knock down coconuts", job!.Prompt);
+        Assert.DoesNotContain("shake_tree_coconut", job.Prompt);
+    }
+
+    [Fact]
+    public void Consume_ActionAssigned_WithoutNarrationDescription_FallsBackToActionId()
+    {
+        var extractor = MakeExtractor();
+        var evt = MakeAssigned(1.0, "Alice", "my_action_id");
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Contains("my_action_id", job!.Prompt);
+    }
+
+    // ── Day phase ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Consume_DayPhaseChanged_UpdatesWorldContextViaRegisteredHandler()
+    {
+        var extractor = MakeExtractor();
+        // Register a context-update handler the way the runner / domain setup code would
+        extractor.RegisterContextUpdateHandler("DayPhaseChanged", evt =>
+        {
+            if (evt.Details.TryGetValue("dayPhase", out var phase))
+                extractor.Facts.WorldContext["time_of_day"] = $"It is currently {phase.ToString()!.ToLowerInvariant()}.";
+        });
+
+        var evt = new TraceEvent(0, null, "DayPhaseChanged",
+            new Dictionary<string, object>
+            {
+                ["dayPhase"] = "Morning",
+                ["text"]     = "Morning light spreads across the beach."
+            });
+
+        extractor.Consume(evt);
+
+        Assert.True(extractor.Facts.WorldContext.TryGetValue("time_of_day", out var value));
+        Assert.Equal("It is currently morning.", value);
+    }
+
+    [Fact]
+    public void Consume_DayPhaseChanged_ReturnsWorldEventJob_WhenHandlerRegistered()
+    {
+        var extractor = MakeExtractor();
+        extractor.RegisterWorldEventHandler("DayPhaseChanged", evt =>
+        {
+            var text = evt.Details.TryGetValue("text", out var t) ? t.ToString()! : string.Empty;
+            return text.Length > 0
+                ? new Beat(evt.TimeSeconds, null, "World", evt.EventType, "", text)
+                : null;
+        });
+
+        var evt = new TraceEvent(0, null, "DayPhaseChanged",
+            new Dictionary<string, object>
+            {
+                ["dayPhase"] = "Night",
+                ["text"]     = "Night falls over the island."
+            });
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Equal(NarrationJobKind.WorldEvent, job!.Kind);
+    }
+
+    [Fact]
+    public void BuildAttemptPrompt_WithWorldContext_IncludesContextLine()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        facts.WorldContext["time_of_day"] = "It is currently morning.";
+        var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
+
+        var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false);
+
+        Assert.Contains("It is currently morning.", prompt);
+    }
+
+    [Fact]
+    public void BuildAttemptPrompt_WithEmptyWorldContext_NoDayPhaseLine()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };  // no WorldContext entries
+        var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
+
+        var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false);
+
+        Assert.DoesNotContain("It is currently", prompt);
+    }
+
+    // ── OutcomeNarration ──────────────────────────────────────────────────────
+
+    [Fact]
+    public void BuildOutcomePrompt_WithOutcomeNarration_IncludesOutcomeContext()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(2.0, "Alice", "Actor", "ActionCompleted", "Interact",
+            "some_action",
+            Success: true, OutcomeType: "Success",
+            OutcomeNarration: "Alice knocks a single coconut loose.");
+
+        var prompt = builder.BuildOutcomePrompt(beat, facts, new List<Beat>(), false);
+
+        Assert.Contains("## Outcome Context", prompt);
+        Assert.Contains("Alice knocks a single coconut loose.", prompt);
+    }
+
+    [Fact]
+    public void BuildOutcomePrompt_WithoutOutcomeNarration_NoOutcomeContextSection()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(2.0, "Alice", "Actor", "ActionCompleted", "Interact", "sleep",
+            Success: true);
+
+        var prompt = builder.BuildOutcomePrompt(beat, facts, new List<Beat>(), false);
+
+        Assert.DoesNotContain("## Outcome Context", prompt);
+    }
+
+    [Fact]
+    public void Consume_ActionCompleted_WithOutcomeNarration_IncludesInPrompt()
+    {
+        var extractor = MakeExtractor();
+        var details = new Dictionary<string, object>
+        {
+            ["actionId"]       = "shake_tree_coconut",
+            ["actionKind"]     = "Interact",
+            ["outcomeType"]    = "Success",
+            ["outcomeNarration"] = "Alice knocks a single coconut loose."
+        };
+        var evt = new TraceEvent((long)(2.0 * 20), new ActorId("Alice"), "ActionCompleted", details);
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Contains("Alice knocks a single coconut loose.", job!.Prompt);
+        Assert.Contains("## Outcome Context", job.Prompt);
+    }
+
+    // ── Narration history ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void BuildAttemptPrompt_WithPreviousNarrations_IncludesPreviousNarrationSection()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
+        var history = new List<string> { "Alice wanders down the beach.", "She spots a coconut tree." };
+
+        var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false, history);
+
+        Assert.Contains("## Previous Narration", prompt);
+        Assert.Contains("- Alice wanders down the beach.", prompt);
+        Assert.Contains("- She spots a coconut tree.", prompt);
+    }
+
+    [Fact]
+    public void BuildOutcomePrompt_WithPreviousNarrations_IncludesPreviousNarrationSection()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(2.0, "Alice", "Actor", "ActionCompleted", "Interact", "eat food", Success: true);
+        var history = new List<string> { "Alice reaches for the coconut." };
+
+        var prompt = builder.BuildOutcomePrompt(beat, facts, new List<Beat>(), false, history);
+
+        Assert.Contains("## Previous Narration", prompt);
+        Assert.Contains("- Alice reaches for the coconut.", prompt);
+    }
+
+    [Fact]
+    public void BuildNarrationBeatPrompt_WithPreviousNarrations_IncludesPreviousNarrationSection()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(3.0, null, "DomainBeat", "NarrationBeat", "", "A cloud drifts past.");
+        var history = new List<string> { "The sun beats down." };
+
+        var prompt = builder.BuildNarrationBeatPrompt(beat, "A cloud drifts past.", facts, new List<Beat>(), false, history);
+
+        Assert.Contains("## Previous Narration", prompt);
+        Assert.Contains("- The sun beats down.", prompt);
+    }
+
+    [Fact]
+    public void BuildWorldEventPrompt_WithPreviousNarrations_IncludesPreviousNarrationSection()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(4.0, null, "World", "DayPhaseChanged", "", "Morning arrives.");
+        var history = new List<string> { "Darkness gave way to pink hues." };
+
+        var prompt = builder.BuildWorldEventPrompt(beat, facts, new List<Beat>(), false, history);
+
+        Assert.Contains("## Previous Narration", prompt);
+        Assert.Contains("- Darkness gave way to pink hues.", prompt);
+    }
+
+    [Fact]
+    public void BuildAttemptPrompt_WithEmptyPreviousNarrations_NoPreviousNarrationSection()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
+
+        var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false, new List<string>());
+
+        Assert.DoesNotContain("## Previous Narration", prompt);
+    }
+
+    [Fact]
+    public void AppendSystemInstructions_ContainsVariedPhrasingGuidance()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
+
+        var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false);
+
+        Assert.Contains("Vary your sentence openings", prompt);
+        Assert.Contains("continue the story naturally", prompt);
+    }
+
+    [Fact]
+    public void AddNarrationToHistory_BufferCapIsRespected()
+    {
+        var extractor = MakeExtractor();
+
+        extractor.AddNarrationToHistory("Line one.");
+        extractor.AddNarrationToHistory("Line two.");
+        extractor.AddNarrationToHistory("Line three.");
+        extractor.AddNarrationToHistory("Line four."); // should evict "Line one."
+
+        Assert.Equal(3, extractor.NarrationHistory.Count);
+        Assert.DoesNotContain("Line one.", extractor.NarrationHistory);
+        Assert.Contains("Line four.", extractor.NarrationHistory);
+    }
+
+    [Fact]
+    public void AddNarrationToHistory_EmptyStringIgnored()
+    {
+        var extractor = MakeExtractor();
+        extractor.AddNarrationToHistory("");
+        extractor.AddNarrationToHistory("   ");
+        extractor.AddNarrationToHistory("Valid line.");
+
+        Assert.Single(extractor.NarrationHistory);
+    }
+
+    [Fact]
+    public void Consume_ActionAssigned_PromptIncludesNarrationHistory()
+    {
+        var extractor = MakeExtractor();
+        extractor.AddNarrationToHistory("A prior narration line.");
+
+        var job = extractor.Consume(MakeAssigned(1.0, "Alice", "eat"));
+
+        Assert.NotNull(job);
+        Assert.Contains("## Previous Narration", job!.Prompt);
+        Assert.Contains("- A prior narration line.", job.Prompt);
+    }
+
+    [Fact]
+    public void Consume_ActionCompleted_PromptIncludesNarrationHistory()
+    {
+        var extractor = MakeExtractor();
+        extractor.AddNarrationToHistory("Alice grabbed the fruit.");
+
+        var job = extractor.Consume(MakeCompleted(2.0, "Alice", "eat"));
+
+        Assert.NotNull(job);
+        Assert.Contains("## Previous Narration", job!.Prompt);
+        Assert.Contains("- Alice grabbed the fruit.", job.Prompt);
+    }
 }

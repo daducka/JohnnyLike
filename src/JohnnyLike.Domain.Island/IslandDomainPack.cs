@@ -331,6 +331,11 @@ public class IslandDomainPack : IDomainPack
         {
             handler(effectCtx);
         }
+
+        // Propagate outcome narration set by the effect handler into ResultData so the engine
+        // can include it in the ActionCompleted trace event.
+        if (effectCtx.OutcomeNarration != null && outcome.ResultData != null)
+            outcome.ResultData["outcomeNarration"] = effectCtx.OutcomeNarration;
     }
 
     private RollOutcomeTier? GetTierFromOutcome(ActionOutcome outcome)
@@ -427,10 +432,10 @@ public class IslandDomainPack : IDomainPack
         var islandActorState = (IslandActorState)actorState;
         var snapshot = new Dictionary<string, object>
         {
-            ["satiety"] = islandActorState.Satiety,
-            ["energy"] = islandActorState.Energy,
-            ["morale"] = islandActorState.Morale,
-            ["health"] = islandActorState.Health
+            ["satiety"] = FormatStat(islandActorState.Satiety, "satiety"),
+            ["energy"]  = FormatStat(islandActorState.Energy,  "energy"),
+            ["morale"]  = FormatStat(islandActorState.Morale,  "morale"),
+            ["health"]  = FormatStat(islandActorState.Health,  "health")
         };
         
         if (islandActorState.ActiveBuffs.Count > 0)
@@ -441,6 +446,21 @@ public class IslandDomainPack : IDomainPack
         
         return snapshot;
     }
+
+    /// <summary>
+    /// Maps a raw numeric stat value to a qualitative descriptor so that prompts
+    /// describe the actor's state in narrative terms rather than raw numbers.
+    /// Thresholds (80/50/20) divide the 0–100 range into four roughly equal bands:
+    /// excellent (&gt;=80), good (50–79), poor (20–49), critical (&lt;20).
+    /// </summary>
+    private static string FormatStat(double value, string statName) => statName switch
+    {
+        "satiety" => value >= 80 ? "full"      : value >= 50 ? "satisfied" : value >= 20 ? "hungry"   : "starving",
+        "energy"  => value >= 80 ? "energetic" : value >= 50 ? "alert"     : value >= 20 ? "tired"    : "exhausted",
+        "morale"  => value >= 80 ? "cheerful"  : value >= 50 ? "content"   : value >= 20 ? "down"     : "miserable",
+        "health"  => value >= 80 ? "healthy"   : value >= 50 ? "wounded"   : value >= 20 ? "injured"  : "critical",
+        _         => value.ToString("F0")
+    };
 
     public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability)
     {

@@ -123,6 +123,21 @@ else
 var facts = new CanonicalFacts { Domain = domain };
 var promptBuilder = new NarrationPromptBuilder(narrationTone);
 var extractor = new TraceBeatExtractor(facts, promptBuilder);
+
+// Register context-update handler so the day phase appears in prompts (island-specific).
+extractor.RegisterContextUpdateHandler("DayPhaseChanged", evt =>
+{
+    if (evt.Details.TryGetValue("dayPhase", out var phase))
+        facts.WorldContext["time_of_day"] = $"It is currently {phase.ToString()!.ToLowerInvariant()}.";
+});
+// Register world-event handler so a narration job is generated on phase changes.
+extractor.RegisterWorldEventHandler("DayPhaseChanged", evt =>
+{
+    var text = evt.Details.TryGetValue("text", out var t) ? t.ToString()! : string.Empty;
+    return text.Length > 0
+        ? new Beat(evt.TimeSeconds, null, "World", evt.EventType, "", text)
+        : null;
+});
 var dilationCtrl = new TimeDilationController(lowWater, highWater, slowdownFactor);
 var llmClient = new OllamaLlmClient(
     model,
@@ -214,6 +229,7 @@ var jobToAudioTask = Task.Run(async () =>
                 if (parsed.UpdatedSummary != null)
                     promptBuilder.UpdateSummary(parsed.UpdatedSummary);
 
+                extractor.AddNarrationToHistory(parsed.Narration);
                 Console.WriteLine($"[narration] t={narJob.PlayAtSimTime:F1} [{narJob.Kind}] {parsed.Narration}");
                 Interlocked.Increment(ref narrationJobsCompleted);
 

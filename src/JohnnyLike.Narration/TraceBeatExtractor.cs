@@ -16,26 +16,51 @@ public sealed class TraceBeatExtractor
     private readonly CanonicalFacts _facts;
     private readonly NarrationPromptBuilder _promptBuilder;
     private readonly List<Beat> _recentBeats = new();
+    private readonly List<string> _narrationHistory = new();
     private readonly int _maxRecentBeats;
+    private readonly int _maxNarrationHistory;
     private readonly int _summaryRefreshEveryN;
     private int _beatsSinceLastSummary;
 
     // Domain-registered handlers for world / environment events
     private readonly Dictionary<string, Func<TraceEvent, Beat?>> _worldEventHandlers = new();
+    // Domain-registered handlers that update WorldContext facts from arbitrary events
+    private readonly Dictionary<string, Action<TraceEvent>> _contextUpdateHandlers = new();
 
     public CanonicalFacts Facts => _facts;
     public IReadOnlyList<Beat> RecentBeats => _recentBeats;
+    /// <summary>
+    /// The most recent LLM-generated narration lines (oldest first, capped at
+    /// <c>maxNarrationHistory</c>).  Call <see cref="AddNarrationToHistory"/> after each
+    /// LLM response to keep this buffer current.
+    /// </summary>
+    public IReadOnlyList<string> NarrationHistory => _narrationHistory;
 
     public TraceBeatExtractor(
         CanonicalFacts facts,
         NarrationPromptBuilder promptBuilder,
         int maxRecentBeats = 10,
-        int summaryRefreshEveryN = 5)
+        int summaryRefreshEveryN = 5,
+        int maxNarrationHistory = 3)
     {
         _facts = facts;
         _promptBuilder = promptBuilder;
         _maxRecentBeats = maxRecentBeats;
         _summaryRefreshEveryN = summaryRefreshEveryN;
+        _maxNarrationHistory = maxNarrationHistory;
+    }
+
+    /// <summary>
+    /// Appends a completed narration line to the history buffer, evicting the oldest entry
+    /// when the buffer exceeds <c>maxNarrationHistory</c>.  Call this from the runner
+    /// after each successful LLM response.
+    /// </summary>
+    public void AddNarrationToHistory(string narration)
+    {
+        if (string.IsNullOrWhiteSpace(narration)) return;
+        _narrationHistory.Add(narration);
+        if (_narrationHistory.Count > _maxNarrationHistory)
+            _narrationHistory.RemoveAt(0);
     }
 
     /// <summary>
@@ -47,6 +72,14 @@ public sealed class TraceBeatExtractor
         => _worldEventHandlers[eventType] = handler;
 
     /// <summary>
+    /// Register a handler that updates <see cref="CanonicalFacts.WorldContext"/> when a specific
+    /// event type is consumed.  The handler runs before any narration prompt is built, so the
+    /// updated context is immediately available to subsequent prompts.
+    /// </summary>
+    public void RegisterContextUpdateHandler(string eventType, Action<TraceEvent> handler)
+        => _contextUpdateHandlers[eventType] = handler;
+
+    /// <summary>
     /// Process a single trace event. Returns a <see cref="NarrationJob"/> when the
     /// event warrants narration, or <c>null</c> otherwise.
     /// </summary>
@@ -54,6 +87,11 @@ public sealed class TraceBeatExtractor
     {
         // Always keep CurrentSimTime up to date
         _facts.CurrentSimTime = evt.TimeSeconds;
+
+        // Run any registered context-update handler first so WorldContext is current
+        // when the narration prompt is built.
+        if (_contextUpdateHandlers.TryGetValue(evt.EventType, out var ctxHandler))
+            ctxHandler(evt);
 
         switch (evt.EventType)
         {
@@ -101,7 +139,7 @@ public sealed class TraceBeatExtractor
         bool wantSummary = _beatsSinceLastSummary >= _summaryRefreshEveryN;
         if (wantSummary) _beatsSinceLastSummary = 0;
 
-        var prompt = _promptBuilder.BuildNarrationBeatPrompt(beat, text, _facts, _recentBeats, wantSummary);
+        var prompt = _promptBuilder.BuildNarrationBeatPrompt(beat, text, _facts, _recentBeats, wantSummary, _narrationHistory);
 
         // Add the beat after building the prompt so the current beat appears only once
         // (in the dedicated "## Domain Beat" section) instead of being duplicated in
@@ -125,15 +163,20 @@ public sealed class TraceBeatExtractor
         var actorId = evt.ActorId.Value.Value;
         var actionKind = GetString(evt.Details, "actionKind");
         var actionId = GetString(evt.Details, "actionId");
+        var narrationDescription = GetString(evt.Details, "narrationDescription");
+        var displaySubject = !string.IsNullOrEmpty(narrationDescription) ? narrationDescription : actionId;
 
-        var beat = new Beat(evt.TimeSeconds, actorId, "Actor", evt.EventType, actionKind, actionId);
-        AddBeat(beat);
+        var beat = new Beat(evt.TimeSeconds, actorId, "Actor", evt.EventType, actionKind, displaySubject);
 
         _beatsSinceLastSummary++;
         bool wantSummary = _beatsSinceLastSummary >= _summaryRefreshEveryN;
         if (wantSummary) _beatsSinceLastSummary = 0;
 
-        var prompt = _promptBuilder.BuildAttemptPrompt(beat, _facts, _recentBeats, wantSummary);
+        var prompt = _promptBuilder.BuildAttemptPrompt(beat, _facts, _recentBeats, wantSummary, _narrationHistory);
+
+        // Add the beat after building the prompt so the current action is not included in
+        // the "## Recent events" section (mirrors the NarrationBeat handler pattern).
+        AddBeat(beat);
 
         return new NarrationJob(
             JobId: Guid.NewGuid(),
@@ -154,6 +197,9 @@ public sealed class TraceBeatExtractor
         var actionId = GetString(evt.Details, "actionId");
         var outcomeStr = GetString(evt.Details, "outcomeType");
         var isSuccess = IsSuccessOutcome(outcomeStr);
+        var narrationDescription = GetString(evt.Details, "narrationDescription");
+        var displaySubject = !string.IsNullOrEmpty(narrationDescription) ? narrationDescription : actionId;
+        var outcomeNarration = GetString(evt.Details, "outcomeNarration");
 
         // Collect all actor_* keys generically — the domain decides what to expose
         var statsAfter = CollectActorStats(evt.Details);
@@ -163,17 +209,21 @@ public sealed class TraceBeatExtractor
         var mergedStats = MergeStats(existing?.Stats, statsAfter);
         _facts.UpdateActor(new ActorFacts(actorId, mergedStats, actionKind, actionId));
 
-        var beat = new Beat(evt.TimeSeconds, actorId, "Actor", evt.EventType, actionKind, actionId,
+        var beat = new Beat(evt.TimeSeconds, actorId, "Actor", evt.EventType, actionKind, displaySubject,
             Success: isSuccess, OutcomeType: outcomeStr,
-            StatsAfter: statsAfter.Count > 0 ? statsAfter : null);
-        AddBeat(beat);
+            StatsAfter: statsAfter.Count > 0 ? statsAfter : null,
+            OutcomeNarration: !string.IsNullOrEmpty(outcomeNarration) ? outcomeNarration : null);
 
         // Apply summary cadence to outcomes too
         _beatsSinceLastSummary++;
         bool wantSummary = _beatsSinceLastSummary >= _summaryRefreshEveryN;
         if (wantSummary) _beatsSinceLastSummary = 0;
 
-        var prompt = _promptBuilder.BuildOutcomePrompt(beat, _facts, _recentBeats, wantSummary);
+        var prompt = _promptBuilder.BuildOutcomePrompt(beat, _facts, _recentBeats, wantSummary, _narrationHistory);
+
+        // Add the beat after building the prompt so the current action is not included in
+        // the "## Recent events" section (mirrors the NarrationBeat handler pattern).
+        AddBeat(beat);
 
         return new NarrationJob(
             JobId: Guid.NewGuid(),
@@ -193,7 +243,7 @@ public sealed class TraceBeatExtractor
         bool wantSummary = _beatsSinceLastSummary >= _summaryRefreshEveryN;
         if (wantSummary) _beatsSinceLastSummary = 0;
 
-        var prompt = _promptBuilder.BuildWorldEventPrompt(beat, _facts, _recentBeats, wantSummary);
+        var prompt = _promptBuilder.BuildWorldEventPrompt(beat, _facts, _recentBeats, wantSummary, _narrationHistory);
 
         return new NarrationJob(
             JobId: Guid.NewGuid(),
