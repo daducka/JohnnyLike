@@ -26,7 +26,7 @@ public class NarrationImprovementTests
 
     private static EffectContext MakeEffectContext(
         IslandActorState actor, IslandWorldState world, ActorId actorId,
-        RollOutcomeTier tier, IEventTracer? tracer = null)
+        RollOutcomeTier tier)
     {
         var outcome = new ActionOutcome(
             new ActionId("test_action"),
@@ -42,8 +42,7 @@ public class NarrationImprovementTests
             World = world,
             Tier = tier,
             Rng = new RandomRngStream(new Random(42)),
-            Reservations = new EmptyResourceAvailability(),
-            Tracer = tracer ?? NullEventTracer.Instance
+            Reservations = new EmptyResourceAvailability()
         };
     }
 
@@ -134,58 +133,49 @@ public class NarrationImprovementTests
     // ── Domain beats for shake_tree_coconut ───────────────────────────────────
 
     [Theory]
-    [InlineData(RollOutcomeTier.CriticalSuccess, "two coconuts")]
+    [InlineData(RollOutcomeTier.CriticalSuccess, "Two coconuts")]
     [InlineData(RollOutcomeTier.Success,         "single coconut")]
     [InlineData(RollOutcomeTier.PartialSuccess,  "wobbles free")]
     [InlineData(RollOutcomeTier.Failure,         "nothing falls")]
-    public void ShakeTreeCoconut_EffectHandler_EmitsDomainBeat(
+    public void ShakeTreeCoconut_EffectHandler_SetsOutcomeNarration(
         RollOutcomeTier tier, string expectedFragment)
     {
         var (domain, world, actor, actorId) = MakeIsland();
 
-        // Pre-populate the bounty so the PreAction succeeds.
-        var tree = world.GetItem<CoconutTreeItem>("palm_tree")!;
-
-        // Get the candidate so PreAction is registered.
         var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
         var candidate = candidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
 
-        // Execute PreAction so the bounty reservation context is initialised.
+        var effectCtx = MakeEffectContext(actor, world, actorId, tier);
         var preAction = candidate.PreAction as Func<EffectContext, bool>;
-        var tracer = new CapturingEventTracer();
-        var effectCtx = MakeEffectContext(actor, world, actorId, tier, tracer);
-        if (preAction != null)
-        {
-            // PreAction doesn't use the effect context — just call it.
-            preAction(effectCtx);
-        }
+        preAction?.Invoke(effectCtx);
 
         var handler = candidate.EffectHandler as Action<EffectContext>;
         Assert.NotNull(handler);
         handler!(effectCtx);
 
-        var beats = tracer.Beats;
-        Assert.True(beats.Count > 0, $"Expected at least one beat for tier {tier}");
-        Assert.Contains(beats, b => b.Text.Contains(expectedFragment, StringComparison.OrdinalIgnoreCase));
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration),
+            $"Expected OutcomeNarration to be set for tier {tier}");
+        Assert.Contains(expectedFragment, effectCtx.OutcomeNarration!,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     // ── Domain beats for sleep_under_tree ────────────────────────────────────
 
     [Fact]
-    public void SleepUnderTree_EffectHandler_EmitsDomainBeat()
+    public void SleepUnderTree_EffectHandler_SetsOutcomeNarration()
     {
         var (domain, world, actor, actorId) = MakeIsland();
         var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
         var candidate = candidates.First(c => c.Action.Id.Value == "sleep_under_tree");
 
-        var tracer = new CapturingEventTracer();
-        var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success, tracer);
+        var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
 
         var handler = candidate.EffectHandler as Action<EffectContext>;
         Assert.NotNull(handler);
         handler!(effectCtx);
 
-        Assert.True(tracer.Beats.Count > 0, "Expected at least one beat after sleeping");
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration),
+            "Expected OutcomeNarration to be set after sleeping");
     }
 
     // ── Domain beats for build_sand_castle ───────────────────────────────────
@@ -196,23 +186,23 @@ public class NarrationImprovementTests
     [InlineData(RollOutcomeTier.PartialSuccess,  "lopsided")]
     [InlineData(RollOutcomeTier.Failure,         "collapses")]
     [InlineData(RollOutcomeTier.CriticalFailure, "frustration")]
-    public void BuildSandCastle_EffectHandler_EmitsDomainBeat(
+    public void BuildSandCastle_EffectHandler_SetsOutcomeNarration(
         RollOutcomeTier tier, string expectedFragment)
     {
         var (domain, world, actor, actorId) = MakeIsland();
         var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
         var candidate = candidates.First(c => c.Action.Id.Value == "build_sand_castle");
 
-        var tracer = new CapturingEventTracer();
-        var effectCtx = MakeEffectContext(actor, world, actorId, tier, tracer);
+        var effectCtx = MakeEffectContext(actor, world, actorId, tier);
 
         var handler = candidate.EffectHandler as Action<EffectContext>;
         Assert.NotNull(handler);
         handler!(effectCtx);
 
-        Assert.True(tracer.Beats.Count > 0, $"Expected beat for tier {tier}");
-        Assert.Contains(tracer.Beats, b =>
-            b.Text.Contains(expectedFragment, StringComparison.OrdinalIgnoreCase));
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration),
+            $"Expected OutcomeNarration to be set for tier {tier}");
+        Assert.Contains(expectedFragment, effectCtx.OutcomeNarration!,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     // ── Day phase ─────────────────────────────────────────────────────────────
@@ -237,8 +227,6 @@ public class NarrationImprovementTests
         var calendar = world.GetItem<CalendarItem>("calendar")!;
         // Start just before dawn (hour 4.9 → Night), next tick will cross into Dawn (5.0).
         calendar.TimeOfDay = 4.9 / 24.0;
-        // Force lastEmittedPhase to Night so the next compute differs.
-        // We do this by serializing and deserializing with the phase set.
 
         // Tick enough to cross from hour 4.9 to just past 5.0 (dawn threshold).
         // dt = 0.2 hours = 720 seconds = 14400 ticks
@@ -278,36 +266,5 @@ public class NarrationImprovementTests
 }
 
 /// <summary>
-/// Simple <see cref="IEventTracer"/> that records all beats for assertion.
+/// Test helper for Island narration improvement tests — no external dependencies.
 /// </summary>
-internal sealed class CapturingEventTracer : IEventTracer
-{
-    private readonly List<NarrationBeat> _beats = new();
-    private TracePhase _currentPhase = TracePhase.WorldTick;
-
-    public IReadOnlyList<NarrationBeat> Beats => _beats;
-
-    public IDisposable PushPhase(TracePhase phase)
-    {
-        var prev = _currentPhase;
-        _currentPhase = phase;
-        return new PhaseScope(() => _currentPhase = prev);
-    }
-
-    public void Beat(string text, string? subjectId = null, int priority = 50, string? actorId = null)
-        => _beats.Add(new NarrationBeat(_currentPhase, text, subjectId, priority, actorId));
-
-    public List<NarrationBeat> Drain()
-    {
-        var copy = _beats.ToList();
-        _beats.Clear();
-        return copy;
-    }
-
-    private sealed class PhaseScope : IDisposable
-    {
-        private readonly Action _restore;
-        public PhaseScope(Action restore) => _restore = restore;
-        public void Dispose() => _restore();
-    }
-}

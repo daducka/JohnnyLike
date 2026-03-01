@@ -126,26 +126,26 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                         src.CommitReservation<CoconutSupply>(key, 2.0, sharedPile, () => new CoconutSupply());
                         src.CommitReservation<PalmFrondSupply>(key, 2.0, sharedPile, () => new PalmFrondSupply());
                         effectCtx.Actor.Morale += 5.0;
-                        effectCtx.Tracer.BeatActor(actor, $"two coconuts tumble to the ground under {actor}'s hands", priority: 50);
+                        effectCtx.SetOutcomeNarration($"Two coconuts tumble to the ground under {actor}'s hands.");
                         break;
 
                     case RollOutcomeTier.Success:
                         src.CommitReservation<CoconutSupply>(key, 1.0, sharedPile, () => new CoconutSupply());
                         src.CommitReservation<PalmFrondSupply>(key, 1.0, sharedPile, () => new PalmFrondSupply());
                         effectCtx.Actor.Morale += 3.0;
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} knocks a single coconut loose", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} knocks a single coconut loose.");
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
                         src.ReleaseReservation(key);
                         effectCtx.Actor.Morale += 2.0;
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} shakes and shakes, and eventually one coconut wobbles free", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} shakes and shakes, and eventually one coconut wobbles free.");
                         break;
 
                     default: // Failure / CriticalFailure — wasted
                         src.ReleaseReservation(key);
                         if (tier == RollOutcomeTier.CriticalFailure) effectCtx.Actor.Morale -= 5.0;
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} shakes and shakes, but nothing falls", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} shakes and shakes, but nothing falls.");
                         break;
                 }
             })

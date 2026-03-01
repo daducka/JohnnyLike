@@ -251,30 +251,30 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                         effectCtx.Actor.Morale += 25.0;
                         // Create sand castle
                         effectCtx.World.AddWorldItem(new Items.SandCastleItem(), effectCtx.Actor.CurrentRoomId);
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} sculpts an impressive sand castle complete with towers and a moat", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} sculpts an impressive sand castle complete with towers and a moat.");
                         break;
 
                     case RollOutcomeTier.Success:
                         effectCtx.Actor.Morale += 15.0;
                         // Create sand castle
                         effectCtx.World.AddWorldItem(new Items.SandCastleItem(), effectCtx.Actor.CurrentRoomId);
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} pats the last handful of sand into place and steps back to admire the castle", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} pats the last handful of sand into place and steps back to admire the castle.");
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
                         effectCtx.Actor.Morale += 5.0;
                         // Create sand castle
                         effectCtx.World.AddWorldItem(new Items.SandCastleItem(), effectCtx.Actor.CurrentRoomId);
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} manages a lopsided but recognisable sand castle", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} manages a lopsided but recognisable sand castle.");
                         break;
 
                     case RollOutcomeTier.Failure:
-                        effectCtx.Tracer.BeatActor(actor, $"{actor}'s sand castle collapses before it can take shape", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor}'s sand castle collapses before it can take shape.");
                         break;
 
                     case RollOutcomeTier.CriticalFailure:
                         effectCtx.Actor.Morale -= 5.0;
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} kicks the sand in frustration as the whole thing crumbles", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} kicks the sand in frustration as the whole thing crumbles.");
                         break;
                 }
             }),
@@ -389,7 +389,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             {
                 effectCtx.Actor.Energy += 40.0;
                 var actor = effectCtx.ActorId.Value;
-                effectCtx.Tracer.BeatActor(actor, $"{actor} stirs awake, feeling well-rested", priority: 50);
+                effectCtx.SetOutcomeNarration($"{actor} stirs awake, feeling well-rested.");
             }),
             Qualities: new Dictionary<QualityType, double>
             {
@@ -434,7 +434,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                     case RollOutcomeTier.CriticalSuccess:
                         effectCtx.Actor.Morale += 20.0;
                         effectCtx.Actor.Energy -= 5.0;
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} glides through the water effortlessly, feeling exhilarated", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} glides through the water effortlessly, feeling exhilarated.");
                         
                         // Spawn treasure chest if not already present
                         if (effectCtx.World.TreasureChest == null)
@@ -458,25 +458,25 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                     case RollOutcomeTier.Success:
                         effectCtx.Actor.Morale += 10.0;
                         effectCtx.Actor.Energy -= 10.0;
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} has a pleasant swim, washing off the island grime", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} has a pleasant swim, washing off the island grime.");
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
                         effectCtx.Actor.Morale += 3.0;
                         effectCtx.Actor.Energy -= 15.0;
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} manages to stay afloat but struggles against the current", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} manages to stay afloat but struggles against the current.");
                         break;
 
                     case RollOutcomeTier.Failure:
                         effectCtx.Actor.Energy -= 15.0;
                         effectCtx.Actor.Morale -= 5.0;
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} is pushed back by the waves, exhausted and discouraged", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} is pushed back by the waves, exhausted and discouraged.");
                         break;
 
                     case RollOutcomeTier.CriticalFailure:
                         effectCtx.Actor.Energy -= 25.0;
                         effectCtx.Actor.Morale -= 15.0;
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} barely makes it back to shore, heart pounding", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} barely makes it back to shore, heart pounding.");
                         
                         // Spawn shark if not already present
                         if (effectCtx.World.Shark == null)

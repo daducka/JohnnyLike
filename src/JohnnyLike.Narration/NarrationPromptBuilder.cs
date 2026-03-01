@@ -69,7 +69,14 @@ public sealed class NarrationPromptBuilder
             sb.AppendLine($"Actor stats: {statLine}.");
         }
 
-        sb.AppendLine("Write the OUTCOME narration line. Include success/failure and relevant stats if meaningful.");
+        // Domain-authored outcome context — provides vivid detail for the narration line
+        if (!string.IsNullOrEmpty(beat.OutcomeNarration))
+        {
+            sb.AppendLine("## Outcome Context");
+            sb.AppendLine(beat.OutcomeNarration);
+        }
+
+        sb.AppendLine("Write the OUTCOME narration line. Incorporate the Outcome Context if provided. Do not contradict it.");
         return sb.ToString();
     }
 
@@ -143,8 +150,8 @@ public sealed class NarrationPromptBuilder
 
     private static void AppendCanonicalFacts(StringBuilder sb, CanonicalFacts facts)
     {
-        if (!string.IsNullOrEmpty(facts.CurrentDayPhase))
-            sb.AppendLine($"It is currently {facts.CurrentDayPhase.ToLowerInvariant()}.");
+        foreach (var value in facts.WorldContext.Values)
+            sb.AppendLine(value);
     }
 
     private void AppendTone(StringBuilder sb)

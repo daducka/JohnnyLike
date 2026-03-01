@@ -22,6 +22,8 @@ public sealed class TraceBeatExtractor
 
     // Domain-registered handlers for world / environment events
     private readonly Dictionary<string, Func<TraceEvent, Beat?>> _worldEventHandlers = new();
+    // Domain-registered handlers that update WorldContext facts from arbitrary events
+    private readonly Dictionary<string, Action<TraceEvent>> _contextUpdateHandlers = new();
 
     public CanonicalFacts Facts => _facts;
     public IReadOnlyList<Beat> RecentBeats => _recentBeats;
@@ -47,6 +49,14 @@ public sealed class TraceBeatExtractor
         => _worldEventHandlers[eventType] = handler;
 
     /// <summary>
+    /// Register a handler that updates <see cref="CanonicalFacts.WorldContext"/> when a specific
+    /// event type is consumed.  The handler runs before any narration prompt is built, so the
+    /// updated context is immediately available to subsequent prompts.
+    /// </summary>
+    public void RegisterContextUpdateHandler(string eventType, Action<TraceEvent> handler)
+        => _contextUpdateHandlers[eventType] = handler;
+
+    /// <summary>
     /// Process a single trace event. Returns a <see cref="NarrationJob"/> when the
     /// event warrants narration, or <c>null</c> otherwise.
     /// </summary>
@@ -54,6 +64,11 @@ public sealed class TraceBeatExtractor
     {
         // Always keep CurrentSimTime up to date
         _facts.CurrentSimTime = evt.TimeSeconds;
+
+        // Run any registered context-update handler first so WorldContext is current
+        // when the narration prompt is built.
+        if (_contextUpdateHandlers.TryGetValue(evt.EventType, out var ctxHandler))
+            ctxHandler(evt);
 
         switch (evt.EventType)
         {
@@ -65,9 +80,6 @@ public sealed class TraceBeatExtractor
 
             case "NarrationBeat":
                 return HandleNarrationBeat(evt);
-
-            case "DayPhaseChanged":
-                return HandleDayPhaseChanged(evt);
 
             default:
                 if (_worldEventHandlers.TryGetValue(evt.EventType, out var handler))
@@ -164,6 +176,7 @@ public sealed class TraceBeatExtractor
         var isSuccess = IsSuccessOutcome(outcomeStr);
         var narrationDescription = GetString(evt.Details, "narrationDescription");
         var displaySubject = !string.IsNullOrEmpty(narrationDescription) ? narrationDescription : actionId;
+        var outcomeNarration = GetString(evt.Details, "outcomeNarration");
 
         // Collect all actor_* keys generically — the domain decides what to expose
         var statsAfter = CollectActorStats(evt.Details);
@@ -175,7 +188,8 @@ public sealed class TraceBeatExtractor
 
         var beat = new Beat(evt.TimeSeconds, actorId, "Actor", evt.EventType, actionKind, displaySubject,
             Success: isSuccess, OutcomeType: outcomeStr,
-            StatsAfter: statsAfter.Count > 0 ? statsAfter : null);
+            StatsAfter: statsAfter.Count > 0 ? statsAfter : null,
+            OutcomeNarration: !string.IsNullOrEmpty(outcomeNarration) ? outcomeNarration : null);
 
         // Apply summary cadence to outcomes too
         _beatsSinceLastSummary++;
@@ -194,34 +208,6 @@ public sealed class TraceBeatExtractor
             DeadlineSimTime: evt.TimeSeconds + 15.0,
             Kind: NarrationJobKind.Outcome,
             SubjectId: actorId,
-            Prompt: prompt
-        );
-    }
-
-    private NarrationJob HandleDayPhaseChanged(TraceEvent evt)
-    {
-        var dayPhase = GetString(evt.Details, "dayPhase");
-        var text = GetString(evt.Details, "text");
-
-        // Update canonical facts so the day phase is available for all subsequent prompts.
-        _facts.CurrentDayPhase = dayPhase;
-
-        var beat = new Beat(evt.TimeSeconds, null, "World", evt.EventType, "", text);
-
-        _beatsSinceLastSummary++;
-        bool wantSummary = _beatsSinceLastSummary >= _summaryRefreshEveryN;
-        if (wantSummary) _beatsSinceLastSummary = 0;
-
-        var prompt = _promptBuilder.BuildWorldEventPrompt(beat, _facts, _recentBeats, wantSummary);
-
-        AddBeat(beat);
-
-        return new NarrationJob(
-            JobId: Guid.NewGuid(),
-            PlayAtSimTime: evt.TimeSeconds,
-            DeadlineSimTime: evt.TimeSeconds + 12.0,
-            Kind: NarrationJobKind.WorldEvent,
-            SubjectId: "calendar:day_phase",
             Prompt: prompt
         );
     }

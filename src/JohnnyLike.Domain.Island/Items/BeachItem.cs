@@ -145,7 +145,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                         src.CommitReservation<RocksSupply>(key, 2.0, pile, () => new RocksSupply());
                         effectCtx.Actor.Morale += 8.0;
                         effectCtx.Actor.Energy -= 8.0;
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} returns from the beach arms full of driftwood, sticks, and rocks", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} returns from the beach arms full of driftwood, sticks, and rocks.");
                         break;
 
                     case RollOutcomeTier.Success:
@@ -154,7 +154,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                         src.CommitReservation<RocksSupply>(key, 1.0, pile, () => new RocksSupply());
                         effectCtx.Actor.Morale += 5.0;
                         effectCtx.Actor.Energy -= 10.0;
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} picks through the tideline and gathers a useful armful of materials", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} picks through the tideline and gathers a useful armful of materials.");
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
@@ -163,7 +163,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                         src.ReleaseReservation(key); // return reserved rocks (not committed at this tier)
                         effectCtx.Actor.Morale += 2.0;
                         effectCtx.Actor.Energy -= 12.0;
-                        effectCtx.Tracer.BeatActor(actor, $"{actor} finds a few sticks and a bit of wood, but not much else", priority: 50);
+                        effectCtx.SetOutcomeNarration($"{actor} finds a few sticks and a bit of wood, but not much else.");
                         break;
 
                     default: // Failure or CriticalFailure: everything returned
@@ -171,11 +171,10 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                         effectCtx.Actor.Energy -= tier == RollOutcomeTier.Failure ? 12.0 : 15.0;
                         if (tier == RollOutcomeTier.CriticalFailure)
                             effectCtx.Actor.Morale -= 5.0;
-                        effectCtx.Tracer.BeatActor(actor,
+                        effectCtx.SetOutcomeNarration(
                             tier == RollOutcomeTier.CriticalFailure
-                                ? $"{actor} searches the beach for an hour and comes back empty-handed and discouraged"
-                                : $"{actor} scours the beach but finds nothing useful",
-                            priority: 50);
+                                ? $"{actor} searches the beach for an hour and comes back empty-handed and discouraged."
+                                : $"{actor} scours the beach but finds nothing useful.");
                         break;
                 }
             }),

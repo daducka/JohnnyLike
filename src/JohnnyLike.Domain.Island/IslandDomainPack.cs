@@ -331,6 +331,11 @@ public class IslandDomainPack : IDomainPack
         {
             handler(effectCtx);
         }
+
+        // Propagate outcome narration set by the effect handler into ResultData so the engine
+        // can include it in the ActionCompleted trace event.
+        if (effectCtx.OutcomeNarration != null && outcome.ResultData != null)
+            outcome.ResultData["outcomeNarration"] = effectCtx.OutcomeNarration;
     }
 
     private RollOutcomeTier? GetTierFromOutcome(ActionOutcome outcome)

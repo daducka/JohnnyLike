@@ -489,9 +489,16 @@ public class TraceBeatExtractorTests
     // ── Day phase ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public void Consume_DayPhaseChanged_UpdatesCanonicalFactsCurrentDayPhase()
+    public void Consume_DayPhaseChanged_UpdatesWorldContextViaRegisteredHandler()
     {
         var extractor = MakeExtractor();
+        // Register a context-update handler the way the runner / domain setup code would
+        extractor.RegisterContextUpdateHandler("DayPhaseChanged", evt =>
+        {
+            if (evt.Details.TryGetValue("dayPhase", out var phase))
+                extractor.Facts.WorldContext["time_of_day"] = $"It is currently {phase.ToString()!.ToLowerInvariant()}.";
+        });
+
         var evt = new TraceEvent(0, null, "DayPhaseChanged",
             new Dictionary<string, object>
             {
@@ -501,13 +508,22 @@ public class TraceBeatExtractorTests
 
         extractor.Consume(evt);
 
-        Assert.Equal("Morning", extractor.Facts.CurrentDayPhase);
+        Assert.True(extractor.Facts.WorldContext.TryGetValue("time_of_day", out var value));
+        Assert.Equal("It is currently morning.", value);
     }
 
     [Fact]
-    public void Consume_DayPhaseChanged_ReturnsWorldEventJob()
+    public void Consume_DayPhaseChanged_ReturnsWorldEventJob_WhenHandlerRegistered()
     {
         var extractor = MakeExtractor();
+        extractor.RegisterWorldEventHandler("DayPhaseChanged", evt =>
+        {
+            var text = evt.Details.TryGetValue("text", out var t) ? t.ToString()! : string.Empty;
+            return text.Length > 0
+                ? new Beat(evt.TimeSeconds, null, "World", evt.EventType, "", text)
+                : null;
+        });
+
         var evt = new TraceEvent(0, null, "DayPhaseChanged",
             new Dictionary<string, object>
             {
@@ -519,14 +535,14 @@ public class TraceBeatExtractorTests
 
         Assert.NotNull(job);
         Assert.Equal(NarrationJobKind.WorldEvent, job!.Kind);
-        Assert.Equal("calendar:day_phase", job.SubjectId);
     }
 
     [Fact]
-    public void BuildAttemptPrompt_WithDayPhase_IncludesDayPhaseLine()
+    public void BuildAttemptPrompt_WithWorldContext_IncludesContextLine()
     {
         var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
-        var facts = new CanonicalFacts { Domain = "test", CurrentDayPhase = "Morning" };
+        var facts = new CanonicalFacts { Domain = "test" };
+        facts.WorldContext["time_of_day"] = "It is currently morning.";
         var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
 
         var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false);
@@ -535,14 +551,65 @@ public class TraceBeatExtractorTests
     }
 
     [Fact]
-    public void BuildAttemptPrompt_WithoutDayPhase_NoDayPhaseLine()
+    public void BuildAttemptPrompt_WithEmptyWorldContext_NoDayPhaseLine()
     {
         var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
-        var facts = new CanonicalFacts { Domain = "test" };  // no CurrentDayPhase
+        var facts = new CanonicalFacts { Domain = "test" };  // no WorldContext entries
         var beat = new Beat(1.0, "Alice", "Actor", "ActionAssigned", "Interact", "eat food");
 
         var prompt = builder.BuildAttemptPrompt(beat, facts, new List<Beat>(), false);
 
         Assert.DoesNotContain("It is currently", prompt);
+    }
+
+    // ── OutcomeNarration ──────────────────────────────────────────────────────
+
+    [Fact]
+    public void BuildOutcomePrompt_WithOutcomeNarration_IncludesOutcomeContext()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(2.0, "Alice", "Actor", "ActionCompleted", "Interact",
+            "some_action",
+            Success: true, OutcomeType: "Success",
+            OutcomeNarration: "Alice knocks a single coconut loose.");
+
+        var prompt = builder.BuildOutcomePrompt(beat, facts, new List<Beat>(), false);
+
+        Assert.Contains("## Outcome Context", prompt);
+        Assert.Contains("Alice knocks a single coconut loose.", prompt);
+    }
+
+    [Fact]
+    public void BuildOutcomePrompt_WithoutOutcomeNarration_NoOutcomeContextSection()
+    {
+        var builder = new NarrationPromptBuilder(NarrationTone.Documentary);
+        var facts = new CanonicalFacts { Domain = "test" };
+        var beat = new Beat(2.0, "Alice", "Actor", "ActionCompleted", "Interact", "sleep",
+            Success: true);
+
+        var prompt = builder.BuildOutcomePrompt(beat, facts, new List<Beat>(), false);
+
+        Assert.DoesNotContain("## Outcome Context", prompt);
+    }
+
+    [Fact]
+    public void Consume_ActionCompleted_WithOutcomeNarration_IncludesInPrompt()
+    {
+        var extractor = MakeExtractor();
+        var details = new Dictionary<string, object>
+        {
+            ["actionId"]       = "shake_tree_coconut",
+            ["actionKind"]     = "Interact",
+            ["outcomeType"]    = "Success",
+            ["outcomeNarration"] = "Alice knocks a single coconut loose."
+        };
+        var evt = new TraceEvent((long)(2.0 * 20), new ActorId("Alice"), "ActionCompleted", details);
+
+        var job = extractor.Consume(evt);
+
+        Assert.NotNull(job);
+        Assert.Contains("Alice knocks a single coconut loose.", job!.Prompt);
+        Assert.Contains("## Outcome Context", job.Prompt);
     }
 }
