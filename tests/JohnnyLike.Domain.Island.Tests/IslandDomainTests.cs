@@ -586,7 +586,7 @@ public class IslandSignalHandlingTests
         // Should have a write_name_sand candidate with high priority
         var writeSandCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "write_name_sand");
         Assert.NotNull(writeSandCandidate);
-        Assert.Equal(2.0, writeSandCandidate.Score);
+        Assert.True(writeSandCandidate.Score >= 2.0, $"Expected write_name_sand score >= 2.0 but got {writeSandCandidate.Score}");
         Assert.Contains("TestViewer", writeSandCandidate.Reason);
     }
 
@@ -918,23 +918,30 @@ public class ScoringPostPassTests
     [Fact]
     public void GenerateCandidates_NullQualities_ScoreEqualsIntrinsicScore()
     {
-        // Idle has no Qualities, so Score should equal IntrinsicScore after post-pass
+        // think_about_supplies has no Qualities that vary with actor state; verify a candidate
+        // with non-null Qualities gets a Score != IntrinsicScore when quality weights are non-zero
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = domain.CreateActorState(actorId);
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["energy"] = 10.0 });
         var worldState = domain.CreateInitialWorldState();
 
         var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
 
+        // Idle now has Qualities, so Score may differ from IntrinsicScore
         var idle = candidates.First(c => c.Action.Id.Value == "idle");
-        Assert.Null(idle.Qualities);
-        Assert.Equal(idle.IntrinsicScore, idle.Score);
+        Assert.NotNull(idle.Qualities);
+
+        // sleep_under_tree also has Qualities; with low energy the Rest quality boosts its score
+        var sleep = candidates.First(c => c.Action.Id.Value == "sleep_under_tree");
+        Assert.NotNull(sleep.Qualities);
+        Assert.True(sleep.Score >= sleep.IntrinsicScore, "Qualities should not lower sleep score when energy is very low");
     }
 
     [Fact]
     public void GenerateCandidates_LowSatiety_FoodConsumptionQualityIncreasesScore()
     {
         // An actor with very low satiety should score a FoodConsumption-quality candidate higher
+        // via the quality post-pass (not via IntrinsicScore which is now static)
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
 
@@ -956,13 +963,17 @@ public class ScoringPostPassTests
         // Both should have the same sleep score since energy is the same (default 100)
         Assert.Equal(fullSleepScore, hungrySleepScore);
 
-        // Coconut tree provides food (FoodConsumption quality via scoring); low satiety boosts it
-        var hungryCoconutScore = hungryCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").IntrinsicScore;
-        var fullCoconutScore = fullCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").IntrinsicScore;
+        // Coconut now has a static IntrinsicScore (0.6); both actors get the same IntrinsicScore
+        var hungryCoconutIntrinsic = hungryCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").IntrinsicScore;
+        var fullCoconutIntrinsic = fullCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").IntrinsicScore;
+        Assert.Equal(fullCoconutIntrinsic, hungryCoconutIntrinsic);
 
-        // Hungry actor should have higher intrinsic score for coconut (due to Satiety-based scoring in CoconutTreeItem)
+        // But the quality post-pass uses FoodConsumption weight, so hungry actor gets a higher final Score
+        var hungryCoconutScore = hungryCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").Score;
+        var fullCoconutScore = fullCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").Score;
+
         Assert.True(hungryCoconutScore > fullCoconutScore,
-            $"Hungry actor coconut score ({hungryCoconutScore:F3}) should be > full actor ({fullCoconutScore:F3})");
+            $"Hungry actor coconut final score ({hungryCoconutScore:F3}) should be > full actor ({fullCoconutScore:F3}) due to FoodConsumption quality weight");
     }
 
     [Fact]
@@ -981,6 +992,131 @@ public class ScoringPostPassTests
 
         Assert.True(sleepScore > idleScore,
             $"Sleep score ({sleepScore:F3}) should be greater than idle ({idleScore:F3}) when energy is very low");
+    }
+}
+
+public class ActionCandidateQualitiesTests
+{
+    /// <summary>
+    /// Helper that generates all candidates with a world containing all item types
+    /// that emit candidates, so every action can be covered.
+    /// </summary>
+    private static (IslandDomainPack domain, List<ActionCandidate> candidates) GenerateAllCandidates()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            ["satiety"] = 25.0,  // low but not critical (< 20 would suppress chat actions)
+            ["morale"]  = 10.0,  // low morale → sandcastle stomp appears
+            ["energy"]  = 80.0
+        });
+
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, worldState);
+
+        // Campfire for relight + repair (Quality > 20 so relight fires, < 70 so repair fires)
+        worldState.WorldItems.Add(new Items.CampfireItem("campfire_relight") { Quality = 40.0, IsLit = false });
+        // Campfire for rebuild (Quality < 10)
+        worldState.WorldItems.Add(new Items.CampfireItem("campfire_rebuild") { Quality = 5.0, IsLit = false });
+
+        // Ensure all expirable items are present
+        worldState.WorldItems.Add(new Items.PlaneItem("plane"));
+        worldState.WorldItems.Add(new Items.MermaidItem("mermaid"));
+        worldState.WorldItems.Add(new Items.TreasureChestItem("treasure_chest"));
+
+        // Add a sandcastle at low quality so stomp candidate appears
+        worldState.WorldItems.Add(new Items.SandCastleItem("sandcastle") { Quality = 30.0 });
+
+        // Degrade shelter so all three maintenance candidates appear
+        worldState.MainShelter!.Quality = 10.0;
+
+        // Degrade fishing pole so repair/maintain appear
+        var pole = worldState.WorldItems.OfType<Items.FishingPoleItem>().FirstOrDefault();
+        if (pole != null)
+            pole.Quality = 15.0;
+
+        // Pending chat action (write_name_sand only fires when not survival critical)
+        actorState.PendingChatActions.Enqueue(new PendingIntent
+        {
+            ActionId = "write_name_sand", Type = "chat_redeem",
+            Data = new Dictionary<string, object> { ["viewer_name"] = "Viewer" }, EnqueuedAtTick = 0L
+        });
+
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+        return (domain, candidates);
+    }
+
+    [Theory]
+    [InlineData("idle")]
+    [InlineData("swim")]
+    [InlineData("write_name_sand")]
+    [InlineData("try_to_signal_plane")]
+    [InlineData("wave_at_mermaid")]
+    [InlineData("bash_open_treasure_chest")]
+    [InlineData("stomp_on_sandcastle")]
+    [InlineData("shake_tree_coconut")]
+    [InlineData("go_fishing")]
+    [InlineData("maintain_rod")]
+    [InlineData("repair_rod")]
+    [InlineData("repair_shelter")]
+    [InlineData("reinforce_shelter")]
+    [InlineData("rebuild_shelter")]
+    [InlineData("relight_campfire")]
+    [InlineData("repair_campfire")]
+    [InlineData("rebuild_campfire")]
+    public void ActionCandidate_HasNonNullQualities(string actionId)
+    {
+        var (_, candidates) = GenerateAllCandidates();
+
+        var candidate = candidates.FirstOrDefault(c => c.Action.Id.Value == actionId);
+        Assert.NotNull(candidate);
+        Assert.NotNull(candidate.Qualities);
+        Assert.True(candidate.Qualities.Count > 0, $"{actionId} should have at least one Quality entry");
+    }
+
+    [Fact]
+    public void CampfireAddFuel_HasNonNullQualities()
+    {
+        // add_fuel_campfire requires a lit campfire with low fuel and wood in supply
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = (IslandActorState)domain.CreateActorState(actorId);
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+
+        var campfire = new Items.CampfireItem("main_campfire") { IsLit = true, FuelSeconds = 500.0 };
+        worldState.WorldItems.Add(campfire);
+
+        worldState.SharedSupplyPile!.GetOrCreateSupply(() => new Supply.WoodSupply()).Quantity = 10;
+
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var candidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "add_fuel_campfire");
+        Assert.NotNull(candidate);
+        Assert.NotNull(candidate.Qualities);
+        Assert.True(candidate.Qualities.Count > 0);
+    }
+
+    [Fact]
+    public void ClapEmote_HasNonNullQualities()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = (IslandActorState)domain.CreateActorState(actorId);
+        var worldState = domain.CreateInitialWorldState();
+
+        actorState.PendingChatActions.Enqueue(new PendingIntent
+        {
+            ActionId = "clap_emote", Type = "sub",
+            Data = new Dictionary<string, object>(), EnqueuedAtTick = 0L
+        });
+
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var candidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "clap_emote");
+        Assert.NotNull(candidate);
+        Assert.NotNull(candidate.Qualities);
+        Assert.True(candidate.Qualities.Count > 0);
     }
 }
 

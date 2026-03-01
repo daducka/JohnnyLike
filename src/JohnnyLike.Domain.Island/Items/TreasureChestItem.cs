@@ -94,7 +94,13 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                         effectCtx.Outcome.ResultData["chest_health_after"] = Health;
                     }
                 }
-            })
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.ResourcePreservation] = 1.0,
+                [QualityType.Mastery]              = 0.4,
+                [QualityType.Fun]                  = 0.2
+            }
         ));
     }
 

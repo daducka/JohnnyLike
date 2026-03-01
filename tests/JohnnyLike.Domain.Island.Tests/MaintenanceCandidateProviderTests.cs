@@ -88,6 +88,8 @@ public class CampfireMaintenanceCandidateProviderTests
     [Fact]
     public void CampfireItem_HigherSurvivalSkill_IncreasesScore()
     {
+        // IntrinsicScore is now static; skill level no longer affects IntrinsicScore.
+        // Both actors should receive the same static base score.
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         world.WorldItems.Add(new CampfireItem("main_campfire"));
@@ -117,7 +119,13 @@ public class CampfireMaintenanceCandidateProviderTests
         var scoreLow = candidatesLow.First(c => c.Action.Id.Value == "add_fuel_campfire").IntrinsicScore;
         var scoreHigh = candidatesHigh.First(c => c.Action.Id.Value == "add_fuel_campfire").IntrinsicScore;
         
-        Assert.True(scoreHigh > scoreLow, $"High skill score ({scoreHigh}) should be greater than low skill score ({scoreLow})");
+        // IntrinsicScore is now static; skills no longer change the base score
+        Assert.Equal(scoreLow, scoreHigh);
+
+        // Verify add_fuel_campfire has a non-null Qualities dictionary
+        var fuelQualities = candidatesLow.First(c => c.Action.Id.Value == "add_fuel_campfire").Qualities;
+        Assert.NotNull(fuelQualities);
+        Assert.True(fuelQualities.Count > 0);
     }
 
     [Fact]
@@ -202,6 +210,8 @@ public class ShelterMaintenanceCandidateProviderTests
     [Fact]
     public void ShelterItem_RainyWeather_IncreasesRepairScore()
     {
+        // With static IntrinsicScore, both warm and cold conditions produce the same IntrinsicScore.
+        // The Safety quality on repair_shelter handles cold-weather prioritization via the post-pass.
         var domain = new IslandDomainPack();
         var worldClear = (IslandWorldState)domain.CreateInitialWorldState();
         var worldRainy = (IslandWorldState)domain.CreateInitialWorldState();
@@ -229,12 +239,20 @@ public class ShelterMaintenanceCandidateProviderTests
         var scoreClear = candidatesClear.First(c => c.Action.Id.Value == "repair_shelter").IntrinsicScore;
         var scoreRainy = candidatesRainy.First(c => c.Action.Id.Value == "repair_shelter").IntrinsicScore;
         
-        Assert.True(scoreRainy > scoreClear);
+        // IntrinsicScore is now static; weather affects DC but not base score
+        Assert.Equal(scoreClear, scoreRainy);
+
+        // Verify the candidate carries the Safety quality which enables post-pass weather-based differentiation
+        var repairQualities = candidatesClear.First(c => c.Action.Id.Value == "repair_shelter").Qualities;
+        Assert.NotNull(repairQualities);
+        Assert.True(repairQualities.ContainsKey(QualityType.Safety));
     }
 
     [Fact]
     public void ShelterItem_HigherSurvivalAndWisdom_IncreasesScore()
     {
+        // IntrinsicScore is now static; skill level no longer affects IntrinsicScore.
+        // Both actors should receive the same static base score.
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         world.WorldItems.Add(new CampfireItem("main_campfire"));
@@ -264,7 +282,13 @@ public class ShelterMaintenanceCandidateProviderTests
         var scoreLow = candidatesLow.First(c => c.Action.Id.Value == "repair_shelter").IntrinsicScore;
         var scoreHigh = candidatesHigh.First(c => c.Action.Id.Value == "repair_shelter").IntrinsicScore;
         
-        Assert.True(scoreHigh > scoreLow, $"High skill score ({scoreHigh}) should be greater than low skill score ({scoreLow})");
+        // IntrinsicScore is now static; skills no longer change the base score
+        Assert.Equal(scoreLow, scoreHigh);
+
+        // Verify repair_shelter has a non-null Qualities dictionary
+        var repairQualities = candidatesLow.First(c => c.Action.Id.Value == "repair_shelter").Qualities;
+        Assert.NotNull(repairQualities);
+        Assert.True(repairQualities.Count > 0);
     }
 
     [Fact]

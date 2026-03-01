@@ -77,7 +77,13 @@ public class SandCastleItem : MaintainableWorldItem
 
                 // Grant a large morale boost (cathartic release)
                 effectCtx.Actor.Morale += 30.0;
-            })
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Fun]                 = 0.6,
+                [QualityType.ResourcePreservation] = -0.5,
+                [QualityType.Comfort]             = -0.2
+            }
         ));
     }
 }

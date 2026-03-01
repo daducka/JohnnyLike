@@ -59,7 +59,12 @@ public class MermaidItem : ExpirableWorldItem
                         ExpiresAtTick = effectCtx.World.CurrentTick + 600L * 20
                     });
                 }
-            })
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Fun]    = 0.8,
+                [QualityType.Comfort] = 0.2
+            }
         ));
     }
 }

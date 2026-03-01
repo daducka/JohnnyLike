@@ -182,7 +182,13 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 100L
             ),
             0.3,
-            "Idle"
+            "Idle",
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Rest]       = 0.6,
+                [QualityType.Comfort]    = 0.3,
+                [QualityType.Efficiency] = -0.5
+            }
         ));
         
         // Sleep under tree
@@ -334,7 +340,12 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             }
                             
                             effectCtx.Actor.Morale += 10.0;
-                        })
+                        }),
+                        Qualities: new Dictionary<QualityType, double>
+                        {
+                            [QualityType.Fun]    = 0.8,
+                            [QualityType.Comfort] = 0.2
+                        }
                     ));
                 }
                 else if (intent.ActionId == "clap_emote")
@@ -357,7 +368,12 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             }
                             
                             effectCtx.Actor.Morale += 3.0;
-                        })
+                        }),
+                        Qualities: new Dictionary<QualityType, double>
+                        {
+                            [QualityType.Fun]    = 0.8,
+                            [QualityType.Comfort] = 0.2
+                        }
                     ));
                 }
             }
@@ -395,7 +411,6 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         var baseDC = 10;
 
         var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
-        var baseScore = 0.35 + (Morale < 30 ? 0.2 : 0.0);
 
         output.Add(new ActionCandidate(
             new ActionSpec(
@@ -406,7 +421,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) }
             ),
-            baseScore,
+            0.5,
             $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
@@ -489,7 +504,13 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                         }
                         break;
                 }
-            })
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Fun]    = 0.8,
+                [QualityType.Comfort] = 0.3,
+                [QualityType.Safety] = -0.5
+            }
         ));
     }
 }

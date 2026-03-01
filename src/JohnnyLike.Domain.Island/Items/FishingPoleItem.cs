@@ -62,7 +62,6 @@ public class FishingPoleItem : ToolItem
 
             if (fishAvailable >= 1.0)
             {
-                var fishingMod = ctx.Actor.FishingSkill;
                 var baseDC = 12;
 
                 if (Quality < 50.0)
@@ -71,10 +70,6 @@ public class FishingPoleItem : ToolItem
                     baseDC -= 1;
 
                 var parameters = ctx.RollSkillCheck(SkillType.Fishing, baseDC);
-                var baseScore = 0.6 + (fishingMod * 0.05);
-
-                if (Quality < 50.0)
-                    baseScore *= 0.7;
 
                 // Shared reservation context captured by both lambdas.
                 BountyCollectionContext? fishCtx = null;
@@ -89,7 +84,7 @@ public class FishingPoleItem : ToolItem
                         parameters.ToResultData(),
                         new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                     ),
-                    baseScore,
+                    0.5,
                     $"Go fishing with pole (quality: {Quality:F0}%, fish available: {fishAvailable:F0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                     PreAction: new Func<EffectContext, bool>(_ =>
                     {
@@ -150,7 +145,13 @@ public class FishingPoleItem : ToolItem
                                     "The line comes back empty.",
                                     subjectId: "resource:fish", priority: 50);
                         }
-                    })
+                    }),
+                    Qualities: new Dictionary<QualityType, double>
+                    {
+                        [QualityType.FoodConsumption] = 1.0,
+                        [QualityType.Efficiency]      = 0.5,
+                        [QualityType.Fun]             = 0.3
+                    }
                 ));
             }
         }
@@ -158,11 +159,8 @@ public class FishingPoleItem : ToolItem
         // MaintainRod action - maintain the pole to keep it in good condition
         if (Quality < 80.0 && !IsBroken)
         {
-            var urgency = (80.0 - Quality) / 80.0;
-            var survivalMod = ctx.Actor.SurvivalSkill;
             var baseDC = 10;
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
-            var baseScore = 0.3 + (urgency * 0.4);
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -173,19 +171,22 @@ public class FishingPoleItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
-                baseScore,
+                0.4,
                 $"Maintain fishing rod (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: new Action<EffectContext>(ApplyMaintainRodEffect)
+                EffectHandler: new Action<EffectContext>(ApplyMaintainRodEffect),
+                Qualities: new Dictionary<QualityType, double>
+                {
+                    [QualityType.ResourcePreservation] = 1.0,
+                    [QualityType.Mastery]              = 0.5
+                }
             ));
         }
 
         // RepairRod action - repair a broken or severely damaged pole
         if (IsBroken || Quality < 30.0)
         {
-            var survivalMod = ctx.Actor.SurvivalSkill;
             var baseDC = IsBroken ? 15 : 13;
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
-            var baseScore = IsBroken ? 1.0 : 0.7;
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -196,9 +197,15 @@ public class FishingPoleItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
-                baseScore,
+                0.3,
                 $"Repair fishing rod{(IsBroken ? " (broken)" : "")} (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: new Action<EffectContext>(ApplyRepairRodEffect)
+                EffectHandler: new Action<EffectContext>(ApplyRepairRodEffect),
+                Qualities: new Dictionary<QualityType, double>
+                {
+                    [QualityType.ResourcePreservation] = 1.0,
+                    [QualityType.Preparation]          = 0.5,
+                    [QualityType.Mastery]              = 0.4
+                }
             ));
         }
     }

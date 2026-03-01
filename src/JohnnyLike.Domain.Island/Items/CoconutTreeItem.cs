@@ -71,10 +71,6 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
 
         var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
 
-        var baseScore = 0.4 + ((100.0 - ctx.Actor.Satiety) / 150.0);
-        if (ctx.Actor.Satiety < 30.0)
-            baseScore = 0.9;
-
         // Shared context captured by both PreAction and EffectHandler lambdas.
         BountyCollectionContext? bountyCtx = null;
         var actorKey = ctx.ActorId.Value;
@@ -88,7 +84,7 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(PalmTreeResource) }
             ),
-            baseScore,
+            0.6,
             $"Get coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             PreAction: new Func<EffectContext, bool>(_ =>
             {
@@ -137,7 +133,13 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                         else if (tier == RollOutcomeTier.CriticalFailure) effectCtx.Actor.Morale -= 5.0;
                         break;
                 }
-            })
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.FoodConsumption] = 1.0,
+                [QualityType.Efficiency]      = 0.4,
+                [QualityType.Safety]          = -0.2
+            }
         ));
     }
 

@@ -48,10 +48,6 @@ public class CampfireItem : ToolItem
 
     public override void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
-        var survivalMod = ctx.Actor.SurvivalSkill;
-        var wisdomMod = DndMath.AbilityModifier(ctx.Actor.WIS);
-        var foresightBonus = (survivalMod + wisdomMod) / 2.0;
-
         // Add Fuel action
         if (IsLit && FuelSeconds < 1800.0)
         {
@@ -61,16 +57,8 @@ public class CampfireItem : ToolItem
             if (currentWood < 3.0)
                 return;
 
-            var urgency = 1.0 - (FuelSeconds / 1800.0);
-            var foresightMultiplier = 1.0 + (foresightBonus * 0.1);
             var baseDC = 10;
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
-            var baseScore = 0.3 + (urgency * 0.5 * foresightMultiplier);
-
-            if (currentWood < 10.0)
-            {
-                baseScore *= 0.5;
-            }
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -81,20 +69,23 @@ public class CampfireItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
-                baseScore,
+                0.6,
                 $"Add fuel to campfire (fuel: {FuelSeconds:F0}s, wood: {currentWood:F1}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: new Action<EffectContext>(ApplyAddFuelEffect)
+                EffectHandler: new Action<EffectContext>(ApplyAddFuelEffect),
+                Qualities: new Dictionary<QualityType, double>
+                {
+                    [QualityType.Preparation] = 0.6,
+                    [QualityType.Comfort]     = 0.5,
+                    [QualityType.Safety]      = 0.3
+                }
             ));
         }
 
         // Light action
         if (!IsLit && Quality > 20.0)
         {
-            var urgency = 0.8;
-            var foresightMultiplier = 1.0 + (foresightBonus * 0.15);
             var baseDC = 12;
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
-            var baseScore = urgency * foresightMultiplier;
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -105,20 +96,23 @@ public class CampfireItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
-                baseScore,
+                0.6,
                 $"Relight campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: new Action<EffectContext>(ApplyRelightEffect)
+                EffectHandler: new Action<EffectContext>(ApplyRelightEffect),
+                Qualities: new Dictionary<QualityType, double>
+                {
+                    [QualityType.Preparation] = 0.6,
+                    [QualityType.Comfort]     = 0.7,
+                    [QualityType.Safety]      = 0.5
+                }
             ));
         }
 
         // Maintain (Repair) action
         if (Quality < 70.0)
         {
-            var urgency = (70.0 - Quality) / 70.0;
-            var foresightMultiplier = 1.0 + (foresightBonus * 0.12);
             var baseDC = 11;
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
-            var baseScore = 0.2 + (urgency * 0.4 * foresightMultiplier);
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -129,9 +123,15 @@ public class CampfireItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
-                baseScore,
+                0.5,
                 $"Repair campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: new Action<EffectContext>(ApplyRepairEffect)
+                EffectHandler: new Action<EffectContext>(ApplyRepairEffect),
+                Qualities: new Dictionary<QualityType, double>
+                {
+                    [QualityType.ResourcePreservation] = 0.5,
+                    [QualityType.Preparation]          = 0.4,
+                    [QualityType.Safety]               = 0.3
+                }
             ));
         }
 
@@ -139,9 +139,7 @@ public class CampfireItem : ToolItem
         if (Quality < 10.0)
         {
             var baseDC = 15;
-            var foresightMultiplier = 1.0 + (foresightBonus * 0.2);
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
-            var baseScore = 1.0 * foresightMultiplier;
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -152,9 +150,16 @@ public class CampfireItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
-                baseScore,
+                0.7,
                 $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: new Action<EffectContext>(ApplyRebuildEffect)
+                EffectHandler: new Action<EffectContext>(ApplyRebuildEffect),
+                Qualities: new Dictionary<QualityType, double>
+                {
+                    [QualityType.ResourcePreservation] = 0.8,
+                    [QualityType.Preparation]          = 0.7,
+                    [QualityType.Safety]               = 0.5,
+                    [QualityType.Efficiency]           = -0.2
+                }
             ));
         }
     }

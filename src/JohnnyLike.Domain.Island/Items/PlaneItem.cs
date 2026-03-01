@@ -21,7 +21,7 @@ public class PlaneItem : ExpirableWorldItem
     {
         var baseDC = 25; // Extremely difficult - essentially impossible
         var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
-        var baseScore = 0.9; // Very high priority - plane won't be here long!
+        var baseScore = 0.8; // Very high priority - plane won't be here long!
 
         output.Add(new ActionCandidate(
             new ActionSpec(
@@ -50,7 +50,12 @@ public class PlaneItem : ExpirableWorldItem
                 {
                     effectCtx.Actor.Morale += 5.0; // Partial recovery
                 }
-            })
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Safety]      = 1.0,
+                [QualityType.Preparation] = 0.8
+            }
         ));
     }
 }

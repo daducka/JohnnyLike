@@ -31,26 +31,17 @@ public class ShelterItem : ToolItem
 
     public override void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
-        var survivalMod = ctx.Actor.SurvivalSkill;
-        var wisdomMod = DndMath.AbilityModifier(ctx.Actor.WIS);
-        var foresightBonus = (survivalMod + wisdomMod) / 2.0;
-
         var weather = ctx.World.GetItem<WeatherItem>("weather");
         var isCold = weather?.Temperature == TemperatureBand.Cold;
 
         // Repair action
         if (Quality < 70.0)
         {
-            var urgency = (70.0 - Quality) / 70.0;
-            var weatherMultiplier = isCold ? 1.5 : 1.0;
-
-            var foresightMultiplier = 1.0 + (foresightBonus * 0.15);
             var baseDC = 12;
             if (isCold)
                 baseDC += 2;
 
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
-            var baseScore = 0.25 + (urgency * 0.5 * weatherMultiplier * foresightMultiplier);
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -61,20 +52,23 @@ public class ShelterItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
-                baseScore,
+                0.5,
                 $"Repair shelter (quality: {Quality:F0}%, {(isCold ? "cold" : "warm")}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: new Action<EffectContext>(ApplyRepairShelterEffect)
+                EffectHandler: new Action<EffectContext>(ApplyRepairShelterEffect),
+                Qualities: new Dictionary<QualityType, double>
+                {
+                    [QualityType.Safety]              = 1.0,
+                    [QualityType.Comfort]             = 0.4,
+                    [QualityType.ResourcePreservation] = 0.6
+                }
             ));
         }
 
         // Reinforce action
         if (Quality < 50.0)
         {
-            var urgency = (50.0 - Quality) / 50.0;
-            var foresightMultiplier = 1.0 + (foresightBonus * 0.2);
             var baseDC = 13;
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
-            var baseScore = 0.4 + (urgency * 0.5 * foresightMultiplier);
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -85,9 +79,15 @@ public class ShelterItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
-                baseScore,
+                0.6,
                 $"Reinforce shelter (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: new Action<EffectContext>(ApplyReinforceShelterEffect)
+                EffectHandler: new Action<EffectContext>(ApplyReinforceShelterEffect),
+                Qualities: new Dictionary<QualityType, double>
+                {
+                    [QualityType.Safety]              = 1.0,
+                    [QualityType.ResourcePreservation] = 0.8,
+                    [QualityType.Comfort]             = 0.3
+                }
             ));
         }
 
@@ -95,9 +95,7 @@ public class ShelterItem : ToolItem
         if (Quality < 15.0)
         {
             var baseDC = 14;
-            var foresightMultiplier = 1.0 + (foresightBonus * 0.25);
             var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
-            var baseScore = 1.2 * foresightMultiplier;
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -108,9 +106,16 @@ public class ShelterItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
-                baseScore,
+                0.7,
                 $"Rebuild shelter from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                EffectHandler: new Action<EffectContext>(ApplyRebuildShelterEffect)
+                EffectHandler: new Action<EffectContext>(ApplyRebuildShelterEffect),
+                Qualities: new Dictionary<QualityType, double>
+                {
+                    [QualityType.Safety]              = 1.0,
+                    [QualityType.ResourcePreservation] = 1.0,
+                    [QualityType.Preparation]         = 0.5,
+                    [QualityType.Comfort]             = 0.5
+                }
             ));
         }
     }
