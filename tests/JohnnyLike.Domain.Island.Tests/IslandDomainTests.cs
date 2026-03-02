@@ -375,7 +375,8 @@ public class IslandActionEffectsTests
                 new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 3, AdvantageType.Normal, "Fishing"),
                     new SkillCheckResult(10, 10 + 3, RollOutcomeTier.Success, true, 0.5)),
-                300L
+                300L,
+                ""
             )
         };
         var worldState = new IslandWorldState();

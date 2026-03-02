@@ -99,9 +99,9 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(20.0, 30.0, ctx.Random),
+                "explore the beach for useful materials",
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(BeachResource) },
-                NarrationDescription: "explore the beach for useful materials"
+                new List<ResourceRequirement> { new ResourceRequirement(BeachResource) }
             ),
             0.5,
             Reason: $"Explore beach (sticks: {sticks:F0}, wood: {wood:F0}, DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",

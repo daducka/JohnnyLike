@@ -179,6 +179,7 @@ public class ActionReservationTests
                         ActionKind.Interact,
                         EmptyActionParameters.Instance,
                         200L,
+                        "",
                         null,
                         new List<ResourceRequirement>
                         {
@@ -196,7 +197,7 @@ public class ActionReservationTests
                 new ActionSpec(
                     new ActionId("action_without_resource"),
                     ActionKind.Wait,
-                    EmptyActionParameters.Instance, 100L),
+                    EmptyActionParameters.Instance, 100L, ""),
                 0.5,
                 new Dictionary<QualityType, double>(),
                 Reason: "Action without resource"
@@ -244,6 +245,7 @@ public class ActionReservationTests
                         ActionKind.Interact,
                         EmptyActionParameters.Instance,
                         200L,
+                        "",
                         null,
                         new List<ResourceRequirement>
                         {
@@ -262,7 +264,7 @@ public class ActionReservationTests
                 new ActionSpec(
                     new ActionId("action_without_resource"),
                     ActionKind.Wait,
-                    EmptyActionParameters.Instance, 100L),
+                    EmptyActionParameters.Instance, 100L, ""),
                 0.5,
                 new Dictionary<QualityType, double>(),
                 Reason: "Action without resource"

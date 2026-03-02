@@ -138,7 +138,8 @@ public class FuzzableFakeExecutor
                     new ActionId($"noshow_{actorId.Value}"),
                     ActionKind.Wait,
                     new ReasonActionParameters("unavailable"),
-                    noShowDuration
+                    noShowDuration,
+                    ""
                 );
 
                 _runningActions[actorId] = (idleAction, _engine.CurrentTick, noShowDuration);
@@ -155,7 +156,8 @@ public class FuzzableFakeExecutor
                     new ActionId($"busylock_{actorId.Value}"),
                     ActionKind.Wait,
                     new ReasonActionParameters("busy"),
-                    busyDuration
+                    busyDuration,
+                    ""
                 );
 
                 _runningActions[actorId] = (busyAction, _engine.CurrentTick, busyDuration);

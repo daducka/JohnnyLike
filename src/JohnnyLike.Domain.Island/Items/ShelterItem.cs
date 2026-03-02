@@ -49,9 +49,9 @@ public class ShelterItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(30.0, 40.0, ctx.Random),
+                    "repair shelter",
                     parameters.ToResultData(),
-                    new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) },
-                    NarrationDescription: "repair shelter"
+                    new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 0.5,
                 Reason: $"Repair shelter (quality: {Quality:F0}%, {(isCold ? "cold" : "warm")}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -77,9 +77,9 @@ public class ShelterItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(40.0, 50.0, ctx.Random),
+                    "reinforce shelter",
                     parameters.ToResultData(),
-                    new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) },
-                    NarrationDescription: "reinforce shelter"
+                    new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 0.6,
                 Reason: $"Reinforce shelter (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -105,9 +105,9 @@ public class ShelterItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(90.0, 120.0, ctx.Random),
+                    "rebuild shelter",
                     parameters.ToResultData(),
-                    new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) },
-                    NarrationDescription: "rebuild shelter"
+                    new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
                 0.7,
                 Reason: $"Rebuild shelter from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -136,9 +136,12 @@ public class ShelterItem : ToolItem
                                  tier == RollOutcomeTier.Success ? 20.0 : 10.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
             ctx.Actor.Morale += 6.0;
+            ctx.SetOutcomeNarration("You patch up the shelter, reinforcing weak spots and feeling a bit safer.");
         }
-
-        ctx.SetOutcomeNarration("You patch up the shelter, reinforcing weak spots and feeling a bit safer.");
+        else
+        {
+            ctx.SetOutcomeNarration("Your repair attempt makes little progress on the shelter.");
+        }
     }
 
     public void ApplyReinforceShelterEffect(EffectContext ctx)
@@ -153,9 +156,12 @@ public class ShelterItem : ToolItem
             var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 45.0 : 30.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
             ctx.Actor.Morale += 8.0;
+            ctx.SetOutcomeNarration("You shore up the shelter frame, making it sturdier against the elements.");
         }
-
-        ctx.SetOutcomeNarration("You shore up the shelter's frame, making it sturdier against the elements.");
+        else
+        {
+            ctx.SetOutcomeNarration("The shelter resists reinforcement; your work comes undone.");
+        }
     }
 
     public void ApplyRebuildShelterEffect(EffectContext ctx)
@@ -169,8 +175,11 @@ public class ShelterItem : ToolItem
         {
             Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 85.0;
             ctx.Actor.Morale += 20.0;
+            ctx.SetOutcomeNarration("You tear down the damaged shelter and rebuild it from the ground up, creating a reliable refuge.");
         }
-
-        ctx.SetOutcomeNarration("You tear down the damaged shelter and rebuild it from the ground up, creating a reliable refuge.");
+        else
+        {
+            ctx.SetOutcomeNarration("Your rebuild attempt falls short; the structure collapses again.");
+        }
     }
 }

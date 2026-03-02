@@ -63,9 +63,9 @@ public class SandCastleItem : MaintainableWorldItem
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(5.0),
+                "stomp on sandcastle",
                 null,
-                new List<ResourceRequirement> { new ResourceRequirement(BeachSandcastleArea) },
-                NarrationDescription: "stomp on sandcastle"
+                new List<ResourceRequirement> { new ResourceRequirement(BeachSandcastleArea) }
             ),
             baseScore,
             Reason: "Stomp on sandcastle",

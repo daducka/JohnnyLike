@@ -81,9 +81,9 @@ public class FishingPoleItem : ToolItem
                         ActionKind.Interact,
                         parameters,
                         EngineConstants.TimeToTicks(45.0, 60.0, ctx.Random),
+                        "go fishing",
                         parameters.ToResultData(),
-                        new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) },
-                        NarrationDescription: "go fishing"
+                        new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                     ),
                     0.5,
                     Reason: $"Go fishing with pole (quality: {Quality:F0}%, fish available: {fishAvailable:F0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -161,9 +161,9 @@ public class FishingPoleItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
+                    "maintain fishing rod",
                     parameters.ToResultData(),
-                    new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) },
-                    NarrationDescription: "maintain fishing rod"
+                    new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
                 0.4,
                 Reason: $"Maintain fishing rod (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -188,9 +188,9 @@ public class FishingPoleItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(40.0, 50.0, ctx.Random),
+                    "repair fishing rod",
                     parameters.ToResultData(),
-                    new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) },
-                    NarrationDescription: "repair fishing rod"
+                    new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
                 0.3,
                 Reason: $"Repair fishing rod{(IsBroken ? " (broken)" : "")} (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -218,9 +218,12 @@ public class FishingPoleItem : ToolItem
                                  tier == RollOutcomeTier.Success ? 15.0 : 8.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
             ctx.Actor.Morale += 3.0;
+            ctx.SetOutcomeNarration("You clean and oil the fishing rod, restoring its condition.");
         }
-
-        ctx.SetOutcomeNarration("You clean and oil the fishing rod, restoring its condition.");
+        else
+        {
+            ctx.SetOutcomeNarration("Maintenance attempt fails to improve the rod.");
+        }
     }
 
     public void ApplyRepairRodEffect(EffectContext ctx)
@@ -242,9 +245,12 @@ public class FishingPoleItem : ToolItem
             }
             
             ctx.Actor.Morale += 8.0;
+            ctx.SetOutcomeNarration("You mend the damaged fishing rod, making it usable again.");
         }
-
-        ctx.SetOutcomeNarration("You mend the damaged fishing rod, making it usable again.");
+        else
+        {
+            ctx.SetOutcomeNarration("The rod proves too damaged to repair this time.");
+        }
     }
 
     public override Dictionary<string, object> SerializeToDict()

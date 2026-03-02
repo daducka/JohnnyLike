@@ -33,8 +33,8 @@ public class CoconutSupply : SupplyItem, ISupplyActionCandidate
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(8.0, 12.0, ctx.Random),
-                parameters.ToResultData(),
-                NarrationDescription: "bash and eat coconut"
+                "bash and eat coconut",
+                parameters.ToResultData()
             ),
             0.5,
             Reason: $"Bash and eat coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",

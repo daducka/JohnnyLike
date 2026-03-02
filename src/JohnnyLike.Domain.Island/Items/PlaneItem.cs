@@ -29,9 +29,9 @@ public class PlaneItem : ExpirableWorldItem
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(10.0),
+                "signal plane",
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(BeachOpenArea) },
-                NarrationDescription: "signal plane"
+                new List<ResourceRequirement> { new ResourceRequirement(BeachOpenArea) }
             ),
             baseScore,
             Reason: $"Try to signal plane (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",

@@ -49,7 +49,8 @@ public class TreasureChestTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 0, AdvantageType.Normal, "Survival"),
                     new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
-            300L
+            300L,
+            ""
         );
         
         // Set current action on actor
@@ -137,7 +138,8 @@ public class TreasureChestTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(20, 0, AdvantageType.Normal, "Athletics"),
                     new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
-            400L
+            400L,
+            ""
         );
         
         // Set current action on actor
@@ -199,7 +201,8 @@ public class TreasureChestTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 0, AdvantageType.Normal, "Athletics"),
                     new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
-            400L
+            400L,
+            ""
         );
         
         // Set current action on actor
@@ -261,7 +264,8 @@ public class TreasureChestTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(20, 0, AdvantageType.Normal, "Athletics"),
                     new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
-            400L
+            400L,
+            ""
         );
         
         // Set current action on actor

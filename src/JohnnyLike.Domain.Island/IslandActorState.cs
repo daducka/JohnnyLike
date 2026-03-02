@@ -237,9 +237,9 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(20.0, 30.0, ctx.Random),
+                "build a sand castle on the beach",
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach:sandcastle_spot")) },
-                NarrationDescription: "build a sand castle on the beach"
+                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach:sandcastle_spot")) }
             ),
             baseScore,
             Reason: $"Build sand castle (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -433,9 +433,9 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(15.0, 20.0, ctx.Random),
+                "swim in the ocean",
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) },
-                NarrationDescription: "swim in the ocean"
+                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) }
             ),
             0.5,
             Reason: $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",

@@ -29,9 +29,9 @@ public class MermaidItem : ExpirableWorldItem
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(5.0),
+                "wave at mermaid",
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(ShoreEastEnd) },
-                NarrationDescription: "wave at mermaid"
+                new List<ResourceRequirement> { new ResourceRequirement(ShoreEastEnd) }
             ),
             baseScore,
             Reason: $"Wave at mermaid (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",

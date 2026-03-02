@@ -41,9 +41,9 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
+                "bash open treasure chest",
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(TreasureChestResource) },
-                NarrationDescription: "bash open treasure chest"
+                new List<ResourceRequirement> { new ResourceRequirement(TreasureChestResource) }
             ),
             baseScore,
             Reason: $"Bash open treasure chest (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",

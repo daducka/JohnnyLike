@@ -102,7 +102,8 @@ public class MaintenanceIntegrationTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(11, 2, AdvantageType.Normal, "Survival"),
                     new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5)),
-            500L
+            500L,
+            ""
         );
         
         var outcome = new ActionOutcome(
@@ -140,7 +141,8 @@ public class MaintenanceIntegrationTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 2, AdvantageType.Normal, "Survival"),
                     new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5)),
-            400L
+            400L,
+            ""
         );
         
         var outcome = new ActionOutcome(
@@ -210,7 +212,8 @@ public class MaintenanceIntegrationTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(14, 2, AdvantageType.Normal, "Survival"),
                     new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5)),
-            1800L
+            1800L,
+            ""
         );
         
         var outcome = new ActionOutcome(

@@ -66,9 +66,9 @@ public class CampfireItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
+                    "add fuel to campfire",
                     parameters.ToResultData(),
-                    new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) },
-                    NarrationDescription: "add fuel to campfire"
+                    new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 0.6,
                 Reason: $"Add fuel to campfire (fuel: {FuelSeconds:F0}s, wood: {currentWood:F1}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -94,9 +94,9 @@ public class CampfireItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(30.0, 40.0, ctx.Random),
+                    "relight campfire",
                     parameters.ToResultData(),
-                    new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) },
-                    NarrationDescription: "relight campfire"
+                    new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 0.6,
                 Reason: $"Relight campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -122,9 +122,9 @@ public class CampfireItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(25.0, 30.0, ctx.Random),
+                    "repair campfire",
                     parameters.ToResultData(),
-                    new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) },
-                    NarrationDescription: "repair campfire"
+                    new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 0.5,
                 Reason: $"Repair campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -150,9 +150,9 @@ public class CampfireItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(60.0, 80.0, ctx.Random),
+                    "rebuild campfire",
                     parameters.ToResultData(),
-                    new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) },
-                    NarrationDescription: "rebuild campfire"
+                    new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
                 0.7,
                 Reason: $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -196,9 +196,13 @@ public class CampfireItem : ToolItem
                 ctx.Actor.Morale += 2.0;
                 ctx.Actor.Morale -= 3.0;
             }
-        }
 
-        ctx.SetOutcomeNarration("You feed wood into the fire; the flames brighten and warmth returns.");
+            ctx.SetOutcomeNarration("You feed wood into the fire; the flames brighten and warmth returns.");
+        }
+        else
+        {
+            ctx.SetOutcomeNarration("The fire is too weak to accept more fuel.");
+        }
     }
 
     public void ApplyRelightEffect(EffectContext ctx)
@@ -213,9 +217,12 @@ public class CampfireItem : ToolItem
             IsLit = true;
             FuelSeconds = tier == RollOutcomeTier.CriticalSuccess ? 1800.0 : 1200.0;
             ctx.Actor.Morale += 10.0;
+            ctx.SetOutcomeNarration("You coax a spark into life and the campfire blazes anew.");
         }
-
-        ctx.SetOutcomeNarration("You coax a spark into life and the campfire blazes anew.");
+        else
+        {
+            ctx.SetOutcomeNarration("Your attempts to relight the campfire fail.");
+        }
     }
 
     public void ApplyRepairEffect(EffectContext ctx)
@@ -231,9 +238,12 @@ public class CampfireItem : ToolItem
                                  tier == RollOutcomeTier.Success ? 25.0 : 15.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
             ctx.Actor.Morale += 7.0;
+            ctx.SetOutcomeNarration("You repair the campfire ring and arrange the stones and logs neatly.");
         }
-
-        ctx.SetOutcomeNarration("You repair the campfire ring and arrange the stones and logs neatly.");
+        else
+        {
+            ctx.SetOutcomeNarration("The campfire ring resists your repair attempts.");
+        }
     }
 
     public void ApplyRebuildEffect(EffectContext ctx)
@@ -249,9 +259,12 @@ public class CampfireItem : ToolItem
             IsLit = true;
             FuelSeconds = 1800.0;
             ctx.Actor.Morale += 15.0;
+            ctx.SetOutcomeNarration("You gather stones and wood and build a brand new campfire from scratch.");
         }
-
-        ctx.SetOutcomeNarration("You gather stones and wood and build a brand new campfire from scratch.");
+        else
+        {
+            ctx.SetOutcomeNarration("Your attempt to rebuild the campfire falls apart.");
+        }
     }
 
     public override Dictionary<string, object> SerializeToDict()
