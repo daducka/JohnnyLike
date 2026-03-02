@@ -53,6 +53,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                     return;
 
                 var tier = effectCtx.Tier.Value;
+                var actor = effectCtx.ActorId.Value;
 
                 // Common effect: consume energy
                 effectCtx.Actor.Energy -= 15.0;
@@ -73,7 +74,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                         effectCtx.Outcome.ResultData["loot_placeholder"] = true;
                     }
 
-                    effectCtx.SetOutcomeNarration("You heft the club and smash the chest open, revealing its treasure.");
+                    effectCtx.SetOutcomeNarration($"{actor} hefts the club and smashes the chest open, revealing its treasure.");
                 }
                 // Failure: damage chest, keep it in world
                 else
@@ -97,7 +98,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                         effectCtx.Outcome.ResultData["chest_health_after"] = Health;
                     }
 
-                    effectCtx.SetOutcomeNarration("You strike the chest, but it barely dents; you scuff your hands and grow frustrated.");
+                    effectCtx.SetOutcomeNarration($"{actor} strikes the chest, but it barely dents; hands scuffed, frustration growing.");
                 }
             }),
             Qualities: new Dictionary<QualityType, double>

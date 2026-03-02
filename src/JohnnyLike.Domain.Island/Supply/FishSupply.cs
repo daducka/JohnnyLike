@@ -38,7 +38,8 @@ public class FishSupply : SupplyItem, ISupplyActionCandidate
             {
                 effectCtx.Actor.Satiety += 10.0;
                 effectCtx.Actor.Morale  -= 5.0;
-                effectCtx.SetOutcomeNarration("You gulp down the raw fish; it's cold and slimy but fills your belly.");
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.SetOutcomeNarration($"{actor} gulps down the raw fish; cold and slimy, but it fills the belly.");
             }),
             PreAction: (Func<EffectContext, bool>)(effectCtx =>
                 pile.TryConsumeSupply<FishSupply>(1.0)),

@@ -129,6 +129,7 @@ public class ShelterItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.PartialSuccess)
         {
@@ -136,11 +137,11 @@ public class ShelterItem : ToolItem
                                  tier == RollOutcomeTier.Success ? 20.0 : 10.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
             ctx.Actor.Morale += 6.0;
-            ctx.SetOutcomeNarration("You patch up the shelter, reinforcing weak spots and feeling a bit safer.");
+            ctx.SetOutcomeNarration($"{actor} patches up the shelter, reinforcing weak spots and feeling a bit safer.");
         }
         else
         {
-            ctx.SetOutcomeNarration("Your repair attempt makes little progress on the shelter.");
+            ctx.SetOutcomeNarration($"{actor}'s repair attempt makes little progress on the shelter.");
         }
     }
 
@@ -150,17 +151,18 @@ public class ShelterItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.Success)
         {
             var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 45.0 : 30.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
             ctx.Actor.Morale += 8.0;
-            ctx.SetOutcomeNarration("You shore up the shelter frame, making it sturdier against the elements.");
+            ctx.SetOutcomeNarration($"{actor} shores up the shelter frame, making it sturdier against the elements.");
         }
         else
         {
-            ctx.SetOutcomeNarration("The shelter resists reinforcement; your work comes undone.");
+            ctx.SetOutcomeNarration($"The shelter resists {actor}'s reinforcement; the work comes undone.");
         }
     }
 
@@ -170,16 +172,17 @@ public class ShelterItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.Success)
         {
             Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 85.0;
             ctx.Actor.Morale += 20.0;
-            ctx.SetOutcomeNarration("You tear down the damaged shelter and rebuild it from the ground up, creating a reliable refuge.");
+            ctx.SetOutcomeNarration($"{actor} tears down the damaged shelter and rebuilds it from the ground up, creating a reliable refuge.");
         }
         else
         {
-            ctx.SetOutcomeNarration("Your rebuild attempt falls short; the structure collapses again.");
+            ctx.SetOutcomeNarration($"{actor}'s rebuild attempt falls short; the structure collapses again.");
         }
     }
 }

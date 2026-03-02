@@ -174,6 +174,7 @@ public class CampfireItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.PartialSuccess)
         {
@@ -197,7 +198,7 @@ public class CampfireItem : ToolItem
                 ctx.Actor.Morale -= 3.0;
             }
 
-            ctx.SetOutcomeNarration("You feed wood into the fire; the flames brighten and warmth returns.");
+            ctx.SetOutcomeNarration($"{actor} feeds wood into the fire; the flames brighten and warmth returns.");
         }
         else
         {
@@ -211,17 +212,18 @@ public class CampfireItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.Success)
         {
             IsLit = true;
             FuelSeconds = tier == RollOutcomeTier.CriticalSuccess ? 1800.0 : 1200.0;
             ctx.Actor.Morale += 10.0;
-            ctx.SetOutcomeNarration("You coax a spark into life and the campfire blazes anew.");
+            ctx.SetOutcomeNarration($"{actor} coaxes a spark into life and the campfire blazes anew.");
         }
         else
         {
-            ctx.SetOutcomeNarration("Your attempts to relight the campfire fail.");
+            ctx.SetOutcomeNarration($"{actor}'s attempts to relight the campfire fail.");
         }
     }
 
@@ -231,6 +233,7 @@ public class CampfireItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.PartialSuccess)
         {
@@ -238,11 +241,11 @@ public class CampfireItem : ToolItem
                                  tier == RollOutcomeTier.Success ? 25.0 : 15.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
             ctx.Actor.Morale += 7.0;
-            ctx.SetOutcomeNarration("You repair the campfire ring and arrange the stones and logs neatly.");
+            ctx.SetOutcomeNarration($"{actor} repairs the campfire ring and arranges the stones and logs neatly.");
         }
         else
         {
-            ctx.SetOutcomeNarration("The campfire ring resists your repair attempts.");
+            ctx.SetOutcomeNarration($"The campfire ring resists {actor}'s repair attempts.");
         }
     }
 
@@ -252,6 +255,7 @@ public class CampfireItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.Success)
         {
@@ -259,11 +263,11 @@ public class CampfireItem : ToolItem
             IsLit = true;
             FuelSeconds = 1800.0;
             ctx.Actor.Morale += 15.0;
-            ctx.SetOutcomeNarration("You gather stones and wood and build a brand new campfire from scratch.");
+            ctx.SetOutcomeNarration($"{actor} gathers stones and wood and builds a brand new campfire from scratch.");
         }
         else
         {
-            ctx.SetOutcomeNarration("Your attempt to rebuild the campfire falls apart.");
+            ctx.SetOutcomeNarration($"{actor}'s attempt to rebuild the campfire falls apart.");
         }
     }
 

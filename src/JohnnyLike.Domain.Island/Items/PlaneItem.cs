@@ -41,6 +41,7 @@ public class PlaneItem : ExpirableWorldItem
                     return;
 
                 var tier = effectCtx.Tier.Value;
+                var actor = effectCtx.ActorId.Value;
 
                 // Always fails - reduces morale
                 effectCtx.Actor.Morale -= 10.0;
@@ -52,7 +53,7 @@ public class PlaneItem : ExpirableWorldItem
                     effectCtx.Actor.Morale += 5.0; // Partial recovery
                 }
 
-                effectCtx.SetOutcomeNarration("You wave and shout at the plane, but it hums away obliviously, leaving you exhausted.");
+                effectCtx.SetOutcomeNarration($"{actor} waves and shouts at the plane, but it hums away obliviously, leaving them exhausted.");
             }),
             Qualities: new Dictionary<QualityType, double>
             {

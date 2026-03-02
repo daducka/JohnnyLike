@@ -37,7 +37,8 @@ public class CookedFishSupply : SupplyItem, ISupplyActionCandidate
             {
                 effectCtx.Actor.Satiety += 20.0;
                 effectCtx.Actor.Morale  += 5.0;
-                effectCtx.SetOutcomeNarration("You savor the cooked fish; it tastes infinitely better than raw.");
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.SetOutcomeNarration($"{actor} savors the cooked fish; it tastes infinitely better than raw.");
             }),
             PreAction: (Func<EffectContext, bool>)(effectCtx =>
                 pile.TryConsumeSupply<CookedFishSupply>(1.0)),

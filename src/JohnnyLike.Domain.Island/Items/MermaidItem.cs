@@ -41,6 +41,7 @@ public class MermaidItem : ExpirableWorldItem
                     return;
 
                 var tier = effectCtx.Tier.Value;
+                var actor = effectCtx.ActorId.Value;
 
                 // Positive impact on morale for successful interaction
                 if (tier >= RollOutcomeTier.Success)
@@ -59,19 +60,19 @@ public class MermaidItem : ExpirableWorldItem
                         Value = 0,
                         ExpiresAtTick = effectCtx.World.CurrentTick + 600L * 20
                     });
-                    effectCtx.SetOutcomeNarration("You wave at the mermaid and she smiles warmly, granting you her blessing.");
+                    effectCtx.SetOutcomeNarration($"{actor} waves at the mermaid and she smiles warmly, granting a blessing.");
                 }
                 else if (tier == RollOutcomeTier.Success)
                 {
-                    effectCtx.SetOutcomeNarration("You wave; the mermaid notices and responds with a friendly gesture.");
+                    effectCtx.SetOutcomeNarration($"{actor} waves; the mermaid notices and responds with a friendly gesture.");
                 }
                 else if (tier == RollOutcomeTier.PartialSuccess)
                 {
-                    effectCtx.SetOutcomeNarration("The mermaid barely acknowledges your wave.");
+                    effectCtx.SetOutcomeNarration($"The mermaid barely acknowledges {actor}'s wave.");
                 }
                 else
                 {
-                    effectCtx.SetOutcomeNarration("You wave enthusiastically, but the mermaid slips beneath the waves without reacting.");
+                    effectCtx.SetOutcomeNarration($"{actor} waves enthusiastically, but the mermaid slips beneath the waves without reacting.");
                 }
             }),
             Qualities: new Dictionary<QualityType, double>

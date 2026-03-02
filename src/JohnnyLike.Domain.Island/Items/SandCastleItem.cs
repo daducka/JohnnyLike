@@ -78,7 +78,8 @@ public class SandCastleItem : MaintainableWorldItem
 
                 // Grant a large morale boost (cathartic release)
                 effectCtx.Actor.Morale += 30.0;
-                effectCtx.SetOutcomeNarration("You stomp the sandcastle into ruin, relieving some frustration.");
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.SetOutcomeNarration($"{actor} stomps the sandcastle into ruin, relieving some frustration.");
             }),
             Qualities: new Dictionary<QualityType, double>
             {

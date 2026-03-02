@@ -52,7 +52,8 @@ public static class Rope
                 if (pile == null) return;
 
                 pile.AddSupply(3, () => new RopeSupply());
-                effectCtx.SetOutcomeNarration("You weave the fibers into a sturdy rope.");
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.SetOutcomeNarration($"{actor} weaves the fibers into a sturdy rope.");
             },
 
             Discovery:  new RecipeDiscoverySpec

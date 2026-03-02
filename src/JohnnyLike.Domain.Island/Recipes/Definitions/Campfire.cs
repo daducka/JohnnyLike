@@ -59,7 +59,8 @@ public static class Campfire
             Effect: effectCtx =>
             {
                 effectCtx.World.AddWorldItem(new CampfireItem("main_campfire"), "beach");
-                effectCtx.SetOutcomeNarration("You assemble stones and logs into a functional campfire.");
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.SetOutcomeNarration($"{actor} assembles stones and logs into a functional campfire.");
             },
 
             Discovery: new RecipeDiscoverySpec

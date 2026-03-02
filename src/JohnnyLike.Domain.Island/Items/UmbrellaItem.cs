@@ -51,7 +51,8 @@ public class UmbrellaItem : ToolItem
                         ExpiresAtTick = long.MaxValue
                     });
                     effectCtx.Actor.Morale += 5.0;
-                    effectCtx.SetOutcomeNarration("You unfurl the umbrella; raindrops drum harmlessly above your head.");
+                    var actor = effectCtx.ActorId.Value;
+                    effectCtx.SetOutcomeNarration($"{actor} unfurls the umbrella; raindrops drum harmlessly above.");
                 }),
                 Qualities: new Dictionary<QualityType, double>
                 {
@@ -77,7 +78,8 @@ public class UmbrellaItem : ToolItem
                 EffectHandler: new Action<EffectContext>(effectCtx =>
                 {
                     effectCtx.Actor.ActiveBuffs.RemoveAll(b => b.Name == RainProtectionBuffName);
-                    effectCtx.SetOutcomeNarration("You collapse the umbrella and tuck it away.");
+                    var actor = effectCtx.ActorId.Value;
+                    effectCtx.SetOutcomeNarration($"{actor} collapses the umbrella and tucks it away.");
                 }),
                 Qualities: new Dictionary<QualityType, double>
                 {

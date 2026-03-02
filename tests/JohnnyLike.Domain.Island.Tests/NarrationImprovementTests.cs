@@ -282,7 +282,7 @@ public class NarrationImprovementTests
 
     [Theory]
     [InlineData(RollOutcomeTier.CriticalSuccess, "crack")]
-    [InlineData(RollOutcomeTier.Success,         "bash open")]
+    [InlineData(RollOutcomeTier.Success,         "bashes open")]
     [InlineData(RollOutcomeTier.PartialSuccess,  "few tries")]
     [InlineData(RollOutcomeTier.Failure,         "few bites")]
     [InlineData(RollOutcomeTier.CriticalFailure, "spilling")]

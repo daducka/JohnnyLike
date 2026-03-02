@@ -62,7 +62,8 @@ public static class FishingPole
 
                 var poleId = $"fishing_pole_{effectCtx.ActorId.Value}_{existingForActor + 1}";
                 effectCtx.World.AddWorldItem(new FishingPoleItem(poleId, effectCtx.ActorId), "beach");
-                effectCtx.SetOutcomeNarration("You carve and assemble a durable fishing pole.");
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.SetOutcomeNarration($"{actor} carves and assembles a durable fishing pole.");
             },
 
             Discovery: new RecipeDiscoverySpec
