@@ -30,7 +30,8 @@ public class MermaidItem : ExpirableWorldItem
                 parameters,
                 EngineConstants.TimeToTicks(5.0),
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(ShoreEastEnd) }
+                new List<ResourceRequirement> { new ResourceRequirement(ShoreEastEnd) },
+                NarrationDescription: "wave at mermaid"
             ),
             baseScore,
             Reason: $"Wave at mermaid (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -58,6 +59,19 @@ public class MermaidItem : ExpirableWorldItem
                         Value = 0,
                         ExpiresAtTick = effectCtx.World.CurrentTick + 600L * 20
                     });
+                    effectCtx.SetOutcomeNarration("You wave at the mermaid and she smiles warmly, granting you her blessing.");
+                }
+                else if (tier == RollOutcomeTier.Success)
+                {
+                    effectCtx.SetOutcomeNarration("You wave; the mermaid notices and responds with a friendly gesture.");
+                }
+                else if (tier == RollOutcomeTier.PartialSuccess)
+                {
+                    effectCtx.SetOutcomeNarration("The mermaid barely acknowledges your wave.");
+                }
+                else
+                {
+                    effectCtx.SetOutcomeNarration("You wave enthusiastically, but the mermaid slips beneath the waves without reacting.");
                 }
             }),
             Qualities: new Dictionary<QualityType, double>

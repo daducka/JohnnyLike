@@ -60,6 +60,7 @@ public static class CookFish
                 if (pile == null) return;
 
                 pile.AddSupply(1, () => new CookedFishSupply());
+                effectCtx.SetOutcomeNarration("You grill the fish to perfection.");
             },
 
             Discovery: new RecipeDiscoverySpec

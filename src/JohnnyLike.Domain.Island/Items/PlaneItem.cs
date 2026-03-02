@@ -30,7 +30,8 @@ public class PlaneItem : ExpirableWorldItem
                 parameters,
                 EngineConstants.TimeToTicks(10.0),
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(BeachOpenArea) }
+                new List<ResourceRequirement> { new ResourceRequirement(BeachOpenArea) },
+                NarrationDescription: "signal plane"
             ),
             baseScore,
             Reason: $"Try to signal plane (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -50,6 +51,8 @@ public class PlaneItem : ExpirableWorldItem
                 {
                     effectCtx.Actor.Morale += 5.0; // Partial recovery
                 }
+
+                effectCtx.SetOutcomeNarration("You wave and shout at the plane, but it hums away obliviously, leaving you exhausted.");
             }),
             Qualities: new Dictionary<QualityType, double>
             {

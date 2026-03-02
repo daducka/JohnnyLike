@@ -33,7 +33,8 @@ public class CoconutSupply : SupplyItem, ISupplyActionCandidate
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(8.0, 12.0, ctx.Random),
-                parameters.ToResultData()
+                parameters.ToResultData(),
+                NarrationDescription: "bash and eat coconut"
             ),
             0.5,
             Reason: $"Bash and eat coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -48,21 +49,26 @@ public class CoconutSupply : SupplyItem, ISupplyActionCandidate
                         effectCtx.Actor.Satiety += 25.0;
                         effectCtx.Actor.Morale  += 10.0;
                         effectCtx.Actor.Energy  += 5.0;
+                        effectCtx.SetOutcomeNarration("You crack the coconut cleanly and savor every drop of sweet water and flesh.");
                         break;
                     case RollOutcomeTier.Success:
                         effectCtx.Actor.Satiety += 15.0;
                         effectCtx.Actor.Morale  += 5.0;
+                        effectCtx.SetOutcomeNarration("You bash open the coconut and enjoy its meat.");
                         break;
                     case RollOutcomeTier.PartialSuccess:
                         effectCtx.Actor.Satiety += 8.0;
                         effectCtx.Actor.Morale  += 2.0;
+                        effectCtx.SetOutcomeNarration("It takes a few tries, but you eventually split the coconut and eat.");
                         break;
                     case RollOutcomeTier.Failure:
                         effectCtx.Actor.Satiety += 5.0;
+                        effectCtx.SetOutcomeNarration("You barely crack the shell and only get a few bites.");
                         break;
                     case RollOutcomeTier.CriticalFailure:
                         effectCtx.Actor.Satiety += 3.0;
                         effectCtx.Actor.Morale  -= 5.0;
+                        effectCtx.SetOutcomeNarration("The coconut flies from your grip, spilling most of its contents.");
                         break;
                 }
             }),

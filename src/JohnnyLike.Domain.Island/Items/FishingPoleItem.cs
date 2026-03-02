@@ -82,7 +82,8 @@ public class FishingPoleItem : ToolItem
                         parameters,
                         EngineConstants.TimeToTicks(45.0, 60.0, ctx.Random),
                         parameters.ToResultData(),
-                        new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
+                        new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) },
+                        NarrationDescription: "go fishing"
                     ),
                     0.5,
                     Reason: $"Go fishing with pole (quality: {Quality:F0}%, fish available: {fishAvailable:F0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -126,24 +127,16 @@ public class FishingPoleItem : ToolItem
                                 src.ReleaseReservation(key); // no shared pile — return fish to ocean
                             }
 
-                            using (effectCtx.Tracer.PushPhase(TracePhase.ActionCompleted))
-                            {
-                                var actorName = effectCtx.ActorId.Value;
-                                effectCtx.Tracer.BeatActor(actorName,
-                                    tier == RollOutcomeTier.CriticalSuccess
-                                        ? $"{actorName} hauls in two fish—a great catch."
-                                        : $"{actorName} pulls a fish from the water.",
-                                    subjectId: "resource:fish", priority: 60);
-                            }
+                            effectCtx.SetOutcomeNarration(
+                                tier == RollOutcomeTier.CriticalSuccess
+                                    ? "You cast your line and quickly haul in two gleaming fish—a great catch."
+                                    : "You patiently fish and pull a fish from the water.");
                         }
                         else
                         {
                             // Failure: return all reserved fish to the ocean
                             src.ReleaseReservation(key);
-                            using (effectCtx.Tracer.PushPhase(TracePhase.ActionCompleted))
-                                effectCtx.Tracer.BeatActor(effectCtx.ActorId.Value,
-                                    "The line comes back empty.",
-                                    subjectId: "resource:fish", priority: 50);
+                            effectCtx.SetOutcomeNarration("The line comes back empty.");
                         }
                     }),
                     Qualities: new Dictionary<QualityType, double>
@@ -169,7 +162,8 @@ public class FishingPoleItem : ToolItem
                     parameters,
                     EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
                     parameters.ToResultData(),
-                    new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
+                    new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) },
+                    NarrationDescription: "maintain fishing rod"
                 ),
                 0.4,
                 Reason: $"Maintain fishing rod (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -195,7 +189,8 @@ public class FishingPoleItem : ToolItem
                     parameters,
                     EngineConstants.TimeToTicks(40.0, 50.0, ctx.Random),
                     parameters.ToResultData(),
-                    new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
+                    new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) },
+                    NarrationDescription: "repair fishing rod"
                 ),
                 0.3,
                 Reason: $"Repair fishing rod{(IsBroken ? " (broken)" : "")} (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -224,6 +219,8 @@ public class FishingPoleItem : ToolItem
             Quality = Math.Min(100.0, Quality + qualityRestored);
             ctx.Actor.Morale += 3.0;
         }
+
+        ctx.SetOutcomeNarration("You clean and oil the fishing rod, restoring its condition.");
     }
 
     public void ApplyRepairRodEffect(EffectContext ctx)
@@ -246,6 +243,8 @@ public class FishingPoleItem : ToolItem
             
             ctx.Actor.Morale += 8.0;
         }
+
+        ctx.SetOutcomeNarration("You mend the damaged fishing rod, making it usable again.");
     }
 
     public override Dictionary<string, object> SerializeToDict()

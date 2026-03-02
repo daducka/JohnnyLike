@@ -263,6 +263,425 @@ public class NarrationImprovementTests
         Assert.True(phaseEvent.Details.ContainsKey("dayPhase"), "Expected 'dayPhase' key in DayPhaseChanged event");
         Assert.True(phaseEvent.Details.ContainsKey("text"), "Expected 'text' key in DayPhaseChanged event");
     }
+
+    // ── NarrationDescription on supply actions ────────────────────────────────
+
+    [Fact]
+    public void BashAndEatCoconut_HasNarrationDescription()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(5, () => new CoconutSupply());
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var action = candidates.FirstOrDefault(c => c.Action.Id.Value == "bash_and_eat_coconut");
+        Assert.NotNull(action);
+        Assert.False(string.IsNullOrEmpty(action!.Action.NarrationDescription));
+    }
+
+    [Theory]
+    [InlineData(RollOutcomeTier.CriticalSuccess, "crack")]
+    [InlineData(RollOutcomeTier.Success,         "bash open")]
+    [InlineData(RollOutcomeTier.PartialSuccess,  "few tries")]
+    [InlineData(RollOutcomeTier.Failure,         "few bites")]
+    [InlineData(RollOutcomeTier.CriticalFailure, "spilling")]
+    public void BashAndEatCoconut_EffectHandler_SetsOutcomeNarration(
+        RollOutcomeTier tier, string expectedFragment)
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(5, () => new CoconutSupply());
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+        var candidate = candidates.First(c => c.Action.Id.Value == "bash_and_eat_coconut");
+
+        var effectCtx = MakeEffectContext(actor, world, actorId, tier);
+        var handler = candidate.EffectHandler as Action<EffectContext>;
+        Assert.NotNull(handler);
+        handler!(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+        Assert.Contains(expectedFragment, effectCtx.OutcomeNarration!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void EatRawFish_HasNarrationDescription()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(5, () => new FishSupply());
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var action = candidates.FirstOrDefault(c => c.Action.Id.Value == "eat_raw_fish");
+        Assert.NotNull(action);
+        Assert.False(string.IsNullOrEmpty(action!.Action.NarrationDescription));
+    }
+
+    [Fact]
+    public void EatRawFish_EffectHandler_SetsOutcomeNarration()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(5, () => new FishSupply());
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+        var candidate = candidates.First(c => c.Action.Id.Value == "eat_raw_fish");
+
+        var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
+        var handler = candidate.EffectHandler as Action<EffectContext>;
+        Assert.NotNull(handler);
+        handler!(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+    }
+
+    [Fact]
+    public void EatCookedFish_HasNarrationDescription()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(5, () => new CookedFishSupply());
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var action = candidates.FirstOrDefault(c => c.Action.Id.Value == "eat_cooked_fish");
+        Assert.NotNull(action);
+        Assert.False(string.IsNullOrEmpty(action!.Action.NarrationDescription));
+    }
+
+    [Fact]
+    public void EatCookedFish_EffectHandler_SetsOutcomeNarration()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(5, () => new CookedFishSupply());
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+        var candidate = candidates.First(c => c.Action.Id.Value == "eat_cooked_fish");
+
+        var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
+        var handler = candidate.EffectHandler as Action<EffectContext>;
+        Assert.NotNull(handler);
+        handler!(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+    }
+
+    // ── NarrationDescription on item actions ─────────────────────────────────
+
+    [Fact]
+    public void RepairShelter_HasNarrationDescription()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        var shelter = new ShelterItem();
+        shelter.Quality = 50.0;
+        world.AddWorldItem(shelter, "beach");
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var action = candidates.FirstOrDefault(c => c.Action.Id.Value == "repair_shelter");
+        Assert.NotNull(action);
+        Assert.False(string.IsNullOrEmpty(action!.Action.NarrationDescription));
+    }
+
+    [Fact]
+    public void RepairShelter_EffectHandler_SetsOutcomeNarration()
+    {
+        var shelter = new ShelterItem();
+        shelter.Quality = 50.0;
+
+        var (_, world, actor, actorId) = MakeIsland();
+        var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
+
+        shelter.ApplyRepairShelterEffect(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+    }
+
+    [Fact]
+    public void ReinforceShelter_EffectHandler_SetsOutcomeNarration()
+    {
+        var shelter = new ShelterItem();
+        shelter.Quality = 30.0;
+
+        var (_, world, actor, actorId) = MakeIsland();
+        var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
+
+        shelter.ApplyReinforceShelterEffect(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+    }
+
+    [Fact]
+    public void RebuildShelter_EffectHandler_SetsOutcomeNarration()
+    {
+        var shelter = new ShelterItem();
+        shelter.Quality = 10.0;
+
+        var (_, world, actor, actorId) = MakeIsland();
+        var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
+
+        shelter.ApplyRebuildShelterEffect(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+    }
+
+    [Fact]
+    public void MermaidItem_HasNarrationDescription()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        world.AddWorldItem(new MermaidItem(), "beach");
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var action = candidates.FirstOrDefault(c => c.Action.Id.Value == "wave_at_mermaid");
+        Assert.NotNull(action);
+        Assert.False(string.IsNullOrEmpty(action!.Action.NarrationDescription));
+    }
+
+    [Theory]
+    [InlineData(RollOutcomeTier.CriticalSuccess, "blessing")]
+    [InlineData(RollOutcomeTier.Success,         "friendly gesture")]
+    [InlineData(RollOutcomeTier.PartialSuccess,  "barely")]
+    [InlineData(RollOutcomeTier.Failure,         "beneath the waves")]
+    public void MermaidItem_EffectHandler_SetsOutcomeNarration(
+        RollOutcomeTier tier, string expectedFragment)
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        world.AddWorldItem(new MermaidItem(), "beach");
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+        var candidate = candidates.First(c => c.Action.Id.Value == "wave_at_mermaid");
+
+        var effectCtx = MakeEffectContext(actor, world, actorId, tier);
+        var handler = candidate.EffectHandler as Action<EffectContext>;
+        Assert.NotNull(handler);
+        handler!(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+        Assert.Contains(expectedFragment, effectCtx.OutcomeNarration!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TreasureChestItem_HasNarrationDescription()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        world.AddWorldItem(new TreasureChestItem(), "beach");
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var action = candidates.FirstOrDefault(c => c.Action.Id.Value == "bash_open_treasure_chest");
+        Assert.NotNull(action);
+        Assert.False(string.IsNullOrEmpty(action!.Action.NarrationDescription));
+    }
+
+    [Theory]
+    [InlineData(RollOutcomeTier.Success,  "smash")]
+    [InlineData(RollOutcomeTier.Failure,  "barely dents")]
+    public void TreasureChestItem_EffectHandler_SetsOutcomeNarration(
+        RollOutcomeTier tier, string expectedFragment)
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        var chest = new TreasureChestItem();
+        world.AddWorldItem(chest, "beach");
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+        var candidate = candidates.First(c => c.Action.Id.Value == "bash_open_treasure_chest");
+
+        var effectCtx = MakeEffectContext(actor, world, actorId, tier);
+        var handler = candidate.EffectHandler as Action<EffectContext>;
+        Assert.NotNull(handler);
+        handler!(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+        Assert.Contains(expectedFragment, effectCtx.OutcomeNarration!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void StompOnSandcastle_HasNarrationDescription()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        actor.Morale = 10.0;
+        var sandcastle = new SandCastleItem();
+        sandcastle.Quality = 20.0;
+        world.AddWorldItem(sandcastle, "beach");
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var action = candidates.FirstOrDefault(c => c.Action.Id.Value == "stomp_on_sandcastle");
+        Assert.NotNull(action);
+        Assert.False(string.IsNullOrEmpty(action!.Action.NarrationDescription));
+    }
+
+    [Fact]
+    public void StompOnSandcastle_EffectHandler_SetsOutcomeNarration()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        actor.Morale = 10.0;
+        var sandcastle = new SandCastleItem();
+        sandcastle.Quality = 20.0;
+        world.AddWorldItem(sandcastle, "beach");
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+        var candidate = candidates.First(c => c.Action.Id.Value == "stomp_on_sandcastle");
+
+        var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
+        var handler = candidate.EffectHandler as Action<EffectContext>;
+        Assert.NotNull(handler);
+        handler!(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+        Assert.Contains("stomp", effectCtx.OutcomeNarration!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ── NarrationDescription on recipe candidates ─────────────────────────────
+
+    [Fact]
+    public void RecipeCandidate_HasNarrationDescription()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        // Give actor palm fronds so the rope recipe is available
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(5, () => new Island.Supply.PalmFrondSupply());
+        actor.KnownRecipeIds.Add("rope");
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var action = candidates.FirstOrDefault(c => c.Action.Id.Value == "craft_rope");
+        Assert.NotNull(action);
+        Assert.False(string.IsNullOrEmpty(action!.Action.NarrationDescription));
+    }
+
+    [Fact]
+    public void CraftRope_EffectHandler_SetsOutcomeNarration()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(5, () => new Island.Supply.PalmFrondSupply());
+        actor.KnownRecipeIds.Add("rope");
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+        var candidate = candidates.First(c => c.Action.Id.Value == "craft_rope");
+
+        var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
+        // Run pre-action to consume supplies
+        var preAction = candidate.PreAction as Func<EffectContext, bool>;
+        preAction?.Invoke(effectCtx);
+
+        var handler = candidate.EffectHandler as Action<EffectContext>;
+        Assert.NotNull(handler);
+        handler!(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+    }
+
+    // ── Campfire narration ────────────────────────────────────────────────────
+
+    [Fact]
+    public void AddFuelCampfire_HasNarrationDescription()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        var campfire = new CampfireItem();
+        campfire.IsLit = true;
+        campfire.FuelSeconds = 100.0;
+        world.AddWorldItem(campfire, "beach");
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(10, () => new Island.Supply.WoodSupply());
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var action = candidates.FirstOrDefault(c => c.Action.Id.Value == "add_fuel_campfire");
+        Assert.NotNull(action);
+        Assert.False(string.IsNullOrEmpty(action!.Action.NarrationDescription));
+    }
+
+    [Fact]
+    public void AddFuelCampfire_EffectHandler_SetsOutcomeNarration()
+    {
+        var campfire = new CampfireItem();
+        campfire.IsLit = true;
+        campfire.FuelSeconds = 100.0;
+
+        var (_, world, actor, actorId) = MakeIsland();
+        world.AddWorldItem(campfire, "beach");
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(10, () => new Island.Supply.WoodSupply());
+
+        var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
+        campfire.ApplyAddFuelEffect(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+    }
+
+    // ── FishingPole narration ─────────────────────────────────────────────────
+
+    [Fact]
+    public void GoFishing_HasNarrationDescription()
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        domain.InitializeActorItems(actorId, world);
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var action = candidates.FirstOrDefault(c => c.Action.Id.Value == "go_fishing");
+        Assert.NotNull(action);
+        Assert.False(string.IsNullOrEmpty(action!.Action.NarrationDescription));
+    }
+
+    [Theory]
+    [InlineData(RollOutcomeTier.CriticalSuccess, "two")]
+    [InlineData(RollOutcomeTier.Success,         "fish from the water")]
+    [InlineData(RollOutcomeTier.Failure,         "empty")]
+    public void GoFishing_EffectHandler_SetsOutcomeNarration(
+        RollOutcomeTier tier, string expectedFragment)
+    {
+        var (domain, world, actor, actorId) = MakeIsland();
+        domain.InitializeActorItems(actorId, world);
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+        var candidate = candidates.First(c => c.Action.Id.Value == "go_fishing");
+
+        var effectCtx = MakeEffectContext(actor, world, actorId, tier);
+        var preAction = candidate.PreAction as Func<EffectContext, bool>;
+        preAction?.Invoke(effectCtx);
+
+        var handler = candidate.EffectHandler as Action<EffectContext>;
+        Assert.NotNull(handler);
+        handler!(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+        Assert.Contains(expectedFragment, effectCtx.OutcomeNarration!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void MaintainRod_EffectHandler_SetsOutcomeNarration()
+    {
+        var pole = new FishingPoleItem("test_pole", new ActorId("Johnny"));
+        pole.Quality = 50.0;
+
+        var (_, world, actor, actorId) = MakeIsland();
+        var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
+
+        pole.ApplyMaintainRodEffect(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+    }
+
+    [Fact]
+    public void RepairRod_EffectHandler_SetsOutcomeNarration()
+    {
+        var pole = new FishingPoleItem("test_pole", new ActorId("Johnny"));
+        pole.IsBroken = true;
+
+        var (_, world, actor, actorId) = MakeIsland();
+        var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
+
+        pole.ApplyRepairRodEffect(effectCtx);
+
+        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+    }
 }
 
 /// <summary>

@@ -58,6 +58,7 @@ public static class Umbrella
             {
                 var toolId = $"umbrella_{effectCtx.ActorId.Value}";
                 effectCtx.World.AddWorldItem(new UmbrellaItem(toolId, effectCtx.ActorId), "beach");
+                effectCtx.SetOutcomeNarration("You stitch fabric and ribs into a handy umbrella.");
             },
 
             Discovery: new RecipeDiscoverySpec

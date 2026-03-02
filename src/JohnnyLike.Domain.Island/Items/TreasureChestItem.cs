@@ -42,7 +42,8 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                 parameters,
                 EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(TreasureChestResource) }
+                new List<ResourceRequirement> { new ResourceRequirement(TreasureChestResource) },
+                NarrationDescription: "bash open treasure chest"
             ),
             baseScore,
             Reason: $"Bash open treasure chest (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -71,6 +72,8 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                         effectCtx.Outcome.ResultData["variant_id"] = "bash_chest_success";
                         effectCtx.Outcome.ResultData["loot_placeholder"] = true;
                     }
+
+                    effectCtx.SetOutcomeNarration("You heft the club and smash the chest open, revealing its treasure.");
                 }
                 // Failure: damage chest, keep it in world
                 else
@@ -93,6 +96,8 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                         effectCtx.Outcome.ResultData["variant_id"] = "bash_chest_failure";
                         effectCtx.Outcome.ResultData["chest_health_after"] = Health;
                     }
+
+                    effectCtx.SetOutcomeNarration("You strike the chest, but it barely dents; you scuff your hands and grow frustrated.");
                 }
             }),
             Qualities: new Dictionary<QualityType, double>
