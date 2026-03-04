@@ -28,7 +28,8 @@ public class CookedFishSupply : SupplyItem, ISupplyActionCandidate
                 new ActionId("eat_cooked_fish"),
                 ActionKind.Interact,
                 new LocationActionParameters("camp"),
-                EngineConstants.TimeToTicks(8.0, 10.0, ctx.Random)
+                EngineConstants.TimeToTicks(8.0, 10.0, ctx.Random),
+                NarrationDescription: "eat cooked fish"
             ),
             0.6,
             Reason: "Eat cooked fish",
@@ -36,6 +37,8 @@ public class CookedFishSupply : SupplyItem, ISupplyActionCandidate
             {
                 effectCtx.Actor.Satiety += 20.0;
                 effectCtx.Actor.Morale  += 5.0;
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.SetOutcomeNarration($"{actor} savors the cooked fish; it tastes infinitely better than raw.");
             }),
             PreAction: (Func<EffectContext, bool>)(effectCtx =>
                 pile.TryConsumeSupply<CookedFishSupply>(1.0)),

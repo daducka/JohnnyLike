@@ -237,9 +237,9 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(20.0, 30.0, ctx.Random),
+                "build a sand castle on the beach",
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach:sandcastle_spot")) },
-                NarrationDescription: "build a sand castle on the beach"
+                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach:sandcastle_spot")) }
             ),
             baseScore,
             Reason: $"Build sand castle (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
@@ -298,7 +298,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("think_about_supplies"),
                 ActionKind.Wait,
                 EmptyActionParameters.Instance,
-                EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random)
+                EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random),
+                NarrationDescription: "think about available supplies"
             ),
             0.2,
             Reason: "Think about supplies",
@@ -336,7 +337,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             new ActionId("write_name_sand"),
                             ActionKind.Emote,
                             new EmoteActionParameters("write_name", name, "beach"),
-                            160L
+                            160L,
+                            NarrationDescription: "write name in the sand"
                         ),
                         2.0, // High priority
                         Reason: $"Write {name}'s name in sand (chat redeem)",
@@ -364,7 +366,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             new ActionId("clap_emote"),
                             ActionKind.Emote,
                             new EmoteActionParameters("clap"),
-                            40L
+                            40L,
+                            NarrationDescription: "clap"
                         ),
                         2.0, // High priority
                         Reason: "Clap emote (sub/cheer)",
@@ -430,9 +433,9 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(15.0, 20.0, ctx.Random),
+                "swim in the ocean",
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) },
-                NarrationDescription: "swim in the ocean"
+                new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) }
             ),
             0.5,
             Reason: $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",

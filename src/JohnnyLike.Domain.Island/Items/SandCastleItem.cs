@@ -63,6 +63,7 @@ public class SandCastleItem : MaintainableWorldItem
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(5.0),
+                "stomp on sandcastle",
                 null,
                 new List<ResourceRequirement> { new ResourceRequirement(BeachSandcastleArea) }
             ),
@@ -77,6 +78,8 @@ public class SandCastleItem : MaintainableWorldItem
 
                 // Grant a large morale boost (cathartic release)
                 effectCtx.Actor.Morale += 30.0;
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.SetOutcomeNarration($"{actor} stomps the sandcastle into ruin, relieving some frustration.");
             }),
             Qualities: new Dictionary<QualityType, double>
             {

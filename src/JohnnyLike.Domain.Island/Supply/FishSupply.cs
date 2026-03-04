@@ -29,7 +29,8 @@ public class FishSupply : SupplyItem, ISupplyActionCandidate
                 new ActionId("eat_raw_fish"),
                 ActionKind.Interact,
                 new LocationActionParameters("camp"),
-                EngineConstants.TimeToTicks(5.0, 7.0, ctx.Random)
+                EngineConstants.TimeToTicks(5.0, 7.0, ctx.Random),
+                NarrationDescription: "eat raw fish"
             ),
             0.4,
             Reason: "Eat raw fish",
@@ -37,6 +38,8 @@ public class FishSupply : SupplyItem, ISupplyActionCandidate
             {
                 effectCtx.Actor.Satiety += 10.0;
                 effectCtx.Actor.Morale  -= 5.0;
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.SetOutcomeNarration($"{actor} gulps down the raw fish; cold and slimy, but it fills the belly.");
             }),
             PreAction: (Func<EffectContext, bool>)(effectCtx =>
                 pile.TryConsumeSupply<FishSupply>(1.0)),

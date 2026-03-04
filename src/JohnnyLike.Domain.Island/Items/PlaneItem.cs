@@ -29,6 +29,7 @@ public class PlaneItem : ExpirableWorldItem
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(10.0),
+                "signal plane",
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(BeachOpenArea) }
             ),
@@ -40,6 +41,7 @@ public class PlaneItem : ExpirableWorldItem
                     return;
 
                 var tier = effectCtx.Tier.Value;
+                var actor = effectCtx.ActorId.Value;
 
                 // Always fails - reduces morale
                 effectCtx.Actor.Morale -= 10.0;
@@ -50,6 +52,8 @@ public class PlaneItem : ExpirableWorldItem
                 {
                     effectCtx.Actor.Morale += 5.0; // Partial recovery
                 }
+
+                effectCtx.SetOutcomeNarration($"{actor} waves and shouts at the plane, but it hums away obliviously, leaving them exhausted.");
             }),
             Qualities: new Dictionary<QualityType, double>
             {

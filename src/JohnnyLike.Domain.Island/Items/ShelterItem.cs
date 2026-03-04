@@ -49,6 +49,7 @@ public class ShelterItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(30.0, 40.0, ctx.Random),
+                    "repair shelter",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
@@ -76,6 +77,7 @@ public class ShelterItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(40.0, 50.0, ctx.Random),
+                    "reinforce shelter",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
@@ -103,6 +105,7 @@ public class ShelterItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(90.0, 120.0, ctx.Random),
+                    "rebuild shelter",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(ShelterResource) }
                 ),
@@ -126,6 +129,7 @@ public class ShelterItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.PartialSuccess)
         {
@@ -133,6 +137,11 @@ public class ShelterItem : ToolItem
                                  tier == RollOutcomeTier.Success ? 20.0 : 10.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
             ctx.Actor.Morale += 6.0;
+            ctx.SetOutcomeNarration($"{actor} patches up the shelter, reinforcing weak spots and feeling a bit safer.");
+        }
+        else
+        {
+            ctx.SetOutcomeNarration($"{actor}'s repair attempt makes little progress on the shelter.");
         }
     }
 
@@ -142,12 +151,18 @@ public class ShelterItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.Success)
         {
             var qualityRestored = tier == RollOutcomeTier.CriticalSuccess ? 45.0 : 30.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
             ctx.Actor.Morale += 8.0;
+            ctx.SetOutcomeNarration($"{actor} shores up the shelter frame, making it sturdier against the elements.");
+        }
+        else
+        {
+            ctx.SetOutcomeNarration($"The shelter resists {actor}'s reinforcement; the work comes undone.");
         }
     }
 
@@ -157,11 +172,17 @@ public class ShelterItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.Success)
         {
             Quality = tier == RollOutcomeTier.CriticalSuccess ? 100.0 : 85.0;
             ctx.Actor.Morale += 20.0;
+            ctx.SetOutcomeNarration($"{actor} tears down the damaged shelter and rebuilds it from the ground up, creating a reliable refuge.");
+        }
+        else
+        {
+            ctx.SetOutcomeNarration($"{actor}'s rebuild attempt falls short; the structure collapses again.");
         }
     }
 }

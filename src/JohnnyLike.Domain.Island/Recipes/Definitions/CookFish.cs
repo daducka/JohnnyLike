@@ -60,6 +60,8 @@ public static class CookFish
                 if (pile == null) return;
 
                 pile.AddSupply(1, () => new CookedFishSupply());
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.SetOutcomeNarration($"{actor} grills the fish to perfection.");
             },
 
             Discovery: new RecipeDiscoverySpec

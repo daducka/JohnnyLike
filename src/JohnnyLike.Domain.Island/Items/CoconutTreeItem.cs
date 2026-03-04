@@ -82,9 +82,9 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random),
+                "shake the palm tree to knock down coconuts",
                 parameters.ToResultData(),
-                new List<ResourceRequirement> { new ResourceRequirement(PalmTreeResource) },
-                NarrationDescription: "shake the palm tree to knock down coconuts"
+                new List<ResourceRequirement> { new ResourceRequirement(PalmTreeResource) }
             ),
             0.6,
             Reason: $"Get coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",

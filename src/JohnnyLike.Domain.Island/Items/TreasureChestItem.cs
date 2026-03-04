@@ -41,6 +41,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                 ActionKind.Interact,
                 parameters,
                 EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
+                "bash open treasure chest",
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(TreasureChestResource) }
             ),
@@ -52,6 +53,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                     return;
 
                 var tier = effectCtx.Tier.Value;
+                var actor = effectCtx.ActorId.Value;
 
                 // Common effect: consume energy
                 effectCtx.Actor.Energy -= 15.0;
@@ -71,6 +73,8 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                         effectCtx.Outcome.ResultData["variant_id"] = "bash_chest_success";
                         effectCtx.Outcome.ResultData["loot_placeholder"] = true;
                     }
+
+                    effectCtx.SetOutcomeNarration($"{actor} hefts the club and smashes the chest open, revealing its treasure.");
                 }
                 // Failure: damage chest, keep it in world
                 else
@@ -93,6 +97,8 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                         effectCtx.Outcome.ResultData["variant_id"] = "bash_chest_failure";
                         effectCtx.Outcome.ResultData["chest_health_after"] = Health;
                     }
+
+                    effectCtx.SetOutcomeNarration($"{actor} strikes the chest, but it barely dents; hands scuffed, frustration growing.");
                 }
             }),
             Qualities: new Dictionary<QualityType, double>

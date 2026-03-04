@@ -66,6 +66,7 @@ public class CampfireItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
+                    "add fuel to campfire",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
@@ -93,6 +94,7 @@ public class CampfireItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(30.0, 40.0, ctx.Random),
+                    "relight campfire",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
@@ -120,6 +122,7 @@ public class CampfireItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(25.0, 30.0, ctx.Random),
+                    "repair campfire",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
@@ -147,6 +150,7 @@ public class CampfireItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(60.0, 80.0, ctx.Random),
+                    "rebuild campfire",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
@@ -170,6 +174,7 @@ public class CampfireItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.PartialSuccess)
         {
@@ -192,6 +197,12 @@ public class CampfireItem : ToolItem
                 ctx.Actor.Morale += 2.0;
                 ctx.Actor.Morale -= 3.0;
             }
+
+            ctx.SetOutcomeNarration($"{actor} feeds wood into the fire; the flames brighten and warmth returns.");
+        }
+        else
+        {
+            ctx.SetOutcomeNarration("The fire is too weak to accept more fuel.");
         }
     }
 
@@ -201,12 +212,18 @@ public class CampfireItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.Success)
         {
             IsLit = true;
             FuelSeconds = tier == RollOutcomeTier.CriticalSuccess ? 1800.0 : 1200.0;
             ctx.Actor.Morale += 10.0;
+            ctx.SetOutcomeNarration($"{actor} coaxes a spark into life and the campfire blazes anew.");
+        }
+        else
+        {
+            ctx.SetOutcomeNarration($"{actor}'s attempts to relight the campfire fail.");
         }
     }
 
@@ -216,6 +233,7 @@ public class CampfireItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.PartialSuccess)
         {
@@ -223,6 +241,11 @@ public class CampfireItem : ToolItem
                                  tier == RollOutcomeTier.Success ? 25.0 : 15.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
             ctx.Actor.Morale += 7.0;
+            ctx.SetOutcomeNarration($"{actor} repairs the campfire ring and arranges the stones and logs neatly.");
+        }
+        else
+        {
+            ctx.SetOutcomeNarration($"The campfire ring resists {actor}'s repair attempts.");
         }
     }
 
@@ -232,6 +255,7 @@ public class CampfireItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.Success)
         {
@@ -239,6 +263,11 @@ public class CampfireItem : ToolItem
             IsLit = true;
             FuelSeconds = 1800.0;
             ctx.Actor.Morale += 15.0;
+            ctx.SetOutcomeNarration($"{actor} gathers stones and wood and builds a brand new campfire from scratch.");
+        }
+        else
+        {
+            ctx.SetOutcomeNarration($"{actor}'s attempt to rebuild the campfire falls apart.");
         }
     }
 

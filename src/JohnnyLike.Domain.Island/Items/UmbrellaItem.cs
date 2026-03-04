@@ -35,7 +35,8 @@ public class UmbrellaItem : ToolItem
                     new ActionId("deploy_umbrella"),
                     ActionKind.Interact,
                     new LocationActionParameters("camp"),
-                    EngineConstants.TimeToTicks(5.0)
+                    EngineConstants.TimeToTicks(5.0),
+                    NarrationDescription: "deploy umbrella"
                 ),
                 0.7,
                 Reason: "Deploy umbrella (rain protection)",
@@ -50,6 +51,8 @@ public class UmbrellaItem : ToolItem
                         ExpiresAtTick = long.MaxValue
                     });
                     effectCtx.Actor.Morale += 5.0;
+                    var actor = effectCtx.ActorId.Value;
+                    effectCtx.SetOutcomeNarration($"{actor} unfurls the umbrella; raindrops drum harmlessly above.");
                 }),
                 Qualities: new Dictionary<QualityType, double>
                 {
@@ -67,13 +70,16 @@ public class UmbrellaItem : ToolItem
                     new ActionId("holster_umbrella"),
                     ActionKind.Interact,
                     new LocationActionParameters("camp"),
-                    EngineConstants.TimeToTicks(3.0)
+                    EngineConstants.TimeToTicks(3.0),
+                    NarrationDescription: "holster umbrella"
                 ),
                 0.4,
                 Reason: "Holster umbrella",
                 EffectHandler: new Action<EffectContext>(effectCtx =>
                 {
                     effectCtx.Actor.ActiveBuffs.RemoveAll(b => b.Name == RainProtectionBuffName);
+                    var actor = effectCtx.ActorId.Value;
+                    effectCtx.SetOutcomeNarration($"{actor} collapses the umbrella and tucks it away.");
                 }),
                 Qualities: new Dictionary<QualityType, double>
                 {

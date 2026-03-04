@@ -81,6 +81,7 @@ public class FishingPoleItem : ToolItem
                         ActionKind.Interact,
                         parameters,
                         EngineConstants.TimeToTicks(45.0, 60.0, ctx.Random),
+                        "go fishing",
                         parameters.ToResultData(),
                         new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                     ),
@@ -107,6 +108,7 @@ public class FishingPoleItem : ToolItem
                         var tier = effectCtx.Tier.Value;
                         var src = fishCtx.Source;
                         var key = fishCtx.ReservationKey;
+                        var actor = effectCtx.ActorId.Value;
 
                         if (tier >= RollOutcomeTier.PartialSuccess)
                         {
@@ -126,24 +128,16 @@ public class FishingPoleItem : ToolItem
                                 src.ReleaseReservation(key); // no shared pile — return fish to ocean
                             }
 
-                            using (effectCtx.Tracer.PushPhase(TracePhase.ActionCompleted))
-                            {
-                                var actorName = effectCtx.ActorId.Value;
-                                effectCtx.Tracer.BeatActor(actorName,
-                                    tier == RollOutcomeTier.CriticalSuccess
-                                        ? $"{actorName} hauls in two fish—a great catch."
-                                        : $"{actorName} pulls a fish from the water.",
-                                    subjectId: "resource:fish", priority: 60);
-                            }
+                            effectCtx.SetOutcomeNarration(
+                                tier == RollOutcomeTier.CriticalSuccess
+                                    ? $"{actor} casts the line and quickly hauls in two gleaming fish—a great catch."
+                                    : $"{actor} patiently fishes and pulls a fish from the water.");
                         }
                         else
                         {
                             // Failure: return all reserved fish to the ocean
                             src.ReleaseReservation(key);
-                            using (effectCtx.Tracer.PushPhase(TracePhase.ActionCompleted))
-                                effectCtx.Tracer.BeatActor(effectCtx.ActorId.Value,
-                                    "The line comes back empty.",
-                                    subjectId: "resource:fish", priority: 50);
+                            effectCtx.SetOutcomeNarration($"{actor}'s line comes back empty.");
                         }
                     }),
                     Qualities: new Dictionary<QualityType, double>
@@ -168,6 +162,7 @@ public class FishingPoleItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
+                    "maintain fishing rod",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
@@ -194,6 +189,7 @@ public class FishingPoleItem : ToolItem
                     ActionKind.Interact,
                     parameters,
                     EngineConstants.TimeToTicks(40.0, 50.0, ctx.Random),
+                    "repair fishing rod",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
@@ -216,6 +212,7 @@ public class FishingPoleItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.PartialSuccess)
         {
@@ -223,6 +220,11 @@ public class FishingPoleItem : ToolItem
                                  tier == RollOutcomeTier.Success ? 15.0 : 8.0;
             Quality = Math.Min(100.0, Quality + qualityRestored);
             ctx.Actor.Morale += 3.0;
+            ctx.SetOutcomeNarration($"{actor} cleans and oils the fishing rod, restoring its condition.");
+        }
+        else
+        {
+            ctx.SetOutcomeNarration($"{actor}'s maintenance attempt fails to improve the rod.");
         }
     }
 
@@ -232,6 +234,7 @@ public class FishingPoleItem : ToolItem
             return;
 
         var tier = ctx.Tier.Value;
+        var actor = ctx.ActorId.Value;
 
         if (tier >= RollOutcomeTier.Success)
         {
@@ -245,6 +248,11 @@ public class FishingPoleItem : ToolItem
             }
             
             ctx.Actor.Morale += 8.0;
+            ctx.SetOutcomeNarration($"{actor} mends the damaged fishing rod, making it usable again.");
+        }
+        else
+        {
+            ctx.SetOutcomeNarration("The rod proves too damaged to repair this time.");
         }
     }
 

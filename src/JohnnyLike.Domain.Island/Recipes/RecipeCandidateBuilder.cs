@@ -21,7 +21,8 @@ public static class RecipeCandidateBuilder
                 recipe.CraftActionId,
                 ActionKind.Interact,
                 new LocationActionParameters(recipe.Location),
-                recipe.Duration
+                recipe.Duration,
+                NarrationDescription: recipe.DisplayName.ToLowerInvariant()
             ),
             recipe.IntrinsicScore,
             recipe.Qualities.ToDictionary(x => x.Key, x => x.Value),
