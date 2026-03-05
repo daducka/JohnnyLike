@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Metabolism;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Supply;
@@ -47,27 +48,32 @@ public class CoconutSupply : SupplyItem, ISupplyActionCandidate
                 switch (effectCtx.Tier.Value)
                 {
                     case RollOutcomeTier.CriticalSuccess:
-                        effectCtx.Actor.Satiety += 25.0;
+                        // ~400 kcal → +20 Satiety; 10% of kcal as immediate Energy boost
+                        effectCtx.Actor.Satiety += MetabolismMath.CaloriesToSatietyDelta(MetabolismMath.CoconutKcalCriticalSuccess);
                         effectCtx.Actor.Morale  += 10.0;
-                        effectCtx.Actor.Energy  += 5.0;
+                        effectCtx.Actor.Energy  += MetabolismMath.CaloriesToEnergyDelta(MetabolismMath.CoconutKcalCriticalSuccess * 0.1);
                         effectCtx.SetOutcomeNarration($"{actor} cracks the coconut cleanly and savors every drop of sweet water and flesh.");
                         break;
                     case RollOutcomeTier.Success:
-                        effectCtx.Actor.Satiety += 15.0;
+                        // ~300 kcal → +15 Satiety
+                        effectCtx.Actor.Satiety += MetabolismMath.CaloriesToSatietyDelta(MetabolismMath.CoconutKcalSuccess);
                         effectCtx.Actor.Morale  += 5.0;
                         effectCtx.SetOutcomeNarration($"{actor} bashes open the coconut and enjoys its meat.");
                         break;
                     case RollOutcomeTier.PartialSuccess:
-                        effectCtx.Actor.Satiety += 8.0;
+                        // ~160 kcal → +8 Satiety
+                        effectCtx.Actor.Satiety += MetabolismMath.CaloriesToSatietyDelta(MetabolismMath.CoconutKcalPartialSuccess);
                         effectCtx.Actor.Morale  += 2.0;
                         effectCtx.SetOutcomeNarration($"It takes a few tries, but {actor} eventually splits the coconut and eats.");
                         break;
                     case RollOutcomeTier.Failure:
-                        effectCtx.Actor.Satiety += 5.0;
+                        // ~100 kcal → +5 Satiety
+                        effectCtx.Actor.Satiety += MetabolismMath.CaloriesToSatietyDelta(MetabolismMath.CoconutKcalFailure);
                         effectCtx.SetOutcomeNarration($"{actor} barely cracks the shell and only gets a few bites.");
                         break;
                     case RollOutcomeTier.CriticalFailure:
-                        effectCtx.Actor.Satiety += 3.0;
+                        // ~60 kcal → +3 Satiety (most spilled)
+                        effectCtx.Actor.Satiety += MetabolismMath.CaloriesToSatietyDelta(MetabolismMath.CoconutKcalCriticalFailure);
                         effectCtx.Actor.Morale  -= 5.0;
                         effectCtx.SetOutcomeNarration($"The coconut flies from {actor}'s grip, spilling most of its contents.");
                         break;

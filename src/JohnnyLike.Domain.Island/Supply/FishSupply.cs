@@ -1,6 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
-using JohnnyLike.Domain.Kit.Dice;
+using JohnnyLike.Domain.Island.Metabolism;
 
 namespace JohnnyLike.Domain.Island.Supply;
 
@@ -36,7 +36,8 @@ public class FishSupply : SupplyItem, ISupplyActionCandidate
             Reason: "Eat raw fish",
             EffectHandler: (Action<EffectContext>)(effectCtx =>
             {
-                effectCtx.Actor.Satiety += 10.0;
+                // 200 kcal raw fish → +10 Satiety (cold and unpalatable, hence the Morale hit)
+                effectCtx.Actor.Satiety += MetabolismMath.CaloriesToSatietyDelta(MetabolismMath.RawFishKcal);
                 effectCtx.Actor.Morale  -= 5.0;
                 var actor = effectCtx.ActorId.Value;
                 effectCtx.SetOutcomeNarration($"{actor} gulps down the raw fish; cold and slimy, but it fills the belly.");

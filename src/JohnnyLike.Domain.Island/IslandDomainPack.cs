@@ -2,6 +2,7 @@ using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Kit.Dice;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Metabolism;
 using JohnnyLike.Domain.Island.Supply;
 
 namespace JohnnyLike.Domain.Island;
@@ -301,10 +302,23 @@ public class IslandDomainPack : IDomainPack
         // Note: World state time advancement is now handled by TickWorldState in Engine.AdvanceTime
         // This method only applies action-specific effects and actor passive decay
 
-        // Apply passive actor decay based on action duration
+        // Apply passive actor decay based on action duration using calorie-based metabolism.
+        // 1 sim-second ≈ 1 story-minute; see MetabolismMath for constant documentation.
         var dtSeconds = (double)outcome.ActualDurationTicks / (double)EngineConstants.TickHz;
-        islandActorState.Satiety -= dtSeconds * 0.5;
-        islandActorState.Energy -= dtSeconds * 0.3;
+
+        var (activityKcalPerSecond, isSleeping) = outcome.ActionId.Value switch
+        {
+            "swim"             => (MetabolismMath.HeavyActivityKcalPerSecond, false),
+            "sleep_under_tree" => (0.0,                                       true),
+            _                  => (MetabolismMath.LightActivityKcalPerSecond,  false)
+        };
+
+        var satiety = islandActorState.Satiety;
+        var energy  = islandActorState.Energy;
+        MetabolismMath.ApplyTimeStep(ref satiety, ref energy, dtSeconds, activityKcalPerSecond, isSleeping);
+        islandActorState.Satiety = satiety;
+        islandActorState.Energy  = energy;
+
         islandActorState.Morale -= dtSeconds * 0.4;
 
         if (outcome.Type != ActionOutcomeType.Success)

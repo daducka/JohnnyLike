@@ -406,7 +406,9 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Reason: "Sleep under tree",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                effectCtx.Actor.Energy += 40.0;
+                // Energy recovery during sleep is handled by the metabolism time-step
+                // in ApplyActionEffects (isSleeping=true path). No additional direct
+                // Energy bonus is needed here.
                 var actor = effectCtx.ActorId.Value;
                 effectCtx.SetOutcomeNarration($"{actor} stirs awake, feeling well-rested.");
             }),
@@ -450,8 +452,9 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
+                        // Heavy-intensity swim energy drain is handled by the metabolism time-step in ApplyActionEffects.
+                        // Tier only affects Morale and special encounters.
                         effectCtx.Actor.Morale += 20.0;
-                        effectCtx.Actor.Energy -= 5.0;
                         effectCtx.SetOutcomeNarration($"{actor} glides through the water effortlessly, feeling exhilarated.");
                         
                         // Spawn treasure chest if not already present
@@ -475,24 +478,20 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
                     case RollOutcomeTier.Success:
                         effectCtx.Actor.Morale += 10.0;
-                        effectCtx.Actor.Energy -= 10.0;
                         effectCtx.SetOutcomeNarration($"{actor} has a pleasant swim, washing off the island grime.");
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
                         effectCtx.Actor.Morale += 3.0;
-                        effectCtx.Actor.Energy -= 15.0;
                         effectCtx.SetOutcomeNarration($"{actor} manages to stay afloat but struggles against the current.");
                         break;
 
                     case RollOutcomeTier.Failure:
-                        effectCtx.Actor.Energy -= 15.0;
                         effectCtx.Actor.Morale -= 5.0;
                         effectCtx.SetOutcomeNarration($"{actor} is pushed back by the waves, exhausted and discouraged.");
                         break;
 
                     case RollOutcomeTier.CriticalFailure:
-                        effectCtx.Actor.Energy -= 25.0;
                         effectCtx.Actor.Morale -= 15.0;
                         effectCtx.SetOutcomeNarration($"{actor} barely makes it back to shore, heart pounding.");
                         

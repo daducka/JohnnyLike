@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Metabolism;
 
 namespace JohnnyLike.Domain.Island.Supply;
 
@@ -35,8 +36,10 @@ public class CookedFishSupply : SupplyItem, ISupplyActionCandidate
             Reason: "Eat cooked fish",
             EffectHandler: (Action<EffectContext>)(effectCtx =>
             {
-                effectCtx.Actor.Satiety += 20.0;
+                // 400 kcal cooked fish → +20 Satiety; 5% of kcal as immediate Energy boost
+                effectCtx.Actor.Satiety += MetabolismMath.CaloriesToSatietyDelta(MetabolismMath.CookedFishKcal);
                 effectCtx.Actor.Morale  += 5.0;
+                effectCtx.Actor.Energy  += MetabolismMath.CaloriesToEnergyDelta(MetabolismMath.CookedFishKcal * 0.05);
                 var actor = effectCtx.ActorId.Value;
                 effectCtx.SetOutcomeNarration($"{actor} savors the cooked fish; it tastes infinitely better than raw.");
             }),
