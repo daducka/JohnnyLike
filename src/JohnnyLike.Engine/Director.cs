@@ -57,7 +57,10 @@ public class Director
             .ThenBy(c => c.ProviderItemId ?? "")  // null providers sort first (stable fallback)
             .ToList();
 
-        foreach (var candidate in sortedCandidates)
+        // Delegate attempt ordering to the domain; the default implementation returns sortedCandidates unchanged.
+        var candidatesToTry = _domainPack.OrderCandidatesForSelection(actorId, actorState, worldState, currentTick, sortedCandidates, rng);
+
+        foreach (var candidate in candidatesToTry)
         {
             if (TryReserveActionResources(actorId, candidate.Action, currentTick, out var groupId))
             {
