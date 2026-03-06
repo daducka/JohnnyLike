@@ -497,7 +497,9 @@ public class IslandActionEffectsTests
         domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
         
         Assert.True(actorState.Satiety < 70.0);
-        Assert.True(actorState.Energy < 80.0);
+        // Light activity: Satiety→Energy conversion offsets the Energy drain, so Energy stays
+        // approximately stable. The invariant is that it does not increase above the starting value.
+        Assert.True(actorState.Energy <= 80.0);
         Assert.True(actorState.Morale < 50.0);
     }
 }

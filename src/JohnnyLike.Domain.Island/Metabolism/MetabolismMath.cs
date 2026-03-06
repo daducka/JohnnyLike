@@ -10,18 +10,28 @@ namespace JohnnyLike.Domain.Island.Metabolism;
 ///
 /// STAT SCALE:
 ///   Satiety 100 = 2000 kcal of stored food energy.
-///     At basal rate, the actor burns through a full Satiety bar in ~1440 s = 1 game-day.
+///     BasalKcalPerDay = 2400 kcal, so a full Satiety bar is exhausted after ~1200 sim-s ≈ 20 story-hours
+///     of pure rest (not a full 24-hour day).  This is intentional: 2400 kcal is the physiologically
+///     realistic BMR for an active adult, while 2000 kcal for "full" gives the actor a meaningful but
+///     slightly sub-day food reserve — they must eat at least once per in-game day to stay nourished.
 ///     Starvation is therefore a day-scale problem, not a minutes-scale one.
 ///
 ///   Energy 100 = 500 kcal of short-term ATP / glycogen reserves.
-///     Light activity (walking, crafting) drains ~0.17 Energy/s.
-///     Heavy activity (vigorous swimming) drains ~1.33 Energy/s.
-///     Sleep restores Energy at 0.67 points/s; a full recovery from 0 takes ~150 s ≈ 2.5 story-hours.
+///     Light activity net drain ≈ 0 Energy/s (Satiety→Energy conversion fully offsets drain).
+///     Heavy activity net drain ≈ 0.5 Energy/s (conversion offsets 25% of drain).
+///     Sleep: Energy recovers at ~1.17 points/s (recovery + conversion combined); full recovery
+///     from 0 takes ~86 sim-s ≈ 1.4 story-hours.
+///
+/// SATIETY → ENERGY CONVERSION:
+///   When Energy is below 100 and Satiety > 0, the body automatically converts stored food
+///   reserves into short-term ATP.  This means Energy rarely hits 0 while Satiety is available,
+///   and light activity barely depletes Energy at all.  Constants:
+///     SatietyToEnergyKcalPerSecondAwake  = 0.5× basal (≈ 0.833 kcal/s)
+///     SatietyToEnergyKcalPerSecondAsleep = 1.5× basal (≈ 2.500 kcal/s)
 ///
 /// BASAL RATE:
-///   BasalKcalPerDay  = 2400 kcal/day.
+///   BasalKcalPerDay    = 2400 kcal/day.
 ///   BasalKcalPerSecond = 2400 ÷ 1440 ≈ 1.667 kcal/sim-s.
-///   Satiety drain at rest ≈ 0.083 points/sim-s → 100 points in 1200 sim-s ≈ 20 story-hours.
 ///
 /// FOOD CALORIES:
 ///   Coconut (critical success) : 400 kcal → +20 Satiety
@@ -61,8 +71,29 @@ public static class MetabolismMath
     /// <summary>Moderate activity (hiking, active fishing). ~2× basal extra energy drain.</summary>
     public const double ModerateActivityKcalPerSecond = BasalKcalPerSecond * 2.0;
 
-    /// <summary>Heavy activity (vigorous swimming). ~4× basal extra energy drain.</summary>
-    public const double HeavyActivityKcalPerSecond = BasalKcalPerSecond * 4.0;
+    /// <summary>Heavy activity (vigorous swimming). ~2× basal total energy drain.
+    /// Reduced from 4× to 2× so that a strenuous swim drains ~0.5 Energy/s net (after
+    /// Satiety→Energy conversion), giving several minutes of continuous heavy activity
+    /// before the Energy bar is exhausted.</summary>
+    public const double HeavyActivityKcalPerSecond = BasalKcalPerSecond * 2.0;
+
+    // ─── Satiety → Energy conversion ──────────────────────────────────────────
+
+    /// <summary>
+    /// Kilocalories per sim-second converted from Satiety reserves into Energy while awake,
+    /// whenever Energy is below 100 and Satiety is available.
+    /// Set to 0.5× basal so that light activity barely drains Energy — the conversion rate
+    /// matches <see cref="LightActivityKcalPerSecond"/> — while heavy activity still causes
+    /// a noticeable net Energy decrease.
+    /// </summary>
+    public const double SatietyToEnergyKcalPerSecondAwake = BasalKcalPerSecond * 0.5;
+
+    /// <summary>
+    /// Kilocalories per sim-second converted from Satiety reserves into Energy while sleeping.
+    /// Set to 1.5× basal so the body restores short-term ATP from stored food at an
+    /// accelerated rate during rest, supplementing <see cref="SleepEnergyRecoveryKcalPerSecond"/>.
+    /// </summary>
+    public const double SatietyToEnergyKcalPerSecondAsleep = BasalKcalPerSecond * 1.5;
 
     // ─── Sleep recovery ───────────────────────────────────────────────────────
 
@@ -125,6 +156,10 @@ public static class MetabolismMath
     ///   - Energy recovers at <see cref="SleepEnergyRecoveryKcalPerSecond"/>.
     ///   - <paramref name="activityKcalPerSecond"/> is ignored.
     ///
+    /// In both modes, when Energy is below 100 and Satiety > 0, stored food reserves are
+    /// automatically converted into short-term Energy at <see cref="SatietyToEnergyKcalPerSecondAwake"/>
+    /// (awake) or <see cref="SatietyToEnergyKcalPerSecondAsleep"/> (sleeping).
+    ///
     /// Both stats are clamped to [0, 100].
     /// </summary>
     public static void ApplyTimeStep(
@@ -147,6 +182,22 @@ public static class MetabolismMath
             satiety = Math.Clamp(satiety - CaloriesToSatietyDelta(basalKcal), 0.0, 100.0);
             double activityKcal = activityKcalPerSecond * seconds;
             energy = Math.Clamp(energy - CaloriesToEnergyDelta(activityKcal), 0.0, 100.0);
+        }
+
+        // Satiety → Energy conversion: automatically refill Energy from food reserves when
+        // Energy is not full and Satiety is available.
+        if (energy < 100.0 && satiety > 0.0)
+        {
+            double convRate = isSleeping ? SatietyToEnergyKcalPerSecondAsleep : SatietyToEnergyKcalPerSecondAwake;
+            double convKcal = convRate * seconds;
+
+            // Cap conversion to what Satiety can provide and what Energy can absorb.
+            double satietyKcalAvailable = SatietyToCalories(satiety);
+            double energyKcalNeeded = EnergyToCalories(100.0 - energy);
+            convKcal = Math.Min(convKcal, Math.Min(satietyKcalAvailable, energyKcalNeeded));
+
+            satiety = Math.Clamp(satiety - CaloriesToSatietyDelta(convKcal), 0.0, 100.0);
+            energy  = Math.Clamp(energy  + CaloriesToEnergyDelta(convKcal),  0.0, 100.0);
         }
     }
 

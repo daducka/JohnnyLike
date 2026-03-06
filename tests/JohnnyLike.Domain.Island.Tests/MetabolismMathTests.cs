@@ -127,8 +127,14 @@ public class MetabolismMathTests
     [Fact]
     public void Sleep_DoesNotCollapseSatiety()
     {
-        // Sleeping burns only basal calories from Satiety.
-        // 30 sim-seconds (≈ 30 story-minutes) of sleep should not drop Satiety more than ~3 points.
+        // Sleeping burns basal calories from Satiety AND converts additional Satiety to Energy
+        // via SatietyToEnergyKcalPerSecondAsleep.  For 30 sim-seconds starting at energy = 30:
+        //   Basal drain: ~2.5 Satiety
+        //   Sleep recovery adds ~20 Energy (energy → 50), then conversion adds ~15 more (energy → 65).
+        //   Conversion cost: ~3.75 Satiety.
+        //   Total Satiety drop: ~6.25 points.
+        // The threshold is < 10 to confirm Satiety doesn't collapse, while allowing for the
+        // conversion-driven extra drain.
         double satiety = 50.0;
         double energy = 30.0;
 
@@ -139,13 +145,122 @@ public class MetabolismMathTests
             isSleeping: true);
 
         double drop = 50.0 - satiety;
-        Assert.True(drop < 5.0,
-            $"Satiety should barely change during 30 s of sleep, dropped by {drop:F2}");
+        Assert.True(drop < 10.0,
+            $"Satiety should not drop more than 10 points during 30 s of sleep, dropped by {drop:F2}");
         Assert.True(energy > 30.0,
             $"Energy should increase during sleep, got {energy:F2}");
     }
 
-    // ─── ApplyCalorieBurn ─────────────────────────────────────────────────────
+    // ─── Satiety → Energy conversion ─────────────────────────────────────────
+
+    [Fact]
+    public void ApplyTimeStep_LightActivity_EnergyStaysStable_SatietyFuelsActivity()
+    {
+        // Light activity drain rate equals the awake conversion rate, so Energy barely moves
+        // while Satiety is available.  The cost of the activity is paid by Satiety instead.
+        double satiety = 80.0;
+        double energy = 80.0; // below 100 so conversion can fire
+
+        MetabolismMath.ApplyTimeStep(
+            ref satiety, ref energy,
+            10.0,
+            MetabolismMath.LightActivityKcalPerSecond,
+            isSleeping: false);
+
+        // Energy should be approximately the same as it started (conversion offsets drain).
+        Assert.InRange(energy, 79.0, 81.0);
+        // Satiety should have decreased (basal + conversion cost).
+        Assert.True(satiety < 80.0,
+            $"Satiety should decrease when fueling light activity, got {satiety:F2}");
+    }
+
+    [Fact]
+    public void ApplyTimeStep_HeavyActivity_EnergyDropsButSlowerThanWithoutConversion()
+    {
+        // With conversion, net Energy drain during heavy activity = activity drain - conversion rate.
+        // Heavy (2× basal) drain - 0.5× basal conversion = 1.5× basal net drain.
+        double satiety = 100.0;
+        double energy = 100.0;
+
+        MetabolismMath.ApplyTimeStep(
+            ref satiety, ref energy,
+            20.0,
+            MetabolismMath.HeavyActivityKcalPerSecond,
+            isSleeping: false);
+
+        // Energy should have decreased (heavy activity is not fully offset).
+        Assert.True(energy < 100.0,
+            $"Energy should drop during heavy activity, got {energy:F2}");
+        // But Energy should not have dropped all the way to zero in 20 sim-seconds.
+        Assert.True(energy > 50.0,
+            $"Energy should not collapse in 20 sim-s of heavy activity, got {energy:F2}");
+    }
+
+    [Fact]
+    public void ApplyTimeStep_NoConversionWhenEnergyFull()
+    {
+        // If Energy starts at 100 and activity = 0, no conversion should fire.
+        double satiety = 80.0;
+        double energy = 100.0;
+
+        MetabolismMath.ApplyTimeStep(
+            ref satiety, ref energy,
+            10.0,
+            activityKcalPerSecond: 0.0,
+            isSleeping: false);
+
+        // Satiety drops only from basal burn (no conversion because energy is full).
+        double expectedSatietyDrop = MetabolismMath.CaloriesToSatietyDelta(MetabolismMath.BasalKcalPerSecond * 10.0);
+        Assert.Equal(80.0 - expectedSatietyDrop, satiety, precision: 6);
+        Assert.Equal(100.0, energy, precision: 6);
+    }
+
+    [Fact]
+    public void ApplyTimeStep_NoConversionWhenSatietyEmpty()
+    {
+        // If Satiety is zero, no conversion should fire even when Energy is depleted.
+        double satiety = 0.0;
+        double energy = 20.0;
+
+        MetabolismMath.ApplyTimeStep(
+            ref satiety, ref energy,
+            10.0,
+            MetabolismMath.HeavyActivityKcalPerSecond,
+            isSleeping: false);
+
+        Assert.Equal(0.0, satiety, precision: 6); // Satiety stays at 0
+        Assert.True(energy < 20.0,               // Energy continues to drain
+            $"Energy should drain when Satiety is empty, got {energy:F2}");
+    }
+
+    [Fact]
+    public void ApplyTimeStep_Sleep_ConversionAddsEnergyFromSatiety()
+    {
+        // During sleep the body converts Satiety to Energy (in addition to sleep recovery).
+        // Starting at energy = 50 with plenty of satiety, sleep should push energy above
+        // what sleep recovery alone would achieve.
+        double satietyWith = 80.0;
+        double energyWith = 50.0;
+
+        MetabolismMath.ApplyTimeStep(
+            ref satietyWith, ref energyWith,
+            20.0,
+            activityKcalPerSecond: 0.0,
+            isSleeping: true);
+
+        // Without conversion, sleep recovery alone gives:
+        // CaloriesToEnergyDelta(SleepEnergyRecoveryKcalPerSecond * 20) points of Energy.
+        double sleepRecoveryOnly = MetabolismMath.CaloriesToEnergyDelta(
+            MetabolismMath.SleepEnergyRecoveryKcalPerSecond * 20.0);
+        double expectedMinEnergy = 50.0 + sleepRecoveryOnly;
+
+        Assert.True(energyWith > expectedMinEnergy,
+            $"Sleep with conversion should recover more than sleep alone ({expectedMinEnergy:F2}), got {energyWith:F2}");
+        Assert.True(satietyWith < 80.0,
+            $"Satiety should decrease during sleep to fund conversion, got {satietyWith:F2}");
+    }
+
+
 
     [Fact]
     public void ApplyCalorieBurn_DrainEnergy_BeforeSatiety()
@@ -191,7 +306,8 @@ public class MetabolismMathTests
 
         Assert.True(energyHeavy < energyLight,
             "Heavy activity should drain Energy more than light activity");
-        // Satiety depletes at the same rate (basal only) regardless of activity level
+        // Both cases consume the same Satiety: basal burn is identical and the Satiety→Energy
+        // conversion amount is equal (both are capped by their respective energyKcalNeeded).
         Assert.Equal(satietyHeavy, satietyLight, precision: 6);
     }
 
