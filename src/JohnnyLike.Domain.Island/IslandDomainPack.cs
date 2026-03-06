@@ -468,9 +468,9 @@ public class IslandDomainPack : IDomainPack
         return islandWorld.OnTickAdvanced(currentTick, resourceAvailability);
     }
 
-    // ── Softmax temperature range for spontaneous ordering ───────────────────
-    private const double SpontaneityTLow  = 2.0;
-    private const double SpontaneityTHigh = 20.0;
+    // ── Softmax weight floor — ensures every candidate retains a nonzero probability
+    // even when its score is very negative relative to the current maximum.
+    private const double SoftmaxEpsilon = 1e-8;
 
     /// <summary>
     /// Mixture model: with probability P (DecisionPragmatism) return the deterministic
@@ -493,12 +493,21 @@ public class IslandDomainPack : IDomainPack
 
         // Pragmatic (exploit) branch — return deterministic order unchanged.
         if (rng.NextDouble() < p)
+        {
+            worldState.Tracer.Beat(
+                $"[DecisionPragmatism] exploit branch (P={p:F2}): using best-first order.",
+                actorId: actorId.Value);
             return sortedCandidates;
+        }
 
         // Spontaneous (explore) branch — softmax-weighted sampling without replacement.
         var spontaneity = 1.0 - p;
         // Temperature = Lerp(TLow, THigh, spontaneity): higher spontaneity → higher temp → flatter distribution.
-        var temperature = SpontaneityTLow + spontaneity * (SpontaneityTHigh - SpontaneityTLow);
+        var temperature = actor.SoftmaxTLow + spontaneity * (actor.SoftmaxTHigh - actor.SoftmaxTLow);
+
+        worldState.Tracer.Beat(
+            $"[DecisionPragmatism] explore branch (P={p:F2}, T={temperature:F1}): softmax ordering.",
+            actorId: actorId.Value);
 
         var remaining = new List<ActionCandidate>(sortedCandidates);
         var result    = new List<ActionCandidate>(remaining.Count);
@@ -506,12 +515,13 @@ public class IslandDomainPack : IDomainPack
         while (remaining.Count > 0)
         {
             // Numerically stable softmax: subtract max score before exponentiation.
+            // Add SoftmaxEpsilon floor so that even very negative scores remain eligible.
             var maxScore = remaining.Max(c => c.Score);
             var weights  = new double[remaining.Count];
             var totalWeight = 0.0;
             for (var i = 0; i < remaining.Count; i++)
             {
-                weights[i]   = Math.Exp((remaining[i].Score - maxScore) / temperature);
+                weights[i]   = Math.Max(Math.Exp((remaining[i].Score - maxScore) / temperature), SoftmaxEpsilon);
                 totalWeight += weights[i];
             }
 

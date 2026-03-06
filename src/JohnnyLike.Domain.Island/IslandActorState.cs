@@ -50,6 +50,19 @@ public class IslandActorState : ActorState, IIslandActionCandidate
     /// </summary>
     public double DecisionPragmatism { get; set; } = 1.0;
 
+    /// <summary>
+    /// Softmax temperature used at maximum spontaneity (DecisionPragmatism = 0).
+    /// Higher values produce a flatter probability distribution. Default: 20.0.
+    /// </summary>
+    public double SoftmaxTHigh { get; set; } = 20.0;
+
+    /// <summary>
+    /// Softmax temperature used at minimum spontaneity (DecisionPragmatism approaching 1).
+    /// Only applies when the explore branch is taken (rng.NextDouble() &gt;= DecisionPragmatism).
+    /// Lower values concentrate probability on higher-scored candidates. Default: 2.0.
+    /// </summary>
+    public double SoftmaxTLow { get; set; } = 2.0;
+
     public List<ActiveBuff> ActiveBuffs { get; set; } = new();
     public Queue<PendingIntent> PendingChatActions { get; set; } = new();
     /// <summary>
@@ -108,6 +121,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             LastPlaneSightingTick,
             LastMermaidEncounterTick,
             DecisionPragmatism,
+            SoftmaxTLow,
+            SoftmaxTHigh,
             ActiveBuffs,
             PendingChatActions = PendingChatActions.ToList(),
             KnownRecipeIds = KnownRecipeIds.ToList()
@@ -157,6 +172,12 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
         if (data.TryGetValue("DecisionPragmatism", out var pragmatism))
             DecisionPragmatism = pragmatism.GetDouble();
+
+        if (data.TryGetValue("SoftmaxTLow", out var tLow))
+            SoftmaxTLow = tLow.GetDouble();
+
+        if (data.TryGetValue("SoftmaxTHigh", out var tHigh))
+            SoftmaxTHigh = tHigh.GetDouble();
 
         if (data.TryGetValue("ActiveBuffs", out var buffs))
         {
