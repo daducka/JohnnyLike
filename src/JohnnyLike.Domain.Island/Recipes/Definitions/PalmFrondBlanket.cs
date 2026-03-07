@@ -69,9 +69,9 @@ public static class PalmFrondBlanket
 
                 CanDiscover = (actor, world) =>
                 {
-                    // Discoverable when there are enough palm fronds to suggest the idea.
+                    // Discoverable when there are palm fronds available.
                     var pile = world.SharedSupplyPile;
-                    return pile != null && pile.GetQuantity<PalmFrondSupply>() >= 3;
+                    return pile != null && pile.GetQuantity<PalmFrondSupply>() > 0;
                 },
 
                 BaseChance = 0.7

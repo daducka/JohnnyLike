@@ -407,13 +407,16 @@ public class NarrationImprovementTests
     [Fact]
     public void SleepInBlanket_HasNarrationDescription()
     {
+        var (domain, world, actor, actorId) = MakeIsland();
         var blanket = new PalmFrondBlanketItem();
         blanket.Quality = 70.0;
+        world.AddWorldItem(blanket, "beach");
 
-        var (_, world, actor, actorId) = MakeIsland();
-        var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
 
-        Assert.False(string.IsNullOrEmpty("sleep wrapped in the palm frond blanket"));
+        var action = candidates.FirstOrDefault(c => c.Action.Id.Value == "sleep_in_blanket");
+        Assert.NotNull(action);
+        Assert.False(string.IsNullOrEmpty(action!.Action.NarrationDescription));
     }
 
     [Fact]

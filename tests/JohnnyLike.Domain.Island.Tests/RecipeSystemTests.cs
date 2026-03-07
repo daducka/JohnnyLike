@@ -385,6 +385,9 @@ public class RecipeSystemTests
         var (actor, world) = MakeBase();
         world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
 
+        // Actor already knows the blanket recipe so it doesn't compete with umbrella discovery.
+        actor.KnownRecipeIds.Add("palm_frond_blanket");
+
         var pile = world.SharedSupplyPile!;
         pile.AddSupply("stick", 1, id => new StickSupply(id));
         pile.AddSupply("palm_frond", 1, id => new PalmFrondSupply(id));
@@ -717,6 +720,8 @@ public class RecipeSystemTests
         foreach (var (actor, world) in new[] { (actor1, world1), (actor2, world2) })
         {
             world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
+            // Actor already knows the blanket recipe so it doesn't compete with umbrella discovery.
+            actor.KnownRecipeIds.Add("palm_frond_blanket");
             var pile = world.SharedSupplyPile!;
             pile.AddSupply("stick", 1, id => new StickSupply(id));
             pile.AddSupply("palm_frond", 1, id => new PalmFrondSupply(id));
@@ -882,6 +887,8 @@ public class RecipeSystemTests
         int lowSeed = FindSeedBelow(0.25);
         var (actor, world) = MakeBase();
         world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
+        // Actor already knows the blanket recipe so it doesn't compete with umbrella discovery.
+        actor.KnownRecipeIds.Add("palm_frond_blanket");
         var pile = world.SharedSupplyPile!;
         pile.AddSupply("stick", 1, id => new StickSupply(id));
         pile.AddSupply("palm_frond", 1, id => new PalmFrondSupply(id));
