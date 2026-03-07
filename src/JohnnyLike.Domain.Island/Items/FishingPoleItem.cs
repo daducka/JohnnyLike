@@ -140,8 +140,8 @@ public class FishingPoleItem : ToolItem
 
                             effectCtx.SetOutcomeNarration(
                                 tier == RollOutcomeTier.CriticalSuccess
-                                    ? $"{actor} casts the line and quickly hauls in two gleaming fish—a great catch."
-                                    : $"{actor} patiently fishes and pulls a fish from the water.");
+                                    ? $"{actor} casts the line and quickly hauls in two gleaming fish — a great catch." + (hasBait ? " The bait made all the difference." : "")
+                                    : $"{actor} patiently fishes and pulls a fish from the water." + (hasBait ? " The bait helped lure it in." : ""));
                         }
                         else
                         {
