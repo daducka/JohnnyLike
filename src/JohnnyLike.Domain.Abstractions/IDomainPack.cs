@@ -74,5 +74,20 @@ public interface IDomainPack
         IRngStream rng,
         IResourceAvailability resourceAvailability,
         object? preActionHandler) => true;
+
+    /// <summary>
+    /// Returns the order in which candidates should be attempted for selection.
+    /// The input list is already variety-penalised and deterministically sorted by the engine.
+    /// Domains can override this to implement custom attempt orderings (e.g. softmax sampling).
+    /// The default implementation returns <paramref name="sortedCandidates"/> unchanged,
+    /// preserving the deterministic best-first ordering for domains that do not override.
+    /// </summary>
+    IReadOnlyList<ActionCandidate> OrderCandidatesForSelection(
+        ActorId actorId,
+        ActorState actorState,
+        WorldState worldState,
+        long currentTick,
+        IReadOnlyList<ActionCandidate> sortedCandidates,
+        Random rng) => sortedCandidates;
 }
 

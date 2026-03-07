@@ -467,4 +467,82 @@ public class IslandDomainPack : IDomainPack
         var islandWorld = (IslandWorldState)worldState;
         return islandWorld.OnTickAdvanced(currentTick, resourceAvailability);
     }
+
+    // ── Softmax weight floor — ensures every candidate retains a nonzero probability
+    // even when its score is very negative relative to the current maximum.
+    private const double SoftmaxEpsilon = 1e-8;
+
+    /// <summary>
+    /// Mixture model: with probability P (DecisionPragmatism) return the deterministic
+    /// best-first order unchanged; otherwise draw a softmax-weighted attempt order
+    /// without replacement using the provided RNG.
+    /// </summary>
+    public IReadOnlyList<ActionCandidate> OrderCandidatesForSelection(
+        ActorId actorId,
+        ActorState actorState,
+        WorldState worldState,
+        long currentTick,
+        IReadOnlyList<ActionCandidate> sortedCandidates,
+        Random rng)
+    {
+        if (sortedCandidates.Count == 0)
+            return sortedCandidates;
+
+        var actor = (IslandActorState)actorState;
+        var p = Math.Clamp(actor.DecisionPragmatism, 0.0, 1.0);
+
+        // Pragmatic (exploit) branch — return deterministic order unchanged.
+        if (rng.NextDouble() < p)
+        {
+            worldState.Tracer.Beat(
+                $"[DecisionPragmatism] exploit branch (P={p:F2}): using best-first order.",
+                actorId: actorId.Value);
+            return sortedCandidates;
+        }
+
+        // Spontaneous (explore) branch — softmax-weighted sampling without replacement.
+        var spontaneity = 1.0 - p;
+        // Temperature = Lerp(TLow, THigh, spontaneity): higher spontaneity → higher temp → flatter distribution.
+        var temperature = actor.SoftmaxTLow + spontaneity * (actor.SoftmaxTHigh - actor.SoftmaxTLow);
+
+        worldState.Tracer.Beat(
+            $"[DecisionPragmatism] explore branch (P={p:F2}, T={temperature:F1}): softmax ordering.",
+            actorId: actorId.Value);
+
+        var remaining = new List<ActionCandidate>(sortedCandidates);
+        var result    = new List<ActionCandidate>(remaining.Count);
+
+        while (remaining.Count > 0)
+        {
+            // Numerically stable softmax: subtract max score before exponentiation.
+            // Add SoftmaxEpsilon floor so that even very negative scores remain eligible.
+            var maxScore = remaining.Max(c => c.Score);
+            var weights  = new double[remaining.Count];
+            var totalWeight = 0.0;
+            for (var i = 0; i < remaining.Count; i++)
+            {
+                weights[i]   = Math.Max(Math.Exp((remaining[i].Score - maxScore) / temperature), SoftmaxEpsilon);
+                totalWeight += weights[i];
+            }
+
+            // Sample one candidate by cumulative probability.
+            var u          = rng.NextDouble() * totalWeight;
+            var cumulative = 0.0;
+            var chosen     = remaining.Count - 1; // fallback to last item
+            for (var i = 0; i < remaining.Count; i++)
+            {
+                cumulative += weights[i];
+                if (u <= cumulative)
+                {
+                    chosen = i;
+                    break;
+                }
+            }
+
+            result.Add(remaining[chosen]);
+            remaining.RemoveAt(chosen);
+        }
+
+        return result;
+    }
 }
