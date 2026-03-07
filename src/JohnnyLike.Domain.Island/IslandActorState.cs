@@ -46,6 +46,25 @@ public class IslandActorState : ActorState, IIslandActionCandidate
     public long LastPlaneSightingTick { get; set; } = -1L;
     public long LastMermaidEncounterTick { get; set; } = -1L;
 
+    /// <summary>
+    /// Controls how often the actor exploits the best-scored action versus exploring
+    /// via softmax sampling. Range [0,1]: 1.0 = fully pragmatic (best-first), 0.0 = fully spontaneous.
+    /// </summary>
+    public double DecisionPragmatism { get; set; } = 1.0;
+
+    /// <summary>
+    /// Softmax temperature used at maximum spontaneity (DecisionPragmatism = 0).
+    /// Higher values produce a flatter probability distribution. Default: 20.0.
+    /// </summary>
+    public double SoftmaxTHigh { get; set; } = 20.0;
+
+    /// <summary>
+    /// Softmax temperature used at minimum spontaneity (DecisionPragmatism approaching 1).
+    /// Only applies when the explore branch is taken (rng.NextDouble() &gt;= DecisionPragmatism).
+    /// Lower values concentrate probability on higher-scored candidates. Default: 2.0.
+    /// </summary>
+    public double SoftmaxTLow { get; set; } = 2.0;
+
     public List<ActiveBuff> ActiveBuffs { get; set; } = new();
     public Queue<PendingIntent> PendingChatActions { get; set; } = new();
     /// <summary>
@@ -103,6 +122,9 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Health,
             LastPlaneSightingTick,
             LastMermaidEncounterTick,
+            DecisionPragmatism,
+            SoftmaxTLow,
+            SoftmaxTHigh,
             ActiveBuffs,
             PendingChatActions = PendingChatActions.ToList(),
             KnownRecipeIds = KnownRecipeIds.ToList()
@@ -149,6 +171,15 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
         if (data.TryGetValue("LastMermaidEncounterTick", out var lastMermaid))
             LastMermaidEncounterTick = lastMermaid.GetInt64();
+
+        if (data.TryGetValue("DecisionPragmatism", out var pragmatism))
+            DecisionPragmatism = pragmatism.GetDouble();
+
+        if (data.TryGetValue("SoftmaxTLow", out var tLow))
+            SoftmaxTLow = tLow.GetDouble();
+
+        if (data.TryGetValue("SoftmaxTHigh", out var tHigh))
+            SoftmaxTHigh = tHigh.GetDouble();
 
         if (data.TryGetValue("ActiveBuffs", out var buffs))
         {
