@@ -69,6 +69,11 @@ public class FishingPoleItem : ToolItem
                 else if (Quality > 80.0)
                     baseDC -= 1;
 
+                var sharedPile = ctx.World.SharedSupplyPile;
+                var hasBait = (sharedPile?.GetQuantity<BaitSupply>() ?? 0.0) >= 1.0;
+                if (hasBait)
+                    baseDC -= 3;
+
                 var parameters = ctx.RollSkillCheck(SkillType.Fishing, baseDC);
 
                 // Shared reservation context captured by both lambdas.
@@ -86,7 +91,7 @@ public class FishingPoleItem : ToolItem
                         new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                     ),
                     0.5,
-                    Reason: $"Go fishing with pole (quality: {Quality:F0}%, fish available: {fishAvailable:F0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+                    Reason: $"Go fishing with pole (quality: {Quality:F0}%, fish available: {fishAvailable:F0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})" + (hasBait ? " [bait available]" : ""),
                     PreAction: new Func<EffectContext, bool>(_ =>
                     {
                         if (ocean == null) return false;
@@ -95,6 +100,11 @@ public class FishingPoleItem : ToolItem
                         // Reserve max payout (CriticalSuccess = 2 fish)
                         ocean.ReserveSupply<FishSupply>(actorKey, Math.Min(available, 2.0));
                         fishCtx = new BountyCollectionContext(ocean, actorKey);
+
+                        // Consume bait if available
+                        if (hasBait)
+                            sharedPile?.TryConsumeSupply<BaitSupply>(1.0);
+
                         return true;
                     }),
                     EffectHandler: new Action<EffectContext>(effectCtx =>
