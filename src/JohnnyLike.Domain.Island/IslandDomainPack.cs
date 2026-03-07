@@ -11,6 +11,9 @@ public class IslandDomainPack : IDomainPack
 {
     public string DomainName => "Island";
 
+    private static readonly IReadOnlyDictionary<ActorId, ActorState> EmptyActors =
+        new Dictionary<ActorId, ActorState>();
+
     public IslandDomainPack()
     {
     }
@@ -477,7 +480,7 @@ public class IslandDomainPack : IDomainPack
     };
 
     public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability)
-        => TickWorldState(worldState, new Dictionary<ActorId, ActorState>(), currentTick, resourceAvailability);
+        => TickWorldState(worldState, EmptyActors, currentTick, resourceAvailability);
 
     public List<TraceEvent> TickWorldState(
         WorldState worldState,
