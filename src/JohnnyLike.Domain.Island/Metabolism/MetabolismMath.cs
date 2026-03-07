@@ -33,14 +33,10 @@ namespace JohnnyLike.Domain.Island.Metabolism;
 ///   BasalKcalPerDay    = 2400 kcal/day.
 ///   BasalKcalPerSecond = 2400 ÷ 1440 ≈ 1.667 kcal/sim-s.
 ///
-/// FOOD CALORIES:
-///   Coconut (critical success) : 400 kcal → +20 Satiety
-///   Coconut (success)          : 300 kcal → +15 Satiety
-///   Coconut (partial success)  : 160 kcal → +8  Satiety
-///   Coconut (failure)          : 100 kcal → +5  Satiety
-///   Coconut (critical failure) :  60 kcal → +3  Satiety
-///   Cooked fish                : 400 kcal → +20 Satiety
-///   Raw fish                   : 200 kcal → +10 Satiety
+/// FOOD CALORIES (defined on each supply class, not here):
+///   CoconutSupply  : 60–400 kcal per tier → +3 to +20 Satiety.
+///   CookedFishSupply: 400 kcal → +20 Satiety, small Energy boost.
+///   FishSupply     : 200 kcal → +10 Satiety.
 ///   (Tier differences are preserved by scaling kcal, not Satiety points directly.)
 /// </summary>
 public static class MetabolismMath
@@ -102,29 +98,6 @@ public static class MetabolismMath
     /// At 2× basal the actor fully recovers from Energy = 0 in ~150 sim-s (≈ 2.5 story-hours).
     /// </summary>
     public const double SleepEnergyRecoveryKcalPerSecond = BasalKcalPerSecond * 2.0;
-
-    // ─── Food calorie values ──────────────────────────────────────────────────
-
-    /// <summary>Calories from a coconut: cracked cleanly (critical success) — ~400 kcal → +20 Satiety.</summary>
-    public const double CoconutKcalCriticalSuccess = 400.0;
-
-    /// <summary>Calories from a coconut: normal success — 300 kcal → +15 Satiety.</summary>
-    public const double CoconutKcalSuccess = 300.0;
-
-    /// <summary>Calories from a coconut: partial success — 160 kcal → +8 Satiety.</summary>
-    public const double CoconutKcalPartialSuccess = 160.0;
-
-    /// <summary>Calories from a coconut: failure (only a few bites) — 100 kcal → +5 Satiety.</summary>
-    public const double CoconutKcalFailure = 100.0;
-
-    /// <summary>Calories from a coconut: critical failure (most spilled) — 60 kcal → +3 Satiety.</summary>
-    public const double CoconutKcalCriticalFailure = 60.0;
-
-    /// <summary>Calories from a cooked fish — 400 kcal → +20 Satiety.</summary>
-    public const double CookedFishKcal = 400.0;
-
-    /// <summary>Calories from a raw fish (less bioavailable) — 200 kcal → +10 Satiety.</summary>
-    public const double RawFishKcal = 200.0;
 
     // ─── Conversion helpers ───────────────────────────────────────────────────
 

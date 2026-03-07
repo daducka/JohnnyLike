@@ -210,7 +210,7 @@ public class ActionReservationTests
         public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, long currentTick) { }
         public bool ValidateContent(out List<string> errors) { errors = new List<string>(); return true; }
         public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState) => new Dictionary<string, object>();
-        public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability) => new List<TraceEvent>();
+        public List<TraceEvent> TickWorldState(WorldState worldState, IReadOnlyDictionary<ActorId, ActorState> actors, long currentTick, IResourceAvailability resourceAvailability) => new List<TraceEvent>();
     }
     
     // Test domain pack that provides actions requiring multiple resources
@@ -277,7 +277,7 @@ public class ActionReservationTests
         public void OnSignal(Signal signal, ActorState? targetActor, WorldState worldState, long currentTick) { }
         public bool ValidateContent(out List<string> errors) { errors = new List<string>(); return true; }
         public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState) => new Dictionary<string, object>();
-        public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability) => new List<TraceEvent>();
+        public List<TraceEvent> TickWorldState(WorldState worldState, IReadOnlyDictionary<ActorId, ActorState> actors, long currentTick, IResourceAvailability resourceAvailability) => new List<TraceEvent>();
     }
     
     private class TestActorState : ActorState

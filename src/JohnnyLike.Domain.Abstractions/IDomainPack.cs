@@ -61,7 +61,11 @@ public interface IDomainPack
     /// Returns a list of trace events for significant world state changes.
     /// Note: ITickableWorldItem ticking is handled by the engine via WorldItemTickOrchestrator.
     /// </summary>
-    List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability);
+    List<TraceEvent> TickWorldState(
+        WorldState worldState,
+        IReadOnlyDictionary<ActorId, ActorState> actors,
+        long currentTick,
+        IResourceAvailability resourceAvailability);
 
     /// <summary>
     /// Executes the pre-action handler at the moment the action is chosen and committed.

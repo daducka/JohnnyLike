@@ -331,7 +331,7 @@ public class SignalHandlingTests
             return new Dictionary<string, object>();
         }
 
-        public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability)
+        public List<TraceEvent> TickWorldState(WorldState worldState, IReadOnlyDictionary<ActorId, ActorState> actors, long currentTick, IResourceAvailability resourceAvailability)
         {
             return new List<TraceEvent>();
         }
@@ -427,7 +427,7 @@ public class ActorStateSnapshotTests
             };
         }
 
-        public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability)
+        public List<TraceEvent> TickWorldState(WorldState worldState, IReadOnlyDictionary<ActorId, ActorState> actors, long currentTick, IResourceAvailability resourceAvailability)
         {
             return new List<TraceEvent>();
         }

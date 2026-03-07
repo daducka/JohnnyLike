@@ -9,6 +9,9 @@ namespace JohnnyLike.Domain.Island.Supply;
 /// </summary>
 public class FishSupply : SupplyItem, ISupplyActionCandidate
 {
+    // ─── Calorie value ────────────────────────────────────────────────────────
+    // Less bioavailable than cooked fish due to moisture content and proteins.
+    private const double Kcal = 200.0; // raw fish → +10 Satiety
     public FishSupply(double quantity)
         : this("fish", quantity)
     {
@@ -37,7 +40,7 @@ public class FishSupply : SupplyItem, ISupplyActionCandidate
             EffectHandler: (Action<EffectContext>)(effectCtx =>
             {
                 // 200 kcal raw fish → +10 Satiety (cold and unpalatable, hence the Morale hit)
-                effectCtx.Actor.Satiety += MetabolismMath.CaloriesToSatietyDelta(MetabolismMath.RawFishKcal);
+                effectCtx.Actor.Satiety += MetabolismMath.CaloriesToSatietyDelta(Kcal);
                 effectCtx.Actor.Morale  -= 5.0;
                 var actor = effectCtx.ActorId.Value;
                 effectCtx.SetOutcomeNarration($"{actor} gulps down the raw fish; cold and slimy, but it fills the belly.");

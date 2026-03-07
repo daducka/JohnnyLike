@@ -27,7 +27,7 @@ public class WorldTickTraceTests
         campfire.FuelSeconds = 5.0; // Only 5 seconds of fuel
 
         // Act - Tick for 10 seconds (campfire should go out)
-        var events = domainPack.TickWorldState(world, 200L, reservations);
+        var events = domainPack.TickWorldState(world, new Dictionary<ActorId, ActorState>(), 200L, reservations);
 
         // Assert
         Assert.False(campfire.IsLit);
@@ -52,7 +52,7 @@ public class WorldTickTraceTests
         world.WorldItems.Add(shark);
 
         // Act - Tick forward to tick 2200 (= 110s)
-        var events = domainPack.TickWorldState(world, 2200L, reservations);
+        var events = domainPack.TickWorldState(world, new Dictionary<ActorId, ActorState>(), 2200L, reservations);
 
         // Assert
         Assert.Equal(2200L, world.CurrentTick);
@@ -79,7 +79,7 @@ public class WorldTickTraceTests
         var tick = 432000L;
         foreach (var tickable in WorldItemTickOrchestrator.TopologicalSort(world.WorldItems))
             tickable.Tick(tick, world);
-        domainPack.TickWorldState(world, tick, reservations);
+        domainPack.TickWorldState(world, new Dictionary<ActorId, ActorState>(), tick, reservations);
 
         // Assert - time should have advanced ~0.25 of a day
         Assert.InRange(calendar.TimeOfDay, 0.74, 0.76);
@@ -101,7 +101,7 @@ public class WorldTickTraceTests
         var tick = 172800L;
         foreach (var tickable in WorldItemTickOrchestrator.TopologicalSort(world.WorldItems))
             tickable.Tick(tick, world);
-        domainPack.TickWorldState(world, tick, reservations);
+        domainPack.TickWorldState(world, new Dictionary<ActorId, ActorState>(), tick, reservations);
 
         // Assert
         Assert.Equal(1, calendar.DayCount);

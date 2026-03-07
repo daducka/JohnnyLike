@@ -37,29 +37,28 @@ public class MetabolismMathTests
     }
 
     // ─── Food calorie → Satiety mappings ─────────────────────────────────────
+    // Food kcal constants live on the supply classes (CoconutSupply, FishSupply, CookedFishSupply).
+    // The calorie-to-Satiety math is tested via CaloriesToSatietyDelta directly.
 
     [Fact]
-    public void CoconutSuccess_kcal_Maps_To_15_Satiety()
+    public void CaloriesToSatietyDelta_300kcal_Maps_To_15()
     {
-        // 300 kcal → +15 Satiety (the normal success coconut case)
-        var delta = MetabolismMath.CaloriesToSatietyDelta(MetabolismMath.CoconutKcalSuccess);
-        Assert.Equal(15.0, delta, precision: 6);
+        // Matches CoconutSupply success tier (300 kcal → +15 Satiety)
+        Assert.Equal(15.0, MetabolismMath.CaloriesToSatietyDelta(300.0), precision: 6);
     }
 
     [Fact]
-    public void CookedFishKcal_Maps_To_20_Satiety()
+    public void CaloriesToSatietyDelta_400kcal_Maps_To_20()
     {
-        // 400 kcal → +20 Satiety
-        var delta = MetabolismMath.CaloriesToSatietyDelta(MetabolismMath.CookedFishKcal);
-        Assert.Equal(20.0, delta, precision: 6);
+        // Matches CookedFishSupply and CoconutSupply critical-success (400 kcal → +20 Satiety)
+        Assert.Equal(20.0, MetabolismMath.CaloriesToSatietyDelta(400.0), precision: 6);
     }
 
     [Fact]
-    public void RawFishKcal_Maps_To_10_Satiety()
+    public void CaloriesToSatietyDelta_200kcal_Maps_To_10()
     {
-        // 200 kcal → +10 Satiety
-        var delta = MetabolismMath.CaloriesToSatietyDelta(MetabolismMath.RawFishKcal);
-        Assert.Equal(10.0, delta, precision: 6);
+        // Matches FishSupply raw fish (200 kcal → +10 Satiety)
+        Assert.Equal(10.0, MetabolismMath.CaloriesToSatietyDelta(200.0), precision: 6);
     }
 
     // ─── Basal burn over a game-day ───────────────────────────────────────────

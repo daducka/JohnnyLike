@@ -414,29 +414,27 @@ public class IslandActionEffectsTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = new IslandActorState
-        {
-            Id = actorId,
-            Energy = 30.0
-        };
+        // Use CreateActorState so the actor has a MetabolicBuff.
+        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+            new Dictionary<string, object> { ["energy"] = 30.0 });
         var worldState = new IslandWorldState();
-        
-        // Generate candidates to get the sleep action with its effect handler
+
+        // Generate candidates to get the sleep action with its PreAction handler.
         var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
         var sleepCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "sleep_under_tree");
         Assert.NotNull(sleepCandidate);
         Assert.NotNull(sleepCandidate.EffectHandler);
-        
-        var outcome = new ActionOutcome(
-            new ActionId("sleep_under_tree"),
-            ActionOutcomeType.Success, 600L,
-            null
-        );
-        
+
+        // Execute PreAction: sets MetabolicBuff.Intensity = Sleeping.
         var rng = new RandomRngStream(new Random(42));
-        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability(), sleepCandidate.EffectHandler);
-        
-        Assert.True(actorState.Energy > 30.0);
+        domain.TryExecutePreAction(actorId, actorState, worldState, rng, new EmptyResourceAvailability(), sleepCandidate.PreAction);
+
+        // Tick the world for 600 ticks (= 30 sim-seconds) to drive MetabolicBuff.OnTick.
+        var actors = new Dictionary<ActorId, ActorState> { [actorId] = actorState };
+        domain.TickWorldState(worldState, actors, 600L, new EmptyResourceAvailability());
+
+        Assert.True(actorState.Energy > 30.0,
+            $"Energy should increase after sleeping and a world tick, got {actorState.Energy:F2}");
     }
 
     [Fact]
@@ -478,29 +476,28 @@ public class IslandActionEffectsTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = new IslandActorState
-        {
-            Id = actorId,
-            Satiety = 70.0,
-            Energy = 80.0,
-            Morale = 50.0
-        };
+        // Use CreateActorState so the actor has a MetabolicBuff.
+        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+            new Dictionary<string, object> { ["satiety"] = 70.0, ["energy"] = 80.0, ["morale"] = 50.0 });
         var worldState = new IslandWorldState();
-        
-        var outcome = new ActionOutcome(
-            new ActionId("idle"),
-            ActionOutcomeType.Success, 200L,
-            null
-        );
-        
+
+        // Drive metabolism via TickWorldState (600 ticks = 30 sim-seconds of basal burn).
+        var actors = new Dictionary<ActorId, ActorState> { [actorId] = actorState };
+        domain.TickWorldState(worldState, actors, 600L, new EmptyResourceAvailability());
+
+        Assert.True(actorState.Satiety < 70.0,
+            $"Satiety should decrease from basal burn during world tick, got {actorState.Satiety:F2}");
+        // Light activity: conversion offsets drain so Energy stays approximately stable.
+        Assert.True(actorState.Energy <= 80.0,
+            $"Energy should not exceed starting value, got {actorState.Energy:F2}");
+
+        // Morale decays in ApplyActionEffects (action-duration-based), not via buff.
+        var outcome = new ActionOutcome(new ActionId("idle"), ActionOutcomeType.Success, 200L, null);
         var rng = new RandomRngStream(new Random(42));
         domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
-        
-        Assert.True(actorState.Satiety < 70.0);
-        // Light activity: Satiety→Energy conversion offsets the Energy drain, so Energy stays
-        // approximately stable. The invariant is that it does not increase above the starting value.
-        Assert.True(actorState.Energy <= 80.0);
-        Assert.True(actorState.Morale < 50.0);
+
+        Assert.True(actorState.Morale < 50.0,
+            $"Morale should decrease after idle action, got {actorState.Morale:F2}");
     }
 }
 

@@ -75,8 +75,8 @@ public class Engine
             _traceSink.Record(evt);
         EmitBeats(_eventTracer.Drain(), defaultActorId: null);
 
-        // Domain-level world tick (passive decay, expiration, supply regen)
-        var worldTraceEvents = _domainPack.TickWorldState(_worldState, _currentTick, _reservations);
+        // Domain-level world tick (passive decay, expiration, supply regen, buff ticking)
+        var worldTraceEvents = _domainPack.TickWorldState(_worldState, _actors, _currentTick, _reservations);
         _worldState.Tracer = NullEventTracer.Instance;
         foreach (var evt in worldTraceEvents)
             _traceSink.Record(evt);

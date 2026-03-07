@@ -49,6 +49,17 @@ public class IslandDomainPack : IDomainPack
             Energy = (double)(initialData?.GetValueOrDefault("energy", 100.0) ?? 100.0),
             Morale = (double)(initialData?.GetValueOrDefault("morale", 50.0) ?? 50.0)
         };
+
+        // Every actor always carries a MetabolicBuff that drives Satiety/Energy changes
+        // each world tick.  It never expires; intensity is updated by PreAction/ApplyActionEffects.
+        state.ActiveBuffs.Add(new MetabolicBuff
+        {
+            Name         = "Metabolism",
+            Type         = BuffType.Metabolic,
+            Intensity    = MetabolicIntensity.Light,
+            ExpiresAtTick = long.MaxValue
+        });
+
         return state;
     }
     
@@ -299,26 +310,15 @@ public class IslandDomainPack : IDomainPack
         var islandActorState = (IslandActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
 
-        // Note: World state time advancement is now handled by TickWorldState in Engine.AdvanceTime
-        // This method only applies action-specific effects and actor passive decay
+        // Metabolism is now handled by MetabolicBuff.OnTick each world tick.
+        // Reset the buff intensity back to Light once the action completes so the next
+        // action starts at the default resting/light-activity rate.
+        var metabolicBuff = islandActorState.ActiveBuffs.OfType<MetabolicBuff>().FirstOrDefault();
+        if (metabolicBuff != null)
+            metabolicBuff.Intensity = MetabolicIntensity.Light;
 
-        // Apply passive actor decay based on action duration using calorie-based metabolism.
-        // 1 sim-second ≈ 1 story-minute; see MetabolismMath for constant documentation.
+        // Morale decays proportionally to the action duration (unchanged).
         var dtSeconds = (double)outcome.ActualDurationTicks / (double)EngineConstants.TickHz;
-
-        var (activityKcalPerSecond, isSleeping) = outcome.ActionId.Value switch
-        {
-            "swim"             => (MetabolismMath.HeavyActivityKcalPerSecond, false),
-            "sleep_under_tree" => (0.0,                                       true),
-            _                  => (MetabolismMath.LightActivityKcalPerSecond,  false)
-        };
-
-        var satiety = islandActorState.Satiety;
-        var energy  = islandActorState.Energy;
-        MetabolismMath.ApplyTimeStep(ref satiety, ref energy, dtSeconds, activityKcalPerSecond, isSleeping);
-        islandActorState.Satiety = satiety;
-        islandActorState.Energy  = energy;
-
         islandActorState.Morale -= dtSeconds * 0.4;
 
         if (outcome.Type != ActionOutcomeType.Success)
@@ -476,9 +476,24 @@ public class IslandDomainPack : IDomainPack
         _         => value.ToString("F0")
     };
 
-    public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability)
+    public List<TraceEvent> TickWorldState(
+        WorldState worldState,
+        IReadOnlyDictionary<ActorId, ActorState> actors,
+        long currentTick,
+        IResourceAvailability resourceAvailability)
     {
         var islandWorld = (IslandWorldState)worldState;
+
+        // Tick ITickableBuff implementations on each actor.
+        foreach (var actorState in actors.Values)
+        {
+            if (actorState is not IslandActorState islandActor)
+                continue;
+
+            foreach (var buff in islandActor.ActiveBuffs.OfType<ITickableBuff>())
+                buff.OnTick(islandActor, worldState, currentTick);
+        }
+
         return islandWorld.OnTickAdvanced(currentTick, resourceAvailability);
     }
 }

@@ -1,9 +1,11 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Metabolism;
 using JohnnyLike.Domain.Island.Recipes;
 using JohnnyLike.Domain.Island.Telemetry;
 using JohnnyLike.Domain.Kit.Dice;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace JohnnyLike.Domain.Island;
 
@@ -404,11 +406,17 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             ),
             0.35,
             Reason: "Sleep under tree",
+            PreAction: (Func<EffectContext, bool>)(effectCtx =>
+            {
+                // Switch to Sleeping intensity so the MetabolicBuff recovers Energy during the nap.
+                var metabolicBuff = effectCtx.Actor.ActiveBuffs.OfType<MetabolicBuff>().FirstOrDefault();
+                if (metabolicBuff != null)
+                    metabolicBuff.Intensity = MetabolicIntensity.Sleeping;
+                return true;
+            }),
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                // Energy recovery during sleep is handled by the metabolism time-step
-                // in ApplyActionEffects (isSleeping=true path). No additional direct
-                // Energy bonus is needed here.
+                // Energy recovery during sleep is handled by MetabolicBuff.OnTick (Sleeping intensity).
                 var actor = effectCtx.ActorId.Value;
                 effectCtx.SetOutcomeNarration($"{actor} stirs awake, feeling well-rested.");
             }),
@@ -441,6 +449,14 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             ),
             0.5,
             Reason: $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            PreAction: (Func<EffectContext, bool>)(effectCtx =>
+            {
+                // Switch to Heavy intensity so the MetabolicBuff drains Energy appropriately during swimming.
+                var metabolicBuff = effectCtx.Actor.ActiveBuffs.OfType<MetabolicBuff>().FirstOrDefault();
+                if (metabolicBuff != null)
+                    metabolicBuff.Intensity = MetabolicIntensity.Heavy;
+                return true;
+            }),
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 if (effectCtx.Tier == null)
@@ -540,9 +556,23 @@ public enum BuffType
 {
     SkillBonus,
     Advantage,
-    RainProtection
+    RainProtection,
+    /// <summary>Continuous metabolic effect (basal burn, activity drain, sleep recovery).
+    /// Carried as a <see cref="MetabolicBuff"/> instance that implements <see cref="ITickableBuff"/>.</summary>
+    Metabolic
 }
 
+/// <summary>
+/// Base class for all actor buffs.
+/// Non-tickable buffs (skill bonuses, advantage markers) use <c>ExpiresAtTick</c> for removal.
+/// Tickable buffs (e.g., <see cref="MetabolicBuff"/>) implement <see cref="ITickableBuff"/> and
+/// set <c>ExpiresAtTick = long.MaxValue</c> so they are never auto-removed.
+/// </summary>
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "buffKind",
+    UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToNearestAncestor,
+    IgnoreUnrecognizedTypeDiscriminators = true)]
+[JsonDerivedType(typeof(ActiveBuff), typeDiscriminator: "base")]
+[JsonDerivedType(typeof(MetabolicBuff), typeDiscriminator: "metabolic")]
 public class ActiveBuff
 {
     public string Name { get; set; } = "";
