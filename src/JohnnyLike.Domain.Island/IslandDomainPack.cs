@@ -476,6 +476,9 @@ public class IslandDomainPack : IDomainPack
         _         => value.ToString("F0")
     };
 
+    public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability)
+        => TickWorldState(worldState, new Dictionary<ActorId, ActorState>(), currentTick, resourceAvailability);
+
     public List<TraceEvent> TickWorldState(
         WorldState worldState,
         IReadOnlyDictionary<ActorId, ActorState> actors,

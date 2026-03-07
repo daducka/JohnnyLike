@@ -182,7 +182,7 @@ public class EventTracerTests
             }
         }
 
-        public List<TraceEvent> TickWorldState(WorldState worldState, IReadOnlyDictionary<ActorId, ActorState> actors, long currentTick, IResourceAvailability resourceAvailability)
+        public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability)
         {
             worldState.Tracer.Beat("World ticked.");
             return new List<TraceEvent>();

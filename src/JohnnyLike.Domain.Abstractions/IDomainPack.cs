@@ -61,11 +61,19 @@ public interface IDomainPack
     /// Returns a list of trace events for significant world state changes.
     /// Note: ITickableWorldItem ticking is handled by the engine via WorldItemTickOrchestrator.
     /// </summary>
+    List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability);
+
+    /// <summary>
+    /// Actor-aware overload: also ticks each actor's <see cref="ITickableBuff"/> buffs.
+    /// Defaults to calling the base overload (ignoring actors) for domains that do not need
+    /// per-actor periodic effects. Override in domains that implement tickable buffs.
+    /// </summary>
     List<TraceEvent> TickWorldState(
         WorldState worldState,
         IReadOnlyDictionary<ActorId, ActorState> actors,
         long currentTick,
-        IResourceAvailability resourceAvailability);
+        IResourceAvailability resourceAvailability)
+        => TickWorldState(worldState, currentTick, resourceAvailability);
 
     /// <summary>
     /// Executes the pre-action handler at the moment the action is chosen and committed.
