@@ -86,7 +86,7 @@ public class FishingPoleItem : ToolItem
                         ActionKind.Interact,
                         parameters,
                         EngineConstants.TimeToTicks(45.0, 60.0, ctx.Random),
-                        "go fishing",
+                        hasBait ? "go fishing with bait" : "cast the fishing line and wait for a bite",
                         parameters.ToResultData(),
                         new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                     ),
