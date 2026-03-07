@@ -1,6 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
-using JohnnyLike.Domain.Kit.Dice;
+using JohnnyLike.Domain.Island.Metabolism;
 
 namespace JohnnyLike.Domain.Island.Supply;
 
@@ -9,6 +9,9 @@ namespace JohnnyLike.Domain.Island.Supply;
 /// </summary>
 public class FishSupply : SupplyItem, ISupplyActionCandidate
 {
+    // ─── Calorie value ────────────────────────────────────────────────────────
+    // Less bioavailable than cooked fish due to moisture content and proteins.
+    private const double Kcal = 200.0; // raw fish → +10 Satiety
     public FishSupply(double quantity)
         : this("fish", quantity)
     {
@@ -36,7 +39,8 @@ public class FishSupply : SupplyItem, ISupplyActionCandidate
             Reason: "Eat raw fish",
             EffectHandler: (Action<EffectContext>)(effectCtx =>
             {
-                effectCtx.Actor.Satiety += 10.0;
+                // 200 kcal raw fish → +10 Satiety (cold and unpalatable, hence the Morale hit)
+                effectCtx.Actor.Satiety += MetabolismMath.CaloriesToSatietyDelta(Kcal);
                 effectCtx.Actor.Morale  -= 5.0;
                 var actor = effectCtx.ActorId.Value;
                 effectCtx.SetOutcomeNarration($"{actor} gulps down the raw fish; cold and slimy, but it fills the belly.");

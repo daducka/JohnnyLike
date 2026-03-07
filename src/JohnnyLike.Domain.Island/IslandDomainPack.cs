@@ -2,6 +2,7 @@ using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Kit.Dice;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Metabolism;
 using JohnnyLike.Domain.Island.Supply;
 
 namespace JohnnyLike.Domain.Island;
@@ -9,6 +10,9 @@ namespace JohnnyLike.Domain.Island;
 public class IslandDomainPack : IDomainPack
 {
     public string DomainName => "Island";
+
+    private static readonly IReadOnlyDictionary<ActorId, ActorState> EmptyActors =
+        new Dictionary<ActorId, ActorState>();
 
     public IslandDomainPack()
     {
@@ -48,6 +52,17 @@ public class IslandDomainPack : IDomainPack
             Energy = (double)(initialData?.GetValueOrDefault("energy", 100.0) ?? 100.0),
             Morale = (double)(initialData?.GetValueOrDefault("morale", 50.0) ?? 50.0)
         };
+
+        // Every actor always carries a MetabolicBuff that drives Satiety/Energy changes
+        // each world tick.  It never expires; intensity is updated by PreAction/ApplyActionEffects.
+        state.ActiveBuffs.Add(new MetabolicBuff
+        {
+            Name         = "Metabolism",
+            Type         = BuffType.Metabolic,
+            Intensity    = MetabolicIntensity.Light,
+            ExpiresAtTick = long.MaxValue
+        });
+
         return state;
     }
     
@@ -298,13 +313,15 @@ public class IslandDomainPack : IDomainPack
         var islandActorState = (IslandActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
 
-        // Note: World state time advancement is now handled by TickWorldState in Engine.AdvanceTime
-        // This method only applies action-specific effects and actor passive decay
+        // Metabolism is now handled by MetabolicBuff.OnTick each world tick.
+        // Reset the buff intensity back to Light once the action completes so the next
+        // action starts at the default resting/light-activity rate.
+        var metabolicBuff = islandActorState.ActiveBuffs.OfType<MetabolicBuff>().FirstOrDefault();
+        if (metabolicBuff != null)
+            metabolicBuff.Intensity = MetabolicIntensity.Light;
 
-        // Apply passive actor decay based on action duration
+        // Morale decays proportionally to the action duration (unchanged).
         var dtSeconds = (double)outcome.ActualDurationTicks / (double)EngineConstants.TickHz;
-        islandActorState.Satiety -= dtSeconds * 0.5;
-        islandActorState.Energy -= dtSeconds * 0.3;
         islandActorState.Morale -= dtSeconds * 0.4;
 
         if (outcome.Type != ActionOutcomeType.Success)
@@ -463,8 +480,26 @@ public class IslandDomainPack : IDomainPack
     };
 
     public List<TraceEvent> TickWorldState(WorldState worldState, long currentTick, IResourceAvailability resourceAvailability)
+        => TickWorldState(worldState, EmptyActors, currentTick, resourceAvailability);
+
+    public List<TraceEvent> TickWorldState(
+        WorldState worldState,
+        IReadOnlyDictionary<ActorId, ActorState> actors,
+        long currentTick,
+        IResourceAvailability resourceAvailability)
     {
         var islandWorld = (IslandWorldState)worldState;
+
+        // Tick ITickableBuff implementations on each actor.
+        foreach (var actorState in actors.Values)
+        {
+            if (actorState is not IslandActorState islandActor)
+                continue;
+
+            foreach (var buff in islandActor.ActiveBuffs.OfType<ITickableBuff>())
+                buff.OnTick(islandActor, worldState, currentTick);
+        }
+
         return islandWorld.OnTickAdvanced(currentTick, resourceAvailability);
     }
 

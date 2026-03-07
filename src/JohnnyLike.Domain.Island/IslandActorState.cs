@@ -1,9 +1,11 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Metabolism;
 using JohnnyLike.Domain.Island.Recipes;
 using JohnnyLike.Domain.Island.Telemetry;
 using JohnnyLike.Domain.Kit.Dice;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace JohnnyLike.Domain.Island;
 
@@ -435,9 +437,17 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             ),
             0.35,
             Reason: "Sleep under tree",
+            PreAction: (Func<EffectContext, bool>)(effectCtx =>
+            {
+                // Switch to Sleeping intensity so the MetabolicBuff recovers Energy during the nap.
+                var metabolicBuff = effectCtx.Actor.ActiveBuffs.OfType<MetabolicBuff>().FirstOrDefault();
+                if (metabolicBuff != null)
+                    metabolicBuff.Intensity = MetabolicIntensity.Sleeping;
+                return true;
+            }),
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                effectCtx.Actor.Energy += 40.0;
+                // Energy recovery during sleep is handled by MetabolicBuff.OnTick (Sleeping intensity).
                 var actor = effectCtx.ActorId.Value;
                 effectCtx.SetOutcomeNarration($"{actor} stirs awake, feeling well-rested.");
             }),
@@ -470,6 +480,14 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             ),
             0.5,
             Reason: $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            PreAction: (Func<EffectContext, bool>)(effectCtx =>
+            {
+                // Switch to Heavy intensity so the MetabolicBuff drains Energy appropriately during swimming.
+                var metabolicBuff = effectCtx.Actor.ActiveBuffs.OfType<MetabolicBuff>().FirstOrDefault();
+                if (metabolicBuff != null)
+                    metabolicBuff.Intensity = MetabolicIntensity.Heavy;
+                return true;
+            }),
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
                 if (effectCtx.Tier == null)
@@ -481,8 +499,9 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 switch (tier)
                 {
                     case RollOutcomeTier.CriticalSuccess:
+                        // Heavy-intensity swim energy drain is handled by the metabolism time-step in ApplyActionEffects.
+                        // Tier only affects Morale and special encounters.
                         effectCtx.Actor.Morale += 20.0;
-                        effectCtx.Actor.Energy -= 5.0;
                         effectCtx.SetOutcomeNarration($"{actor} glides through the water effortlessly, feeling exhilarated.");
                         
                         // Spawn treasure chest if not already present
@@ -506,24 +525,20 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
                     case RollOutcomeTier.Success:
                         effectCtx.Actor.Morale += 10.0;
-                        effectCtx.Actor.Energy -= 10.0;
                         effectCtx.SetOutcomeNarration($"{actor} has a pleasant swim, washing off the island grime.");
                         break;
 
                     case RollOutcomeTier.PartialSuccess:
                         effectCtx.Actor.Morale += 3.0;
-                        effectCtx.Actor.Energy -= 15.0;
                         effectCtx.SetOutcomeNarration($"{actor} manages to stay afloat but struggles against the current.");
                         break;
 
                     case RollOutcomeTier.Failure:
-                        effectCtx.Actor.Energy -= 15.0;
                         effectCtx.Actor.Morale -= 5.0;
                         effectCtx.SetOutcomeNarration($"{actor} is pushed back by the waves, exhausted and discouraged.");
                         break;
 
                     case RollOutcomeTier.CriticalFailure:
-                        effectCtx.Actor.Energy -= 25.0;
                         effectCtx.Actor.Morale -= 15.0;
                         effectCtx.SetOutcomeNarration($"{actor} barely makes it back to shore, heart pounding.");
                         
@@ -572,9 +587,23 @@ public enum BuffType
 {
     SkillBonus,
     Advantage,
-    RainProtection
+    RainProtection,
+    /// <summary>Continuous metabolic effect (basal burn, activity drain, sleep recovery).
+    /// Carried as a <see cref="MetabolicBuff"/> instance that implements <see cref="ITickableBuff"/>.</summary>
+    Metabolic
 }
 
+/// <summary>
+/// Base class for all actor buffs.
+/// Non-tickable buffs (skill bonuses, advantage markers) use <c>ExpiresAtTick</c> for removal.
+/// Tickable buffs (e.g., <see cref="MetabolicBuff"/>) implement <see cref="ITickableBuff"/> and
+/// set <c>ExpiresAtTick = long.MaxValue</c> so they are never auto-removed.
+/// </summary>
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "buffKind",
+    UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToNearestAncestor,
+    IgnoreUnrecognizedTypeDiscriminators = true)]
+[JsonDerivedType(typeof(ActiveBuff), typeDiscriminator: "base")]
+[JsonDerivedType(typeof(MetabolicBuff), typeDiscriminator: "metabolic")]
 public class ActiveBuff
 {
     public string Name { get; set; } = "";
