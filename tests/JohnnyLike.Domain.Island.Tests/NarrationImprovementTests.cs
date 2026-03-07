@@ -372,58 +372,64 @@ public class NarrationImprovementTests
     // ── NarrationDescription on item actions ─────────────────────────────────
 
     [Fact]
-    public void RepairShelter_HasNarrationDescription()
+    public void RepairBlanket_HasNarrationDescription()
     {
         var (domain, world, actor, actorId) = MakeIsland();
-        var shelter = new ShelterItem();
-        shelter.Quality = 50.0;
-        world.AddWorldItem(shelter, "beach");
+        var blanket = new PalmFrondBlanketItem();
+        blanket.Quality = 50.0;
+        world.AddWorldItem(blanket, "beach");
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(5, () => new PalmFrondSupply());
 
         var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
 
-        var action = candidates.FirstOrDefault(c => c.Action.Id.Value == "repair_shelter");
+        var action = candidates.FirstOrDefault(c => c.Action.Id.Value == "repair_blanket");
         Assert.NotNull(action);
         Assert.False(string.IsNullOrEmpty(action!.Action.NarrationDescription));
     }
 
     [Fact]
-    public void RepairShelter_EffectHandler_SetsOutcomeNarration()
+    public void RepairBlanket_EffectHandler_SetsOutcomeNarration()
     {
-        var shelter = new ShelterItem();
-        shelter.Quality = 50.0;
+        var blanket = new PalmFrondBlanketItem();
+        blanket.Quality = 50.0;
 
         var (_, world, actor, actorId) = MakeIsland();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(5, () => new PalmFrondSupply());
         var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
 
-        shelter.ApplyRepairShelterEffect(effectCtx);
+        blanket.ApplyRepairBlanketEffect(effectCtx);
 
         Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
     }
 
     [Fact]
-    public void ReinforceShelter_EffectHandler_SetsOutcomeNarration()
+    public void SleepInBlanket_HasNarrationDescription()
     {
-        var shelter = new ShelterItem();
-        shelter.Quality = 30.0;
+        var blanket = new PalmFrondBlanketItem();
+        blanket.Quality = 70.0;
 
         var (_, world, actor, actorId) = MakeIsland();
         var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
 
-        shelter.ApplyReinforceShelterEffect(effectCtx);
-
-        Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
+        Assert.False(string.IsNullOrEmpty("sleep wrapped in the palm frond blanket"));
     }
 
     [Fact]
-    public void RebuildShelter_EffectHandler_SetsOutcomeNarration()
+    public void RepairBed_EffectHandler_SetsOutcomeNarration()
     {
-        var shelter = new ShelterItem();
-        shelter.Quality = 10.0;
+        var bed = new PalmFrondBedItem();
+        bed.Quality = 30.0;
 
         var (_, world, actor, actorId) = MakeIsland();
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply(5, () => new PalmFrondSupply());
+        pile.AddSupply(5, () => new StickSupply());
+        pile.AddSupply(3, () => new RopeSupply());
         var effectCtx = MakeEffectContext(actor, world, actorId, RollOutcomeTier.Success);
 
-        shelter.ApplyRebuildShelterEffect(effectCtx);
+        bed.ApplyRepairBedEffect(effectCtx);
 
         Assert.False(string.IsNullOrEmpty(effectCtx.OutcomeNarration));
     }

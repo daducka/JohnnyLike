@@ -1028,8 +1028,9 @@ public class ActionCandidateQualitiesTests
         // Add a sandcastle at low quality so stomp candidate appears
         worldState.WorldItems.Add(new Items.SandCastleItem("sandcastle") { Quality = 30.0 });
 
-        // Degrade shelter so all three maintenance candidates appear
-        worldState.MainShelter!.Quality = 10.0;
+        // Add a blanket at low quality so repair candidate appears
+        worldState.WorldItems.Add(new Items.PalmFrondBlanketItem("palm_frond_blanket") { Quality = 40.0 });
+        worldState.SharedSupplyPile!.AddSupply(5, () => new Supply.PalmFrondSupply());
 
         // Degrade fishing pole so repair/maintain appear
         var pole = worldState.WorldItems.OfType<Items.FishingPoleItem>().FirstOrDefault();
@@ -1059,9 +1060,8 @@ public class ActionCandidateQualitiesTests
     [InlineData("go_fishing")]
     [InlineData("maintain_rod")]
     [InlineData("repair_rod")]
-    [InlineData("repair_shelter")]
-    [InlineData("reinforce_shelter")]
-    [InlineData("rebuild_shelter")]
+    [InlineData("repair_blanket")]
+    [InlineData("sleep_in_blanket")]
     [InlineData("relight_campfire")]
     [InlineData("repair_campfire")]
     [InlineData("rebuild_campfire")]

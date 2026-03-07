@@ -2,6 +2,7 @@ using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Supply;
 using JohnnyLike.Domain.Kit.Dice;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -148,165 +149,166 @@ public class CampfireMaintenanceCandidateProviderTests
     }
 }
 
-public class ShelterMaintenanceCandidateProviderTests
+public class PalmFrondBlanketMaintenanceCandidateProviderTests
 {
+    private static PalmFrondBlanketItem AddBlanket(IslandWorldState world, double quality = 50.0)
+    {
+        var blanket = new PalmFrondBlanketItem("palm_frond_blanket");
+        blanket.Quality = quality;
+        world.WorldItems.Add(blanket);
+        return blanket;
+    }
+
     [Fact]
-    public void ShelterItem_SuggestsRepair_WhenQualityIsLow()
+    public void PalmFrondBlanketItem_SuggestsRepair_WhenQualityIsLow()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
-        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
-        
-        world.MainShelter!.Quality = 50.0;
-        
+
+        var blanket = AddBlanket(world, 50.0);
+        world.SharedSupplyPile!.AddSupply(5, () => new Supply.PalmFrondSupply());
+
         var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
-        
-        world.MainShelter.AddCandidates(ctx, candidates);
-        
-        Assert.Contains(candidates, c => c.Action.Id.Value == "repair_shelter");
+
+        blanket.AddCandidates(ctx, candidates);
+
+        Assert.Contains(candidates, c => c.Action.Id.Value == "repair_blanket");
     }
 
     [Fact]
-    public void ShelterItem_SuggestsReinforce_WhenQualityIsVeryLow()
+    public void PalmFrondBlanketItem_DoesNotSuggestRepair_WhenQualityIsHigh()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
-        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
-        
-        world.MainShelter!.Quality = 40.0;
-        
+
+        var blanket = AddBlanket(world, 90.0);
+        world.SharedSupplyPile!.AddSupply(5, () => new Supply.PalmFrondSupply());
+
         var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
-        
-        world.MainShelter.AddCandidates(ctx, candidates);
-        
-        Assert.Contains(candidates, c => c.Action.Id.Value == "reinforce_shelter");
+
+        blanket.AddCandidates(ctx, candidates);
+
+        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "repair_blanket");
     }
 
     [Fact]
-    public void ShelterItem_SuggestsRebuild_WhenQualityIsCriticallyLow()
+    public void PalmFrondBlanketItem_DoesNotSuggestRepair_WhenNoPalmFronds()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
-        world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
         var actor = (IslandActorState)domain.CreateActorState(actorId);
-        
-        world.MainShelter!.Quality = 10.0;
-        
+
+        var blanket = AddBlanket(world, 50.0);
+        // No fronds added to supply
+
         var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
-        
-        world.MainShelter.AddCandidates(ctx, candidates);
-        
-        Assert.Contains(candidates, c => c.Action.Id.Value == "rebuild_shelter");
+
+        blanket.AddCandidates(ctx, candidates);
+
+        Assert.DoesNotContain(candidates, c => c.Action.Id.Value == "repair_blanket");
     }
 
     [Fact]
-    public void ShelterItem_RainyWeather_IncreasesRepairScore()
+    public void PalmFrondBlanketItem_AlwaysSuggestsSleep()
     {
-        // With static IntrinsicScore, both warm and cold conditions produce the same IntrinsicScore.
-        // The Safety quality on repair_shelter handles cold-weather prioritization via the post-pass.
-        var domain = new IslandDomainPack();
-        var worldClear = (IslandWorldState)domain.CreateInitialWorldState();
-        var worldRainy = (IslandWorldState)domain.CreateInitialWorldState();
-        
-        worldClear.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Hot;
-        worldClear.MainShelter!.Quality = 50.0;
-        
-        worldRainy.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
-        worldRainy.MainShelter!.Quality = 50.0;
-        
-        var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
-        
-        var ctxClear = new IslandContext(actorId, actor, worldClear, 0L, 
-            new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var ctxRainy = new IslandContext(actorId, actor, worldRainy, 0L, 
-            new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        
-        var candidatesClear = new List<ActionCandidate>();
-        var candidatesRainy = new List<ActionCandidate>();
-        
-        worldClear.MainShelter.AddCandidates(ctxClear, candidatesClear);
-        worldRainy.MainShelter.AddCandidates(ctxRainy, candidatesRainy);
-        
-        var scoreClear = candidatesClear.First(c => c.Action.Id.Value == "repair_shelter").IntrinsicScore;
-        var scoreRainy = candidatesRainy.First(c => c.Action.Id.Value == "repair_shelter").IntrinsicScore;
-        
-        // IntrinsicScore is now static; weather affects DC but not base score
-        Assert.Equal(scoreClear, scoreRainy);
-
-        // Verify the candidate carries the Safety quality which enables post-pass weather-based differentiation
-        var repairQualities = candidatesClear.First(c => c.Action.Id.Value == "repair_shelter").Qualities;
-        Assert.NotNull(repairQualities);
-        Assert.True(repairQualities.ContainsKey(QualityType.Safety));
-    }
-
-    [Fact]
-    public void ShelterItem_HigherSurvivalAndWisdom_IncreasesScore()
-    {
-        // IntrinsicScore is now static; skill level no longer affects IntrinsicScore.
-        // Both actors should receive the same static base score.
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
-        world.WorldItems.Add(new CampfireItem("main_campfire"));
-        world.MainShelter!.Quality = 50.0;
-        
+        var actorId = new ActorId("TestActor");
+        var actor = (IslandActorState)domain.CreateActorState(actorId);
+
+        var blanket = AddBlanket(world, 80.0);
+
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var candidates = new List<ActionCandidate>();
+
+        blanket.AddCandidates(ctx, candidates);
+
+        Assert.Contains(candidates, c => c.Action.Id.Value == "sleep_in_blanket");
+    }
+
+    [Fact]
+    public void PalmFrondBlanketItem_SleepScore_IsHigherThanTreeSleep_WhenHealthy()
+    {
+        var domain = new IslandDomainPack();
+        var world = (IslandWorldState)domain.CreateInitialWorldState();
+        var actorId = new ActorId("TestActor");
+        var actor = (IslandActorState)domain.CreateActorState(actorId);
+
+        var blanket = AddBlanket(world, 100.0);
+
+        var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
+        var candidates = new List<ActionCandidate>();
+        blanket.AddCandidates(ctx, candidates);
+        actor.AddCandidates(ctx, candidates);
+
+        var blanketSleepScore = candidates.First(c => c.Action.Id.Value == "sleep_in_blanket").IntrinsicScore;
+        var treeSleepScore = candidates.First(c => c.Action.Id.Value == "sleep_under_tree").IntrinsicScore;
+
+        Assert.True(blanketSleepScore > treeSleepScore,
+            $"Blanket sleep ({blanketSleepScore}) should outscore tree sleep ({treeSleepScore}) when blanket is healthy");
+    }
+
+    [Fact]
+    public void PalmFrondBlanketItem_HigherSurvivalSkill_HasSameStaticScore()
+    {
+        var domain = new IslandDomainPack();
+        var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.SharedSupplyPile!.AddSupply(5, () => new Supply.PalmFrondSupply());
+
+        var blanket = AddBlanket(world, 50.0);
+
         var lowSkillActor = (IslandActorState)domain.CreateActorState(
-            new ActorId("LowSkill"), 
+            new ActorId("LowSkill"),
             new Dictionary<string, object> { ["WIS"] = 8, ["STR"] = 8 }
         );
-        
         var highSkillActor = (IslandActorState)domain.CreateActorState(
-            new ActorId("HighSkill"), 
+            new ActorId("HighSkill"),
             new Dictionary<string, object> { ["WIS"] = 18, ["STR"] = 16 }
         );
-        
-        var ctxLow = new IslandContext(new ActorId("LowSkill"), lowSkillActor, world, 0L, 
+
+        var ctxLow = new IslandContext(new ActorId("LowSkill"), lowSkillActor, world, 0L,
             new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        var ctxHigh = new IslandContext(new ActorId("HighSkill"), highSkillActor, world, 0L, 
+        var ctxHigh = new IslandContext(new ActorId("HighSkill"), highSkillActor, world, 0L,
             new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
-        
+
         var candidatesLow = new List<ActionCandidate>();
         var candidatesHigh = new List<ActionCandidate>();
-        
-        world.MainShelter.AddCandidates(ctxLow, candidatesLow);
-        world.MainShelter.AddCandidates(ctxHigh, candidatesHigh);
-        
-        var scoreLow = candidatesLow.First(c => c.Action.Id.Value == "repair_shelter").IntrinsicScore;
-        var scoreHigh = candidatesHigh.First(c => c.Action.Id.Value == "repair_shelter").IntrinsicScore;
-        
-        // IntrinsicScore is now static; skills no longer change the base score
+
+        blanket.AddCandidates(ctxLow, candidatesLow);
+        blanket.AddCandidates(ctxHigh, candidatesHigh);
+
+        var scoreLow = candidatesLow.First(c => c.Action.Id.Value == "repair_blanket").IntrinsicScore;
+        var scoreHigh = candidatesHigh.First(c => c.Action.Id.Value == "repair_blanket").IntrinsicScore;
+
         Assert.Equal(scoreLow, scoreHigh);
 
-        // Verify repair_shelter has a non-null Qualities dictionary
-        var repairQualities = candidatesLow.First(c => c.Action.Id.Value == "repair_shelter").Qualities;
+        var repairQualities = candidatesLow.First(c => c.Action.Id.Value == "repair_blanket").Qualities;
         Assert.NotNull(repairQualities);
         Assert.True(repairQualities.Count > 0);
     }
 
     [Fact]
-    public void ShelterItem_DoesNotSuggestActions_WhenShelterMissing()
+    public void PalmFrondBlanketItem_DoesNotSuggestActions_WhenBlanketMissing()
     {
         var world = new IslandWorldState();
         var actorId = new ActorId("TestActor");
         var domain = new IslandDomainPack();
         var actor = (IslandActorState)domain.CreateActorState(actorId);
-        
+
         var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
-        
-        if (world.MainShelter != null)
-        {
-            world.MainShelter.AddCandidates(ctx, candidates);
-        }
-        
+
+        var blanket = world.WorldItems.OfType<PalmFrondBlanketItem>().FirstOrDefault();
+        blanket?.AddCandidates(ctx, candidates);
+
         Assert.Empty(candidates);
     }
 }

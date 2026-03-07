@@ -97,15 +97,15 @@ public class ToolItemTests
     }
 
     [Fact]
-    public void ShelterItem_Serialization_PreservesSharedOwnership()
+    public void PalmFrondBlanketItem_Serialization_PreservesSharedOwnership()
     {
-        var shelter = new ShelterItem("main_shelter");
-        shelter.Quality = 65.0;
+        var blanket = new PalmFrondBlanketItem("palm_frond_blanket");
+        blanket.Quality = 65.0;
         
-        var dict = shelter.SerializeToDict();
+        var dict = blanket.SerializeToDict();
         
-        Assert.Equal("main_shelter", dict["Id"]);
-        Assert.Equal("shelter", dict["Type"]);
+        Assert.Equal("palm_frond_blanket", dict["Id"]);
+        Assert.Equal("palm_frond_blanket", dict["Type"]);
         Assert.Equal("Shared", dict["OwnershipType"]);
         Assert.Equal(65.0, dict["Quality"]);
     }

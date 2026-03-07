@@ -14,7 +14,6 @@ public class IslandWorldState : WorldState
     public List<WorldItem> WorldItems { get; set; } = new();
 
     public CampfireItem? MainCampfire => WorldItems.OfType<CampfireItem>().FirstOrDefault();
-    public ShelterItem? MainShelter => WorldItems.OfType<ShelterItem>().FirstOrDefault();
     public TreasureChestItem? TreasureChest => WorldItems.OfType<TreasureChestItem>().FirstOrDefault();
     public SharkItem? Shark => WorldItems.OfType<SharkItem>().FirstOrDefault();
     public SupplyPile? SharedSupplyPile => WorldItems.OfType<SupplyPile>()

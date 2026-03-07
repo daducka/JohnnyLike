@@ -21,8 +21,9 @@ public static class WorldItemTypeRegistry
     private static readonly Dictionary<string, Func<string, WorldItem>> _factories =
         new(StringComparer.Ordinal)
         {
-            ["campfire"]       = id => new CampfireItem(id),
-            ["shelter"]        = id => new ShelterItem(id),
+            ["campfire"]            = id => new CampfireItem(id),
+            ["palm_frond_blanket"]  = id => new PalmFrondBlanketItem(id),
+            ["palm_frond_bed"]      = id => new PalmFrondBedItem(id),
             ["fishing_pole"]   = id => new FishingPoleItem(id),
             ["treasure_chest"] = id => new TreasureChestItem(id),
             ["shark"]          = id => new SharkItem(id),
