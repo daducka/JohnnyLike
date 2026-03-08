@@ -25,6 +25,7 @@ public class Engine
     private readonly Random _rng;
     private readonly Queue<Signal> _signalQueue;
     private readonly Dictionary<ActionId, object?> _effectHandlers;
+    private readonly DecisionTraceOptions _traceOptions;
     private long _currentTick;
 
     public const int TickHz = EngineConstants.TickHz;
@@ -34,7 +35,7 @@ public class Engine
     public IReadOnlyDictionary<ActorId, ActorState> Actors => _actors;
     public WorldState WorldState => _worldState;
 
-    public Engine(IDomainPack domainPack, int seed, ITraceSink? traceSink = null)
+    public Engine(IDomainPack domainPack, int seed, ITraceSink? traceSink = null, DecisionTraceOptions? traceOptions = null)
     {
         _domainPack = domainPack;
         _worldState = domainPack.CreateInitialWorldState();
@@ -43,7 +44,8 @@ public class Engine
         _varietyMemory = new VarietyMemory();
         _traceSink = traceSink ?? new InMemoryTraceSink();
         _eventTracer = new EventTracer();
-        _director = new Director(domainPack, _reservations, _varietyMemory, _traceSink);
+        _traceOptions = traceOptions ?? DecisionTraceOptions.Default;
+        _director = new Director(domainPack, _reservations, _varietyMemory, _traceSink, _traceOptions);
         _rng = new Random(seed);
         _signalQueue = new Queue<Signal>();
         _effectHandlers = new Dictionary<ActionId, object?>();
@@ -118,7 +120,7 @@ public class Engine
         if (actorState.Status != ActorStatus.Ready)
             return false;
 
-        var (plannedAction, effectHandler) = _director.PlanNextAction(actorId, actorState, _worldState, _actors, _currentTick, _rng);
+        var (plannedAction, effectHandler, decisionInfo) = _director.PlanNextAction(actorId, actorState, _worldState, _actors, _currentTick, _rng);
 
         if (plannedAction != null)
         {
@@ -143,6 +145,25 @@ public class Engine
             {
                 details["resourceRequirements"] = string.Join(", ",
                     plannedAction.ResourceRequirements.Select(r => r.ResourceId.Value));
+            }
+
+            // Enrich with decision metadata when tracing is enabled
+            if (decisionInfo != null && _traceOptions.IsSummaryOrAbove)
+            {
+                details["selectionReason"]   = decisionInfo.SelectionReason;
+                details["selectedScore"]     = decisionInfo.FinalScore;
+                details["intrinsicScore"]    = decisionInfo.IntrinsicScore;
+                details["varietyPenalty"]    = decisionInfo.VarietyPenalty;
+                details["attemptRank"]       = decisionInfo.AttemptRank;
+                if (decisionInfo.ProviderItemId != null)
+                    details["providerItemId"] = decisionInfo.ProviderItemId;
+                if (decisionInfo.OriginalRank.HasValue)
+                    details["originalRank"]  = decisionInfo.OriginalRank.Value;
+                if (decisionInfo.OrderingBranch != null)
+                    details["orderingBranch"] = decisionInfo.OrderingBranch;
+                if (decisionInfo.TopAlternatives != null && decisionInfo.TopAlternatives.Count > 0)
+                    details["topAlternativeActionIds"] = string.Join(",",
+                        decisionInfo.TopAlternatives.Select(a => a.ActionId));
             }
 
             _traceSink.Record(new TraceEvent(

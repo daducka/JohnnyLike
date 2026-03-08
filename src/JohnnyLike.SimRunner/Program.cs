@@ -7,11 +7,14 @@ if (args.Length == 0)
 {
     Console.WriteLine("JohnnyLike SimRunner");
     Console.WriteLine("Usage: SimRunner [options]");
-    Console.WriteLine("  --scenario <path>   Load and run scenario from JSON file");
-    Console.WriteLine("  --domain <name>     Domain to use: island (default: island)");
-    Console.WriteLine("  --seed <number>     Random seed (default: 42)");
-    Console.WriteLine("  --duration <sec>    Simulation duration in seconds");
-    Console.WriteLine("  --trace             Output detailed trace");
+    Console.WriteLine("  --scenario <path>         Load and run scenario from JSON file");
+    Console.WriteLine("  --domain <name>           Domain to use: island (default: island)");
+    Console.WriteLine("  --seed <number>           Random seed (default: 42)");
+    Console.WriteLine("  --duration <sec>          Simulation duration in seconds");
+    Console.WriteLine("  --trace                   Output detailed trace");
+    Console.WriteLine("  --decision-summary        Emit summary decision trace events (chosen action + reason)");
+    Console.WriteLine("  --decision-candidates     Emit per-candidate decision trace events");
+    Console.WriteLine("  --decision-verbose        Emit verbose decision trace (includes scoring explanation)");
     Console.WriteLine("\nFuzz Testing:");
     Console.WriteLine("  --fuzz              Run fuzz testing mode");
     Console.WriteLine("  --runs <number>     Number of fuzz runs (default: 1)");
@@ -33,6 +36,7 @@ var fuzzConfigPath = "";
 var fuzzProfile = "";
 var verbose = false;
 var saveArtifacts = false;
+var decisionTraceLevel = JohnnyLike.Engine.DecisionTraceLevel.None;
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -52,6 +56,17 @@ for (int i = 0; i < args.Length; i++)
             break;
         case "--trace":
             outputTrace = true;
+            break;
+        case "--decision-summary":
+            if (decisionTraceLevel < JohnnyLike.Engine.DecisionTraceLevel.Summary)
+                decisionTraceLevel = JohnnyLike.Engine.DecisionTraceLevel.Summary;
+            break;
+        case "--decision-candidates":
+            if (decisionTraceLevel < JohnnyLike.Engine.DecisionTraceLevel.Candidates)
+                decisionTraceLevel = JohnnyLike.Engine.DecisionTraceLevel.Candidates;
+            break;
+        case "--decision-verbose":
+            decisionTraceLevel = JohnnyLike.Engine.DecisionTraceLevel.Verbose;
             break;
         case "--fuzz":
             fuzzMode = true;
@@ -80,11 +95,11 @@ if (fuzzMode)
 }
 else if (!string.IsNullOrEmpty(scenarioPath))
 {
-    RunScenario(scenarioPath, outputTrace, domainName);
+    RunScenario(scenarioPath, outputTrace, domainName, decisionTraceLevel);
 }
 else
 {
-    RunDefault(seed, duration, outputTrace, domainName);
+    RunDefault(seed, duration, outputTrace, domainName, decisionTraceLevel);
 }
 
 IDomainPack CreateDomainPack(string domainName)
@@ -96,7 +111,7 @@ IDomainPack CreateDomainPack(string domainName)
     };
 }
 
-void RunScenario(string path, bool trace, string domainName)
+void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel)
 {
     Console.WriteLine($"Loading scenario from: {path}");
     var scenario = ScenarioLoader.LoadFromFile(path);
@@ -107,7 +122,8 @@ void RunScenario(string path, bool trace, string domainName)
     
     var domainPack = CreateDomainPack(domainName);
     var traceSink = new InMemoryTraceSink();
-    var engine = new JohnnyLike.Engine.Engine(domainPack, scenario.Seed, traceSink);
+    var traceOptions = new JohnnyLike.Engine.DecisionTraceOptions(decisionLevel);
+    var engine = new JohnnyLike.Engine.Engine(domainPack, scenario.Seed, traceSink, traceOptions);
     
     // Add actors
     foreach (var actorDef in scenario.Actors)
@@ -148,19 +164,24 @@ void RunScenario(string path, bool trace, string domainName)
             Console.WriteLine(evt);
         }
     }
+    else if (decisionLevel > JohnnyLike.Engine.DecisionTraceLevel.None)
+    {
+        PrintDecisionSummary(traceSink.GetEvents(), decisionLevel);
+    }
     
     var hash = JohnnyLike.Engine.TraceHelper.ComputeTraceHash(traceSink.GetEvents());
     Console.WriteLine($"\nTrace hash: {hash}");
 }
 
-void RunDefault(int seed, double duration, bool trace, string domainName)
+void RunDefault(int seed, double duration, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel)
 {
     Console.WriteLine($"Running default {domainName} simulation");
     Console.WriteLine($"Seed: {seed}, Duration: {duration}s");
     
     var domainPack = CreateDomainPack(domainName);
     var traceSink = new InMemoryTraceSink();
-    var engine = new JohnnyLike.Engine.Engine(domainPack, seed, traceSink);
+    var traceOptions = new JohnnyLike.Engine.DecisionTraceOptions(decisionLevel);
+    var engine = new JohnnyLike.Engine.Engine(domainPack, seed, traceSink, traceOptions);
     
     if (domainName == "island")
     {
@@ -198,6 +219,10 @@ void RunDefault(int seed, double duration, bool trace, string domainName)
         {
             Console.WriteLine(evt);
         }
+    }
+    else if (decisionLevel > JohnnyLike.Engine.DecisionTraceLevel.None)
+    {
+        PrintDecisionSummary(traceSink.GetEvents(), decisionLevel);
     }
     
     var hash = JohnnyLike.Engine.TraceHelper.ComputeTraceHash(traceSink.GetEvents());
@@ -294,6 +319,58 @@ void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool
     else
     {
         Console.WriteLine("\n✓ All fuzz runs passed!");
+    }
+}
+
+void PrintDecisionSummary(List<TraceEvent> events, JohnnyLike.Engine.DecisionTraceLevel level)
+{
+    var decisionEvents = events.Where(e =>
+        e.EventType is "DecisionSelected" or "DecisionNoActionAvailable" or
+                       "DecisionOrderingApplied" or "DecisionCandidatesRanked" or
+                       "DecisionCandidateRejected" or "DecisionCandidatesGenerated")
+        .ToList();
+
+    if (decisionEvents.Count == 0)
+        return;
+
+    Console.WriteLine($"\n=== DECISION SUMMARY ({level}) ===");
+    foreach (var evt in decisionEvents)
+    {
+        var actor = evt.ActorId.HasValue ? evt.ActorId.Value.ToString() : "SYSTEM";
+        switch (evt.EventType)
+        {
+            case "DecisionSelected":
+                evt.Details.TryGetValue("actionId",        out var ai);
+                evt.Details.TryGetValue("finalScore",      out var fs);
+                evt.Details.TryGetValue("selectionReason", out var sr);
+                evt.Details.TryGetValue("orderingBranch",  out var ob);
+                evt.Details.TryGetValue("originalRank",    out var or);
+                evt.Details.TryGetValue("attemptRank",     out var ar);
+                Console.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} → {ai} " +
+                    $"(score={fs:F3}, reason={sr}, branch={ob ?? "n/a"}, rank={or ?? ar})");
+                if (evt.Details.TryGetValue("topAlternatives", out var alts))
+                    Console.WriteLine($"         alts: {alts}");
+                break;
+            case "DecisionNoActionAvailable":
+                evt.Details.TryGetValue("reason", out var reason);
+                Console.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} → NO ACTION ({reason})");
+                break;
+            case "DecisionOrderingApplied":
+                evt.Details.TryGetValue("orderingBranch",   out var branch);
+                evt.Details.TryGetValue("decisionPragmatism", out var pragma);
+                evt.Details.TryGetValue("temperature",      out var temp);
+                Console.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} ordering={branch}, P={pragma}, T={temp ?? "n/a"}");
+                break;
+            case "DecisionCandidatesRanked":
+                evt.Details.TryGetValue("candidateCount", out var cc);
+                Console.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} ranked {cc} candidates");
+                break;
+            case "DecisionCandidateRejected":
+                evt.Details.TryGetValue("failedActionId",  out var fa);
+                evt.Details.TryGetValue("rejectionReason", out var rr);
+                Console.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} rejected {fa} ({rr})");
+                break;
+        }
     }
 }
 

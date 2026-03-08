@@ -101,5 +101,41 @@ public interface IDomainPack
         long currentTick,
         IReadOnlyList<ActionCandidate> sortedCandidates,
         Random rng) => sortedCandidates;
+
+    /// <summary>
+    /// Extended overload that additionally accepts a debug sink to capture structured
+    /// ordering-branch information (exploit vs. explore, pragmatism, temperature, softmax
+    /// weights) without changing the return type.
+    /// The default implementation delegates to the 6-parameter overload and leaves the sink
+    /// untouched; domains that want to surface ordering details should override this method.
+    /// </summary>
+    /// <param name="debugSink">Optional sink for structured ordering debug info. May be null.</param>
+    IReadOnlyList<ActionCandidate> OrderCandidatesForSelection(
+        ActorId actorId,
+        ActorState actorState,
+        WorldState worldState,
+        long currentTick,
+        IReadOnlyList<ActionCandidate> sortedCandidates,
+        Random rng,
+        CandidateOrderingDebugSink? debugSink)
+        => OrderCandidatesForSelection(actorId, actorState, worldState, currentTick, sortedCandidates, rng);
+
+    /// <summary>
+    /// Optional hook that returns a structured explanation of how candidates were scored.
+    /// Called by the engine only when verbose decision tracing is enabled.
+    /// The default implementation returns <c>null</c>, meaning no explanation is provided.
+    /// Domains that expose scoring internals should override this method and return a
+    /// <see cref="Dictionary{TKey,TValue}"/> containing actor state, pressures, quality weights,
+    /// and per-candidate contribution breakdowns.
+    /// </summary>
+    /// <param name="candidates">The candidates as returned by <see cref="GenerateCandidates"/>
+    /// (before engine-side variety penalty is applied).</param>
+    /// <returns>A structured explanation payload, or <c>null</c> if not supported.</returns>
+    Dictionary<string, object>? ExplainCandidateScoring(
+        ActorId actorId,
+        ActorState actorState,
+        WorldState worldState,
+        long currentTick,
+        IReadOnlyList<ActionCandidate> candidates) => null;
 }
 

@@ -507,9 +507,7 @@ public class IslandDomainPack : IDomainPack
     private const double SoftmaxEpsilon = 1e-8;
 
     /// <summary>
-    /// Mixture model: with probability P (DecisionPragmatism) return the deterministic
-    /// best-first order unchanged; otherwise draw a softmax-weighted attempt order
-    /// without replacement using the provided RNG.
+    /// Delegates to the sink-aware overload with a null sink (backwards-compatibility shim).
     /// </summary>
     public IReadOnlyList<ActionCandidate> OrderCandidatesForSelection(
         ActorId actorId,
@@ -518,6 +516,23 @@ public class IslandDomainPack : IDomainPack
         long currentTick,
         IReadOnlyList<ActionCandidate> sortedCandidates,
         Random rng)
+        => OrderCandidatesForSelection(actorId, actorState, worldState, currentTick, sortedCandidates, rng, null);
+
+    /// <summary>
+    /// Mixture model: with probability P (DecisionPragmatism) return the deterministic
+    /// best-first order unchanged; otherwise draw a softmax-weighted attempt order
+    /// without replacement using the provided RNG.
+    /// Populates <paramref name="debugSink"/> (when non-null) with structured ordering
+    /// branch information for engine-level decision traces.
+    /// </summary>
+    public IReadOnlyList<ActionCandidate> OrderCandidatesForSelection(
+        ActorId actorId,
+        ActorState actorState,
+        WorldState worldState,
+        long currentTick,
+        IReadOnlyList<ActionCandidate> sortedCandidates,
+        Random rng,
+        CandidateOrderingDebugSink? debugSink)
     {
         if (sortedCandidates.Count == 0)
             return sortedCandidates;
@@ -525,12 +540,23 @@ public class IslandDomainPack : IDomainPack
         var actor = (IslandActorState)actorState;
         var p = Math.Clamp(actor.DecisionPragmatism, 0.0, 1.0);
 
+        var originalTopActionId = sortedCandidates[0].Action.Id.Value;
+
         // Pragmatic (exploit) branch — return deterministic order unchanged.
         if (rng.NextDouble() < p)
         {
             worldState.Tracer.Beat(
                 $"[DecisionPragmatism] exploit branch (P={p:F2}): using best-first order.",
                 actorId: actorId.Value);
+
+            if (debugSink != null)
+            {
+                debugSink.OrderingBranch      = "exploit";
+                debugSink.DecisionPragmatism  = p;
+                debugSink.OriginalTopActionId = originalTopActionId;
+                debugSink.ChosenActionId      = originalTopActionId;
+                debugSink.ChosenOriginalRank  = 1;
+            }
             return sortedCandidates;
         }
 
@@ -546,6 +572,9 @@ public class IslandDomainPack : IDomainPack
         var remaining = new List<ActionCandidate>(sortedCandidates);
         var result    = new List<ActionCandidate>(remaining.Count);
 
+        // Capture per-candidate softmax details on the first sampling step (for verbose traces).
+        SoftmaxWeightEntry[]? firstStepWeightDetails = null;
+
         while (remaining.Count > 0)
         {
             // Numerically stable softmax: subtract max score before exponentiation.
@@ -557,6 +586,18 @@ public class IslandDomainPack : IDomainPack
             {
                 weights[i]   = Math.Max(Math.Exp((remaining[i].Score - maxScore) / temperature), SoftmaxEpsilon);
                 totalWeight += weights[i];
+            }
+
+            // Capture first-step weight details for verbose sink (original sorted order alignment).
+            if (firstStepWeightDetails == null && debugSink != null)
+            {
+                firstStepWeightDetails = remaining
+                    .Select((c, i) => new SoftmaxWeightEntry(
+                        c.Action.Id.Value,
+                        c.ProviderItemId,
+                        weights[i],
+                        weights[i] / totalWeight))
+                    .ToArray();
             }
 
             // Sample one candidate by cumulative probability.
@@ -577,6 +618,105 @@ public class IslandDomainPack : IDomainPack
             remaining.RemoveAt(chosen);
         }
 
+        if (debugSink != null)
+        {
+            debugSink.OrderingBranch      = "explore";
+            debugSink.DecisionPragmatism  = p;
+            debugSink.Spontaneity         = spontaneity;
+            debugSink.Temperature         = temperature;
+            debugSink.OriginalTopActionId = originalTopActionId;
+            debugSink.ChosenActionId      = result[0].Action.Id.Value;
+            // Find chosen original rank: position in sortedCandidates (1-based)
+            var chosenKey = result[0].Action.Id.Value + "|" + (result[0].ProviderItemId ?? "");
+            for (var i = 0; i < sortedCandidates.Count; i++)
+            {
+                var ck = sortedCandidates[i].Action.Id.Value + "|" + (sortedCandidates[i].ProviderItemId ?? "");
+                if (ck == chosenKey) { debugSink.ChosenOriginalRank = i + 1; break; }
+            }
+            debugSink.SoftmaxWeightDetails = firstStepWeightDetails;
+        }
+
         return result;
+    }
+
+    /// <inheritdoc/>
+    public Dictionary<string, object>? ExplainCandidateScoring(
+        ActorId actorId,
+        ActorState actorState,
+        WorldState worldState,
+        long currentTick,
+        IReadOnlyList<ActionCandidate> candidates)
+    {
+        var actor = (IslandActorState)actorState;
+        var model = BuildQualityModel(actor);
+
+        var hungerPressure  = 100.0 - actor.Satiety;
+        var fatiguePressure = 100.0 - actor.Energy;
+        var miseryPressure  = 100.0 - actor.Morale;
+        var injuryPressure  = 100.0 - actor.Health;
+
+        var actorStats = new Dictionary<string, object>
+        {
+            ["satiety"]             = actor.Satiety,
+            ["energy"]              = actor.Energy,
+            ["morale"]              = actor.Morale,
+            ["health"]              = actor.Health,
+            ["decisionPragmatism"]  = actor.DecisionPragmatism,
+            ["softmaxTLow"]         = actor.SoftmaxTLow,
+            ["softmaxTHigh"]        = actor.SoftmaxTHigh
+        };
+
+        var pressures = new Dictionary<string, object>
+        {
+            ["hungerPressure"]  = hungerPressure,
+            ["fatiguePressure"] = fatiguePressure,
+            ["miseryPressure"]  = miseryPressure,
+            ["injuryPressure"]  = injuryPressure
+        };
+
+        var effectiveWeights = new Dictionary<string, object>();
+        foreach (var q in Enum.GetValues<QualityType>())
+        {
+            var w = model.EffectiveWeight(q);
+            if (w != 0.0)
+                effectiveWeights[q.ToString()] = w;
+        }
+
+        var candidateBreakdowns = candidates.Select(c =>
+        {
+            var contributions = new Dictionary<string, object>();
+            var totalQualitySum = 0.0;
+            foreach (var (q, value) in c.Qualities)
+            {
+                var weight       = model.EffectiveWeight(q);
+                var contribution = weight * value;
+                totalQualitySum += contribution;
+                contributions[q.ToString()] = new Dictionary<string, object>
+                {
+                    ["qualityValue"]    = value,
+                    ["effectiveWeight"] = weight,
+                    ["contribution"]    = contribution
+                };
+            }
+            var breakdown = new Dictionary<string, object>
+            {
+                ["actionId"]            = c.Action.Id.Value,
+                ["intrinsicScore"]      = c.IntrinsicScore,
+                ["qualityContributions"] = contributions,
+                ["totalQualitySum"]     = totalQualitySum,
+                ["finalPreVarietyScore"] = c.IntrinsicScore + totalQualitySum
+            };
+            if (c.ProviderItemId != null)
+                breakdown["providerItemId"] = c.ProviderItemId;
+            return (object)breakdown;
+        }).ToList();
+
+        return new Dictionary<string, object>
+        {
+            ["actorStats"]           = actorStats,
+            ["pressures"]            = pressures,
+            ["effectiveWeights"]     = effectiveWeights,
+            ["candidateBreakdowns"]  = candidateBreakdowns
+        };
     }
 }
