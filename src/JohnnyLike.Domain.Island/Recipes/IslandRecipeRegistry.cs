@@ -17,6 +17,7 @@ public static class IslandRecipeRegistry
             ["fishing_pole"]       = FishingPole.Define(),
             ["palm_frond_blanket"] = PalmFrondBlanket.Define(),
             ["palm_frond_bed"]     = PalmFrondBed.Define(),
+            ["bait"]               = Bait.Define(),
         };
 
     public static RecipeDefinition Get(string id)

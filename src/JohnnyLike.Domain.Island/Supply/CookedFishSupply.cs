@@ -45,6 +45,10 @@ public class CookedFishSupply : SupplyItem, ISupplyActionCandidate
                 effectCtx.Actor.Energy  += MetabolismMath.CaloriesToEnergyDelta(Kcal * 0.05);
                 var actor = effectCtx.ActorId.Value;
                 effectCtx.SetOutcomeNarration($"{actor} savors the cooked fish; it tastes infinitely better than raw.");
+
+                var sharedPile = effectCtx.World.SharedSupplyPile;
+                if (sharedPile != null)
+                    sharedPile.AddSupply(1.0, () => new CarcassScrapsSupply());
             }),
             PreAction: (Func<EffectContext, bool>)(effectCtx =>
                 pile.TryConsumeSupply<CookedFishSupply>(1.0)),

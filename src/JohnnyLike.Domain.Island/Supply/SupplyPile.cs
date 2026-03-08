@@ -165,14 +165,16 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
 
                     SupplyItem? supply = type switch
                     {
-                        "supply_wood"        => new WoodSupply(id),
-                        "supply_fish"        => new FishSupply(id),
-                        "supply_cooked_fish" => new CookedFishSupply(id),
-                        "supply_coconut"     => new CoconutSupply(id),
-                        "supply_stick"       => new StickSupply(id),
-                        "supply_palm_frond"  => new PalmFrondSupply(id),
-                        "supply_rocks"       => new RocksSupply(id),
-                        "supply_rope"        => new RopeSupply(id),
+                        "supply_wood"            => new WoodSupply(id),
+                        "supply_fish"            => new FishSupply(id),
+                        "supply_cooked_fish"     => new CookedFishSupply(id),
+                        "supply_coconut"         => new CoconutSupply(id),
+                        "supply_stick"           => new StickSupply(id),
+                        "supply_palm_frond"      => new PalmFrondSupply(id),
+                        "supply_rocks"           => new RocksSupply(id),
+                        "supply_rope"            => new RopeSupply(id),
+                        "supply_carcass_scraps"  => new CarcassScrapsSupply(id),
+                        "supply_bait"            => new BaitSupply(id),
                         _ => null
                     };
 
