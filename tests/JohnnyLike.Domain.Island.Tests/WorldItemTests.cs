@@ -20,26 +20,26 @@ public class WorldItemTests
     [Fact]
     public void MaintainableWorldItem_DecaysQualityOverTime()
     {
-        var shelter = new ShelterItem("test_shelter");
+        var blanket = new PalmFrondBlanketItem("test_blanket");
         var world = new IslandWorldState();
         
-        shelter.Quality = 100.0;
-        shelter.Tick(2000L, world);
+        blanket.Quality = 100.0;
+        blanket.Tick(2000L, world);
         
-        Assert.True(shelter.Quality < 100.0);
-        Assert.True(shelter.Quality >= 0.0);
+        Assert.True(blanket.Quality < 100.0);
+        Assert.True(blanket.Quality >= 0.0);
     }
 
     [Fact]
     public void MaintainableWorldItem_QualityNeverGoesBelowZero()
     {
-        var shelter = new ShelterItem("test_shelter");
+        var blanket = new PalmFrondBlanketItem("test_blanket");
         var world = new IslandWorldState();
         
-        shelter.Quality = 5.0;
-        shelter.Tick(200000L, world);
+        blanket.Quality = 5.0;
+        blanket.Tick(200000L, world);
         
-        Assert.Equal(0.0, shelter.Quality);
+        Assert.Equal(0.0, blanket.Quality);
     }
 }
 
@@ -111,71 +111,55 @@ public class CampfireItemTests
     }
 }
 
-public class ShelterItemTests
+public class PalmFrondBlanketItemTests
 {
     [Fact]
-    public void ShelterItem_StartsWithFullQuality()
+    public void PalmFrondBlanketItem_StartsWithFullQuality()
     {
-        var shelter = new ShelterItem();
-        
-        Assert.Equal(100.0, shelter.Quality);
+        var blanket = new PalmFrondBlanketItem();
+
+        Assert.Equal(100.0, blanket.Quality);
     }
 
     [Fact]
-    public void ShelterItem_DecaysInNormalWeather()
+    public void PalmFrondBlanketItem_DecaysInNormalWeather()
     {
-        var shelter = new ShelterItem();
+        var blanket = new PalmFrondBlanketItem();
         var world = new IslandWorldState();
 
-        var initialQuality = shelter.Quality;
-        shelter.Tick(2000L, world);
+        var initialQuality = blanket.Quality;
+        blanket.Tick(2000L, world);
 
-        Assert.True(shelter.Quality < initialQuality);
+        Assert.True(blanket.Quality < initialQuality);
     }
 
     [Fact]
-    public void ShelterItem_DecaysFasterInColdWeather()
+    public void PalmFrondBlanketItem_QualityNeverGoesBelowZero_UnderHeavyDecay()
     {
-        var shelterWarm = new ShelterItem();
-        var shelterCold = new ShelterItem();
+        var blanket = new PalmFrondBlanketItem();
+        var world = new IslandWorldState();
 
-        var worldWarm = new IslandWorldState();
-        worldWarm.WorldItems.Add(new WeatherItem("weather") { Temperature = TemperatureBand.Hot });
+        blanket.Quality = 1.0;
+        blanket.Tick(200000L, world);
 
-        var worldCold = new IslandWorldState();
-        worldCold.WorldItems.Add(new WeatherItem("weather") { Temperature = TemperatureBand.Cold });
-
-        shelterWarm.Tick(2000L, worldWarm);
-        shelterCold.Tick(2000L, worldCold);
-
-        Assert.True(shelterCold.Quality < shelterWarm.Quality);
-    }
-
-    [Fact(Skip = "Windy weather no longer exists in the new weather system (Hot/Cold only)")]
-    public void ShelterItem_DecaysFasterInWindyWeather()
-    {
-    }
-
-    [Fact(Skip = "Windy weather no longer exists in the new weather system (Hot/Cold only)")]
-    public void ShelterItem_RainyWeatherDecaysFasterThanWindy()
-    {
+        Assert.Equal(0.0, blanket.Quality);
     }
 }
 
 public class IslandWorldStateItemIntegrationTests
 {
     [Fact]
-    public void IslandWorldState_InitializesWithCampfireAndShelter()
+    public void IslandWorldState_InitializesWithBaseItems()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
 
-        // New initial state: CalendarItem, WeatherItem, BeachItem, CoconutTreeItem, ShelterItem, SupplyPile
-        Assert.NotNull(world.MainShelter);
+        // Initial state: CalendarItem, WeatherItem, BeachItem, CoconutTreeItem, SupplyPile, StalactiteItem
         Assert.NotNull(world.SharedSupplyPile);
         Assert.NotNull(world.GetItem<CalendarItem>("calendar"));
         Assert.NotNull(world.GetItem<WeatherItem>("weather"));
         Assert.NotNull(world.GetItem<BeachItem>("beach"));
+        Assert.Null(world.WorldItems.OfType<PalmFrondBlanketItem>().FirstOrDefault());
     }
 
     [Fact]
@@ -186,22 +170,20 @@ public class IslandWorldStateItemIntegrationTests
         world.WorldItems.Add(new CampfireItem("main_campfire"));
 
         var campfire = world.MainCampfire!;
-        var shelter = world.MainShelter!;
-        
         var initialCampfireFuel = campfire.FuelSeconds;
-        var initialShelterQuality = shelter.Quality;
-        
+
         world.OnTickAdvanced((long)(100.0 * 20));
     }
 
     [Fact]
-    public void IslandWorldState_MainShelterAccessor_ReturnsFirstShelter()
+    public void IslandWorldState_BlanketAccessor_ReturnsFirstBlanket()
     {
         var world = new IslandWorldState();
-        world.WorldItems.Add(new ShelterItem("shelter1"));
-        world.WorldItems.Add(new ShelterItem("shelter2"));
-        
-        Assert.Equal("shelter1", world.MainShelter?.Id);
+        world.WorldItems.Add(new PalmFrondBlanketItem("blanket1"));
+        world.WorldItems.Add(new PalmFrondBlanketItem("blanket2"));
+
+        var first = world.WorldItems.OfType<PalmFrondBlanketItem>().FirstOrDefault();
+        Assert.Equal("blanket1", first?.Id);
     }
 
     [Fact]
@@ -209,13 +191,13 @@ public class IslandWorldStateItemIntegrationTests
     {
         var world = new IslandWorldState();
         world.WorldItems.Add(new CampfireItem("test_campfire"));
-        world.WorldItems.Add(new ShelterItem("test_shelter"));
-        
+        world.WorldItems.Add(new PalmFrondBlanketItem("test_blanket"));
+
         var json = world.Serialize();
-        
+
         Assert.Contains("WorldItems", json);
         Assert.Contains("test_campfire", json);
-        Assert.Contains("test_shelter", json);
+        Assert.Contains("test_blanket", json);
     }
 
     [Fact]
@@ -223,18 +205,19 @@ public class IslandWorldStateItemIntegrationTests
     {
         var world1 = new IslandWorldState();
         world1.WorldItems.Add(new CampfireItem("test_campfire") { FuelSeconds = 500.0, Quality = 75.0 });
-        world1.WorldItems.Add(new ShelterItem("test_shelter") { Quality = 60.0 });
-        
+        world1.WorldItems.Add(new PalmFrondBlanketItem("test_blanket") { Quality = 60.0 });
+
         var json = world1.Serialize();
-        
+
         var world2 = new IslandWorldState();
         world2.Deserialize(json);
-        
+
         Assert.Equal(2, world2.WorldItems.Count);
         Assert.NotNull(world2.MainCampfire);
-        Assert.NotNull(world2.MainShelter);
-        Assert.Equal(500.0, world2.MainCampfire.FuelSeconds);
+        var blanket = world2.WorldItems.OfType<PalmFrondBlanketItem>().FirstOrDefault();
+        Assert.NotNull(blanket);
+        Assert.Equal(500.0, world2.MainCampfire!.FuelSeconds);
         Assert.Equal(75.0, world2.MainCampfire.Quality);
-        Assert.Equal(60.0, world2.MainShelter.Quality);
+        Assert.Equal(60.0, blanket!.Quality);
     }
 }

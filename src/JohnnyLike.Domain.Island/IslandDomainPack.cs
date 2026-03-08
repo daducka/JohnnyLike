@@ -27,7 +27,6 @@ public class IslandDomainPack : IDomainPack
         world.AddWorldItem(new BeachItem("beach"), "beach");
         world.AddWorldItem(new OceanItem("ocean"), "beach");
         world.AddWorldItem(new CoconutTreeItem("palm_tree"), "beach");
-        world.AddWorldItem(new ShelterItem("main_shelter"), "beach");
         world.AddWorldItem(new StalactiteItem("stalactite"), "cave");
 
         var supplies = new SupplyPile("shared_supplies", "shared");

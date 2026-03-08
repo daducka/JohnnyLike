@@ -10,12 +10,14 @@ public static class IslandRecipeRegistry
     public static readonly IReadOnlyDictionary<string, RecipeDefinition> All =
         new Dictionary<string, RecipeDefinition>
         {
-            ["cook_fish"]    = CookFish.Define(),
-            ["umbrella"]     = Umbrella.Define(),
-            ["campfire"]     = Campfire.Define(),
-            ["rope"]         = Rope.Define(),
-            ["fishing_pole"] = FishingPole.Define(),
-            ["bait"]         = Bait.Define(),
+            ["cook_fish"]          = CookFish.Define(),
+            ["umbrella"]           = Umbrella.Define(),
+            ["campfire"]           = Campfire.Define(),
+            ["rope"]               = Rope.Define(),
+            ["fishing_pole"]       = FishingPole.Define(),
+            ["palm_frond_blanket"] = PalmFrondBlanket.Define(),
+            ["palm_frond_bed"]     = PalmFrondBed.Define(),
+            ["bait"]               = Bait.Define(),
         };
 
     public static RecipeDefinition Get(string id)
