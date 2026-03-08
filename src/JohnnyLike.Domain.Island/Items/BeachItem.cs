@@ -145,7 +145,15 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                         src.CommitReservation<RocksSupply>(key, 2.0, pile, () => new RocksSupply());
                         effectCtx.Actor.Morale += 8.0;
                         effectCtx.Actor.Energy -= 8.0;
-                        effectCtx.SetOutcomeNarration($"{actor} returns from the beach arms full of driftwood, sticks, and rocks.");
+                        if (effectCtx.Rng.NextDouble() < 0.15)
+                        {
+                            pile.AddSupply(1.0, () => new CarcassScrapsSupply());
+                            effectCtx.SetOutcomeNarration($"{actor} returns from the beach arms full of driftwood, sticks, and rocks — and finds some leftover fish scraps washed ashore.");
+                        }
+                        else
+                        {
+                            effectCtx.SetOutcomeNarration($"{actor} returns from the beach arms full of driftwood, sticks, and rocks.");
+                        }
                         break;
 
                     case RollOutcomeTier.Success:
@@ -154,7 +162,15 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                         src.CommitReservation<RocksSupply>(key, 1.0, pile, () => new RocksSupply());
                         effectCtx.Actor.Morale += 5.0;
                         effectCtx.Actor.Energy -= 10.0;
-                        effectCtx.SetOutcomeNarration($"{actor} picks through the tideline and gathers a useful armful of materials.");
+                        if (effectCtx.Rng.NextDouble() < 0.15)
+                        {
+                            pile.AddSupply(1.0, () => new CarcassScrapsSupply());
+                            effectCtx.SetOutcomeNarration($"{actor} picks through the tideline and gathers a useful armful of materials, also spotting some leftover fish scraps washed ashore.");
+                        }
+                        else
+                        {
+                            effectCtx.SetOutcomeNarration($"{actor} picks through the tideline and gathers a useful armful of materials.");
+                        }
                         break;
 
                     case RollOutcomeTier.PartialSuccess:

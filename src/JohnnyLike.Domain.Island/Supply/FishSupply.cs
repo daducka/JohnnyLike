@@ -44,6 +44,10 @@ public class FishSupply : SupplyItem, ISupplyActionCandidate
                 effectCtx.Actor.Morale  -= 5.0;
                 var actor = effectCtx.ActorId.Value;
                 effectCtx.SetOutcomeNarration($"{actor} gulps down the raw fish; cold and slimy, but it fills the belly.");
+
+                var sharedPile = effectCtx.World.SharedSupplyPile;
+                if (sharedPile != null)
+                    sharedPile.AddSupply(1.0, () => new CarcassScrapsSupply());
             }),
             PreAction: (Func<EffectContext, bool>)(effectCtx =>
                 pile.TryConsumeSupply<FishSupply>(1.0)),
