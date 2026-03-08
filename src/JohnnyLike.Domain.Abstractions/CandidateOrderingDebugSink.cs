@@ -30,7 +30,7 @@ public class CandidateOrderingDebugSink
     public int? ChosenOriginalRank { get; set; }
 
     /// <summary>
-    /// Per-candidate softmax weights and normalised probabilities in original sorted order.
+    /// Per-candidate softmax weights and normalized probabilities in original sorted order.
     /// Only populated by domains that support verbose tracing.
     /// </summary>
     public IReadOnlyList<SoftmaxWeightEntry>? SoftmaxWeightDetails { get; set; }
@@ -40,5 +40,5 @@ public class CandidateOrderingDebugSink
 /// <param name="ActionId">The action ID.</param>
 /// <param name="ProviderItemId">The provider item ID (may be null).</param>
 /// <param name="Weight">Raw (unnormalized) softmax weight.</param>
-/// <param name="Probability">Normalised probability (0..1).</param>
+/// <param name="Probability">Normalized probability (0..1).</param>
 public record SoftmaxWeightEntry(string ActionId, string? ProviderItemId, double Weight, double Probability);
