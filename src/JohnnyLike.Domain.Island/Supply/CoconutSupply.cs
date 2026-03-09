@@ -47,7 +47,7 @@ public class CoconutSupply : SupplyItem, ISupplyActionCandidate
                 "bash and eat coconut",
                 parameters.ToResultData()
             ),
-            0.5,
+            0.20,
             Reason: $"Bash and eat coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: (Action<EffectContext>)(effectCtx =>
             {

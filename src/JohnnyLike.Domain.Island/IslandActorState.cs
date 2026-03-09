@@ -216,7 +216,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 100L,
                 NarrationDescription: "wait and rest for a moment"
             ),
-            0.3,
+            0.12,
             Reason: "Idle",
             Qualities: new Dictionary<QualityType, double>
             {
@@ -262,7 +262,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             baseDC += 4;
 
         var parameters = ctx.RollSkillCheck(SkillType.Performance, baseDC);
-        var baseScore = 0.2;
+        var baseScore = 0.08;
 
         output.Add(new ActionCandidate(
             new ActionSpec(
@@ -334,7 +334,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random),
                 NarrationDescription: "think about available supplies"
             ),
-            0.2,
+            0.08,
             Reason: "Think about supplies",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
@@ -373,7 +373,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             160L,
                             NarrationDescription: "write name in the sand"
                         ),
-                        2.0, // High priority
+                        1.1, // High priority — chat redemptions override normal actions
                         Reason: $"Write {name}'s name in sand (chat redeem)",
                         EffectHandler: new Action<EffectContext>(effectCtx =>
                         {
@@ -402,7 +402,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             40L,
                             NarrationDescription: "clap"
                         ),
-                        2.0, // High priority
+                        1.0, // High priority — chat redemptions override normal actions
                         Reason: "Clap emote (sub/cheer)",
                         EffectHandler: new Action<EffectContext>(effectCtx =>
                         {
@@ -435,7 +435,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 600L + (long)(ctx.Rng.NextDouble() * 200),
                 NarrationDescription: "take a nap under the shade of a tree"
             ),
-            0.35,
+            0.16,
             Reason: "Sleep under tree",
             PreAction: (Func<EffectContext, bool>)(effectCtx =>
             {
@@ -478,7 +478,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) }
             ),
-            0.4,
+            0.18,
             Reason: $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             PreAction: (Func<EffectContext, bool>)(effectCtx =>
             {

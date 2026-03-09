@@ -586,7 +586,7 @@ public class IslandSignalHandlingTests
         // Should have a write_name_sand candidate with high priority
         var writeSandCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "write_name_sand");
         Assert.NotNull(writeSandCandidate);
-        Assert.True(writeSandCandidate.Score >= 2.0, $"Expected write_name_sand score >= 2.0 but got {writeSandCandidate.Score}");
+        Assert.True(writeSandCandidate.Score >= 1.0, $"Expected write_name_sand score >= 1.0 but got {writeSandCandidate.Score}");
         Assert.Contains("TestViewer", writeSandCandidate.Reason);
     }
 
@@ -963,7 +963,7 @@ public class ScoringPostPassTests
         // Both should have the same sleep score since energy is the same (default 100)
         Assert.Equal(fullSleepScore, hungrySleepScore);
 
-        // Coconut now has a static IntrinsicScore (0.6); both actors get the same IntrinsicScore
+        // Coconut now has a static IntrinsicScore (0.25); both actors get the same IntrinsicScore
         var hungryCoconutIntrinsic = hungryCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").IntrinsicScore;
         var fullCoconutIntrinsic = fullCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").IntrinsicScore;
         Assert.Equal(fullCoconutIntrinsic, hungryCoconutIntrinsic);
@@ -1163,7 +1163,7 @@ public class ScoringPostPassTests
         var thinkScore = candidates.First(c => c.Action.Id.Value == "think_about_supplies").Score;
 
         // With 0.6 Fun multiplier and Morale=70, Fun weight = (1 - 0.7) * 0.6 = 0.18
-        // swim base score (0.4) + Fun contribution (0.8 * 0.18) ≈ 0.544
+        // swim base score (0.18) + Fun contribution (0.8 * 0.18) ≈ 0.32
         // think_about_supplies has Preparation + Efficiency and should be competitive
         Assert.True(swimScore < 1.0,
             $"Swim score ({swimScore:F3}) should stay below 1.0 when actor is satisfied and morale is decent");

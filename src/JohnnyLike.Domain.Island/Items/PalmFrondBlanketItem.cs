@@ -44,7 +44,7 @@ public class PalmFrondBlanketItem : ToolItem
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(BlanketResource) }
             ),
-            0.55,
+            0.22,
             Reason: $"Repair blanket (quality: {Quality:F0}%, fronds: {frondsAvailable:F0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(ApplyRepairBlanketEffect),
             Qualities: new Dictionary<QualityType, double>
@@ -60,7 +60,7 @@ public class PalmFrondBlanketItem : ToolItem
     {
         // Quality-scaled base score: higher quality = better sleep, so the planner prefers repair when worn.
         var qualityFactor = Quality / 100.0;
-        var baseScore = 0.35 + (0.2 * qualityFactor); // 0.35–0.55, always better than tree (0.35) when healthy
+        var baseScore = 0.16 + (0.08 * qualityFactor); // 0.16–0.24, always better than tree when healthy
 
         var restQuality = 0.5 + (0.5 * qualityFactor); // 0.5–1.0
 

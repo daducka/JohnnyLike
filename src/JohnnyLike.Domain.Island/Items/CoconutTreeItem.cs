@@ -86,7 +86,7 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(PalmTreeResource) }
             ),
-            0.6,
+            0.25,
             Reason: $"Get coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             PreAction: new Func<EffectContext, bool>(_ =>
             {

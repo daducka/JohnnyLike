@@ -70,7 +70,7 @@ public class CampfireItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
-                0.6,
+                0.24,
                 Reason: $"Add fuel to campfire (fuel: {FuelSeconds:F0}s, wood: {currentWood:F1}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyAddFuelEffect),
                 Qualities: new Dictionary<QualityType, double>
@@ -98,7 +98,7 @@ public class CampfireItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
-                0.6,
+                0.26,
                 Reason: $"Relight campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyRelightEffect),
                 Qualities: new Dictionary<QualityType, double>
@@ -126,7 +126,7 @@ public class CampfireItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
-                0.5,
+                0.20,
                 Reason: $"Repair campfire (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyRepairEffect),
                 Qualities: new Dictionary<QualityType, double>
@@ -154,7 +154,7 @@ public class CampfireItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
                 ),
-                0.7,
+                0.28,
                 Reason: $"Rebuild campfire from scratch (rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyRebuildEffect),
                 Qualities: new Dictionary<QualityType, double>

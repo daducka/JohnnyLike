@@ -47,7 +47,7 @@ public class PalmFrondBedItem : ToolItem
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(BedResource) }
             ),
-            0.6,
+            0.24,
             Reason: $"Repair bed (quality: {Quality:F0}%, fronds: {frondsAvailable:F0}, sticks: {sticksAvailable:F0}, rope: {ropeAvailable:F0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(ApplyRepairBedEffect),
             Qualities: new Dictionary<QualityType, double>
@@ -63,7 +63,7 @@ public class PalmFrondBedItem : ToolItem
     {
         // Quality-scaled base score: always better than blanket when healthy.
         var qualityFactor = Quality / 100.0;
-        var baseScore = 0.55 + (0.2 * qualityFactor); // 0.55–0.75
+        var baseScore = 0.20 + (0.10 * qualityFactor); // 0.20–0.30
 
         var restQuality = 0.6 + (0.4 * qualityFactor); // 0.6–1.0
 

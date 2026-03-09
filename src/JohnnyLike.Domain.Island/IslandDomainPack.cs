@@ -699,6 +699,27 @@ public class IslandDomainPack : IDomainPack
                 effectiveWeights[q.ToString()] = w;
         }
 
+        // Quality model decomposition: shows how each effective weight is built from
+        // its three independent sources so traces make tuning decisions transparent.
+        var qualityModelDecomposition = new Dictionary<string, object>();
+        foreach (var q in Enum.GetValues<QualityType>())
+        {
+            model.NeedAdd.TryGetValue(q, out var needAdd);
+            model.PersonalityBase.TryGetValue(q, out var personalityBase);
+            model.MoodMultiplier.TryGetValue(q, out var moodMultiplier);
+            var effectiveWeight = model.EffectiveWeight(q);
+            if (needAdd == 0.0 && personalityBase == 0.0 && moodMultiplier == 0.0)
+                continue;
+
+            qualityModelDecomposition[q.ToString()] = new Dictionary<string, object>
+            {
+                ["needAdd"]         = Math.Round(needAdd,          4),
+                ["personalityBase"] = Math.Round(personalityBase,  4),
+                ["moodMultiplier"]  = Math.Round(moodMultiplier,   4),
+                ["effectiveWeight"] = Math.Round(effectiveWeight,  4)
+            };
+        }
+
         var candidateBreakdowns = candidates.Select(c =>
         {
             var contributions = new Dictionary<string, object>();
@@ -730,10 +751,11 @@ public class IslandDomainPack : IDomainPack
 
         return new Dictionary<string, object>
         {
-            ["actorStats"]           = actorStats,
-            ["pressures"]            = pressures,
-            ["effectiveWeights"]     = effectiveWeights,
-            ["candidateBreakdowns"]  = candidateBreakdowns
+            ["actorStats"]               = actorStats,
+            ["pressures"]                = pressures,
+            ["effectiveWeights"]         = effectiveWeights,
+            ["qualityModelDecomposition"] = qualityModelDecomposition,
+            ["candidateBreakdowns"]      = candidateBreakdowns
         };
     }
 }

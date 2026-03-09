@@ -26,7 +26,7 @@ public static class Bait
 
             Duration: EngineConstants.TimeToTicks(10.0),
 
-            IntrinsicScore: 0.5,
+            IntrinsicScore: 0.18,
 
             Qualities: new Dictionary<QualityType, double>
             {

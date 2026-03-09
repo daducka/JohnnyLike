@@ -29,7 +29,7 @@ public static class Campfire
 
             Duration: EngineConstants.TimeToTicks(60.0),
 
-            IntrinsicScore: 0.8,
+            IntrinsicScore: 0.28,
 
             Qualities: new Dictionary<QualityType, double>
             {
