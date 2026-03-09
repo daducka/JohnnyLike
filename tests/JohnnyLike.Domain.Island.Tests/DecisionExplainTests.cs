@@ -320,11 +320,11 @@ public class DecisionExplainTests
         Assert.True(selected!.Details.ContainsKey("scoringExplanation"),
             "DecisionSelected should include scoringExplanation at Verbose level");
 
-        var payload = (Dictionary<string, object>)selected.Details["scoringExplanation"];
-        Assert.True(payload.ContainsKey("actorStats"));
-        Assert.True(payload.ContainsKey("pressures"));
-        Assert.True(payload.ContainsKey("effectiveWeights"));
-        Assert.True(payload.ContainsKey("candidateBreakdowns"));
+        var json = selected.Details["scoringExplanation"].ToString()!;
+        Assert.Contains("actorStats", json);
+        Assert.Contains("pressures", json);
+        Assert.Contains("effectiveWeights", json);
+        Assert.Contains("candidateBreakdowns", json);
     }
 
     [Fact]

@@ -256,8 +256,10 @@ public class DecisionTraceTests
         var evt = sink.GetEvents().FirstOrDefault(e => e.EventType == "DecisionCandidatesRanked");
         Assert.NotNull(evt);
         Assert.Equal(2, (int)evt!.Details["candidateCount"]);
-        var candidates = (List<object>)evt.Details["candidates"];
-        Assert.Equal(2, candidates.Count);
+        // candidates is serialized to a JSON string for readable log output
+        var candidatesJson = evt.Details["candidates"].ToString()!;
+        Assert.Contains("best_action", candidatesJson);
+        Assert.Contains("second_action", candidatesJson);
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -406,8 +408,8 @@ public class DecisionTraceTests
 
         var selected = sink.GetEvents().First(e => e.EventType == "DecisionSelected");
         Assert.True(selected.Details.ContainsKey("scoringExplanation"));
-        var payload = (Dictionary<string, object>)selected.Details["scoringExplanation"];
-        Assert.Equal("hello_from_domain", payload["test_explanation"].ToString());
+        var json = selected.Details["scoringExplanation"].ToString()!;
+        Assert.Contains("hello_from_domain", json);
     }
 
     [Fact]

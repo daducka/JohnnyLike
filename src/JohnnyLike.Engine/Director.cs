@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using System.Text.Json;
 
 namespace JohnnyLike.Engine;
 
@@ -132,7 +133,7 @@ public class Director
                 if (c.Qualities.Count > 0)
                     d["qualities"] = string.Join(",",
                         c.Qualities.Select(kvp => $"{kvp.Key}={kvp.Value:F3}"));
-                return (object)d;
+                return d;
             }).ToList();
 
             _traceSink.Record(new TraceEvent(currentTick, actorId, "DecisionCandidatesRanked",
@@ -140,7 +141,7 @@ public class Director
                 {
                     ["actorId"]        = actorId.Value,
                     ["candidateCount"] = sortedCandidates.Count,
-                    ["candidates"]     = candidateList
+                    ["candidates"]     = JsonSerializer.Serialize(candidateList)
                 }));
         }
 
@@ -159,13 +160,14 @@ public class Director
             if (orderingSink.ChosenActionId != null)       od["chosenActionId"]     = orderingSink.ChosenActionId;
             if (orderingSink.ChosenOriginalRank.HasValue)  od["chosenOriginalRank"] = orderingSink.ChosenOriginalRank.Value;
             if (trace.IsVerbose && orderingSink.SoftmaxWeightDetails != null)
-                od["softmaxWeights"] = orderingSink.SoftmaxWeightDetails
-                    .Select(e => (object)new Dictionary<string, object>
-                    {
-                        ["actionId"]    = e.ActionId,
-                        ["weight"]      = e.Weight,
-                        ["probability"] = e.Probability
-                    }).ToList();
+                od["softmaxWeights"] = JsonSerializer.Serialize(
+                    orderingSink.SoftmaxWeightDetails
+                        .Select(e => new Dictionary<string, object>
+                        {
+                            ["actionId"]    = e.ActionId,
+                            ["weight"]      = e.Weight,
+                            ["probability"] = e.Probability
+                        }).ToList());
             _traceSink.Record(new TraceEvent(currentTick, actorId, "DecisionOrderingApplied", od));
         }
 
@@ -350,7 +352,7 @@ public class Director
             d["topAlternatives"] = string.Join(",",
                 info.TopAlternatives.Select(a => $"{a.ActionId}={a.FinalScore:F3}"));
         if (scoringExplanation != null)
-            d["scoringExplanation"] = scoringExplanation;
+            d["scoringExplanation"] = JsonSerializer.Serialize(scoringExplanation);
         _traceSink.Record(new TraceEvent(tick, actorId, "DecisionSelected", d));
     }
 }
