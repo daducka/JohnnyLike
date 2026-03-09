@@ -34,6 +34,10 @@ public class CoconutSupply : SupplyItem, ISupplyActionCandidate
         var baseDC = 10;
         var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
 
+        // Diminishing returns: food appeal scales down when actor is already satisfied.
+        // satietyFactor approaches 1 when very hungry, drops to 0 when fully satiated.
+        var satietyFactor = Math.Clamp((100.0 - ctx.Actor.Satiety) / 60.0, 0.0, 1.0);
+
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("bash_and_eat_coconut"),
@@ -85,7 +89,7 @@ public class CoconutSupply : SupplyItem, ISupplyActionCandidate
                 pile.TryConsumeSupply<CoconutSupply>(1.0)),
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.FoodConsumption] = 0.8,
+                [QualityType.FoodConsumption] = 0.8 * satietyFactor,
                 [QualityType.Comfort]         = 0.1
             }
         ));

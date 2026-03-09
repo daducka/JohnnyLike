@@ -993,6 +993,128 @@ public class ScoringPostPassTests
         Assert.True(sleepScore > idleScore,
             $"Sleep score ({sleepScore:F3}) should be greater than idle ({idleScore:F3}) when energy is very low");
     }
+
+    [Fact]
+    public void StagedHungerRamp_HighSatiety_ProducesNearZeroFoodNeed()
+    {
+        // At satiety >= 75 the staged ramp should produce ~0 FoodConsumption need,
+        // so coconut-tree score should be close to its intrinsic score only.
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+
+        var satisfiedState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 80.0 });
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        ((ISupplyBounty)worldState.GetItem<CoconutTreeItem>("palm_tree")!).GetSupply<CoconutSupply>("coconut")!.Quantity = 10;
+
+        var candidates = domain.GenerateCandidates(actorId, satisfiedState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+        var coconut = candidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
+
+        // FoodConsumption need weight should be 0 at satiety=80 (>= 75)
+        // Score = IntrinsicScore + Preparation * prepWeight + Efficiency * effWeight + Safety * safetyWeight
+        // The FoodConsumption contribution should be 0.
+        Assert.True(coconut.Score <= coconut.IntrinsicScore + 1.0,
+            $"Coconut score ({coconut.Score:F3}) should not be inflated by food need when satiety is 80");
+    }
+
+    [Fact]
+    public void StagedHungerRamp_StarvedActorScoresFoodHigherThanSatisfiedActor()
+    {
+        // A starving actor (satiety=10) should score food actions much higher than a satisfied actor (satiety=80).
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+
+        var starvingState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 10.0 });
+        var satisfiedState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 80.0 });
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        ((ISupplyBounty)worldState.GetItem<CoconutTreeItem>("palm_tree")!).GetSupply<CoconutSupply>("coconut")!.Quantity = 10;
+
+        var starvingCandidates = domain.GenerateCandidates(actorId, starvingState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+        var satisfiedCandidates = domain.GenerateCandidates(actorId, satisfiedState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var starvingCoconutScore = starvingCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").Score;
+        var satisfiedCoconutScore = satisfiedCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").Score;
+
+        Assert.True(starvingCoconutScore > satisfiedCoconutScore,
+            $"Starving actor coconut score ({starvingCoconutScore:F3}) should exceed satisfied actor ({satisfiedCoconutScore:F3})");
+    }
+
+    [Fact]
+    public void ShakeTreeCoconut_HasPreparationQuality()
+    {
+        // shake_tree_coconut should now carry Preparation quality (resource provisioning step).
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 30.0 });
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        ((ISupplyBounty)worldState.GetItem<CoconutTreeItem>("palm_tree")!).GetSupply<CoconutSupply>("coconut")!.Quantity = 10;
+
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+        var coconut = candidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
+
+        Assert.True(coconut.Qualities.ContainsKey(QualityType.Preparation),
+            "shake_tree_coconut should have Preparation quality after reclassification");
+        Assert.True(coconut.Qualities[QualityType.FoodConsumption] < 0.5,
+            $"shake_tree_coconut FoodConsumption quality ({coconut.Qualities[QualityType.FoodConsumption]}) should be < 0.5 after reclassification");
+    }
+
+    [Fact]
+    public void BashAndEatCoconut_FoodConsumptionQuality_ScalesWithSatiety()
+    {
+        // bash_and_eat_coconut should have diminishing FoodConsumption quality when satiety is high.
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+
+        // Satiety=10 → satietyFactor = clamp((100-10)/60, 0, 1) = clamp(1.5, 0, 1) = 1.0
+        var hungryState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 10.0 });
+        // Satiety=70 → satietyFactor = clamp((100-70)/60, 0, 1) = clamp(0.5, 0, 1) = 0.5
+        var satisfiedState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 70.0 });
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        worldState.SharedSupplyPile!.GetOrCreateSupply(() => new Supply.CoconutSupply()).Quantity = 10;
+
+        var hungryCandidates = domain.GenerateCandidates(actorId, hungryState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+        var satisfiedCandidates = domain.GenerateCandidates(actorId, satisfiedState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var hungryEat = hungryCandidates.FirstOrDefault(c => c.Action.Id.Value == "bash_and_eat_coconut");
+        var satisfiedEat = satisfiedCandidates.FirstOrDefault(c => c.Action.Id.Value == "bash_and_eat_coconut");
+
+        if (hungryEat != null && satisfiedEat != null)
+        {
+            Assert.True(
+                hungryEat.Qualities[QualityType.FoodConsumption] > satisfiedEat.Qualities[QualityType.FoodConsumption],
+                $"Hungry actor food quality ({hungryEat.Qualities[QualityType.FoodConsumption]:F3}) should exceed satisfied actor ({satisfiedEat.Qualities[QualityType.FoodConsumption]:F3})");
+        }
+    }
+
+    [Fact]
+    public void FunWeight_SuppressedWhenStarving()
+    {
+        // When satiety < 25, Fun weight should be suppressed so recreational actions don't outrank survival actions.
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+
+        // Morale=0 maximises Fun weight; satiety=10 should suppress it
+        var starvingLowMorale = domain.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            ["satiety"] = 10.0,
+            ["morale"]  = 0.0
+        });
+        var hungryLowMorale = domain.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            ["satiety"] = 50.0,  // above threshold, Fun not suppressed
+            ["morale"]  = 0.0
+        });
+        var worldState = domain.CreateInitialWorldState();
+
+        var starvingCandidates = domain.GenerateCandidates(actorId, starvingLowMorale, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+        var hungryCandidates = domain.GenerateCandidates(actorId, hungryLowMorale, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var starvingSwim = starvingCandidates.First(c => c.Action.Id.Value == "swim");
+        var hungrySwim = hungryCandidates.First(c => c.Action.Id.Value == "swim");
+
+        // Starving actor should have lower swim score because Fun weight is reduced by 0.35×
+        Assert.True(starvingSwim.Score < hungrySwim.Score,
+            $"Starving actor swim score ({starvingSwim.Score:F3}) should be less than non-starving low-morale actor ({hungrySwim.Score:F3}) due to Fun suppression");
+    }
 }
 
 public class ActionCandidateQualitiesTests

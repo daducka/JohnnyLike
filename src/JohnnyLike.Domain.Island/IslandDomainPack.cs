@@ -195,10 +195,26 @@ public class IslandDomainPack : IDomainPack
         // Dynamic physiological / psychological state.
         // Each deficit becomes a "pressure" that adds weight to a need quality.
 
-        var hungerPressure  = 100.0 - actor.Satiety;   // → FoodConsumption
         var fatiguePressure = 100.0 - actor.Energy;    // → Rest
         var miseryPressure  = 100.0 - actor.Morale;    // → Comfort
         var injuryPressure  = 100.0 - actor.Health;    // → Safety
+
+        // ── Staged hunger ramp ────────────────────────────────────────────────────
+        // Hunger urgency only builds meaningfully below certain satiety thresholds
+        // so actors don't seek food when already satisfied.
+        //   Satiety >= 75 : ~0    (no urgency)
+        //   Satiety 50–75 :  0 → 0.5  (mild)
+        //   Satiety 25–50 :  0.5 → 1.5  (moderate)
+        //   Satiety  0–25 :  1.5 → 2.0  (strong)
+        double stagedHungerNeed;
+        if (actor.Satiety >= 75.0)
+            stagedHungerNeed = 0.0;
+        else if (actor.Satiety >= 50.0)
+            stagedHungerNeed = (75.0 - actor.Satiety) / 25.0 * 0.5;
+        else if (actor.Satiety >= 25.0)
+            stagedHungerNeed = 0.5 + (50.0 - actor.Satiety) / 25.0 * 1.0;
+        else
+            stagedHungerNeed = 1.5 + (25.0 - actor.Satiety) / 25.0 * 0.5;
 
         // ── Traits ────────────────────────────────────────────────────────────────
         // Stable personality tendencies derived from pairs of core abilities.
@@ -220,7 +236,7 @@ public class IslandDomainPack : IDomainPack
         // Scale factors keep pressures comparable across the 0-100 range.
         var needAdd = new Dictionary<QualityType, double>
         {
-            [QualityType.FoodConsumption] = hungerPressure  * 0.02,
+            [QualityType.FoodConsumption] = stagedHungerNeed,
             [QualityType.Rest]            = fatiguePressure * 0.015,
             [QualityType.Comfort]         = miseryPressure  * 0.01,
             [QualityType.Safety]          = injuryPressure  * 0.01
@@ -247,7 +263,8 @@ public class IslandDomainPack : IDomainPack
                                                 actor.Health  < 30.0 ? 0.5 : 1.0   // injured → heal, not cook
                                             ),
             [QualityType.Mastery]         = actor.Energy  < 20.0 ? 0.4 : 1.0, // exhausted → rest, not work
-            [QualityType.Fun]             = 1.0 - (actor.Morale / 100.0),  // amplified when morale is low
+            [QualityType.Fun]             = (1.0 - (actor.Morale / 100.0)) *
+                                                (actor.Satiety < 25.0 || actor.Energy < 20.0 ? 0.35 : 1.0),
             [QualityType.Efficiency]      = 1.0,
             [QualityType.Comfort]         = 1.0,
             [QualityType.Safety]          = 1.0,
