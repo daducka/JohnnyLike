@@ -15,6 +15,7 @@ if (args.Length == 0)
     Console.WriteLine("  --decision-summary        Emit summary decision trace events (chosen action + reason)");
     Console.WriteLine("  --decision-candidates     Emit per-candidate decision trace events");
     Console.WriteLine("  --decision-verbose        Emit verbose decision trace (includes scoring explanation)");
+    Console.WriteLine("  --save-artifacts          Save trace logs to artifacts/ directory");
     Console.WriteLine("\nFuzz Testing:");
     Console.WriteLine("  --fuzz              Run fuzz testing mode");
     Console.WriteLine("  --runs <number>     Number of fuzz runs (default: 1)");
@@ -95,11 +96,11 @@ if (fuzzMode)
 }
 else if (!string.IsNullOrEmpty(scenarioPath))
 {
-    RunScenario(scenarioPath, outputTrace, domainName, decisionTraceLevel);
+    RunScenario(scenarioPath, outputTrace, domainName, decisionTraceLevel, saveArtifacts);
 }
 else
 {
-    RunDefault(seed, duration, outputTrace, domainName, decisionTraceLevel);
+    RunDefault(seed, duration, outputTrace, domainName, decisionTraceLevel, saveArtifacts);
 }
 
 IDomainPack CreateDomainPack(string domainName)
@@ -111,14 +112,15 @@ IDomainPack CreateDomainPack(string domainName)
     };
 }
 
-void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel)
+void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel, bool saveArtifacts = false)
 {
-    Console.WriteLine($"Loading scenario from: {path}");
     var scenario = ScenarioLoader.LoadFromFile(path);
-    
-    Console.WriteLine($"Running scenario: {scenario.Name}");
-    Console.WriteLine($"Seed: {scenario.Seed}, Duration: {scenario.DurationSeconds}s");
-    Console.WriteLine($"Domain: {domainName}");
+    using var writer = CreateArtifactWriter(saveArtifacts, domainName, scenario.Seed);
+
+    writer.WriteLine($"Loading scenario from: {path}");
+    writer.WriteLine($"Running scenario: {scenario.Name}");
+    writer.WriteLine($"Seed: {scenario.Seed}, Duration: {scenario.DurationSeconds}s");
+    writer.WriteLine($"Domain: {domainName}");
     
     var domainPack = CreateDomainPack(domainName);
     var traceSink = new InMemoryTraceSink();
@@ -129,7 +131,7 @@ void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.D
     foreach (var actorDef in scenario.Actors)
     {
         engine.AddActor(new ActorId(actorDef.ActorId), actorDef.InitialState);
-        Console.WriteLine($"Added actor: {actorDef.ActorId}");
+        writer.WriteLine($"Added actor: {actorDef.ActorId}");
     }
     
     // Enqueue signals
@@ -153,30 +155,32 @@ void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.D
         elapsed += timeStep;
     }
     
-    Console.WriteLine($"\nSimulation completed at t={engine.CurrentSeconds:F2}s");
-    Console.WriteLine($"Total events: {traceSink.GetEvents().Count}");
+    writer.WriteLine($"\nSimulation completed at t={engine.CurrentSeconds:F2}s");
+    writer.WriteLine($"Total events: {traceSink.GetEvents().Count}");
     
     if (trace)
     {
-        Console.WriteLine("\n=== TRACE ===");
+        writer.WriteLine("\n=== TRACE ===");
         foreach (var evt in traceSink.GetEvents())
         {
-            Console.WriteLine(evt);
+            writer.WriteLine(evt.ToString());
         }
     }
     else if (decisionLevel > JohnnyLike.Engine.DecisionTraceLevel.None)
     {
-        PrintDecisionSummary(traceSink.GetEvents(), decisionLevel);
+        PrintDecisionSummary(traceSink.GetEvents(), decisionLevel, writer);
     }
     
     var hash = JohnnyLike.Engine.TraceHelper.ComputeTraceHash(traceSink.GetEvents());
-    Console.WriteLine($"\nTrace hash: {hash}");
+    writer.WriteLine($"\nTrace hash: {hash}");
 }
 
-void RunDefault(int seed, double duration, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel)
+void RunDefault(int seed, double duration, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel, bool saveArtifacts = false)
 {
-    Console.WriteLine($"Running default {domainName} simulation");
-    Console.WriteLine($"Seed: {seed}, Duration: {duration}s");
+    using var writer = CreateArtifactWriter(saveArtifacts, domainName, seed);
+
+    writer.WriteLine($"Running default {domainName} simulation");
+    writer.WriteLine($"Seed: {seed}, Duration: {duration}s");
     
     var domainPack = CreateDomainPack(domainName);
     var traceSink = new InMemoryTraceSink();
@@ -209,24 +213,24 @@ void RunDefault(int seed, double duration, bool trace, string domainName, Johnny
         elapsed += timeStep;
     }
     
-    Console.WriteLine($"\nSimulation completed at t={engine.CurrentSeconds:F2}s");
-    Console.WriteLine($"Total events: {traceSink.GetEvents().Count}");
+    writer.WriteLine($"\nSimulation completed at t={engine.CurrentSeconds:F2}s");
+    writer.WriteLine($"Total events: {traceSink.GetEvents().Count}");
     
     if (trace)
     {
-        Console.WriteLine("\n=== TRACE ===");
+        writer.WriteLine("\n=== TRACE ===");
         foreach (var evt in traceSink.GetEvents())
         {
-            Console.WriteLine(evt);
+            writer.WriteLine(evt.ToString());
         }
     }
     else if (decisionLevel > JohnnyLike.Engine.DecisionTraceLevel.None)
     {
-        PrintDecisionSummary(traceSink.GetEvents(), decisionLevel);
+        PrintDecisionSummary(traceSink.GetEvents(), decisionLevel, writer);
     }
     
     var hash = JohnnyLike.Engine.TraceHelper.ComputeTraceHash(traceSink.GetEvents());
-    Console.WriteLine($"\nTrace hash: {hash}");
+    writer.WriteLine($"\nTrace hash: {hash}");
 }
 
 void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool verbose, string domainName, bool saveArtifacts)
@@ -322,7 +326,7 @@ void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool
     }
 }
 
-void PrintDecisionSummary(List<TraceEvent> events, JohnnyLike.Engine.DecisionTraceLevel level)
+void PrintDecisionSummary(List<TraceEvent> events, JohnnyLike.Engine.DecisionTraceLevel level, TextWriter writer)
 {
     var decisionEvents = events.Where(e =>
         e.EventType is "DecisionSelected" or "DecisionNoActionAvailable" or
@@ -333,7 +337,7 @@ void PrintDecisionSummary(List<TraceEvent> events, JohnnyLike.Engine.DecisionTra
     if (decisionEvents.Count == 0)
         return;
 
-    Console.WriteLine($"\n=== DECISION SUMMARY ({level}) ===");
+    writer.WriteLine($"\n=== DECISION SUMMARY ({level}) ===");
     foreach (var evt in decisionEvents)
     {
         var actor = evt.ActorId.HasValue ? evt.ActorId.Value.ToString() : "SYSTEM";
@@ -346,32 +350,55 @@ void PrintDecisionSummary(List<TraceEvent> events, JohnnyLike.Engine.DecisionTra
                 evt.Details.TryGetValue("orderingBranch",  out var ob);
                 evt.Details.TryGetValue("originalRank",    out var or);
                 evt.Details.TryGetValue("attemptRank",     out var ar);
-                Console.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} → {ai} " +
+                writer.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} → {ai} " +
                     $"(score={fs:F3}, reason={sr}, branch={ob ?? "n/a"}, rank={or ?? ar})");
                 if (evt.Details.TryGetValue("topAlternatives", out var alts))
-                    Console.WriteLine($"         alts: {alts}");
+                    writer.WriteLine($"         alts: {alts}");
                 break;
             case "DecisionNoActionAvailable":
                 evt.Details.TryGetValue("reason", out var reason);
-                Console.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} → NO ACTION ({reason})");
+                writer.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} → NO ACTION ({reason})");
                 break;
             case "DecisionOrderingApplied":
                 evt.Details.TryGetValue("orderingBranch",   out var branch);
                 evt.Details.TryGetValue("decisionPragmatism", out var pragma);
                 evt.Details.TryGetValue("temperature",      out var temp);
-                Console.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} ordering={branch}, P={pragma}, T={temp ?? "n/a"}");
+                writer.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} ordering={branch}, P={pragma}, T={temp ?? "n/a"}");
                 break;
             case "DecisionCandidatesRanked":
                 evt.Details.TryGetValue("candidateCount", out var cc);
-                Console.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} ranked {cc} candidates");
+                writer.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} ranked {cc} candidates");
                 break;
             case "DecisionCandidateRejected":
                 evt.Details.TryGetValue("failedActionId",  out var fa);
                 evt.Details.TryGetValue("rejectionReason", out var rr);
-                Console.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} rejected {fa} ({rr})");
+                writer.WriteLine($"[{evt.TimeSeconds:F2}s] {actor} rejected {fa} ({rr})");
                 break;
         }
     }
+}
+
+TeeWriter CreateArtifactWriter(bool saveArtifacts, string domainName, int seed)
+{
+    if (!saveArtifacts)
+        return new TeeWriter(Console.Out);
+
+    var artifactsDir = "artifacts";
+    Directory.CreateDirectory(artifactsDir);
+    var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff");
+    var tracePath = Path.Combine(artifactsDir, $"trace-{domainName}-seed{seed}-{timestamp}.txt");
+    Console.WriteLine($"Saving trace to {tracePath}");
+    StreamWriter fileWriter;
+    try
+    {
+        fileWriter = new StreamWriter(tracePath);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Warning: could not open artifact file '{tracePath}': {ex.Message}. Falling back to console only.");
+        return new TeeWriter(Console.Out);
+    }
+    return new TeeWriter(Console.Out, fileWriter);
 }
 
 void SaveFuzzArtifacts(string profileName, int totalRuns, int successCount, List<FuzzRunResult> failures)
