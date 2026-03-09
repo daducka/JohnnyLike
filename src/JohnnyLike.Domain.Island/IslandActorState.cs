@@ -262,7 +262,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             baseDC += 4;
 
         var parameters = ctx.RollSkillCheck(SkillType.Performance, baseDC);
-        var baseScore = 0.3;
+        var baseScore = 0.2;
 
         output.Add(new ActionCandidate(
             new ActionSpec(
@@ -478,7 +478,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) }
             ),
-            0.5,
+            0.4,
             Reason: $"Swim (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             PreAction: (Func<EffectContext, bool>)(effectCtx =>
             {

@@ -997,7 +997,7 @@ public class ScoringPostPassTests
     [Fact]
     public void StagedHungerRamp_HighSatiety_ProducesNearZeroFoodNeed()
     {
-        // At satiety >= 75 the staged ramp should produce ~0 FoodConsumption need,
+        // At satiety >= 70 the staged ramp should produce ~0 FoodConsumption need,
         // so coconut-tree score should be close to its intrinsic score only.
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
@@ -1009,11 +1009,34 @@ public class ScoringPostPassTests
         var candidates = domain.GenerateCandidates(actorId, satisfiedState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
         var coconut = candidates.First(c => c.Action.Id.Value == "shake_tree_coconut");
 
-        // FoodConsumption need weight should be 0 at satiety=80 (>= 75)
+        // FoodConsumption need weight should be 0 at satiety=80 (>= 70)
         // Score = IntrinsicScore + Preparation * prepWeight + Efficiency * effWeight + Safety * safetyWeight
         // The FoodConsumption contribution should be 0.
         Assert.True(coconut.Score <= coconut.IntrinsicScore + 1.0,
             $"Coconut score ({coconut.Score:F3}) should not be inflated by food need when satiety is 80");
+    }
+
+    [Fact]
+    public void StagedHungerRamp_MidSatiety_ProducesVeryMildFoodNeed()
+    {
+        // At satiety=60 (in the 50-70 "very mild" band), hunger pressure should be negligible
+        // compared to satiety=20 (strong hunger).
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+
+        var midSatietyState = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 60.0 });
+        var starvingState   = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 20.0 });
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        ((ISupplyBounty)worldState.GetItem<CoconutTreeItem>("palm_tree")!).GetSupply<CoconutSupply>("coconut")!.Quantity = 10;
+
+        var midCandidates = domain.GenerateCandidates(actorId, midSatietyState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+        var starvingCandidates = domain.GenerateCandidates(actorId, starvingState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var midCoconutScore      = midCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").Score;
+        var starvingCoconutScore = starvingCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").Score;
+
+        Assert.True(starvingCoconutScore > midCoconutScore + 0.4,
+            $"Starving actor coconut score ({starvingCoconutScore:F3}) should be meaningfully higher than mid-satiety ({midCoconutScore:F3})");
     }
 
     [Fact]
@@ -1114,6 +1137,36 @@ public class ScoringPostPassTests
         // Starving actor should have lower swim score because Fun weight is reduced by 0.35×
         Assert.True(starvingSwim.Score < hungrySwim.Score,
             $"Starving actor swim score ({starvingSwim.Score:F3}) should be less than non-starving low-morale actor ({hungrySwim.Score:F3}) due to Fun suppression");
+    }
+
+    [Fact]
+    public void FunWeight_ReducedBaseline_SwimScoreLowerThanSurvivalActions_WhenFullyNourished()
+    {
+        // With the 0.6 Fun multiplier, swim should not dominate when the actor is fully satisfied
+        // and has decent morale (e.g., 70). Survival-oriented actions like think_about_supplies
+        // or shake_tree_coconut should be competitive.
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+
+        // Full health/energy, decent morale — beach-vacation scenario that should NOT dominate
+        var actorState = domain.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            ["satiety"] = 90.0,
+            ["energy"]  = 90.0,
+            ["morale"]  = 70.0
+        });
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var swimScore  = candidates.First(c => c.Action.Id.Value == "swim").Score;
+        var thinkScore = candidates.First(c => c.Action.Id.Value == "think_about_supplies").Score;
+
+        // With 0.6 Fun multiplier and Morale=70, Fun weight = (1 - 0.7) * 0.6 = 0.18
+        // swim base score (0.4) + Fun contribution (0.8 * 0.18) ≈ 0.544
+        // think_about_supplies has Preparation + Efficiency and should be competitive
+        Assert.True(swimScore < 1.0,
+            $"Swim score ({swimScore:F3}) should stay below 1.0 when actor is satisfied and morale is decent");
     }
 }
 

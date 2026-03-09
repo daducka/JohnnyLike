@@ -202,19 +202,19 @@ public class IslandDomainPack : IDomainPack
         // ── Staged hunger ramp ────────────────────────────────────────────────────
         // Hunger urgency only builds meaningfully below certain satiety thresholds
         // so actors don't seek food when already satisfied.
-        //   Satiety >= 75 : ~0    (no urgency)
-        //   Satiety 50–75 :  0 → 0.5  (mild)
-        //   Satiety 25–50 :  0.5 → 1.5  (moderate)
-        //   Satiety  0–25 :  1.5 → 2.0  (strong)
+        //   Satiety >= 70 : ~0    (no urgency)
+        //   Satiety 50–70 :  0 → 0.3  (very mild)
+        //   Satiety 30–50 :  0.3 → 1.5  (moderate)
+        //   Satiety  0–30 :  1.5 → 2.0  (strong)
         double stagedHungerNeed;
-        if (actor.Satiety >= 75.0)
+        if (actor.Satiety >= 70.0)
             stagedHungerNeed = 0.0;
         else if (actor.Satiety >= 50.0)
-            stagedHungerNeed = (75.0 - actor.Satiety) / 25.0 * 0.5;
-        else if (actor.Satiety >= 25.0)
-            stagedHungerNeed = 0.5 + (50.0 - actor.Satiety) / 25.0 * 1.0;
+            stagedHungerNeed = (70.0 - actor.Satiety) / 20.0 * 0.3;
+        else if (actor.Satiety >= 30.0)
+            stagedHungerNeed = 0.3 + (50.0 - actor.Satiety) / 20.0 * 1.2;
         else
-            stagedHungerNeed = 1.5 + (25.0 - actor.Satiety) / 25.0 * 0.5;
+            stagedHungerNeed = 1.5 + (30.0 - actor.Satiety) / 30.0 * 0.5;
 
         // ── Traits ────────────────────────────────────────────────────────────────
         // Stable personality tendencies derived from pairs of core abilities.
@@ -263,7 +263,7 @@ public class IslandDomainPack : IDomainPack
                                                 actor.Health  < 30.0 ? 0.5 : 1.0   // injured → heal, not cook
                                             ),
             [QualityType.Mastery]         = actor.Energy  < 20.0 ? 0.4 : 1.0, // exhausted → rest, not work
-            [QualityType.Fun]             = (1.0 - (actor.Morale / 100.0)) *
+            [QualityType.Fun]             = (1.0 - (actor.Morale / 100.0)) * 0.6 *
                                                 (actor.Satiety < 25.0 || actor.Energy < 20.0 ? 0.35 : 1.0),
             [QualityType.Efficiency]      = 1.0,
             [QualityType.Comfort]         = 1.0,
