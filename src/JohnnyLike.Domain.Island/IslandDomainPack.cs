@@ -118,8 +118,6 @@ public class IslandDomainPack : IDomainPack
 
         // Iterate items in stable (sorted-by-Id) order for determinism.
         // Tag each candidate with the ProviderItemId for engine-level room filtering and tie-breaking.
-        // All collected candidates that do not already declare an ActorRequirement are assigned
-        // AliveOnly so that future death/downed work can gate them without a large retrofit pass.
         foreach (var item in islandWorld.WorldItems
             .OfType<IIslandActionCandidate>()
             .Cast<WorldItem>()
@@ -130,11 +128,7 @@ public class IslandDomainPack : IDomainPack
             var itemCandidates = new List<ActionCandidate>();
             item.AddCandidates(ctx, itemCandidates);
             foreach (var c in itemCandidates)
-                candidates.Add(c with
-                {
-                    ProviderItemId = wi.Id,
-                    ActorRequirement = c.ActorRequirement ?? CandidateRequirements.AliveOnly
-                });
+                candidates.Add(c with { ProviderItemId = wi.Id });
         }
         
         // Generate candidates from the actor itself (e.g., idle action).
@@ -144,11 +138,7 @@ public class IslandDomainPack : IDomainPack
         var actorCandidates = new List<ActionCandidate>();
         islandActorState.AddCandidates(ctx, actorCandidates);
         foreach (var c in actorCandidates)
-            candidates.Add(c with
-            {
-                ProviderItemId = actorId.Value,
-                ActorRequirement = c.ActorRequirement ?? CandidateRequirements.AliveOnly
-            });
+            candidates.Add(c with { ProviderItemId = actorId.Value });
 
         // Filter candidates whose actor requirement fails before scoring.
         // This removes impossible actions from the choice set entirely rather than

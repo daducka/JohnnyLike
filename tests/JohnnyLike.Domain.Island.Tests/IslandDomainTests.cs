@@ -379,11 +379,6 @@ public class IslandActionEffectsTests
                 ""
             )
         };
-        actorState.ActiveBuffs.Add(new AlivenessBuff
-        {
-            Name = "Aliveness", Type = BuffType.Aliveness,
-            State = AlivenessState.Alive, ExpiresAtTick = long.MaxValue
-        });
         var worldState = new IslandWorldState();
 
         domain.InitializeActorItems(actorId, worldState);
@@ -577,11 +572,6 @@ public class IslandSignalHandlingTests
             Satiety = 70.0,  // Not critical
             Energy = 60.0   // Not critical
         };
-        actorState.ActiveBuffs.Add(new AlivenessBuff
-        {
-            Name = "Aliveness", Type = BuffType.Aliveness,
-            State = AlivenessState.Alive, ExpiresAtTick = long.MaxValue
-        });
         actorState.PendingChatActions.Enqueue(new PendingIntent
         {
             ActionId = "write_name_sand",
@@ -611,11 +601,6 @@ public class IslandSignalHandlingTests
             Satiety = 15.0,  // Critical (low satiety)
             Energy = 60.0
         };
-        actorState.ActiveBuffs.Add(new AlivenessBuff
-        {
-            Name = "Aliveness", Type = BuffType.Aliveness,
-            State = AlivenessState.Alive, ExpiresAtTick = long.MaxValue
-        });
         actorState.PendingChatActions.Enqueue(new PendingIntent
         {
             ActionId = "clap_emote",
@@ -706,11 +691,6 @@ public class IslandSignalHandlingTests
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
         var actorState = new IslandActorState { Id = actorId };
-        actorState.ActiveBuffs.Add(new AlivenessBuff
-        {
-            Name = "Aliveness", Type = BuffType.Aliveness,
-            State = AlivenessState.Alive, ExpiresAtTick = long.MaxValue
-        });
         actorState.PendingChatActions.Enqueue(new PendingIntent
         {
             ActionId = "write_name_sand",
