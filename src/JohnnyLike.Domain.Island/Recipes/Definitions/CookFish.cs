@@ -27,7 +27,7 @@ public static class CookFish
 
             Duration: 500L,
 
-            IntrinsicScore: 0.4,
+            IntrinsicScore: 0.16,
 
             Qualities: new Dictionary<QualityType, double>
             {

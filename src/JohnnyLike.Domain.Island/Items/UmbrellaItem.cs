@@ -38,7 +38,7 @@ public class UmbrellaItem : ToolItem
                     EngineConstants.TimeToTicks(5.0),
                     NarrationDescription: "deploy umbrella"
                 ),
-                0.7,
+                0.22,
                 Reason: "Deploy umbrella (rain protection)",
                 EffectHandler: new Action<EffectContext>(effectCtx =>
                 {
@@ -73,7 +73,7 @@ public class UmbrellaItem : ToolItem
                     EngineConstants.TimeToTicks(3.0),
                     NarrationDescription: "holster umbrella"
                 ),
-                0.4,
+                0.14,
                 Reason: "Holster umbrella",
                 EffectHandler: new Action<EffectContext>(effectCtx =>
                 {

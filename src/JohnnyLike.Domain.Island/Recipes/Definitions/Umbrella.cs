@@ -28,7 +28,7 @@ public static class Umbrella
 
             Duration: EngineConstants.TimeToTicks(30.0),
 
-            IntrinsicScore: 0.5,
+            IntrinsicScore: 0.18,
 
             Qualities: new Dictionary<QualityType, double>
             {

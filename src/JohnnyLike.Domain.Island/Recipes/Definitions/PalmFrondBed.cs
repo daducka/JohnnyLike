@@ -30,7 +30,7 @@ public static class PalmFrondBed
 
             Duration: EngineConstants.TimeToTicks(70.0),
 
-            IntrinsicScore: 0.8,
+            IntrinsicScore: 0.26,
 
             Qualities: new Dictionary<QualityType, double>
             {

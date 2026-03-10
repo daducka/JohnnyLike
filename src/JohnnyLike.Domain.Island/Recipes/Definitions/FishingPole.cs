@@ -28,7 +28,7 @@ public static class FishingPole
 
             Duration: EngineConstants.TimeToTicks(40.0),
 
-            IntrinsicScore: 0.7,
+            IntrinsicScore: 0.24,
 
             Qualities: new Dictionary<QualityType, double>
             {

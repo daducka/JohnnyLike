@@ -21,7 +21,7 @@ public class MermaidItem : ExpirableWorldItem
     {
         var baseDC = 10;
         var parameters = ctx.RollSkillCheck(SkillType.Performance, baseDC);
-        var baseScore = 0.6; // High priority - mermaid won't be here long!
+        var baseScore = 0.28; // Rare opportunity — mermaid won't be here long!
 
         output.Add(new ActionCandidate(
             new ActionSpec(

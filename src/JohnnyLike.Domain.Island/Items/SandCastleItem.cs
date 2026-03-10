@@ -54,7 +54,7 @@ public class SandCastleItem : MaintainableWorldItem
         if (ctx.Actor.Morale >= 30.0 || Quality >= 50.0)
             return;
 
-        var baseScore = 0.5; // Moderate priority for catharsis
+        var baseScore = 0.16; // Low — cathartic but not a practical choice
         var parameters = new EmptyActionParameters();
 
         output.Add(new ActionCandidate(

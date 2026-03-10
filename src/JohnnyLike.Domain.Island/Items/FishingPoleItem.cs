@@ -90,7 +90,7 @@ public class FishingPoleItem : ToolItem
                         parameters.ToResultData(),
                         new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                     ),
-                    0.5,
+                    0.22,
                     Reason: $"Go fishing with pole (quality: {Quality:F0}%, fish available: {fishAvailable:F0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})" + (hasBait ? " [bait available]" : ""),
                     PreAction: new Func<EffectContext, bool>(_ =>
                     {
@@ -176,7 +176,7 @@ public class FishingPoleItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
-                0.4,
+                0.18,
                 Reason: $"Maintain fishing rod (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyMaintainRodEffect),
                 Qualities: new Dictionary<QualityType, double>
@@ -203,7 +203,7 @@ public class FishingPoleItem : ToolItem
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
                 ),
-                0.3,
+                0.16,
                 Reason: $"Repair fishing rod{(IsBroken ? " (broken)" : "")} (quality: {Quality:F0}%, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: new Action<EffectContext>(ApplyRepairRodEffect),
                 Qualities: new Dictionary<QualityType, double>

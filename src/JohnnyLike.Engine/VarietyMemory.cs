@@ -24,7 +24,7 @@ public class VarietyMemory
 
         var cutoff = currentTick - _memoryWindowTicks;
         var recentCount = history.Count(h => h.Tick >= cutoff && h.ActionType == actionType);
-        return recentCount * 0.2;
+        return recentCount * 0.3;
     }
 
     public void Cleanup(long currentTick)

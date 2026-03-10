@@ -86,7 +86,7 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(PalmTreeResource) }
             ),
-            0.6,
+            0.25,
             Reason: $"Get coconut (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             PreAction: new Func<EffectContext, bool>(_ =>
             {
@@ -147,9 +147,10 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
             }),
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.FoodConsumption] = 1.0,
-                [QualityType.Efficiency]      = 0.4,
-                [QualityType.Safety]          = -0.2
+                [QualityType.FoodConsumption] = 0.3,
+                [QualityType.Preparation]     = 0.25,
+                [QualityType.Efficiency]      = 0.15,
+                [QualityType.Safety]          = -0.35
             }
         ));
     }

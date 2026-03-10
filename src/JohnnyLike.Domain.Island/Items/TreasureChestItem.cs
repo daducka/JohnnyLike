@@ -33,7 +33,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
         // Roll skill check at candidate generation time
         var parameters = ctx.RollSkillCheck(SkillType.Athletics, baseDC);
 
-        var baseScore = 0.6; // High priority for treasure
+        var baseScore = 0.24; // Rare opportunity
 
         output.Add(new ActionCandidate(
             new ActionSpec(

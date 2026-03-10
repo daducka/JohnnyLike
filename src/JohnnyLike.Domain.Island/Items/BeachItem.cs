@@ -103,7 +103,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(BeachResource) }
             ),
-            0.5,
+            0.22,
             Reason: $"Explore beach (sticks: {sticks:F0}, wood: {wood:F0}, DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             PreAction: new Func<EffectContext, bool>(_ =>
             {

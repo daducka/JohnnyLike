@@ -26,7 +26,7 @@ public static class Rope
 
             Duration: EngineConstants.TimeToTicks(20.0),
 
-            IntrinsicScore: 0.4,
+            IntrinsicScore: 0.16,
 
             Qualities: new Dictionary<QualityType, double>
             {
