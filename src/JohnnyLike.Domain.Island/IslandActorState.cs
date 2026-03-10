@@ -252,6 +252,13 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         // Build sand castle
         AddBuildSandCastleCandidate(ctx, output);
 
+        // Morale / comfort actions
+        AddHumToSelfCandidate(ctx, output);
+        AddPaceBeachCandidate(ctx, output);
+        AddCollectShellsCandidate(ctx, output);
+        AddSitAndWatchWavesCandidate(ctx, output);
+        AddSkipStonesCandidate(ctx, output);
+
         // Think about supplies (triggers recipe discovery)
         AddThinkAboutSuppliesCandidate(ctx, output);
 
@@ -337,6 +344,218 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Qualities: new Dictionary<QualityType, double>
             {
                 [QualityType.Fun] = 1.0
+            }
+        ));
+    }
+
+    private void AddHumToSelfCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("hum_to_self"),
+                ActionKind.Wait,
+                EmptyActionParameters.Instance,
+                EngineConstants.TimeToTicks(5.0, 8.0, ctx.Random),
+                NarrationDescription: "hum quietly to themselves"
+            ),
+            0.10,
+            Reason: "Hum to self",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.Actor.Morale += 5.0;
+                effectCtx.SetOutcomeNarration($"{actor} hums a soft tune under their breath, finding a little comfort in the rhythm.");
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Fun]        = 0.20,
+                [QualityType.Comfort]    = 0.70,
+                [QualityType.Efficiency] = -0.05,
+                [QualityType.Safety]     = 0.05
+            }
+        ));
+    }
+
+    private void AddPaceBeachCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("pace_beach"),
+                ActionKind.Interact,
+                EmptyActionParameters.Instance,
+                EngineConstants.TimeToTicks(15.0, 20.0, ctx.Random),
+                NarrationDescription: "pace along the beach to clear their mind"
+            ),
+            0.14,
+            Reason: "Pace beach",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.Actor.Morale += 8.0;
+                effectCtx.Actor.Energy -= 5.0;
+
+                // 7% chance to discover a small useful supply item while pacing
+                var pile = effectCtx.World.SharedSupplyPile;
+                if (pile != null && effectCtx.Rng.NextDouble() < 0.07)
+                {
+                    var roll = effectCtx.Rng.NextDouble();
+                    if (roll < 0.33)
+                    {
+                        pile.AddSupply(1.0, () => new Supply.WoodSupply());
+                        effectCtx.SetOutcomeNarration($"{actor} paces the tideline, gradually calming down — and spots a piece of driftwood worth keeping.");
+                    }
+                    else if (roll < 0.66)
+                    {
+                        pile.AddSupply(1.0, () => new Supply.ShellSupply());
+                        effectCtx.SetOutcomeNarration($"{actor} wanders the shore, thoughts slowly settling — and notices a cluster of shells worth picking up.");
+                    }
+                    else
+                    {
+                        pile.AddSupply(0.5, () => new Supply.RopeSupply());
+                        effectCtx.SetOutcomeNarration($"{actor} paces the beach restlessly, then pauses — a frayed rope fragment is tangled in the seaweed.");
+                    }
+                }
+                else
+                {
+                    effectCtx.SetOutcomeNarration($"{actor} paces the length of the beach slowly, letting the sound of the waves quiet their thoughts.");
+                }
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Fun]         = 0.25,
+                [QualityType.Comfort]     = 0.45,
+                [QualityType.Rest]        = -0.10,
+                [QualityType.Safety]      = 0.05,
+                [QualityType.Preparation] = 0.05
+            }
+        ));
+    }
+
+    private void AddCollectShellsCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("collect_shells"),
+                ActionKind.Interact,
+                EmptyActionParameters.Instance,
+                EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random),
+                NarrationDescription: "collect shells along the shoreline"
+            ),
+            0.16,
+            Reason: "Collect shells",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.Actor.Morale += 10.0;
+
+                var pile = effectCtx.World.SharedSupplyPile;
+                if (pile != null)
+                {
+                    pile.AddSupply(2.0, () => new Supply.ShellSupply());
+                    effectCtx.SetOutcomeNarration($"{actor} wanders along the waterline, picking up a small handful of shells. There is something satisfying about the search.");
+                }
+                else
+                {
+                    effectCtx.SetOutcomeNarration($"{actor} wanders along the waterline, idly collecting shells and letting the activity settle their nerves.");
+                }
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Fun]         = 0.45,
+                [QualityType.Comfort]     = 0.20,
+                [QualityType.Preparation] = 0.10,
+                [QualityType.Efficiency]  = -0.05,
+                [QualityType.Safety]      = 0.05
+            }
+        ));
+    }
+
+    private void AddSitAndWatchWavesCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("sit_and_watch_waves"),
+                ActionKind.Wait,
+                EmptyActionParameters.Instance,
+                EngineConstants.TimeToTicks(10.0, 20.0, ctx.Random),
+                NarrationDescription: "sit quietly and watch the waves roll in"
+            ),
+            0.12,
+            Reason: "Sit and watch waves",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.Actor.Morale += 12.0;
+                effectCtx.SetOutcomeNarration($"{actor} sits at the water's edge and watches the waves roll in and out, feeling the tension slowly ease.");
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Fun]        = 0.25,
+                [QualityType.Comfort]    = 0.80,
+                [QualityType.Efficiency] = -0.10,
+                [QualityType.Safety]     = 0.10
+            }
+        ));
+    }
+
+    private void AddSkipStonesCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        var baseDC = 6;
+        var parameters = ctx.RollSkillCheck(SkillType.Athletics, baseDC);
+
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("skip_stones"),
+                ActionKind.Interact,
+                parameters,
+                EngineConstants.TimeToTicks(8.0, 12.0, ctx.Random),
+                "skip stones across the water",
+                parameters.ToResultData()
+            ),
+            0.15,
+            Reason: $"Skip stones (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                if (effectCtx.Tier == null)
+                    return;
+
+                var tier = effectCtx.Tier.Value;
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.Actor.Energy -= 3.0;
+
+                switch (tier)
+                {
+                    case RollOutcomeTier.CriticalSuccess:
+                        effectCtx.Actor.Morale += 20.0;
+                        effectCtx.SetOutcomeNarration($"{actor} finds the perfect flat stone and sends it dancing across the water — six skips! The small triumph brings a genuine smile.");
+                        break;
+
+                    case RollOutcomeTier.Success:
+                        effectCtx.Actor.Morale += 12.0;
+                        effectCtx.SetOutcomeNarration($"{actor} flicks a stone sidearm and watches it skip cleanly three times before vanishing. Not bad at all.");
+                        break;
+
+                    case RollOutcomeTier.PartialSuccess:
+                        effectCtx.Actor.Morale += 6.0;
+                        effectCtx.SetOutcomeNarration($"{actor} skips a stone once or twice before it plops under. Good enough for a small lift in mood.");
+                        break;
+
+                    case RollOutcomeTier.Failure:
+                        effectCtx.Actor.Morale += 2.0;
+                        effectCtx.SetOutcomeNarration($"{actor} throws a stone that sinks immediately. A short laugh escapes at the futility of it.");
+                        break;
+
+                    case RollOutcomeTier.CriticalFailure:
+                        effectCtx.SetOutcomeNarration($"{actor} hurls a stone toward the waves, but it plops straight down right at the shoreline. A sheepish shrug follows.");
+                        break;
+                }
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Fun]         = 0.60,
+                [QualityType.Comfort]     = 0.15,
+                [QualityType.Preparation] = 0.05,
+                [QualityType.Rest]        = -0.05
             }
         ));
     }
