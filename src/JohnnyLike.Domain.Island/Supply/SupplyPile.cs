@@ -175,6 +175,7 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
                         "supply_rope"            => new RopeSupply(id),
                         "supply_carcass_scraps"  => new CarcassScrapsSupply(id),
                         "supply_bait"            => new BaitSupply(id),
+                        "supply_shells"          => new ShellSupply(id),
                         _ => null
                     };
 
