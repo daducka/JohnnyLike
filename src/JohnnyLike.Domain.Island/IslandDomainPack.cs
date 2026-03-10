@@ -62,6 +62,16 @@ public class IslandDomainPack : IDomainPack
             ExpiresAtTick = long.MaxValue
         });
 
+        // Every actor starts alive.  Candidate requirements check this buff to gate actions
+        // on actor condition.  Future health/death systems will mutate this buff's State.
+        state.ActiveBuffs.Add(new AlivenessBuff
+        {
+            Name          = "Aliveness",
+            Type          = BuffType.Aliveness,
+            State         = AlivenessState.Alive,
+            ExpiresAtTick = long.MaxValue
+        });
+
         return state;
     }
     
@@ -108,6 +118,8 @@ public class IslandDomainPack : IDomainPack
 
         // Iterate items in stable (sorted-by-Id) order for determinism.
         // Tag each candidate with the ProviderItemId for engine-level room filtering and tie-breaking.
+        // All collected candidates that do not already declare an ActorRequirement are assigned
+        // AliveOnly so that future death/downed work can gate them without a large retrofit pass.
         foreach (var item in islandWorld.WorldItems
             .OfType<IIslandActionCandidate>()
             .Cast<WorldItem>()
@@ -118,7 +130,11 @@ public class IslandDomainPack : IDomainPack
             var itemCandidates = new List<ActionCandidate>();
             item.AddCandidates(ctx, itemCandidates);
             foreach (var c in itemCandidates)
-                candidates.Add(c with { ProviderItemId = wi.Id });
+                candidates.Add(c with
+                {
+                    ProviderItemId = wi.Id,
+                    ActorRequirement = c.ActorRequirement ?? CandidateRequirements.AliveOnly
+                });
         }
         
         // Generate candidates from the actor itself (e.g., idle action).
@@ -128,7 +144,16 @@ public class IslandDomainPack : IDomainPack
         var actorCandidates = new List<ActionCandidate>();
         islandActorState.AddCandidates(ctx, actorCandidates);
         foreach (var c in actorCandidates)
-            candidates.Add(c with { ProviderItemId = actorId.Value });
+            candidates.Add(c with
+            {
+                ProviderItemId = actorId.Value,
+                ActorRequirement = c.ActorRequirement ?? CandidateRequirements.AliveOnly
+            });
+
+        // Filter candidates whose actor requirement fails before scoring.
+        // This removes impossible actions from the choice set entirely rather than
+        // merely scoring them low.
+        candidates.RemoveAll(c => c.ActorRequirement != null && !c.ActorRequirement(islandActorState));
 
         // Post-pass: compute final Score from IntrinsicScore and Quality weights
         var model = BuildQualityModel(ctx.Actor);

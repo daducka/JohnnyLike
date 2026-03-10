@@ -97,6 +97,23 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         return hasBuff ? AdvantageType.Advantage : AdvantageType.Normal;
     }
 
+    /// <summary>Returns <c>true</c> if the actor currently has an active buff of type <typeparamref name="T"/>.</summary>
+    public bool HasBuff<T>() where T : ActiveBuff
+        => ActiveBuffs.OfType<T>().Any();
+
+    /// <summary>
+    /// Returns the first active buff of type <typeparamref name="T"/>, or <c>null</c> if none is present.
+    /// </summary>
+    public T? TryGetBuff<T>() where T : ActiveBuff
+        => ActiveBuffs.OfType<T>().FirstOrDefault();
+
+    /// <summary>
+    /// Returns <c>true</c> if the actor has an active buff of type <typeparamref name="T"/>
+    /// that also satisfies <paramref name="predicate"/>.
+    /// </summary>
+    public bool HasBuffWhere<T>(Func<T, bool> predicate) where T : ActiveBuff
+        => ActiveBuffs.OfType<T>().Any(predicate);
+
     public override string Serialize()
     {
         var options = new JsonSerializerOptions
@@ -590,7 +607,10 @@ public enum BuffType
     RainProtection,
     /// <summary>Continuous metabolic effect (basal burn, activity drain, sleep recovery).
     /// Carried as a <see cref="MetabolicBuff"/> instance that implements <see cref="ITickableBuff"/>.</summary>
-    Metabolic
+    Metabolic,
+    /// <summary>Tracks whether the actor is alive, downed, or dead.
+    /// Carried as an <see cref="AlivenessBuff"/> instance.</summary>
+    Aliveness
 }
 
 /// <summary>
@@ -604,6 +624,7 @@ public enum BuffType
     IgnoreUnrecognizedTypeDiscriminators = true)]
 [JsonDerivedType(typeof(ActiveBuff), typeDiscriminator: "base")]
 [JsonDerivedType(typeof(MetabolicBuff), typeDiscriminator: "metabolic")]
+[JsonDerivedType(typeof(AlivenessBuff), typeDiscriminator: "aliveness")]
 public class ActiveBuff
 {
     public string Name { get; set; } = "";
