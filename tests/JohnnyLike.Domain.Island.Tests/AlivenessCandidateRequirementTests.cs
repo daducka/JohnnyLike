@@ -26,6 +26,17 @@ public class AlivenessCandidateRequirementTests
         return actor;
     }
 
+    /// <summary>
+    /// Creates a fully initialized actor and then removes its AlivenessBuff, simulating
+    /// an actor that never received the buff (used to test "absent buff" scenarios).
+    /// </summary>
+    private static IslandActorState MakeActorWithoutAlivenessBuff(string id = "TestActor")
+    {
+        var actor = MakeAliveActor(id);
+        actor.ActiveBuffs.RemoveAll(b => b is AlivenessBuff);
+        return actor;
+    }
+
     private static List<ActionCandidate> GenerateCandidates(IslandActorState actor, string actorId = "TestActor")
     {
         var domain = new IslandDomainPack();
@@ -81,7 +92,7 @@ public class AlivenessCandidateRequirementTests
     [Fact]
     public void HasBuff_ReturnsFalseWhenBuffAbsent()
     {
-        var actor = new IslandActorState { Id = new ActorId("A") };
+        var actor = MakeActorWithoutAlivenessBuff();
         Assert.False(actor.HasBuff<AlivenessBuff>());
     }
 
@@ -96,7 +107,7 @@ public class AlivenessCandidateRequirementTests
     [Fact]
     public void TryGetBuff_ReturnsNullWhenAbsent()
     {
-        var actor = new IslandActorState { Id = new ActorId("A") };
+        var actor = MakeActorWithoutAlivenessBuff();
         var buff = actor.TryGetBuff<AlivenessBuff>();
         Assert.Null(buff);
     }
@@ -118,7 +129,7 @@ public class AlivenessCandidateRequirementTests
     [Fact]
     public void HasBuffWhere_ReturnsFalseWhenBuffAbsent()
     {
-        var actor = new IslandActorState { Id = new ActorId("A") };
+        var actor = MakeActorWithoutAlivenessBuff();
         Assert.False(actor.HasBuffWhere<AlivenessBuff>(b => b.State == AlivenessState.Alive));
     }
 
@@ -159,7 +170,7 @@ public class AlivenessCandidateRequirementTests
     [Fact]
     public void CandidateRequirements_HasBuff_FailsWhenBuffAbsent()
     {
-        var actor = new IslandActorState { Id = new ActorId("A") };
+        var actor = MakeActorWithoutAlivenessBuff();
         var requirement = CandidateRequirements.HasBuff<AlivenessBuff>();
         Assert.False(requirement(actor));
     }
