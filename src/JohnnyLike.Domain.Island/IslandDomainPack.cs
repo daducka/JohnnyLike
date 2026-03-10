@@ -165,6 +165,25 @@ public class IslandDomainPack : IDomainPack
         return candidates;
     }
 
+    // ── Health-pressure tuning constants ──────────────────────────────────────────
+    // These class-level constants control how strongly low health (injuryPressure)
+    // shifts decision weights. They are shared between BuildQualityModel and
+    // ExplainCandidateScoring so both methods stay in sync.
+
+    /// <summary>Safety need urgency per point of injuryPressure. Max +2.5 at 0 HP.</summary>
+    private const double InjurySafetyNeedScale   = 0.025;
+    /// <summary>Rest need urgency per point of injuryPressure (stacks with fatigue). Max +1.0 at 0 HP.</summary>
+    private const double InjuryRestNeedScale     = 0.010;
+    /// <summary>Comfort need urgency per point of injuryPressure (stacks with misery). Max +0.5 at 0 HP.</summary>
+    private const double InjuryComfortNeedScale  = 0.005;
+
+    /// <summary>Minimum multiplier for Fun personality at 0 HP (suppressed to 15%).</summary>
+    private const double InjuryFunSuppressionFloor         = 0.15;
+    /// <summary>Minimum multiplier for Mastery personality at 0 HP (suppressed to 30%).</summary>
+    private const double InjuryMasterySuppressionFloor     = 0.30;
+    /// <summary>Minimum multiplier for Preparation personality at 0 HP (suppressed to 40%).</summary>
+    private const double InjuryPreparationSuppressionFloor = 0.40;
+
     /// <summary>
     /// Encapsulates the three scoring influences — Needs, Personality, Mood — as separate
     /// dictionaries so each can be tuned independently.
@@ -252,21 +271,9 @@ public class IslandDomainPack : IDomainPack
         var instinctive = Norm(actor.STR, actor.CHA);   // STR + CHA  → prefers immediate reward
         var industrious = Norm(actor.STR, actor.DEX);   // STR + DEX  → prefers building, working
 
-        // ── Health-pressure constants ─────────────────────────────────────────────
-        // These named constants control how strongly low health shifts decision weights.
-        // injuryPressure ranges from 0 (full health) to 100 (0 HP).
-        const double InjurySafetyNeedScale   = 0.025; // Safety   urgency from injury (max +2.5 at 0 HP)
-        const double InjuryRestNeedScale     = 0.010; // Rest     urgency from injury (max +1.0 at 0 HP)
-        const double InjuryComfortNeedScale  = 0.005; // Comfort  urgency from injury (max +0.5 at 0 HP)
-
-        // Mood-multiplier suppressors for non-essential goals under injury pressure.
-        // Applied as multipliers to personalityBase weights.
-        // At full health (injuryPressure=0) multiplier=1.0; at 0 HP multiplier approaches the floor.
-        const double InjuryFunSuppressionFloor         = 0.15; // Fun  → suppressed to 15% at 0 HP
-        const double InjuryMasterySuppressionFloor     = 0.30; // Mastery → suppressed to 30% at 0 HP
-        const double InjuryPreparationSuppressionFloor = 0.40; // Preparation → suppressed to 40% at 0 HP
-
         // Normalised injury factor [0,1]: 0 = healthy, 1 = 0 HP.
+        // Health-pressure scale constants are defined at class level (InjurySafetyNeedScale etc.)
+        // so they are shared with ExplainCandidateScoring.
         var injuryFactor = injuryPressure / 100.0;
 
         // ── Qualities ─────────────────────────────────────────────────────────────
@@ -743,17 +750,20 @@ public class IslandDomainPack : IDomainPack
             ["injuryPressure"]  = injuryPressure
         };
 
-        // Health-pressure contribution breakdown (mirrors BuildQualityModel constants).
+        // Health-pressure contribution breakdown — uses same class-level constants as BuildQualityModel.
         var injuryFactor = injuryPressure / 100.0;
         var healthInfluence = new Dictionary<string, object>
         {
             ["injuryFactor"]                 = Math.Round(injuryFactor, 4),
-            ["safety_needAdd_contribution"]  = Math.Round(injuryPressure * 0.025, 4),
-            ["rest_needAdd_contribution"]    = Math.Round(injuryPressure * 0.010, 4),
-            ["comfort_needAdd_contribution"] = Math.Round(injuryPressure * 0.005, 4),
-            ["fun_suppressor"]               = Math.Round(Math.Max(0.15, 1.0 - injuryFactor * 0.85), 4),
-            ["mastery_suppressor"]           = Math.Round(Math.Max(0.30, 1.0 - injuryFactor * 0.70), 4),
-            ["preparation_suppressor"]       = Math.Round(Math.Max(0.40, 1.0 - injuryFactor * 0.60), 4)
+            ["safety_needAdd_contribution"]  = Math.Round(injuryPressure * InjurySafetyNeedScale,  4),
+            ["rest_needAdd_contribution"]    = Math.Round(injuryPressure * InjuryRestNeedScale,    4),
+            ["comfort_needAdd_contribution"] = Math.Round(injuryPressure * InjuryComfortNeedScale, 4),
+            ["fun_suppressor"]               = Math.Round(Math.Max(InjuryFunSuppressionFloor,
+                                                 1.0 - injuryFactor * (1.0 - InjuryFunSuppressionFloor)), 4),
+            ["mastery_suppressor"]           = Math.Round(Math.Max(InjuryMasterySuppressionFloor,
+                                                 1.0 - injuryFactor * (1.0 - InjuryMasterySuppressionFloor)), 4),
+            ["preparation_suppressor"]       = Math.Round(Math.Max(InjuryPreparationSuppressionFloor,
+                                                 1.0 - injuryFactor * (1.0 - InjuryPreparationSuppressionFloor)), 4)
         };
 
         var effectiveWeights = new Dictionary<string, object>();
