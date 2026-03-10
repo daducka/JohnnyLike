@@ -11,6 +11,9 @@ namespace JohnnyLike.Domain.Abstractions;
 /// <param name="PreAction">Optional callback executed at action start (before the action duration begins).</param>
 /// <param name="Score">Final computed score assigned by the domain after gathering all candidates</param>
 /// <param name="ProviderItemId">Item ID of the world item that generated this candidate, used for deterministic tie-breaking and room filtering</param>
+/// <param name="ActorRequirement">Optional predicate evaluated against the requesting actor before scoring.
+/// When non-null, the candidate is filtered out if the predicate returns <c>false</c>.
+/// Use this to gate actions on actor conditions such as buff presence or state values.</param>
 public record ActionCandidate(
     ActionSpec Action,
     double IntrinsicScore,
@@ -19,7 +22,8 @@ public record ActionCandidate(
     object? EffectHandler = null,
     object? PreAction = null,
     double Score = 0.0,
-    string? ProviderItemId = null
+    string? ProviderItemId = null,
+    Func<ActorState, bool>? ActorRequirement = null
 );
 
 /// <summary>Domain plug-in: world model, actor model, candidate generation, effect application.</summary>

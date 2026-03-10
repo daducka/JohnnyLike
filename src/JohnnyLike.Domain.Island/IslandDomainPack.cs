@@ -62,6 +62,16 @@ public class IslandDomainPack : IDomainPack
             ExpiresAtTick = long.MaxValue
         });
 
+        // Every actor starts alive.  Candidate requirements check this buff to gate actions
+        // on actor condition.  Future health/death systems will mutate this buff's State.
+        state.ActiveBuffs.Add(new AlivenessBuff
+        {
+            Name          = "Aliveness",
+            Type          = BuffType.Aliveness,
+            State         = AlivenessState.Alive,
+            ExpiresAtTick = long.MaxValue
+        });
+
         return state;
     }
     
@@ -129,6 +139,11 @@ public class IslandDomainPack : IDomainPack
         islandActorState.AddCandidates(ctx, actorCandidates);
         foreach (var c in actorCandidates)
             candidates.Add(c with { ProviderItemId = actorId.Value });
+
+        // Filter candidates whose actor requirement fails before scoring.
+        // This removes impossible actions from the choice set entirely rather than
+        // merely scoring them low.
+        candidates.RemoveAll(c => c.ActorRequirement != null && !c.ActorRequirement(islandActorState));
 
         // Post-pass: compute final Score from IntrinsicScore and Quality weights
         var model = BuildQualityModel(ctx.Actor);
