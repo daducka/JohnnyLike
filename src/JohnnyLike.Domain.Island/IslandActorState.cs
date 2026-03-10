@@ -3,6 +3,7 @@ using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Metabolism;
 using JohnnyLike.Domain.Island.Recipes;
 using JohnnyLike.Domain.Island.Telemetry;
+using JohnnyLike.Domain.Island.Vitality;
 using JohnnyLike.Domain.Kit.Dice;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -240,7 +241,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 [QualityType.Rest]       = 0.6,
                 [QualityType.Comfort]    = 0.3,
                 [QualityType.Efficiency] = -0.5
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
         
         // Sleep under tree
@@ -337,7 +339,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Qualities: new Dictionary<QualityType, double>
             {
                 [QualityType.Fun] = 1.0
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 
@@ -365,7 +368,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             {
                 [QualityType.Preparation] = 0.5,
                 [QualityType.Efficiency]  = 0.5
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 
@@ -406,7 +410,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                         {
                             [QualityType.Fun]    = 0.8,
                             [QualityType.Comfort] = 0.2
-                        }
+                        },
+                        ActorRequirement: CandidateRequirements.AliveOnly
                     ));
                 }
                 else if (intent.ActionId == "clap_emote")
@@ -435,7 +440,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                         {
                             [QualityType.Fun]    = 0.8,
                             [QualityType.Comfort] = 0.2
-                        }
+                        },
+                        ActorRequirement: CandidateRequirements.AliveOnly
                     ));
                 }
             }
@@ -472,7 +478,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             {
                 [QualityType.Rest] = 1.0,
                 [QualityType.Safety] = 0.2
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 
@@ -595,7 +602,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 [QualityType.Fun]    = 0.8,
                 [QualityType.Comfort] = 0.3,
                 [QualityType.Safety] = -0.5
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 }
@@ -610,7 +618,11 @@ public enum BuffType
     Metabolic,
     /// <summary>Tracks whether the actor is alive, downed, or dead.
     /// Carried as an <see cref="AlivenessBuff"/> instance.</summary>
-    Aliveness
+    Aliveness,
+    /// <summary>Continuous vitality/health effect: health deterioration from starvation/exhaustion/psyche strain
+    /// and slow recovery under stable conditions.
+    /// Carried as a <see cref="VitalityBuff"/> instance that implements <see cref="ITickableBuff"/>.</summary>
+    Vitality
 }
 
 /// <summary>
@@ -625,6 +637,7 @@ public enum BuffType
 [JsonDerivedType(typeof(ActiveBuff), typeDiscriminator: "base")]
 [JsonDerivedType(typeof(MetabolicBuff), typeDiscriminator: "metabolic")]
 [JsonDerivedType(typeof(AlivenessBuff), typeDiscriminator: "aliveness")]
+[JsonDerivedType(typeof(VitalityBuff),  typeDiscriminator: "vitality")]
 public class ActiveBuff
 {
     public string Name { get; set; } = "";

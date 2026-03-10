@@ -58,7 +58,8 @@ public class UmbrellaItem : ToolItem
                 {
                     [QualityType.Comfort] = 0.8,
                     [QualityType.Safety]  = 0.5
-                }
+                },
+                ActorRequirement: CandidateRequirements.AliveOnly
             ));
         }
 
@@ -84,7 +85,8 @@ public class UmbrellaItem : ToolItem
                 Qualities: new Dictionary<QualityType, double>
                 {
                     [QualityType.Efficiency] = 0.3
-                }
+                },
+                ActorRequirement: CandidateRequirements.AliveOnly
             ));
         }
     }

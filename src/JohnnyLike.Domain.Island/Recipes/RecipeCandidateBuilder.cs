@@ -28,7 +28,8 @@ public static class RecipeCandidateBuilder
             recipe.Qualities.ToDictionary(x => x.Key, x => x.Value),
             Reason: recipe.DisplayName,
             EffectHandler: recipe.Effect,
-            PreAction: recipe.PreAction
+            PreAction: recipe.PreAction,
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 }

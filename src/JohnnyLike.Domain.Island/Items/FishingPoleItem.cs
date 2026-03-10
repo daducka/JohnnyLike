@@ -155,7 +155,8 @@ public class FishingPoleItem : ToolItem
                         [QualityType.FoodConsumption] = 1.0,
                         [QualityType.Efficiency]      = 0.5,
                         [QualityType.Fun]             = 0.3
-                    }
+                    },
+                    ActorRequirement: CandidateRequirements.AliveOnly
                 ));
             }
         }
@@ -183,7 +184,8 @@ public class FishingPoleItem : ToolItem
                 {
                     [QualityType.ResourcePreservation] = 1.0,
                     [QualityType.Mastery]              = 0.5
-                }
+                },
+                ActorRequirement: CandidateRequirements.AliveOnly
             ));
         }
 
@@ -211,7 +213,8 @@ public class FishingPoleItem : ToolItem
                     [QualityType.ResourcePreservation] = 1.0,
                     [QualityType.Preparation]          = 0.5,
                     [QualityType.Mastery]              = 0.4
-                }
+                },
+                ActorRequirement: CandidateRequirements.AliveOnly
             ));
         }
     }

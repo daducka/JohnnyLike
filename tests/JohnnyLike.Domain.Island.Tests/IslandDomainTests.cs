@@ -365,20 +365,17 @@ public class IslandActionEffectsTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = new IslandActorState
-        {
-            Id = actorId,
-            Morale = 50.0,
-            CurrentAction = new ActionSpec(
-                new ActionId("go_fishing"),
-                ActionKind.Interact,
-                new SkillCheckActionParameters(
-                    new SkillCheckRequest(10, 3, AdvantageType.Normal, "Fishing"),
-                    new SkillCheckResult(10, 10 + 3, RollOutcomeTier.Success, true, 0.5)),
-                300L,
-                ""
-            )
-        };
+        var actorState = (IslandActorState)domain.CreateActorState(actorId);
+        actorState.Morale = 50.0;
+        actorState.CurrentAction = new ActionSpec(
+            new ActionId("go_fishing"),
+            ActionKind.Interact,
+            new SkillCheckActionParameters(
+                new SkillCheckRequest(10, 3, AdvantageType.Normal, "Fishing"),
+                new SkillCheckResult(10, 10 + 3, RollOutcomeTier.Success, true, 0.5)),
+            300L,
+            ""
+        );
         var worldState = new IslandWorldState();
 
         domain.InitializeActorItems(actorId, worldState);
@@ -566,12 +563,9 @@ public class IslandSignalHandlingTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = new IslandActorState
-        {
-            Id = actorId,
-            Satiety = 70.0,  // Not critical
-            Energy = 60.0   // Not critical
-        };
+        var actorState = (IslandActorState)domain.CreateActorState(actorId);
+        actorState.Satiety = 70.0;  // Not critical
+        actorState.Energy = 60.0;   // Not critical
         actorState.PendingChatActions.Enqueue(new PendingIntent
         {
             ActionId = "write_name_sand",
@@ -595,12 +589,9 @@ public class IslandSignalHandlingTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = new IslandActorState
-        {
-            Id = actorId,
-            Satiety = 15.0,  // Critical (low satiety)
-            Energy = 60.0
-        };
+        var actorState = (IslandActorState)domain.CreateActorState(actorId);
+        actorState.Satiety = 15.0;  // Critical (low satiety)
+        actorState.Energy = 60.0;
         actorState.PendingChatActions.Enqueue(new PendingIntent
         {
             ActionId = "clap_emote",
@@ -690,7 +681,7 @@ public class IslandSignalHandlingTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = new IslandActorState { Id = actorId };
+        var actorState = (IslandActorState)domain.CreateActorState(actorId);
         actorState.PendingChatActions.Enqueue(new PendingIntent
         {
             ActionId = "write_name_sand",

@@ -205,7 +205,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
             {
                 [QualityType.Preparation] = 0.6,
                 [QualityType.ResourcePreservation] = 0.4
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 
@@ -233,7 +234,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Comfort]    = 0.70,
                 [QualityType.Efficiency] = -0.05,
                 [QualityType.Safety]     = 0.05
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 
@@ -297,7 +299,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Rest]        = -0.10,
                 [QualityType.Safety]      = 0.05,
                 [QualityType.Preparation] = 0.05
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 
@@ -336,7 +339,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Preparation] = 0.10,
                 [QualityType.Efficiency]  = -0.05,
                 [QualityType.Safety]      = 0.05
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 
@@ -364,7 +368,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Comfort]    = 0.80,
                 [QualityType.Efficiency] = -0.10,
                 [QualityType.Safety]     = 0.10
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 
@@ -426,7 +431,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Comfort]     = 0.15,
                 [QualityType.Preparation] = 0.05,
                 [QualityType.Rest]        = -0.05
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 

@@ -86,7 +86,8 @@ public class SandCastleItem : MaintainableWorldItem
                 [QualityType.Fun]                 = 0.6,
                 [QualityType.ResourcePreservation] = -0.5,
                 [QualityType.Comfort]             = -0.2
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 }

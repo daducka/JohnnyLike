@@ -55,7 +55,8 @@ public class FishSupply : SupplyItem, ISupplyActionCandidate
             {
                 [QualityType.FoodConsumption] = 0.6,
                 [QualityType.Comfort]         = -0.2
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 }

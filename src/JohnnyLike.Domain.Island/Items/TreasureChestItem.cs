@@ -106,7 +106,8 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                 [QualityType.ResourcePreservation] = 1.0,
                 [QualityType.Mastery]              = 0.4,
                 [QualityType.Fun]                  = 0.2
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 

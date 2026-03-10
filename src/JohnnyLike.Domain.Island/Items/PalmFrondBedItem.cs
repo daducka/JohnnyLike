@@ -55,7 +55,8 @@ public class PalmFrondBedItem : ToolItem
                 [QualityType.Comfort]              = 1.0,
                 [QualityType.Safety]               = 0.6,
                 [QualityType.ResourcePreservation] = 0.5
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 
@@ -99,7 +100,8 @@ public class PalmFrondBedItem : ToolItem
                 [QualityType.Rest]    = restQuality,
                 [QualityType.Comfort] = 0.6 + (0.3 * qualityFactor),
                 [QualityType.Safety]  = 0.4
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 

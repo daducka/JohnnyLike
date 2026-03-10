@@ -4,6 +4,7 @@ using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Island.Metabolism;
 using JohnnyLike.Domain.Island.Supply;
+using JohnnyLike.Domain.Island.Vitality;
 
 namespace JohnnyLike.Domain.Island;
 
@@ -59,6 +60,15 @@ public class IslandDomainPack : IDomainPack
             Name         = "Metabolism",
             Type         = BuffType.Metabolic,
             Intensity    = MetabolicIntensity.Light,
+            ExpiresAtTick = long.MaxValue
+        });
+
+        // VitalityBuff drives health deterioration (starvation/exhaustion/psyche strain) and
+        // slow recovery.  It never expires and ticks with the world.
+        state.ActiveBuffs.Add(new VitalityBuff
+        {
+            Name          = "Vitality",
+            Type          = BuffType.Vitality,
             ExpiresAtTick = long.MaxValue
         });
 
@@ -212,7 +222,7 @@ public class IslandDomainPack : IDomainPack
 
         var fatiguePressure = 100.0 - actor.Energy;    // → Rest
         var miseryPressure  = 100.0 - actor.Morale;    // → Comfort
-        var injuryPressure  = 100.0 - actor.Health;    // → Safety
+        var injuryPressure  = 100.0 - actor.Health;    // → Safety, Rest, Comfort
 
         // ── Staged hunger ramp ────────────────────────────────────────────────────
         // Hunger urgency only builds meaningfully below certain satiety thresholds
@@ -242,6 +252,23 @@ public class IslandDomainPack : IDomainPack
         var instinctive = Norm(actor.STR, actor.CHA);   // STR + CHA  → prefers immediate reward
         var industrious = Norm(actor.STR, actor.DEX);   // STR + DEX  → prefers building, working
 
+        // ── Health-pressure constants ─────────────────────────────────────────────
+        // These named constants control how strongly low health shifts decision weights.
+        // injuryPressure ranges from 0 (full health) to 100 (0 HP).
+        const double InjurySafetyNeedScale   = 0.025; // Safety   urgency from injury (max +2.5 at 0 HP)
+        const double InjuryRestNeedScale     = 0.010; // Rest     urgency from injury (max +1.0 at 0 HP)
+        const double InjuryComfortNeedScale  = 0.005; // Comfort  urgency from injury (max +0.5 at 0 HP)
+
+        // Mood-multiplier suppressors for non-essential goals under injury pressure.
+        // Applied as multipliers to personalityBase weights.
+        // At full health (injuryPressure=0) multiplier=1.0; at 0 HP multiplier approaches the floor.
+        const double InjuryFunSuppressionFloor         = 0.15; // Fun  → suppressed to 15% at 0 HP
+        const double InjuryMasterySuppressionFloor     = 0.30; // Mastery → suppressed to 30% at 0 HP
+        const double InjuryPreparationSuppressionFloor = 0.40; // Preparation → suppressed to 40% at 0 HP
+
+        // Normalised injury factor [0,1]: 0 = healthy, 1 = 0 HP.
+        var injuryFactor = injuryPressure / 100.0;
+
         // ── Qualities ─────────────────────────────────────────────────────────────
         // Labels on actions describing what they provide:
         // FoodConsumption, Rest, Comfort, Fun, Safety,
@@ -249,12 +276,13 @@ public class IslandDomainPack : IDomainPack
 
         // Need pressures drive urgency directly (additive, independent of personality).
         // Scale factors keep pressures comparable across the 0-100 range.
+        // Health injury adds to Safety, Rest, and Comfort needs independently of fatigue/misery.
         var needAdd = new Dictionary<QualityType, double>
         {
             [QualityType.FoodConsumption] = stagedHungerNeed,
-            [QualityType.Rest]            = fatiguePressure * 0.015,
-            [QualityType.Comfort]         = miseryPressure  * 0.01,
-            [QualityType.Safety]          = injuryPressure  * 0.01
+            [QualityType.Rest]            = fatiguePressure * 0.015 + injuryPressure * InjuryRestNeedScale,
+            [QualityType.Comfort]         = miseryPressure  * 0.01  + injuryPressure * InjuryComfortNeedScale,
+            [QualityType.Safety]          = injuryPressure  * InjurySafetyNeedScale
         };
 
         // Personality weights come from traits (stable, independent of current state).
@@ -271,15 +299,24 @@ public class IslandDomainPack : IDomainPack
 
         // Mood multipliers modulate personality when actor state is critical.
         // They suppress longer-horizon tendencies so survival instinct takes over.
+        // Low health suppresses Fun, Mastery, and Preparation — badly hurt actors
+        // should stop doing frivolous things and focus on rest/safety.
         var moodMultiplier = new Dictionary<QualityType, double>
         {
             [QualityType.Preparation]     = Math.Min(
                                                 actor.Satiety < 20.0 ? 0.3 : 1.0,  // starving → eat now, not cook
-                                                actor.Health  < 30.0 ? 0.5 : 1.0   // injured → heal, not cook
+                                                Math.Max(InjuryPreparationSuppressionFloor,
+                                                         1.0 - injuryFactor * (1.0 - InjuryPreparationSuppressionFloor))
                                             ),
-            [QualityType.Mastery]         = actor.Energy  < 20.0 ? 0.4 : 1.0, // exhausted → rest, not work
+            [QualityType.Mastery]         = Math.Min(
+                                                actor.Energy < 20.0 ? 0.4 : 1.0, // exhausted → rest, not work
+                                                Math.Max(InjuryMasterySuppressionFloor,
+                                                         1.0 - injuryFactor * (1.0 - InjuryMasterySuppressionFloor))
+                                            ),
             [QualityType.Fun]             = (1.0 - (actor.Morale / 100.0)) * 0.6 *
-                                                (actor.Satiety < 25.0 || actor.Energy < 20.0 ? 0.35 : 1.0),
+                                                (actor.Satiety < 25.0 || actor.Energy < 20.0 ? 0.35 : 1.0) *
+                                                Math.Max(InjuryFunSuppressionFloor,
+                                                         1.0 - injuryFactor * (1.0 - InjuryFunSuppressionFloor)),
             [QualityType.Efficiency]      = 1.0,
             [QualityType.Comfort]         = 1.0,
             [QualityType.Safety]          = 1.0,
@@ -706,6 +743,19 @@ public class IslandDomainPack : IDomainPack
             ["injuryPressure"]  = injuryPressure
         };
 
+        // Health-pressure contribution breakdown (mirrors BuildQualityModel constants).
+        var injuryFactor = injuryPressure / 100.0;
+        var healthInfluence = new Dictionary<string, object>
+        {
+            ["injuryFactor"]                 = Math.Round(injuryFactor, 4),
+            ["safety_needAdd_contribution"]  = Math.Round(injuryPressure * 0.025, 4),
+            ["rest_needAdd_contribution"]    = Math.Round(injuryPressure * 0.010, 4),
+            ["comfort_needAdd_contribution"] = Math.Round(injuryPressure * 0.005, 4),
+            ["fun_suppressor"]               = Math.Round(Math.Max(0.15, 1.0 - injuryFactor * 0.85), 4),
+            ["mastery_suppressor"]           = Math.Round(Math.Max(0.30, 1.0 - injuryFactor * 0.70), 4),
+            ["preparation_suppressor"]       = Math.Round(Math.Max(0.40, 1.0 - injuryFactor * 0.60), 4)
+        };
+
         var effectiveWeights = new Dictionary<string, object>();
         foreach (var q in Enum.GetValues<QualityType>())
         {
@@ -768,6 +818,7 @@ public class IslandDomainPack : IDomainPack
         {
             ["actorStats"]               = actorStats,
             ["pressures"]                = pressures,
+            ["healthInfluence"]          = healthInfluence,
             ["effectiveWeights"]         = effectiveWeights,
             ["qualityModelDecomposition"] = qualityModelDecomposition,
             ["candidateBreakdowns"]      = candidateBreakdowns
