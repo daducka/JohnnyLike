@@ -78,7 +78,8 @@ public class CampfireItem : ToolItem
                     [QualityType.Preparation] = 0.6,
                     [QualityType.Comfort]     = 0.5,
                     [QualityType.Safety]      = 0.3
-                }
+                },
+                ActorRequirement: CandidateRequirements.AliveOnly
             ));
         }
 
@@ -106,7 +107,8 @@ public class CampfireItem : ToolItem
                     [QualityType.Preparation] = 0.6,
                     [QualityType.Comfort]     = 0.7,
                     [QualityType.Safety]      = 0.5
-                }
+                },
+                ActorRequirement: CandidateRequirements.AliveOnly
             ));
         }
 
@@ -134,7 +136,8 @@ public class CampfireItem : ToolItem
                     [QualityType.ResourcePreservation] = 0.5,
                     [QualityType.Preparation]          = 0.4,
                     [QualityType.Safety]               = 0.3
-                }
+                },
+                ActorRequirement: CandidateRequirements.AliveOnly
             ));
         }
 
@@ -163,7 +166,8 @@ public class CampfireItem : ToolItem
                     [QualityType.Preparation]          = 0.7,
                     [QualityType.Safety]               = 0.5,
                     [QualityType.Efficiency]           = -0.2
-                }
+                },
+                ActorRequirement: CandidateRequirements.AliveOnly
             ));
         }
     }

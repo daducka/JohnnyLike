@@ -79,7 +79,8 @@ public class MermaidItem : ExpirableWorldItem
             {
                 [QualityType.Fun]    = 0.8,
                 [QualityType.Comfort] = 0.2
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 }

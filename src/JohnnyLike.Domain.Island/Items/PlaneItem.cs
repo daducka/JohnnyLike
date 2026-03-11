@@ -59,7 +59,8 @@ public class PlaneItem : ExpirableWorldItem
             {
                 [QualityType.Safety]      = 1.0,
                 [QualityType.Preparation] = 0.8
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 }

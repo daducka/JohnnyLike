@@ -151,7 +151,8 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 [QualityType.Preparation]     = 0.25,
                 [QualityType.Efficiency]      = 0.15,
                 [QualityType.Safety]          = -0.35
-            }
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
 
