@@ -86,7 +86,10 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
         AddSkipStonesCandidate(ctx, output);
 
         // Despair comfort actions — only when actor is suffering
-        AddDesperationCandidates(ctx, output);
+        AddCurlInABallCandidate(ctx, output);
+        AddStareAtSkyCandidate(ctx, output);
+        AddReflectOnLifeCandidate(ctx, output);
+        AddEatSandCandidate(ctx, output);
 
         // Only offer explore_beach when there's enough bounty to get at least a partial result
         var sticks = Bounty.GetQuantity<StickSupply>();
@@ -213,42 +216,58 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
         ));
     }
 
-    private void AddDesperationCandidates(IslandContext ctx, List<ActionCandidate> output)
-    {
-        AddCurlInABallCandidate(ctx, output);
-        AddStareAtSkyCandidate(ctx, output);
-        AddReflectOnLifeCandidate(ctx, output);
-        AddEatSandCandidate(ctx, output);
-    }
-
     private void AddCurlInABallCandidate(IslandContext ctx, List<ActionCandidate> output)
     {
+        var baseDC = 8;
+        var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
+
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("curl_in_a_ball"),
-                ActionKind.Wait,
-                EmptyActionParameters.Instance,
+                ActionKind.Interact,
+                parameters,
                 EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random),
-                NarrationDescription: "curl into a ball and withdraw from the world"
+                "curl into a ball and withdraw from the world",
+                parameters.ToResultData()
             ),
             0.16,
-            Reason: "Curl in a ball (despair)",
+            Reason: $"Curl in a ball (Survival DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                var actorName = effectCtx.ActorId.Value;
-                effectCtx.Actor.Energy += 10.0;
-                effectCtx.Actor.Morale += 2.0;
+                if (effectCtx.Tier == null)
+                    return;
 
-                // Critical roll: ~2–3% chance of deep restorative rest
-                if (effectCtx.Rng.NextDouble() < 0.025)
+                var tier = effectCtx.Tier.Value;
+                var actorName = effectCtx.ActorId.Value;
+
+                switch (tier)
                 {
-                    effectCtx.Actor.Health += 10.0;
-                    effectCtx.Actor.Energy += 40.0;
-                    effectCtx.SetOutcomeNarration($"Critical Success!\n{actorName} falls into a deep, restorative sleep. Their body begins to recover.\nHealth +10\nEnergy +40");
-                }
-                else
-                {
-                    effectCtx.SetOutcomeNarration($"{actorName} curls into a ball and withdraws from the world.");
+                    case RollOutcomeTier.CriticalSuccess:
+                        effectCtx.Actor.Health += 10.0;
+                        effectCtx.Actor.Energy += 40.0;
+                        effectCtx.SetOutcomeNarration($"Something shifts deep in {actorName}'s body. They slip into a sleep so still the world seems to stop — and wake hours later with the light changed, feeling something they hadn't expected: the faintest thread of hope.");
+                        break;
+
+                    case RollOutcomeTier.Success:
+                        effectCtx.Actor.Energy += 10.0;
+                        effectCtx.Actor.Morale += 2.0;
+                        effectCtx.SetOutcomeNarration($"{actorName} uncurls slowly and forces themselves to sit up. Their body still aches, their stomach still gnaws, but something about lying still helped them hold together a little longer.");
+                        break;
+
+                    case RollOutcomeTier.PartialSuccess:
+                        effectCtx.Actor.Energy += 5.0;
+                        effectCtx.SetOutcomeNarration($"{actorName} uncurls and rises with heavy limbs, the brief rest leaving them no better than before — but no worse.");
+                        break;
+
+                    case RollOutcomeTier.Failure:
+                        effectCtx.Actor.Morale -= 1.0;
+                        effectCtx.SetOutcomeNarration($"{actorName} cannot rest. Their thoughts won't quiet. They eventually drag themselves back upright, as wretched as before.");
+                        break;
+
+                    case RollOutcomeTier.CriticalFailure:
+                        effectCtx.Actor.Morale -= 3.0;
+                        effectCtx.SetOutcomeNarration($"The silence presses in on {actorName} like something alive. Every minute curled on the sand makes it worse. They finally give up and stare into the distance, more desolate than before.");
+                        break;
                 }
             }),
             Qualities: new Dictionary<QualityType, double>
@@ -265,31 +284,55 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
 
     private void AddStareAtSkyCandidate(IslandContext ctx, List<ActionCandidate> output)
     {
+        var baseDC = 10;
+        var parameters = ctx.RollSkillCheck(SkillType.Perception, baseDC);
+
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("stare_at_sky"),
-                ActionKind.Wait,
-                EmptyActionParameters.Instance,
+                ActionKind.Interact,
+                parameters,
                 EngineConstants.TimeToTicks(10.0, 20.0, ctx.Random),
-                NarrationDescription: "lie still and stare at the endless sky"
+                "lie still and stare at the endless sky",
+                parameters.ToResultData()
             ),
             0.14,
-            Reason: "Stare at sky (despair)",
+            Reason: $"Stare at sky (Perception DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                var actorName = effectCtx.ActorId.Value;
-                effectCtx.Actor.Morale += 3.0;
+                if (effectCtx.Tier == null)
+                    return;
 
-                // Critical roll: ~2% chance of spotting a seabird drop something
-                if (effectCtx.Rng.NextDouble() < 0.02)
+                var tier = effectCtx.Tier.Value;
+                var actorName = effectCtx.ActorId.Value;
+
+                switch (tier)
                 {
-                    var pile = effectCtx.World.SharedSupplyPile;
-                    pile?.AddSupply(2.0, () => new Supply.CoconutSupply());
-                    effectCtx.SetOutcomeNarration($"Critical Success!\n{actorName} notices a seabird drop something nearby. Coconuts!");
-                }
-                else
-                {
-                    effectCtx.SetOutcomeNarration($"{actorName} lies still and stares at the endless sky.");
+                    case RollOutcomeTier.CriticalSuccess:
+                        effectCtx.Actor.Morale += 3.0;
+                        var pile = effectCtx.World.SharedSupplyPile;
+                        pile?.AddSupply(2.0, () => new Supply.CoconutSupply());
+                        effectCtx.SetOutcomeNarration($"{actorName} is watching a large seabird circling overhead — and something drops from its talons into the sand nearby. {actorName} scrambles over and finds coconuts half-buried in the sand.");
+                        break;
+
+                    case RollOutcomeTier.Success:
+                        effectCtx.Actor.Morale += 3.0;
+                        effectCtx.SetOutcomeNarration($"{actorName} stares up at the shifting clouds for a long time. The vastness of the sky briefly drowns out the hunger and pain. They feel marginally less alone.");
+                        break;
+
+                    case RollOutcomeTier.PartialSuccess:
+                        effectCtx.Actor.Morale += 1.0;
+                        effectCtx.SetOutcomeNarration($"{actorName} lies on the warm sand and watches the clouds drift. The stillness is brief, but their mind quiets for just a moment.");
+                        break;
+
+                    case RollOutcomeTier.Failure:
+                        effectCtx.SetOutcomeNarration($"{actorName} stares at the sky until the light hurts their eyes. Nothing happens. They roll onto their side feeling hollow.");
+                        break;
+
+                    case RollOutcomeTier.CriticalFailure:
+                        effectCtx.Actor.Morale -= 2.0;
+                        effectCtx.SetOutcomeNarration($"{actorName} lies staring upward as the minutes stretch out, thoughts filling with every mistake that led here. They sit up feeling worse than before.");
+                        break;
                 }
             }),
             Qualities: new Dictionary<QualityType, double>
@@ -305,30 +348,53 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
 
     private void AddReflectOnLifeCandidate(IslandContext ctx, List<ActionCandidate> output)
     {
+        var baseDC = 12;
+        var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
+
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("reflect_on_life"),
-                ActionKind.Wait,
-                EmptyActionParameters.Instance,
+                ActionKind.Interact,
+                parameters,
                 EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random),
-                NarrationDescription: "reflect quietly on life and how they ended up here"
+                "reflect quietly on life and how they ended up here",
+                parameters.ToResultData()
             ),
             0.15,
-            Reason: "Reflect on life (despair)",
+            Reason: $"Reflect on life (Survival DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                var actorName = effectCtx.ActorId.Value;
-                effectCtx.Actor.Morale += 5.0;
+                if (effectCtx.Tier == null)
+                    return;
 
-                // Critical roll: ~2–3% chance of epiphany
-                if (effectCtx.Rng.NextDouble() < 0.025)
+                var tier = effectCtx.Tier.Value;
+                var actorName = effectCtx.ActorId.Value;
+
+                switch (tier)
                 {
-                    effectCtx.Actor.Morale += 75.0;
-                    effectCtx.SetOutcomeNarration($"Critical Success!\nA sudden realization strikes {actorName}. They refuse to die here.\nMorale +75");
-                }
-                else
-                {
-                    effectCtx.SetOutcomeNarration($"{actorName} reflects quietly on their life and how they ended up here.");
+                    case RollOutcomeTier.CriticalSuccess:
+                        effectCtx.Actor.Morale += 75.0;
+                        effectCtx.SetOutcomeNarration($"A sudden clarity breaks over {actorName} like cold water. Something about the silence and the horizon makes everything snap into focus. They are not ready to die here. They sit up straighter, jaw set.");
+                        break;
+
+                    case RollOutcomeTier.Success:
+                        effectCtx.Actor.Morale += 5.0;
+                        effectCtx.SetOutcomeNarration($"{actorName} spends a long time sitting with their thoughts, picking through the wreckage of how they came to be here. By the end they feel no better materially — but somewhere beneath the surface, a small resolve quietly steadies them.");
+                        break;
+
+                    case RollOutcomeTier.PartialSuccess:
+                        effectCtx.Actor.Morale += 2.0;
+                        effectCtx.SetOutcomeNarration($"{actorName} turns everything over in their mind. There is no answer, no resolution — but the act of sitting quietly with it, of not running, offers a small and fragile comfort.");
+                        break;
+
+                    case RollOutcomeTier.Failure:
+                        effectCtx.SetOutcomeNarration($"{actorName}'s thoughts churn without landing anywhere useful. The quiet makes it worse. They sit there until the stillness feels like pressure, and stand up none the wiser.");
+                        break;
+
+                    case RollOutcomeTier.CriticalFailure:
+                        effectCtx.Actor.Morale -= 5.0;
+                        effectCtx.SetOutcomeNarration($"{actorName} cannot stop thinking. The same moments replay, each one making the situation feel more hopeless, less survivable. They finally stop, shaking slightly, feeling more lost than when they sat down.");
+                        break;
                 }
             }),
             Qualities: new Dictionary<QualityType, double>
@@ -345,37 +411,61 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
 
     private void AddEatSandCandidate(IslandContext ctx, List<ActionCandidate> output)
     {
+        var baseDC = 6;
+        var parameters = ctx.RollSkillCheck(SkillType.Athletics, baseDC);
+
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("eat_sand"),
-                ActionKind.Wait,
-                EmptyActionParameters.Instance,
+                ActionKind.Interact,
+                parameters,
                 EngineConstants.TimeToTicks(3.0, 5.0, ctx.Random),
-                NarrationDescription: "absentmindedly dig at the sand and eat a handful"
+                "hopelessly dig at the sand and eat a handful, hoping to find anything",
+                parameters.ToResultData()
             ),
             0.08,
-            Reason: "Eat sand (despair)",
+            Reason: $"Eat sand (Athletics DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                var actorName = effectCtx.ActorId.Value;
-                effectCtx.Actor.Satiety -= 2.0;
-                effectCtx.Actor.Morale  -= 2.0;
+                if (effectCtx.Tier == null)
+                    return;
 
-                // Critical roll: ~1–2% chance of uncovering turtle eggs
-                if (effectCtx.Rng.NextDouble() < 0.015)
+                var tier = effectCtx.Tier.Value;
+                var actorName = effectCtx.ActorId.Value;
+
+                switch (tier)
                 {
-                    effectCtx.Actor.Satiety += 80.0;
-                    effectCtx.SetOutcomeNarration($"Critical Success!\n{actorName}'s fingers strike something buried — turtle eggs!\nSatiety +80");
-                }
-                else
-                {
-                    effectCtx.SetOutcomeNarration($"{actorName} absentmindedly digs at the sand and eats a handful.");
+                    case RollOutcomeTier.CriticalSuccess:
+                        effectCtx.Actor.Satiety += 80.0;
+                        effectCtx.SetOutcomeNarration($"{actorName}'s fingers scrape something hard and smooth just below the surface. Turtle eggs — a whole clutch of them, buried just above the tideline. {actorName} tears them open and eats greedily, hands trembling, barely tasting them.");
+                        break;
+
+                    case RollOutcomeTier.Success:
+                        effectCtx.Actor.Satiety += 5.0;
+                        effectCtx.SetOutcomeNarration($"{actorName} finds a small sand crab buried an inch down. They eat it whole without stopping to think about it. It barely registers as food, but the body counts what it can.");
+                        break;
+
+                    case RollOutcomeTier.PartialSuccess:
+                        effectCtx.Actor.Satiety += 2.0;
+                        effectCtx.SetOutcomeNarration($"{actorName} digs with shaking hands and eats a few palmfuls of wet sand. Nothing. They spit and spit and eventually swallow the rest.");
+                        break;
+
+                    case RollOutcomeTier.Failure:
+                        effectCtx.Actor.Morale -= 2.0;
+                        effectCtx.SetOutcomeNarration($"{actorName} sits eating sand by the handful, spitting out grit and shell fragments. Their stomach twists. This is what they have become.");
+                        break;
+
+                    case RollOutcomeTier.CriticalFailure:
+                        effectCtx.Actor.Satiety -= 2.0;
+                        effectCtx.Actor.Morale  -= 3.0;
+                        effectCtx.SetOutcomeNarration($"{actorName} eats a mouthful of sand and swallows something sharp. They double over coughing. Their body rejects it, shaking and sick.");
+                        break;
                 }
             }),
             Qualities: new Dictionary<QualityType, double>
             {
                 [QualityType.Comfort]         = 0.1,
-                [QualityType.FoodConsumption] = -0.1,
+                [QualityType.FoodConsumption] = 0.3,
                 [QualityType.Safety]          = -0.1,
                 [QualityType.Fun]             = -0.2
             },

@@ -282,17 +282,26 @@ public class DespairComfortActionTests
     }
 
     [Fact]
-    public void EatSand_NormalOutcome_DrainsSatietyAndMorale()
+    public void EatSand_SuccessOutcome_GrantsSmallSatietyBoost()
     {
         var actor = MakeActor(satiety: 10, morale: 10, health: 80, energy: 60);
         var startSatiety = actor.Satiety;
-        var startMorale  = actor.Morale;
 
-        // Normal outcome: -2 Satiety, -2 Morale
-        actor.Satiety -= 2.0;
-        actor.Morale  -= 2.0;
+        // Success outcome (finding small crab): +5 satiety — half of raw fish
+        actor.Satiety += 5.0;
 
-        Assert.Equal(Math.Max(0.0, startSatiety - 2.0), actor.Satiety, precision: 5);
-        Assert.Equal(Math.Max(0.0, startMorale  - 2.0), actor.Morale,  precision: 5);
+        Assert.Equal(Math.Min(100.0, startSatiety + 5.0), actor.Satiety, precision: 5);
+    }
+
+    [Fact]
+    public void EatSand_FailureOutcome_DrainsMorale()
+    {
+        var actor = MakeActor(satiety: 10, morale: 10, health: 80, energy: 60);
+        var startMorale = actor.Morale;
+
+        // Failure outcome: -2 morale (no satiety change)
+        actor.Morale -= 2.0;
+
+        Assert.Equal(Math.Max(0.0, startMorale - 2.0), actor.Morale, precision: 5);
     }
 }
