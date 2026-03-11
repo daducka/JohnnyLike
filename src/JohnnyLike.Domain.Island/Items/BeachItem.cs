@@ -78,12 +78,15 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
     // IIslandActionCandidate
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
-        // Always offer morale / comfort actions from the beach
+        // Playful / recreational comfort actions — only when actor is in good condition
         AddHumToSelfCandidate(ctx, output);
         AddPaceBeachCandidate(ctx, output);
         AddCollectShellsCandidate(ctx, output);
         AddSitAndWatchWavesCandidate(ctx, output);
         AddSkipStonesCandidate(ctx, output);
+
+        // Despair comfort actions — only when actor is suffering
+        AddDesperationCandidates(ctx, output);
 
         // Only offer explore_beach when there's enough bounty to get at least a partial result
         var sticks = Bounty.GetQuantity<StickSupply>();
@@ -210,6 +213,176 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
         ));
     }
 
+    private void AddDesperationCandidates(IslandContext ctx, List<ActionCandidate> output)
+    {
+        AddCurlInABallCandidate(ctx, output);
+        AddStareAtSkyCandidate(ctx, output);
+        AddReflectOnLifeCandidate(ctx, output);
+        AddEatSandCandidate(ctx, output);
+    }
+
+    private void AddCurlInABallCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("curl_in_a_ball"),
+                ActionKind.Wait,
+                EmptyActionParameters.Instance,
+                EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random),
+                NarrationDescription: "curl into a ball and withdraw from the world"
+            ),
+            0.16,
+            Reason: "Curl in a ball (despair)",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                var actorName = effectCtx.ActorId.Value;
+                effectCtx.Actor.Energy += 10.0;
+                effectCtx.Actor.Morale += 2.0;
+
+                // Critical roll: ~2–3% chance of deep restorative rest
+                if (effectCtx.Rng.NextDouble() < 0.025)
+                {
+                    effectCtx.Actor.Health += 10.0;
+                    effectCtx.Actor.Energy += 40.0;
+                    effectCtx.SetOutcomeNarration($"Critical Success!\n{actorName} falls into a deep, restorative sleep. Their body begins to recover.\nHealth +10\nEnergy +40");
+                }
+                else
+                {
+                    effectCtx.SetOutcomeNarration($"{actorName} curls into a ball and withdraws from the world.");
+                }
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Rest]        = 0.8,
+                [QualityType.Comfort]     = 0.6,
+                [QualityType.Safety]      = 0.2,
+                [QualityType.Fun]         = -0.2,
+                [QualityType.Preparation] = -0.3
+            },
+            ActorRequirement: CandidateRequirements.DespairingOnly
+        ));
+    }
+
+    private void AddStareAtSkyCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("stare_at_sky"),
+                ActionKind.Wait,
+                EmptyActionParameters.Instance,
+                EngineConstants.TimeToTicks(10.0, 20.0, ctx.Random),
+                NarrationDescription: "lie still and stare at the endless sky"
+            ),
+            0.14,
+            Reason: "Stare at sky (despair)",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                var actorName = effectCtx.ActorId.Value;
+                effectCtx.Actor.Morale += 3.0;
+
+                // Critical roll: ~2% chance of spotting a seabird drop something
+                if (effectCtx.Rng.NextDouble() < 0.02)
+                {
+                    var pile = effectCtx.World.SharedSupplyPile;
+                    pile?.AddSupply(2.0, () => new Supply.CoconutSupply());
+                    effectCtx.SetOutcomeNarration($"Critical Success!\n{actorName} notices a seabird drop something nearby. Coconuts!");
+                }
+                else
+                {
+                    effectCtx.SetOutcomeNarration($"{actorName} lies still and stares at the endless sky.");
+                }
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Comfort] = 0.7,
+                [QualityType.Rest]    = 0.2,
+                [QualityType.Safety]  = 0.1,
+                [QualityType.Fun]     = -0.1
+            },
+            ActorRequirement: CandidateRequirements.DespairingOnly
+        ));
+    }
+
+    private void AddReflectOnLifeCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("reflect_on_life"),
+                ActionKind.Wait,
+                EmptyActionParameters.Instance,
+                EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random),
+                NarrationDescription: "reflect quietly on life and how they ended up here"
+            ),
+            0.15,
+            Reason: "Reflect on life (despair)",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                var actorName = effectCtx.ActorId.Value;
+                effectCtx.Actor.Morale += 5.0;
+
+                // Critical roll: ~2–3% chance of epiphany
+                if (effectCtx.Rng.NextDouble() < 0.025)
+                {
+                    effectCtx.Actor.Morale += 75.0;
+                    effectCtx.SetOutcomeNarration($"Critical Success!\nA sudden realization strikes {actorName}. They refuse to die here.\nMorale +75");
+                }
+                else
+                {
+                    effectCtx.SetOutcomeNarration($"{actorName} reflects quietly on their life and how they ended up here.");
+                }
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Comfort]     = 0.5,
+                [QualityType.Rest]        = 0.2,
+                [QualityType.Safety]      = 0.2,
+                [QualityType.Fun]         = -0.1,
+                [QualityType.Preparation] = -0.1
+            },
+            ActorRequirement: CandidateRequirements.DespairingOnly
+        ));
+    }
+
+    private void AddEatSandCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("eat_sand"),
+                ActionKind.Wait,
+                EmptyActionParameters.Instance,
+                EngineConstants.TimeToTicks(3.0, 5.0, ctx.Random),
+                NarrationDescription: "absentmindedly dig at the sand and eat a handful"
+            ),
+            0.08,
+            Reason: "Eat sand (despair)",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                var actorName = effectCtx.ActorId.Value;
+                effectCtx.Actor.Satiety -= 2.0;
+                effectCtx.Actor.Morale  -= 2.0;
+
+                // Critical roll: ~1–2% chance of uncovering turtle eggs
+                if (effectCtx.Rng.NextDouble() < 0.015)
+                {
+                    effectCtx.Actor.Satiety += 80.0;
+                    effectCtx.SetOutcomeNarration($"Critical Success!\n{actorName}'s fingers strike something buried — turtle eggs!\nSatiety +80");
+                }
+                else
+                {
+                    effectCtx.SetOutcomeNarration($"{actorName} absentmindedly digs at the sand and eats a handful.");
+                }
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Comfort]         = 0.1,
+                [QualityType.FoodConsumption] = -0.1,
+                [QualityType.Safety]          = -0.1,
+                [QualityType.Fun]             = -0.2
+            },
+            ActorRequirement: CandidateRequirements.DespairingOnly
+        ));
+    }
+
     private void AddHumToSelfCandidate(IslandContext ctx, List<ActionCandidate> output)
     {
         output.Add(new ActionCandidate(
@@ -235,7 +408,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Efficiency] = -0.05,
                 [QualityType.Safety]     = 0.05
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: CandidateRequirements.PlayfulOnly
         ));
     }
 
@@ -300,7 +473,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Safety]      = 0.05,
                 [QualityType.Preparation] = 0.05
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: CandidateRequirements.PlayfulOnly
         ));
     }
 
@@ -340,7 +513,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Efficiency]  = -0.05,
                 [QualityType.Safety]      = 0.05
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: CandidateRequirements.PlayfulOnly
         ));
     }
 
@@ -369,7 +542,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Efficiency] = -0.10,
                 [QualityType.Safety]     = 0.10
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: CandidateRequirements.PlayfulOnly
         ));
     }
 
@@ -432,7 +605,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Preparation] = 0.05,
                 [QualityType.Rest]        = -0.05
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: CandidateRequirements.PlayfulOnly
         ));
     }
 
