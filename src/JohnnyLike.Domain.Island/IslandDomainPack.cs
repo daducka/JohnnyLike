@@ -184,6 +184,71 @@ public class IslandDomainPack : IDomainPack
     /// <summary>Minimum multiplier for Preparation personality at 0 HP (suppressed to 40%).</summary>
     private const double InjuryPreparationSuppressionFloor = 0.40;
 
+    // ── Need pressure scale constants ─────────────────────────────────────────────
+    // Control how strongly each stat deficit translates into a need-quality weight.
+    // All pressures are in [0, 100], so these scales keep derived weights comparable.
+
+    /// <summary>Scales fatigue pressure (100 − Energy) into Rest need urgency. Max +1.5 at Energy=0.</summary>
+    private const double FatiguePressureRestScale  = 0.015;
+    /// <summary>Scales misery pressure (100 − Morale) into Comfort need urgency. Max +1.0 at Morale=0.</summary>
+    private const double MiseryPressureComfortScale = 0.01;
+
+    // ── Personality base weight scales ─────────────────────────────────────────────
+    // Control how strongly each trait pair contributes to its corresponding quality.
+    // Traits are normalised [0,1], so these scales set the practical weight ceiling.
+
+    /// <summary>Planner + Industrious traits → Preparation personality weight.</summary>
+    private const double PersonalityPreparationScale = 0.4;
+    /// <summary>Planner + Craftsman traits → Efficiency personality weight.</summary>
+    private const double PersonalityEfficiencyScale  = 0.3;
+    /// <summary>Craftsman + Industrious traits → Mastery personality weight.</summary>
+    private const double PersonalityMasteryScale     = 0.3;
+    /// <summary>Hedonist trait → Comfort personality weight.</summary>
+    private const double PersonalityComfortScale     = 0.4;
+    /// <summary>Survivor trait → Safety personality weight.</summary>
+    private const double PersonalitySafetyScale      = 0.3;
+    /// <summary>Instinctive + Hedonist traits → FoodConsumption personality weight.</summary>
+    private const double PersonalityFoodScale         = 0.2;
+
+    // ── Hunger ramp thresholds and slopes ─────────────────────────────────────────
+    // The staged hunger ramp builds urgency only below certain Satiety thresholds
+    // so actors do not seek food when already satisfied.
+    // Bands: >= SatietyRampMild (none), Mild, Moderate, Strong.
+
+    /// <summary>Satiety at or above which hunger urgency is zero; also the top of the mild urgency band.</summary>
+    private const double SatietyRampMild     = 70.0;
+    /// <summary>Satiety below which moderate urgency begins (ramp from HungerMildMax → HungerMildMax+HungerModerateRange).</summary>
+    private const double SatietyRampModerate = 50.0;
+    /// <summary>Satiety below which strong urgency begins (ramp from HungerMildMax+HungerModerateRange upwards).</summary>
+    private const double SatietyRampStrong   = 30.0;
+    /// <summary>Maximum hunger urgency in the mild band (Satiety 50–70).</summary>
+    private const double HungerMildMax       = 0.3;
+    /// <summary>Additional hunger urgency added across the moderate band (Satiety 30–50).</summary>
+    private const double HungerModerateRange = 1.2;
+    /// <summary>Additional hunger urgency added across the strong band (Satiety 0–30).</summary>
+    private const double HungerStrongRange   = 0.5;
+
+    // ── Mood multiplier suppression constants ─────────────────────────────────────
+    // These suppress longer-horizon personality tendencies when the actor's state is critical,
+    // so survival instinct takes over.
+
+    /// <summary>Satiety threshold below which the actor is considered starving (suppresses Preparation to PrepStarvationFloor).</summary>
+    private const double StarvatingSatietyThreshold   = 20.0;
+    /// <summary>Preparation multiplier floor when actor is starving.</summary>
+    private const double PrepStarvationFloor          = 0.3;
+    /// <summary>Energy threshold below which the actor is considered exhausted (suppresses Mastery to MasteryExhaustionFloor).</summary>
+    private const double ExhaustedEnergyThreshold     = 20.0;
+    /// <summary>Mastery multiplier floor when actor is exhausted.</summary>
+    private const double MasteryExhaustionFloor       = 0.4;
+    /// <summary>Base Fun multiplier scale — keeps fun weight below 0.6 even at maximum misery.</summary>
+    private const double FunBaseScale                 = 0.6;
+    /// <summary>Critical-survival Fun suppression: reduces Fun weight to 35% when starving or exhausted.</summary>
+    private const double FunCriticalSurvivalScale     = 0.35;
+    /// <summary>Satiety threshold below which critical-survival Fun suppression activates.</summary>
+    private const double FunCriticalSatietyThreshold  = 25.0;
+    /// <summary>Energy threshold below which critical-survival Fun suppression activates.</summary>
+    private const double FunCriticalEnergyThreshold   = 20.0;
+
     /// <summary>
     /// Encapsulates the three scoring influences — Needs, Personality, Mood — as separate
     /// dictionaries so each can be tuned independently.
@@ -246,19 +311,19 @@ public class IslandDomainPack : IDomainPack
         // ── Staged hunger ramp ────────────────────────────────────────────────────
         // Hunger urgency only builds meaningfully below certain satiety thresholds
         // so actors don't seek food when already satisfied.
-        //   Satiety >= 70 : ~0    (no urgency)
-        //   Satiety 50–70 :  0 → 0.3  (very mild)
-        //   Satiety 30–50 :  0.3 → 1.5  (moderate)
-        //   Satiety  0–30 :  1.5 → 2.0  (strong)
+        //   Satiety >= SatietyRampMild     : ~0    (no urgency)
+        //   Satiety SatietyRampModerate–SatietyRampMild :  0 → HungerMildMax  (very mild)
+        //   Satiety SatietyRampStrong–SatietyRampModerate:  HungerMildMax → HungerMildMax+HungerModerateRange (moderate)
+        //   Satiety  0–SatietyRampStrong   :  HungerMildMax+HungerModerateRange → ... (strong)
         double stagedHungerNeed;
-        if (actor.Satiety >= 70.0)
+        if (actor.Satiety >= SatietyRampMild)
             stagedHungerNeed = 0.0;
-        else if (actor.Satiety >= 50.0)
-            stagedHungerNeed = (70.0 - actor.Satiety) / 20.0 * 0.3;
-        else if (actor.Satiety >= 30.0)
-            stagedHungerNeed = 0.3 + (50.0 - actor.Satiety) / 20.0 * 1.2;
+        else if (actor.Satiety >= SatietyRampModerate)
+            stagedHungerNeed = (SatietyRampMild - actor.Satiety) / (SatietyRampMild - SatietyRampModerate) * HungerMildMax;
+        else if (actor.Satiety >= SatietyRampStrong)
+            stagedHungerNeed = HungerMildMax + (SatietyRampModerate - actor.Satiety) / (SatietyRampModerate - SatietyRampStrong) * HungerModerateRange;
         else
-            stagedHungerNeed = 1.5 + (30.0 - actor.Satiety) / 30.0 * 0.5;
+            stagedHungerNeed = (HungerMildMax + HungerModerateRange) + (SatietyRampStrong - actor.Satiety) / SatietyRampStrong * HungerStrongRange;
 
         // ── Traits ────────────────────────────────────────────────────────────────
         // Stable personality tendencies derived from pairs of core abilities.
@@ -287,20 +352,20 @@ public class IslandDomainPack : IDomainPack
         var needAdd = new Dictionary<QualityType, double>
         {
             [QualityType.FoodConsumption] = stagedHungerNeed,
-            [QualityType.Rest]            = fatiguePressure * 0.015 + injuryPressure * InjuryRestNeedScale,
-            [QualityType.Comfort]         = miseryPressure  * 0.01  + injuryPressure * InjuryComfortNeedScale,
+            [QualityType.Rest]            = fatiguePressure * FatiguePressureRestScale   + injuryPressure * InjuryRestNeedScale,
+            [QualityType.Comfort]         = miseryPressure  * MiseryPressureComfortScale + injuryPressure * InjuryComfortNeedScale,
             [QualityType.Safety]          = injuryPressure  * InjurySafetyNeedScale
         };
 
         // Personality weights come from traits (stable, independent of current state).
         var personalityBase = new Dictionary<QualityType, double>
         {
-            [QualityType.Preparation]     = (planner + industrious) * 0.4,
-            [QualityType.Efficiency]      = (planner + craftsman)   * 0.3,
-            [QualityType.Mastery]         = (craftsman + industrious) * 0.3,
-            [QualityType.Comfort]         = hedonist * 0.4,
-            [QualityType.Safety]          = survivor * 0.3,
-            [QualityType.FoodConsumption] = (instinctive + hedonist) * 0.2,
+            [QualityType.Preparation]     = (planner + industrious) * PersonalityPreparationScale,
+            [QualityType.Efficiency]      = (planner + craftsman)   * PersonalityEfficiencyScale,
+            [QualityType.Mastery]         = (craftsman + industrious) * PersonalityMasteryScale,
+            [QualityType.Comfort]         = hedonist * PersonalityComfortScale,
+            [QualityType.Safety]          = survivor * PersonalitySafetyScale,
+            [QualityType.FoodConsumption] = (instinctive + hedonist) * PersonalityFoodScale,
             [QualityType.Fun]             = 1.0
         };
 
@@ -311,17 +376,18 @@ public class IslandDomainPack : IDomainPack
         var moodMultiplier = new Dictionary<QualityType, double>
         {
             [QualityType.Preparation]     = Math.Min(
-                                                actor.Satiety < 20.0 ? 0.3 : 1.0,  // starving → eat now, not cook
+                                                actor.Satiety < StarvatingSatietyThreshold ? PrepStarvationFloor : 1.0,
                                                 Math.Max(InjuryPreparationSuppressionFloor,
                                                          1.0 - injuryFactor * (1.0 - InjuryPreparationSuppressionFloor))
                                             ),
             [QualityType.Mastery]         = Math.Min(
-                                                actor.Energy < 20.0 ? 0.4 : 1.0, // exhausted → rest, not work
+                                                actor.Energy < ExhaustedEnergyThreshold ? MasteryExhaustionFloor : 1.0,
                                                 Math.Max(InjuryMasterySuppressionFloor,
                                                          1.0 - injuryFactor * (1.0 - InjuryMasterySuppressionFloor))
                                             ),
-            [QualityType.Fun]             = (1.0 - (actor.Morale / 100.0)) * 0.6 *
-                                                (actor.Satiety < 25.0 || actor.Energy < 20.0 ? 0.35 : 1.0) *
+            [QualityType.Fun]             = (1.0 - (actor.Morale / 100.0)) * FunBaseScale *
+                                                (actor.Satiety < FunCriticalSatietyThreshold || actor.Energy < FunCriticalEnergyThreshold
+                                                    ? FunCriticalSurvivalScale : 1.0) *
                                                 Math.Max(InjuryFunSuppressionFloor,
                                                          1.0 - injuryFactor * (1.0 - InjuryFunSuppressionFloor)),
             [QualityType.Efficiency]      = 1.0,
