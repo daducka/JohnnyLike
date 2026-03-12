@@ -350,4 +350,217 @@ public class DecisionExplainTests
         Assert.NotNull(orderingEvt);
         Assert.Equal("exploit", orderingEvt!.Details["orderingBranch"].ToString());
     }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // 6. personalityInfluence section — trait values, per-quality breakdowns
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// A focused "stat actor" with non-default abilities so trait values are
+    /// clearly non-zero and easy to verify deterministically.
+    /// STR=10, DEX=10, CON=10, INT=14, WIS=16, CHA=10
+    ///   planner     = Norm(14,16) = (30-20)/20 = 0.5
+    ///   craftsman   = Norm(10,14) = (24-20)/20 = 0.2
+    ///   survivor    = Norm(10,16) = (26-20)/20 = 0.3
+    ///   hedonist    = Norm(10,10) = (20-20)/20 = 0.0
+    ///   instinctive = Norm(10,10) = (20-20)/20 = 0.0
+    ///   industrious = Norm(10,10) = (20-20)/20 = 0.0
+    /// </summary>
+    private static (IslandDomainPack domain, ActorId actorId, IslandActorState actor, IslandWorldState world)
+        CreateStatActor()
+    {
+        var domain  = new IslandDomainPack();
+        var actorId = new ActorId("StatTester");
+        var actor   = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            ["satiety"] = 70.0,
+            ["energy"]  = 80.0,
+            ["morale"]  = 60.0,
+            ["STR"] = 10,
+            ["DEX"] = 10,
+            ["CON"] = 10,
+            ["INT"] = 14,
+            ["WIS"] = 16,
+            ["CHA"] = 10
+        });
+        actor.Health = 100.0;
+        var world = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, world);
+        return (domain, actorId, actor, world);
+    }
+
+    [Fact]
+    public void ExplainCandidateScoring_ContainsPersonalityInfluence()
+    {
+        var (domain, actorId, actor, world) = CreateStatActor();
+        var resources  = new EmptyResourceAvailability();
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        Assert.True(explanation.ContainsKey("personalityInfluence"),
+            "scoringExplanation must include 'personalityInfluence'");
+        var pi = (Dictionary<string, object>)explanation["personalityInfluence"];
+        Assert.True(pi.ContainsKey("traits"));
+        Assert.True(pi.ContainsKey("qualityPersonalityBreakdown"));
+    }
+
+    [Fact]
+    public void ExplainCandidateScoring_PersonalityTraitValues_AreCorrect()
+    {
+        // For the stat actor: INT=14, WIS=16 → planner = Norm(14,16) = (30-20)/20 = 0.5
+        //                     DEX=10, INT=14 → craftsman = Norm(10,14) = (24-20)/20 = 0.2
+        //                     CON=10, WIS=16 → survivor  = Norm(10,16) = (26-20)/20 = 0.3
+        //                     CHA=10, CON=10 → hedonist  = 0.0
+        //                     STR=10, CHA=10 → instinctive = 0.0
+        //                     STR=10, DEX=10 → industrious  = 0.0
+        var (domain, actorId, actor, world) = CreateStatActor();
+        var resources  = new EmptyResourceAvailability();
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        var pi     = (Dictionary<string, object>)explanation["personalityInfluence"];
+        var traits = (Dictionary<string, object>)pi["traits"];
+
+        double TraitValue(string name) =>
+            (double)((Dictionary<string, object>)traits[name])["value"];
+
+        Assert.Equal(0.5,  TraitValue("planner"),     precision: 4);
+        Assert.Equal(0.2,  TraitValue("craftsman"),   precision: 4);
+        Assert.Equal(0.3,  TraitValue("survivor"),    precision: 4);
+        Assert.Equal(0.0,  TraitValue("hedonist"),    precision: 4);
+        Assert.Equal(0.0,  TraitValue("instinctive"), precision: 4);
+        Assert.Equal(0.0,  TraitValue("industrious"), precision: 4);
+    }
+
+    [Fact]
+    public void ExplainCandidateScoring_PersonalityTraitDetails_ContainSourceAndInputs()
+    {
+        var (domain, actorId, actor, world) = CreateStatActor();
+        var resources  = new EmptyResourceAvailability();
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        var pi     = (Dictionary<string, object>)explanation["personalityInfluence"];
+        var traits = (Dictionary<string, object>)pi["traits"];
+
+        foreach (var traitName in new[] { "planner", "craftsman", "survivor", "hedonist", "instinctive", "industrious" })
+        {
+            var traitEntry = (Dictionary<string, object>)traits[traitName];
+            Assert.True(traitEntry.ContainsKey("value"),  $"{traitName} must have 'value'");
+            Assert.True(traitEntry.ContainsKey("source"), $"{traitName} must have 'source'");
+            Assert.True(traitEntry.ContainsKey("inputs"), $"{traitName} must have 'inputs'");
+        }
+
+        // Spot-check source strings
+        Assert.Equal("Norm(INT, WIS)", ((Dictionary<string, object>)traits["planner"])["source"]);
+        Assert.Equal("Norm(STR, DEX)", ((Dictionary<string, object>)traits["industrious"])["source"]);
+    }
+
+    [Fact]
+    public void ExplainCandidateScoring_QualityPersonalityBreakdown_ContainsExpectedQualities()
+    {
+        var (domain, actorId, actor, world) = CreateStatActor();
+        var resources  = new EmptyResourceAvailability();
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        var pi        = (Dictionary<string, object>)explanation["personalityInfluence"];
+        var breakdown = (Dictionary<string, object>)pi["qualityPersonalityBreakdown"];
+
+        // All seven quality types with a personality entry must be present
+        foreach (var quality in new[] { "Preparation", "Efficiency", "Mastery", "Comfort", "Safety", "FoodConsumption", "Fun" })
+        {
+            Assert.True(breakdown.ContainsKey(quality), $"qualityPersonalityBreakdown must contain '{quality}'");
+            var entry = (Dictionary<string, object>)breakdown[quality];
+            Assert.True(entry.ContainsKey("formula"),         $"{quality} entry must have 'formula'");
+            Assert.True(entry.ContainsKey("contributors"),    $"{quality} entry must have 'contributors'");
+            Assert.True(entry.ContainsKey("personalityBase"), $"{quality} entry must have 'personalityBase'");
+        }
+    }
+
+    [Fact]
+    public void ExplainCandidateScoring_PersonalityBase_Preparation_MatchesFormula()
+    {
+        // planner=0.5, industrious=0.0, scale=0.4 → personalityBase = (0.5+0.0)*0.4 = 0.2
+        var (domain, actorId, actor, world) = CreateStatActor();
+        var resources  = new EmptyResourceAvailability();
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        var pi        = (Dictionary<string, object>)explanation["personalityInfluence"];
+        var breakdown = (Dictionary<string, object>)pi["qualityPersonalityBreakdown"];
+        var prep      = (Dictionary<string, object>)breakdown["Preparation"];
+
+        Assert.Equal(0.2, (double)prep["personalityBase"], precision: 4);
+        var contributors = (Dictionary<string, object>)prep["contributors"];
+        Assert.Equal(0.5, (double)contributors["planner"],     precision: 4);
+        Assert.Equal(0.0, (double)contributors["industrious"], precision: 4);
+    }
+
+    [Fact]
+    public void ExplainCandidateScoring_PersonalityBase_Comfort_IsZeroForHedonistZero()
+    {
+        // hedonist=0.0 for the stat actor → personalityBase(Comfort) = 0.0 * scale = 0.0
+        var (domain, actorId, actor, world) = CreateStatActor();
+        var resources  = new EmptyResourceAvailability();
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        var pi        = (Dictionary<string, object>)explanation["personalityInfluence"];
+        var breakdown = (Dictionary<string, object>)pi["qualityPersonalityBreakdown"];
+        var comfort   = (Dictionary<string, object>)breakdown["Comfort"];
+
+        Assert.Equal(0.0, (double)comfort["personalityBase"], precision: 4);
+    }
+
+    [Fact]
+    public void ExplainCandidateScoring_PersonalityBase_AgreesWith_QualityModelDecomposition()
+    {
+        // personalityInfluence.qualityPersonalityBreakdown[q].personalityBase must match
+        // qualityModelDecomposition[q].personalityBase for every quality that appears in both.
+        var (domain, actorId, actor, world) = CreateStatActor();
+        var resources  = new EmptyResourceAvailability();
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        var pi                   = (Dictionary<string, object>)explanation["personalityInfluence"];
+        var personalityBreakdown = (Dictionary<string, object>)pi["qualityPersonalityBreakdown"];
+        var qualityDecomposition = (Dictionary<string, object>)explanation["qualityModelDecomposition"];
+
+        foreach (var quality in personalityBreakdown.Keys)
+        {
+            if (!qualityDecomposition.ContainsKey(quality))
+                continue;
+
+            var piBase  = (double)((Dictionary<string, object>)personalityBreakdown[quality])["personalityBase"];
+            var qmdBase = (double)((Dictionary<string, object>)qualityDecomposition[quality])["personalityBase"];
+            Assert.Equal(qmdBase, piBase, precision: 4);
+        }
+    }
+
+    [Fact]
+    public void VerboseEngine_ScoringExplanation_ContainsPersonalityInfluence()
+    {
+        var domain = new IslandDomainPack();
+        var sink   = new InMemoryTraceSink();
+        var opts   = new JohnnyLike.Engine.DecisionTraceOptions(JohnnyLike.Engine.DecisionTraceLevel.Verbose);
+        var engine = new JohnnyLike.Engine.Engine(domain, 42, sink, opts);
+
+        engine.AddActor(new ActorId("Johnny"), new Dictionary<string, object>
+        {
+            ["satiety"] = 40.0, ["energy"] = 60.0, ["morale"] = 50.0,
+            ["STR"] = 10, ["DEX"] = 10, ["CON"] = 10,
+            ["INT"] = 14, ["WIS"] = 16, ["CHA"] = 10
+        });
+        engine.TryGetNextAction(new ActorId("Johnny"), out _);
+
+        var selected = sink.GetEvents().First(e => e.EventType == "DecisionSelected");
+        var json     = selected.Details["scoringExplanation"].ToString()!;
+
+        Assert.Contains("personalityInfluence", json);
+        Assert.Contains("traits", json);
+        Assert.Contains("qualityPersonalityBreakdown", json);
+        Assert.Contains("planner", json);
+        Assert.Contains("craftsman", json);
+    }
 }
