@@ -275,6 +275,89 @@ public class IslandDomainPack : IDomainPack
         }
     }
 
+    /// <summary>
+    /// Six derived personality traits computed from an actor's core stats.
+    /// Each trait is normalised to [0,1] using Norm(a,b) = Clamp((a+b-20)/20, 0, 1).
+    /// </summary>
+    private sealed record PersonalityTraits(
+        double Planner,      // INT + WIS  → prefers preparation, efficiency
+        double Craftsman,    // DEX + INT  → prefers crafting, mastery
+        double Survivor,     // CON + WIS  → prefers safety, sustainability
+        double Hedonist,     // CHA + CON  → prefers comfort, morale
+        double Instinctive,  // STR + CHA  → prefers immediate reward
+        double Industrious,  // STR + DEX  → prefers building, working
+        int STR, int DEX, int CON, int INT, int WIS, int CHA);
+
+    /// <summary>
+    /// Per-quality personality contribution: the formula used, the traits that contributed
+    /// (with their values), and the resulting personalityBase value.
+    /// </summary>
+    private sealed record QualityPersonalityEntry(
+        string Formula,
+        Dictionary<string, double> Contributors,
+        double PersonalityBase);
+
+    /// <summary>
+    /// Derives the six personality traits from an actor's core ability scores.
+    /// This is the single source of truth for trait derivation used by both
+    /// <see cref="BuildQualityModel"/> and <see cref="ExplainCandidateScoring"/>.
+    /// </summary>
+    private static PersonalityTraits DerivePersonalityTraits(IslandActorState actor)
+    {
+        static double Norm(int a, int b) => Math.Clamp(((double)(a + b) - 20.0) / 20.0, 0.0, 1.0);
+        return new PersonalityTraits(
+            Planner:     Norm(actor.INT, actor.WIS),
+            Craftsman:   Norm(actor.DEX, actor.INT),
+            Survivor:    Norm(actor.CON, actor.WIS),
+            Hedonist:    Norm(actor.CHA, actor.CON),
+            Instinctive: Norm(actor.STR, actor.CHA),
+            Industrious: Norm(actor.STR, actor.DEX),
+            STR: actor.STR, DEX: actor.DEX, CON: actor.CON,
+            INT: actor.INT, WIS: actor.WIS, CHA: actor.CHA);
+    }
+
+    /// <summary>
+    /// Builds the per-quality personality breakdown — formula, contributors, and personalityBase —
+    /// from a pre-computed <see cref="PersonalityTraits"/> snapshot.
+    /// This is the single source of truth for personalityBase values used by both
+    /// <see cref="BuildQualityModel"/> and <see cref="ExplainCandidateScoring"/>.
+    /// </summary>
+    private static Dictionary<QualityType, QualityPersonalityEntry> BuildQualityPersonalityBreakdown(
+        PersonalityTraits t)
+    {
+        return new Dictionary<QualityType, QualityPersonalityEntry>
+        {
+            [QualityType.Preparation]     = new(
+                Formula:       $"(planner + industrious) * {PersonalityPreparationScale}",
+                Contributors:  new() { ["planner"] = t.Planner, ["industrious"] = t.Industrious },
+                PersonalityBase: (t.Planner + t.Industrious) * PersonalityPreparationScale),
+            [QualityType.Efficiency]      = new(
+                Formula:       $"(planner + craftsman) * {PersonalityEfficiencyScale}",
+                Contributors:  new() { ["planner"] = t.Planner, ["craftsman"] = t.Craftsman },
+                PersonalityBase: (t.Planner + t.Craftsman) * PersonalityEfficiencyScale),
+            [QualityType.Mastery]         = new(
+                Formula:       $"(craftsman + industrious) * {PersonalityMasteryScale}",
+                Contributors:  new() { ["craftsman"] = t.Craftsman, ["industrious"] = t.Industrious },
+                PersonalityBase: (t.Craftsman + t.Industrious) * PersonalityMasteryScale),
+            [QualityType.Comfort]         = new(
+                Formula:       $"hedonist * {PersonalityComfortScale}",
+                Contributors:  new() { ["hedonist"] = t.Hedonist },
+                PersonalityBase: t.Hedonist * PersonalityComfortScale),
+            [QualityType.Safety]          = new(
+                Formula:       $"survivor * {PersonalitySafetyScale}",
+                Contributors:  new() { ["survivor"] = t.Survivor },
+                PersonalityBase: t.Survivor * PersonalitySafetyScale),
+            [QualityType.FoodConsumption] = new(
+                Formula:       $"(instinctive + hedonist) * {PersonalityFoodScale}",
+                Contributors:  new() { ["instinctive"] = t.Instinctive, ["hedonist"] = t.Hedonist },
+                PersonalityBase: (t.Instinctive + t.Hedonist) * PersonalityFoodScale),
+            [QualityType.Fun]             = new(
+                Formula:       "1.0",
+                Contributors:  new(),
+                PersonalityBase: 1.0)
+        };
+    }
+
     internal static double ScoreByQualities(
         IslandActorState actor,
         double intrinsicScore,
@@ -293,13 +376,6 @@ public class IslandDomainPack : IDomainPack
 
     private static QualityModel BuildQualityModel(IslandActorState actor)
     {
-
-        // ── Core Abilities ────────────────────────────────────────────────────────
-        // Stable actor capabilities: STR, DEX, CON, INT, WIS, CHA
-        // Raw values are normalised so that 10 = 0.0 and 20 = 1.0.
-
-        double Norm(int a, int b) => Math.Clamp(((double)(a + b) - 20.0) / 20.0, 0.0, 1.0);
-
         // ── Actor Stats ───────────────────────────────────────────────────────────
         // Dynamic physiological / psychological state.
         // Each deficit becomes a "pressure" that adds weight to a need quality.
@@ -326,15 +402,8 @@ public class IslandDomainPack : IDomainPack
             stagedHungerNeed = (HungerMildMax + HungerModerateRange) + (SatietyRampStrong - actor.Satiety) / SatietyRampStrong * HungerStrongRange;
 
         // ── Traits ────────────────────────────────────────────────────────────────
-        // Stable personality tendencies derived from pairs of core abilities.
-        // Every core ability participates in exactly two traits.
-
-        var planner     = Norm(actor.INT, actor.WIS);   // INT + WIS  → prefers preparation, efficiency
-        var craftsman   = Norm(actor.DEX, actor.INT);   // DEX + INT  → prefers crafting, mastery
-        var survivor    = Norm(actor.CON, actor.WIS);   // CON + WIS  → prefers safety, sustainability
-        var hedonist    = Norm(actor.CHA, actor.CON);   // CHA + CON  → prefers comfort, morale
-        var instinctive = Norm(actor.STR, actor.CHA);   // STR + CHA  → prefers immediate reward
-        var industrious = Norm(actor.STR, actor.DEX);   // STR + DEX  → prefers building, working
+        // Derived via DerivePersonalityTraits (shared with ExplainCandidateScoring).
+        var traits = DerivePersonalityTraits(actor);
 
         // Normalised injury factor [0,1]: 0 = healthy, 1 = 0 HP.
         // Health-pressure scale constants are defined at class level (InjurySafetyNeedScale etc.)
@@ -358,16 +427,11 @@ public class IslandDomainPack : IDomainPack
         };
 
         // Personality weights come from traits (stable, independent of current state).
-        var personalityBase = new Dictionary<QualityType, double>
-        {
-            [QualityType.Preparation]     = (planner + industrious) * PersonalityPreparationScale,
-            [QualityType.Efficiency]      = (planner + craftsman)   * PersonalityEfficiencyScale,
-            [QualityType.Mastery]         = (craftsman + industrious) * PersonalityMasteryScale,
-            [QualityType.Comfort]         = hedonist * PersonalityComfortScale,
-            [QualityType.Safety]          = survivor * PersonalitySafetyScale,
-            [QualityType.FoodConsumption] = (instinctive + hedonist) * PersonalityFoodScale,
-            [QualityType.Fun]             = 1.0
-        };
+        // Derived via BuildQualityPersonalityBreakdown (shared with ExplainCandidateScoring).
+        var personalityBreakdown = BuildQualityPersonalityBreakdown(traits);
+        var personalityBase = personalityBreakdown.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.PersonalityBase);
 
         // Mood multipliers modulate personality when actor state is critical.
         // They suppress longer-horizon tendencies so survival instinct takes over.
@@ -832,6 +896,39 @@ public class IslandDomainPack : IDomainPack
                                                  1.0 - injuryFactor * (1.0 - InjuryPreparationSuppressionFloor)), 4)
         };
 
+        // Personality influence breakdown — uses same helpers as BuildQualityModel to avoid formula drift.
+        var traits = DerivePersonalityTraits(actor);
+        var qualityPersonalityBreakdown = BuildQualityPersonalityBreakdown(traits);
+
+        var traitDetails = new Dictionary<string, object>
+        {
+            ["planner"]     = new Dictionary<string, object> { ["value"] = Math.Round(traits.Planner,     4), ["source"] = "Norm(INT, WIS)", ["inputs"] = new Dictionary<string, int> { ["INT"] = traits.INT, ["WIS"] = traits.WIS } },
+            ["craftsman"]   = new Dictionary<string, object> { ["value"] = Math.Round(traits.Craftsman,   4), ["source"] = "Norm(DEX, INT)", ["inputs"] = new Dictionary<string, int> { ["DEX"] = traits.DEX, ["INT"] = traits.INT } },
+            ["survivor"]    = new Dictionary<string, object> { ["value"] = Math.Round(traits.Survivor,    4), ["source"] = "Norm(CON, WIS)", ["inputs"] = new Dictionary<string, int> { ["CON"] = traits.CON, ["WIS"] = traits.WIS } },
+            ["hedonist"]    = new Dictionary<string, object> { ["value"] = Math.Round(traits.Hedonist,    4), ["source"] = "Norm(CHA, CON)", ["inputs"] = new Dictionary<string, int> { ["CHA"] = traits.CHA, ["CON"] = traits.CON } },
+            ["instinctive"] = new Dictionary<string, object> { ["value"] = Math.Round(traits.Instinctive, 4), ["source"] = "Norm(STR, CHA)", ["inputs"] = new Dictionary<string, int> { ["STR"] = traits.STR, ["CHA"] = traits.CHA } },
+            ["industrious"] = new Dictionary<string, object> { ["value"] = Math.Round(traits.Industrious, 4), ["source"] = "Norm(STR, DEX)", ["inputs"] = new Dictionary<string, int> { ["STR"] = traits.STR, ["DEX"] = traits.DEX } }
+        };
+
+        var qualityPersonalityBreakdownExplain = new Dictionary<string, object>();
+        foreach (var (q, entry) in qualityPersonalityBreakdown)
+        {
+            qualityPersonalityBreakdownExplain[q.ToString()] = new Dictionary<string, object>
+            {
+                ["formula"]         = entry.Formula,
+                ["contributors"]    = entry.Contributors.ToDictionary(
+                                          kvp => kvp.Key,
+                                          kvp => (object)Math.Round(kvp.Value, 4)),
+                ["personalityBase"] = Math.Round(entry.PersonalityBase, 4)
+            };
+        }
+
+        var personalityInfluence = new Dictionary<string, object>
+        {
+            ["traits"]                    = traitDetails,
+            ["qualityPersonalityBreakdown"] = qualityPersonalityBreakdownExplain
+        };
+
         var effectiveWeights = new Dictionary<string, object>();
         foreach (var q in Enum.GetValues<QualityType>())
         {
@@ -895,6 +992,7 @@ public class IslandDomainPack : IDomainPack
             ["actorStats"]               = actorStats,
             ["pressures"]                = pressures,
             ["healthInfluence"]          = healthInfluence,
+            ["personalityInfluence"]     = personalityInfluence,
             ["effectiveWeights"]         = effectiveWeights,
             ["qualityModelDecomposition"] = qualityModelDecomposition,
             ["candidateBreakdowns"]      = candidateBreakdowns
