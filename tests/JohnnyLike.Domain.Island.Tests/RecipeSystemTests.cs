@@ -908,6 +908,29 @@ public class RecipeSystemTests
         Assert.DoesNotContain("realizes how to make a", beat.Text);
     }
 
+    [Fact]
+    public void TryDiscover_EmitsNarrationBeat_WhenNothingDiscovered()
+    {
+        // Arrange: all known recipes are already known so nothing can be discovered.
+        var (actor, world) = MakeBase();
+        foreach (var id in IslandRecipeRegistry.All.Keys)
+            actor.KnownRecipeIds.Add(id);
+
+        var tracer = new JohnnyLike.Engine.EventTracer();
+        world.Tracer = tracer;
+
+        // Act: TryDiscover with ThinkAboutSupplies trigger
+        RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(1)),
+            DiscoveryTrigger.ThinkAboutSupplies, actorId: "Johnny");
+
+        // Assert: a narration beat was still emitted
+        var beats = tracer.Drain();
+        Assert.NotEmpty(beats);
+        var beat = beats.Single();
+        Assert.Contains("Johnny", beat.Text);
+        Assert.Contains("supply pile", beat.Text);
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private static int FindSeedBelow(double threshold)
