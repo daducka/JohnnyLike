@@ -16,6 +16,8 @@ if (args.Length == 0)
     Console.WriteLine("  --decision-candidates     Emit per-candidate decision trace events");
     Console.WriteLine("  --decision-verbose        Emit verbose decision trace (includes scoring explanation)");
     Console.WriteLine("  --save-artifacts          Save trace logs to artifacts/ directory");
+    Console.WriteLine("  --actor <name>            Starting actor archetype (default: Johnny)");
+    Console.WriteLine($"                            Available: {string.Join(", ", Archetypes.All.Keys)}");
     Console.WriteLine("\nFuzz Testing:");
     Console.WriteLine("  --fuzz              Run fuzz testing mode");
     Console.WriteLine("  --runs <number>     Number of fuzz runs (default: 1)");
@@ -38,6 +40,7 @@ var fuzzProfile = "";
 var verbose = false;
 var saveArtifacts = false;
 var decisionTraceLevel = JohnnyLike.Engine.DecisionTraceLevel.None;
+var actorName = "Johnny";
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -87,6 +90,9 @@ for (int i = 0; i < args.Length; i++)
         case "--save-artifacts":
             saveArtifacts = true;
             break;
+        case "--actor":
+            actorName = args[++i];
+            break;
     }
 }
 
@@ -100,7 +106,7 @@ else if (!string.IsNullOrEmpty(scenarioPath))
 }
 else
 {
-    RunDefault(seed, duration, outputTrace, domainName, decisionTraceLevel, saveArtifacts);
+    RunDefault(seed, duration, outputTrace, domainName, decisionTraceLevel, actorName, saveArtifacts);
 }
 
 IDomainPack CreateDomainPack(string domainName)
@@ -175,7 +181,7 @@ void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.D
     writer.WriteLine($"\nTrace hash: {hash}");
 }
 
-void RunDefault(int seed, double duration, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel, bool saveArtifacts = false)
+void RunDefault(int seed, double duration, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel, string actorName = "Johnny", bool saveArtifacts = false)
 {
     using var writer = CreateArtifactWriter(saveArtifacts, domainName, seed);
 
@@ -189,18 +195,11 @@ void RunDefault(int seed, double duration, bool trace, string domainName, Johnny
     
     if (domainName == "island")
     {
-        engine.AddActor(new ActorId("Johnny"), new Dictionary<string, object>
-        {
-            ["STR"] = 12,
-            ["DEX"] = 14,
-            ["CON"] = 13,
-            ["INT"] = 10,
-            ["WIS"] = 11,
-            ["CHA"] = 15,
-            ["satiety"] = 70.0,
-            ["energy"] = 80.0,
-            ["morale"] = 60.0
-        });
+        if (!Archetypes.All.TryGetValue(actorName, out var actorState))
+            throw new ArgumentException($"Unknown actor: {actorName}. Available: {string.Join(", ", Archetypes.All.Keys)}");
+
+        writer.WriteLine($"Actor: {actorName}");
+        engine.AddActor(new ActorId(actorName), actorState);
     }
     
     var executor = new FakeExecutor(engine);
