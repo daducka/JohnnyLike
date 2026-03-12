@@ -41,7 +41,16 @@ public static class RecipeDiscoverySystem
         }
 
         if (discoverableRecipes.Count == 0)
+        {
+            // Emit a "nothing new" narration beat so the action still produces visible text.
+            using (world.Tracer.PushPhase(TracePhase.ActionCompleted))
+            {
+                var actorLabel = actorId ?? "Someone";
+                var text = GetNothingDiscoveredText(trigger, actorLabel);
+                world.Tracer.Beat(text, priority: 50, actorId: actorId);
+            }
             return;
+        }
 
         var topRecipe = discoverableRecipes
             .Select(x => new
@@ -71,4 +80,12 @@ public static class RecipeDiscoverySystem
                 actorId: actorId);
         }
     }
+
+    private static string GetNothingDiscoveredText(DiscoveryTrigger trigger, string actorLabel) =>
+        trigger switch
+        {
+            DiscoveryTrigger.ThinkAboutSupplies =>
+                $"{actorLabel} stares at the supply pile. They count supplies. Everything seems to be in order.",
+            _ => $"{actorLabel} looks around but notices nothing new."
+        };
 }
