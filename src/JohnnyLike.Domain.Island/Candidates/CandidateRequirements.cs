@@ -19,6 +19,28 @@ public static class CandidateRequirements
                  island.HasBuffWhere<AlivenessBuff>(b => b.State == AlivenessState.Alive);
 
     /// <summary>
+    /// Requires the actor to be alive and in reasonably good condition to engage in
+    /// playful or recreational comfort actions. Passes when:
+    /// Satiety &gt; 25, Morale &gt; 35, Health &gt; 50, Energy &gt; 30.
+    /// </summary>
+    public static Func<ActorState, bool> PlayfulOnly { get; } =
+        actor => actor is IslandActorState island &&
+                 island.HasBuffWhere<AlivenessBuff>(b => b.State == AlivenessState.Alive) &&
+                 island.Satiety > 25 &&
+                 island.Morale  > 35 &&
+                 island.Health  > 50 &&
+                 island.Energy  > 30;
+
+    /// <summary>
+    /// Requires the actor to be alive and in a state of despair or suffering.
+    /// Passes when: Satiety &lt; 25, OR Morale &lt; 25, OR Health &lt; 40.
+    /// </summary>
+    public static Func<ActorState, bool> DespairingOnly { get; } =
+        actor => actor is IslandActorState island &&
+                 island.HasBuffWhere<AlivenessBuff>(b => b.State == AlivenessState.Alive) &&
+                 (island.Satiety < 25 || island.Morale < 25 || island.Health < 40);
+
+    /// <summary>
     /// Returns a requirement predicate that passes when the actor has at least one active
     /// buff of type <typeparamref name="T"/>.
     /// </summary>

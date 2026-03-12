@@ -1102,32 +1102,35 @@ public class ScoringPostPassTests
     [Fact]
     public void FunWeight_SuppressedWhenStarving()
     {
-        // When satiety < 25, Fun weight should be suppressed so recreational actions don't outrank survival actions.
+        // Playful actions (swim, hum_to_self, etc.) are gated out entirely when starving.
+        // This verifies the PlayfulOnly gating: swim is absent for a starving/low-morale actor
+        // but present for a healthy actor.
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
 
-        // Morale=0 maximises Fun weight; satiety=10 should suppress it
-        var starvingLowMorale = domain.CreateActorState(actorId, new Dictionary<string, object>
+        // Starving actor: satiety=10 (below PlayfulOnly threshold of >25)
+        var starvingActor = domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["satiety"] = 10.0,
-            ["morale"]  = 0.0
+            ["morale"]  = 50.0,
+            ["energy"]  = 80.0
         });
-        var hungryLowMorale = domain.CreateActorState(actorId, new Dictionary<string, object>
+        // Healthy actor: all stats above PlayfulOnly thresholds
+        var healthyActor = domain.CreateActorState(actorId, new Dictionary<string, object>
         {
-            ["satiety"] = 50.0,  // above threshold, Fun not suppressed
-            ["morale"]  = 0.0
+            ["satiety"] = 80.0,
+            ["morale"]  = 60.0,
+            ["energy"]  = 80.0
         });
-        var worldState = domain.CreateInitialWorldState();
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, worldState);
 
-        var starvingCandidates = domain.GenerateCandidates(actorId, starvingLowMorale, worldState, 0L, new Random(42), new EmptyResourceAvailability());
-        var hungryCandidates = domain.GenerateCandidates(actorId, hungryLowMorale, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+        var starvingCandidates = domain.GenerateCandidates(actorId, starvingActor, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+        var healthyCandidates  = domain.GenerateCandidates(actorId, healthyActor,  worldState, 0L, new Random(42), new EmptyResourceAvailability());
 
-        var starvingSwim = starvingCandidates.First(c => c.Action.Id.Value == "swim");
-        var hungrySwim = hungryCandidates.First(c => c.Action.Id.Value == "swim");
-
-        // Starving actor should have lower swim score because Fun weight is reduced by 0.35×
-        Assert.True(starvingSwim.Score < hungrySwim.Score,
-            $"Starving actor swim score ({starvingSwim.Score:F3}) should be less than non-starving low-morale actor ({hungrySwim.Score:F3}) due to Fun suppression");
+        // Swim is gated by PlayfulOnly — absent when starving, present when healthy
+        Assert.DoesNotContain(starvingCandidates, c => c.Action.Id.Value == "swim");
+        Assert.Contains(healthyCandidates, c => c.Action.Id.Value == "swim");
     }
 
     [Fact]
@@ -1216,7 +1219,6 @@ public class ActionCandidateQualitiesTests
 
     [Theory]
     [InlineData("idle")]
-    [InlineData("swim")]
     [InlineData("write_name_sand")]
     [InlineData("try_to_signal_plane")]
     [InlineData("wave_at_mermaid")]
@@ -1239,6 +1241,29 @@ public class ActionCandidateQualitiesTests
         Assert.NotNull(candidate);
         Assert.NotNull(candidate.Qualities);
         Assert.True(candidate.Qualities.Count > 0, $"{actionId} should have at least one Quality entry");
+    }
+
+    [Fact]
+    public void Swim_HasNonNullQualities_WhenActorIsHealthy()
+    {
+        // Swim is gated by PlayfulOnly, so requires a healthy actor to appear in candidates.
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            ["satiety"] = 80.0,
+            ["morale"]  = 60.0,
+            ["energy"]  = 80.0
+        });
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, worldState);
+
+        var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var candidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "swim");
+        Assert.NotNull(candidate);
+        Assert.NotNull(candidate.Qualities);
+        Assert.True(candidate.Qualities.Count > 0, "swim should have at least one Quality entry");
     }
 
     [Fact]

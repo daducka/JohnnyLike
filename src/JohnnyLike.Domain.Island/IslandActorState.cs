@@ -340,7 +340,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             {
                 [QualityType.Fun] = 1.0
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: CandidateRequirements.PlayfulOnly
         ));
     }
 
@@ -485,9 +485,6 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
     private void AddSwimCandidate(IslandContext ctx, List<ActionCandidate> output)
     {
-        if (Energy < 20.0)
-            return;
-
         var baseDC = 10;
 
         var parameters = ctx.RollSkillCheck(SkillType.Survival, baseDC);
@@ -603,7 +600,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 [QualityType.Comfort] = 0.3,
                 [QualityType.Safety] = -0.5
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: CandidateRequirements.PlayfulOnly
         ));
     }
 }
