@@ -30,8 +30,10 @@ public static class Rope
 
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Preparation] = 0.7,
-                [QualityType.Mastery]     = 0.4
+                [QualityType.Preparation] = 0.90,
+                [QualityType.Mastery]     = 0.60,
+                [QualityType.Efficiency]  = 0.15,
+                [QualityType.Comfort]     = -0.05
             },
 
             CanCraft: ctx =>

@@ -32,8 +32,10 @@ public static class Umbrella
 
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Preparation] = 0.8,
-                [QualityType.Comfort]     = 0.7,
+                [QualityType.Preparation] = 1.00,
+                [QualityType.Mastery]     = 0.20,
+                [QualityType.Efficiency]  = 0.15,
+                [QualityType.Comfort]     = 0.65,
                 [QualityType.Safety]      = 0.5
             },
 

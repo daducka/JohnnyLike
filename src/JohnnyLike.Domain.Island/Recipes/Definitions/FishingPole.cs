@@ -32,9 +32,10 @@ public static class FishingPole
 
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Preparation] = 0.8,
-                [QualityType.Mastery]     = 0.6,
-                [QualityType.Efficiency]  = 0.3
+                [QualityType.Preparation] = 1.00,
+                [QualityType.Mastery]     = 0.80,
+                [QualityType.Efficiency]  = 0.40,
+                [QualityType.Comfort]     = -0.05
             },
 
             CanCraft: ctx =>
