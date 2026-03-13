@@ -366,8 +366,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             }),
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Preparation] = 0.5,
-                [QualityType.Efficiency]  = 0.5
+                [QualityType.Preparation] = 0.68,
+                [QualityType.Efficiency]  = 0.62
             },
             ActorRequirement: CandidateRequirements.AliveOnly
         ));
@@ -458,7 +458,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 600L + (long)(ctx.Rng.NextDouble() * 200),
                 NarrationDescription: "take a nap under the shade of a tree"
             ),
-            0.16,
+            0.14,
             Reason: "Sleep under tree",
             PreAction: (Func<EffectContext, bool>)(effectCtx =>
             {

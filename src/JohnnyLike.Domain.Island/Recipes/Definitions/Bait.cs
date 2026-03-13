@@ -30,8 +30,10 @@ public static class Bait
 
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Preparation] = 0.7,
-                [QualityType.Efficiency]  = 0.5
+                [QualityType.Preparation] = 0.90,
+                [QualityType.Mastery]     = 0.20,
+                [QualityType.Efficiency]  = 0.60,
+                [QualityType.Comfort]     = -0.05
             },
 
             CanCraft: ctx =>

@@ -209,7 +209,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
             }),
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Preparation] = 0.6,
+                [QualityType.Preparation]        = 0.78,
+                [QualityType.Efficiency]         = 0.12,
                 [QualityType.ResourcePreservation] = 0.4
             },
             ActorRequirement: CandidateRequirements.AliveOnly
@@ -483,7 +484,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 EngineConstants.TimeToTicks(5.0, 8.0, ctx.Random),
                 NarrationDescription: "hum quietly to themselves"
             ),
-            0.10,
+            0.09,
             Reason: "Hum to self",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
@@ -493,8 +494,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
             }),
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Fun]        = 0.20,
-                [QualityType.Comfort]    = 0.70,
+                [QualityType.Fun]        = 0.15,
+                [QualityType.Comfort]    = 0.60,
                 [QualityType.Efficiency] = -0.05,
                 [QualityType.Safety]     = 0.05
             },
@@ -617,7 +618,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 EngineConstants.TimeToTicks(10.0, 20.0, ctx.Random),
                 NarrationDescription: "sit quietly and watch the waves roll in"
             ),
-            0.12,
+            0.10,
             Reason: "Sit and watch waves",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
@@ -627,8 +628,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
             }),
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Fun]        = 0.25,
-                [QualityType.Comfort]    = 0.80,
+                [QualityType.Fun]        = 0.20,
+                [QualityType.Comfort]    = 0.70,
                 [QualityType.Efficiency] = -0.10,
                 [QualityType.Safety]     = 0.10
             },

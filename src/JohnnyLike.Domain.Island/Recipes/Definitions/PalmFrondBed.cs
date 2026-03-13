@@ -34,9 +34,11 @@ public static class PalmFrondBed
 
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Comfort]     = 1.0,
-                [QualityType.Safety]      = 0.6,
-                [QualityType.Preparation] = 0.7
+                [QualityType.Preparation] = 0.90,
+                [QualityType.Mastery]     = 0.20,
+                [QualityType.Efficiency]  = 0.15,
+                [QualityType.Comfort]     = 0.95,
+                [QualityType.Safety]      = 0.6
             },
 
             CanCraft: ctx =>

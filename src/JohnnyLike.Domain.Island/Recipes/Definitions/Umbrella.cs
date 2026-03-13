@@ -32,8 +32,10 @@ public static class Umbrella
 
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Preparation] = 0.8,
-                [QualityType.Comfort]     = 0.7,
+                [QualityType.Preparation] = 1.00,
+                [QualityType.Mastery]     = 0.20,
+                [QualityType.Efficiency]  = 0.15,
+                [QualityType.Comfort]     = 0.65,
                 [QualityType.Safety]      = 0.5
             },
 
@@ -69,16 +71,7 @@ public static class Umbrella
                 CanDiscover = (actor, world) =>
                 {
                     var weather = world.GetItem<WeatherItem>("weather");
-
-                    if (weather?.Precipitation != PrecipitationBand.Rainy)
-                        return false;
-
-                    var pile = world.SharedSupplyPile;
-                    if (pile == null) return false;
-
-                    return
-                        pile.GetQuantity<StickSupply>() > 0 &&
-                        pile.GetQuantity<PalmFrondSupply>() > 0;
+                    return weather?.Precipitation == PrecipitationBand.Rainy;
                 },
 
                 BaseChance = 0.25,

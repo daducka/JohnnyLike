@@ -33,9 +33,11 @@ public static class Campfire
 
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Preparation] = 1.0,
+                [QualityType.Preparation] = 1.00,
+                [QualityType.Mastery]     = 0.20,
+                [QualityType.Efficiency]  = 0.15,
                 [QualityType.Safety]      = 0.8,
-                [QualityType.Comfort]     = 0.6
+                [QualityType.Comfort]     = 0.55
             },
 
             CanCraft: ctx =>

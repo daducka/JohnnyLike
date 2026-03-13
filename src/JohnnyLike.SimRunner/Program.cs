@@ -183,7 +183,7 @@ void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.D
 
 void RunDefault(int seed, double duration, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel, string actorName = "Johnny", bool saveArtifacts = false)
 {
-    using var writer = CreateArtifactWriter(saveArtifacts, domainName, seed);
+    using var writer = CreateArtifactWriter(saveArtifacts, domainName, seed, actorName);
 
     writer.WriteLine($"Running default {domainName} simulation");
     writer.WriteLine($"Seed: {seed}, Duration: {duration}s");
@@ -230,6 +230,8 @@ void RunDefault(int seed, double duration, bool trace, string domainName, Johnny
     
     var hash = JohnnyLike.Engine.TraceHelper.ComputeTraceHash(traceSink.GetEvents());
     writer.WriteLine($"\nTrace hash: {hash}");
+
+    PrintPersonalityTiming(traceSink.GetEvents(), writer);
 }
 
 void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool verbose, string domainName, bool saveArtifacts)
@@ -325,6 +327,68 @@ void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool
     }
 }
 
+void PrintPersonalityTiming(List<TraceEvent> events, TextWriter writer)
+{
+    // Build a lookup: actorId -> (actionId -> (first completion time, count))
+    var firstTimes = new Dictionary<string, Dictionary<string, (double FirstTime, int Count)>>();
+
+    foreach (var evt in events)
+    {
+        if (evt.EventType != "ActionCompleted") continue;
+        if (!evt.ActorId.HasValue) continue;
+        if (!evt.Details.TryGetValue("actionId", out var actionIdObj)) continue;
+
+        var actionId = actionIdObj?.ToString() ?? "";
+        if (string.IsNullOrEmpty(actionId)) continue;
+
+        var actor = evt.ActorId.Value.Value;
+        if (!firstTimes.TryGetValue(actor, out var actorMap))
+        {
+            actorMap = new Dictionary<string, (double, int)>();
+            firstTimes[actor] = actorMap;
+        }
+
+        if (actorMap.TryGetValue(actionId, out var existing))
+            actorMap[actionId] = (existing.FirstTime, existing.Count + 1);
+        else
+            actorMap[actionId] = (evt.TimeSeconds, 1);
+    }
+
+    if (firstTimes.Count == 0)
+        return;
+
+    // Collect all unique action ids seen across all actors, sorted for stable output
+    var allActions = firstTimes.Values
+        .SelectMany(m => m.Keys)
+        .Distinct()
+        .OrderBy(a => a)
+        .ToList();
+
+    writer.WriteLine("\n=== PersonalityTiming ===");
+    const int ColWidth = 14;
+    var actorColWidth = Math.Max(12, firstTimes.Keys.DefaultIfEmpty("").Max(a => a.Length) + 2);
+
+    // Header
+    var headerParts = new List<string> { "Actor".PadRight(actorColWidth) };
+    headerParts.AddRange(allActions.Select(a => a.PadLeft(ColWidth)));
+    var header = string.Join(" ", headerParts);
+    writer.WriteLine(header);
+    writer.WriteLine(new string('-', header.Length));
+
+    foreach (var (actor, times) in firstTimes.OrderBy(kvp => kvp.Key))
+    {
+        var rowParts = new List<string> { actor.PadRight(actorColWidth) };
+        foreach (var action in allActions)
+        {
+            var cell = times.TryGetValue(action, out var entry)
+                ? $"{entry.FirstTime:F0}s(×{entry.Count})"
+                : "never";
+            rowParts.Add(cell.PadLeft(ColWidth));
+        }
+        writer.WriteLine(string.Join(" ", rowParts));
+    }
+}
+
 void PrintDecisionSummary(List<TraceEvent> events, JohnnyLike.Engine.DecisionTraceLevel level, TextWriter writer)
 {
     var decisionEvents = events.Where(e =>
@@ -377,7 +441,7 @@ void PrintDecisionSummary(List<TraceEvent> events, JohnnyLike.Engine.DecisionTra
     }
 }
 
-TeeWriter CreateArtifactWriter(bool saveArtifacts, string domainName, int seed)
+TeeWriter CreateArtifactWriter(bool saveArtifacts, string domainName, int seed, string? actorName = null)
 {
     if (!saveArtifacts)
         return new TeeWriter(Console.Out);
@@ -385,7 +449,8 @@ TeeWriter CreateArtifactWriter(bool saveArtifacts, string domainName, int seed)
     var artifactsDir = "artifacts";
     Directory.CreateDirectory(artifactsDir);
     var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff");
-    var tracePath = Path.Combine(artifactsDir, $"trace-{domainName}-seed{seed}-{timestamp}.txt");
+    var actorPart = string.IsNullOrEmpty(actorName) ? "" : $"-{actorName}";
+    var tracePath = Path.Combine(artifactsDir, $"trace-{domainName}{actorPart}-seed{seed}-{timestamp}.txt");
     Console.WriteLine($"Saving trace to {tracePath}");
     StreamWriter fileWriter;
     try

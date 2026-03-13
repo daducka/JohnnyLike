@@ -31,8 +31,9 @@ public static class CookFish
 
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Preparation] = 0.8,
-                [QualityType.Efficiency]  = 0.6
+                [QualityType.Preparation] = 0.90,
+                [QualityType.Mastery]     = 0.20,
+                [QualityType.Efficiency]  = 0.65
             },
 
             CanCraft: ctx =>

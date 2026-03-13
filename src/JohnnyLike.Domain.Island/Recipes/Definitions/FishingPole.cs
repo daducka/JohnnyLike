@@ -32,9 +32,10 @@ public static class FishingPole
 
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Preparation] = 0.8,
-                [QualityType.Mastery]     = 0.6,
-                [QualityType.Efficiency]  = 0.3
+                [QualityType.Preparation] = 1.00,
+                [QualityType.Mastery]     = 0.80,
+                [QualityType.Efficiency]  = 0.40,
+                [QualityType.Comfort]     = -0.05
             },
 
             CanCraft: ctx =>
@@ -70,7 +71,15 @@ public static class FishingPole
             {
                 Trigger = DiscoveryTrigger.ThinkAboutSupplies,
 
-                CanDiscover = (actor, world) => actor.Satiety < 50.0,
+                CanDiscover = (actor, world) =>
+                {
+                    var pile = world.SharedSupplyPile;
+                    if (pile == null) return false;
+
+                    return
+                        pile.GetQuantity<StickSupply>() > 0 &&
+                        pile.GetQuantity<RopeSupply>() > 0;
+                },
 
                 BaseChance = 1.0
             },
