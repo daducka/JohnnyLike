@@ -520,10 +520,12 @@ public class RecipeSystemTests
     }
 
     [Fact]
-    public void FishingPole_Discovered_WhenHungry()
+    public void FishingPole_Discovered_WhenMaterialsAvailable()
     {
         var (actor, world) = MakeBase();
-        actor.Satiety = 49.0;
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply("stick", 3, id => new StickSupply(id));
+        pile.AddSupply("rope", 2, id => new RopeSupply(id));
 
         // Ensure no competing discoverable recipes in this setup
         world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Clear;
@@ -534,10 +536,10 @@ public class RecipeSystemTests
     }
 
     [Fact]
-    public void FishingPole_NotDiscovered_WhenNotHungry()
+    public void FishingPole_NotDiscovered_WhenNoMaterials()
     {
         var (actor, world) = MakeBase();
-        actor.Satiety = 50.0; // must be strictly less than 50
+        // Empty supply pile — no sticks or rope
 
         RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(1)), DiscoveryTrigger.ThinkAboutSupplies);
 

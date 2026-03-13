@@ -71,16 +71,7 @@ public static class Umbrella
                 CanDiscover = (actor, world) =>
                 {
                     var weather = world.GetItem<WeatherItem>("weather");
-
-                    if (weather?.Precipitation != PrecipitationBand.Rainy)
-                        return false;
-
-                    var pile = world.SharedSupplyPile;
-                    if (pile == null) return false;
-
-                    return
-                        pile.GetQuantity<StickSupply>() > 0 &&
-                        pile.GetQuantity<PalmFrondSupply>() > 0;
+                    return weather?.Precipitation == PrecipitationBand.Rainy;
                 },
 
                 BaseChance = 0.25,

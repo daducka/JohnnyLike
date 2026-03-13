@@ -71,7 +71,15 @@ public static class FishingPole
             {
                 Trigger = DiscoveryTrigger.ThinkAboutSupplies,
 
-                CanDiscover = (actor, world) => actor.Satiety < 50.0,
+                CanDiscover = (actor, world) =>
+                {
+                    var pile = world.SharedSupplyPile;
+                    if (pile == null) return false;
+
+                    return
+                        pile.GetQuantity<StickSupply>() > 0 &&
+                        pile.GetQuantity<RopeSupply>() > 0;
+                },
 
                 BaseChance = 1.0
             },

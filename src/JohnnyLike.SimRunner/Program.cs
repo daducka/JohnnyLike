@@ -329,9 +329,6 @@ void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool
 
 void PrintPersonalityTiming(List<TraceEvent> events, TextWriter writer)
 {
-    // Action categories to track for personality timing divergence
-    var trackedActions = new[] { "think_about_supplies", "explore_beach", "craft_rope", "craft_fishing_pole" };
-
     // Build a lookup: actorId -> (actionId -> first completion time)
     var firstTimes = new Dictionary<string, Dictionary<string, double>>();
 
@@ -342,7 +339,7 @@ void PrintPersonalityTiming(List<TraceEvent> events, TextWriter writer)
         if (!evt.Details.TryGetValue("actionId", out var actionIdObj)) continue;
 
         var actionId = actionIdObj?.ToString() ?? "";
-        if (!trackedActions.Contains(actionId)) continue;
+        if (string.IsNullOrEmpty(actionId)) continue;
 
         var actor = evt.ActorId.Value.Value;
         if (!firstTimes.TryGetValue(actor, out var actorMap))
@@ -358,23 +355,33 @@ void PrintPersonalityTiming(List<TraceEvent> events, TextWriter writer)
     if (firstTimes.Count == 0)
         return;
 
+    // Collect all unique action ids seen across all actors, sorted for stable output
+    var allActions = firstTimes.Values
+        .SelectMany(m => m.Keys)
+        .Distinct()
+        .OrderBy(a => a)
+        .ToList();
+
     writer.WriteLine("\n=== PersonalityTiming ===");
-    const int ColWidth = 14;
-    var header = $"{"Actor",-12} {"FirstThink",ColWidth} {"FirstExplore",ColWidth} {"FirstCraftRope",ColWidth} {"FirstCraftPole",ColWidth}";
+    const int ColWidth = 12;
+    var actorColWidth = Math.Max(12, firstTimes.Keys.DefaultIfEmpty("").Max(a => a.Length) + 2);
+
+    // Header
+    var headerParts = new List<string> { "Actor".PadRight(actorColWidth) };
+    headerParts.AddRange(allActions.Select(a => a.PadLeft(ColWidth)));
+    var header = string.Join(" ", headerParts);
     writer.WriteLine(header);
     writer.WriteLine(new string('-', header.Length));
 
     foreach (var (actor, times) in firstTimes.OrderBy(kvp => kvp.Key))
     {
-        static string FormatTime(Dictionary<string, double> map, string key) =>
-            map.TryGetValue(key, out var t) ? $"{t:F0}s" : "never";
-
-        writer.WriteLine(
-            $"{actor,-12} " +
-            $"{FormatTime(times, "think_about_supplies"),ColWidth} " +
-            $"{FormatTime(times, "explore_beach"),ColWidth} " +
-            $"{FormatTime(times, "craft_rope"),ColWidth} " +
-            $"{FormatTime(times, "craft_fishing_pole"),ColWidth}");
+        var rowParts = new List<string> { actor.PadRight(actorColWidth) };
+        foreach (var action in allActions)
+        {
+            var cell = times.TryGetValue(action, out var t) ? $"{t:F0}s" : "never";
+            rowParts.Add(cell.PadLeft(ColWidth));
+        }
+        writer.WriteLine(string.Join(" ", rowParts));
     }
 }
 
