@@ -52,7 +52,7 @@ public class ActionReservationTests
         // Complete the action
         engine.ReportActionComplete(
             new ActorId("TestActor"),
-            new ActionOutcome(action!.Id, ActionOutcomeType.Success, 200L, null)
+            new ActionOutcome(action!.Id, ActionOutcomeType.Success, Duration.FromTicks(200L), null)
         );
         
         // Assert - Resource should be released
@@ -178,7 +178,7 @@ public class ActionReservationTests
                         new ActionId("action_with_resource"),
                         ActionKind.Interact,
                         EmptyActionParameters.Instance,
-                        200L,
+                        Duration.FromTicks(200L),
                         "",
                         null,
                         new List<ResourceRequirement>
@@ -197,7 +197,7 @@ public class ActionReservationTests
                 new ActionSpec(
                     new ActionId("action_without_resource"),
                     ActionKind.Wait,
-                    EmptyActionParameters.Instance, 100L, ""),
+                    EmptyActionParameters.Instance, Duration.FromTicks(100L), ""),
                 0.5,
                 new Dictionary<QualityType, double>(),
                 Reason: "Action without resource"
@@ -244,7 +244,7 @@ public class ActionReservationTests
                         new ActionId("action_with_multiple_resources"),
                         ActionKind.Interact,
                         EmptyActionParameters.Instance,
-                        200L,
+                        Duration.FromTicks(200L),
                         "",
                         null,
                         new List<ResourceRequirement>
@@ -264,7 +264,7 @@ public class ActionReservationTests
                 new ActionSpec(
                     new ActionId("action_without_resource"),
                     ActionKind.Wait,
-                    EmptyActionParameters.Instance, 100L, ""),
+                    EmptyActionParameters.Instance, Duration.FromTicks(100L), ""),
                 0.5,
                 new Dictionary<QualityType, double>(),
                 Reason: "Action without resource"

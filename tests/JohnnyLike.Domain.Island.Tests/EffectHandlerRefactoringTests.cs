@@ -59,8 +59,7 @@ public class EffectHandlerRefactoringTests
         var resultData = new Dictionary<string, object>(repairCandidate.Action.ResultData ?? new());
         resultData["tier"] = "Success";
         var outcome = new ActionOutcome(
-            repairCandidate.Action.Id,
-            ActionOutcomeType.Success, 500L,
+            repairCandidate.Action.Id, ActionOutcomeType.Success, Duration.FromTicks(500L),
             resultData
         );
         

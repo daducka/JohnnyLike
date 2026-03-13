@@ -43,7 +43,7 @@ public class CoconutSupply : SupplyItem, ISupplyActionCandidate
                 new ActionId("bash_and_eat_coconut"),
                 ActionKind.Interact,
                 parameters,
-                EngineConstants.TimeToTicks(8.0, 12.0, ctx.Random),
+                Duration.Minutes(8.0, 12.0, ctx.Random),
                 "bash and eat coconut",
                 parameters.ToResultData()
             ),

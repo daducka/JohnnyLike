@@ -42,7 +42,7 @@ public class PalmFrondBedItem : ToolItem
                 new ActionId("repair_bed"),
                 ActionKind.Interact,
                 parameters,
-                EngineConstants.TimeToTicks(35.0, 45.0, ctx.Random),
+                Duration.Minutes(35.0, 45.0, ctx.Random),
                 "repair the palm frond bed",
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(BedResource) }
@@ -73,7 +73,7 @@ public class PalmFrondBedItem : ToolItem
                 new ActionId("sleep_in_bed"),
                 ActionKind.Interact,
                 new LocationActionParameters("bed"),
-                600L + (long)(ctx.Rng.NextDouble() * 200),
+                Duration.Hours(6.0, 8.0, ctx.Random),
                 NarrationDescription: "sleep in the palm frond bed"
             ),
             baseScore,

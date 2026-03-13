@@ -45,17 +45,17 @@ public class DomainOrderingTests
             return new List<ActionCandidate>
             {
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("low_score_action"),  ActionKind.Wait, EmptyActionParameters.Instance, 10L, ""),
+                    new ActionSpec(new ActionId("low_score_action"),  ActionKind.Wait, EmptyActionParameters.Instance, Duration.FromTicks(10L), ""),
                     IntrinsicScore: 0.3,
                     Qualities: new Dictionary<QualityType, double>(),
                     Score: 0.3),
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("best_action"),       ActionKind.Wait, EmptyActionParameters.Instance, 10L, ""),
+                    new ActionSpec(new ActionId("best_action"),       ActionKind.Wait, EmptyActionParameters.Instance, Duration.FromTicks(10L), ""),
                     IntrinsicScore: 1.0,
                     Qualities: new Dictionary<QualityType, double>(),
                     Score: 1.0),
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("middle_action"),     ActionKind.Wait, EmptyActionParameters.Instance, 10L, ""),
+                    new ActionSpec(new ActionId("middle_action"),     ActionKind.Wait, EmptyActionParameters.Instance, Duration.FromTicks(10L), ""),
                     IntrinsicScore: 0.6,
                     Qualities: new Dictionary<QualityType, double>(),
                     Score: 0.6),

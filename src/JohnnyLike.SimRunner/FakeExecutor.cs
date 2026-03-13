@@ -22,7 +22,7 @@ public class FakeExecutor
         foreach (var kvp in _runningActions)
         {
             var elapsed = _engine.CurrentTick - kvp.Value.StartTick;
-            if (elapsed >= kvp.Value.Action.EstimatedDurationTicks)
+            if (elapsed >= kvp.Value.Action.EstimatedDuration.Ticks)
             {
                 completed.Add(kvp.Key);
             }
@@ -36,7 +36,7 @@ public class FakeExecutor
             _engine.ReportActionComplete(actorId, new ActionOutcome(
                 action.Id,
                 ActionOutcomeType.Success,
-                actualDurationTicks,
+                Duration.FromTicks(actualDurationTicks),
                 action.ResultData
             ));
             _runningActions.Remove(actorId);

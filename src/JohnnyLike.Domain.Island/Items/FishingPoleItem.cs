@@ -85,7 +85,7 @@ public class FishingPoleItem : ToolItem
                         new ActionId("go_fishing"),
                         ActionKind.Interact,
                         parameters,
-                        EngineConstants.TimeToTicks(45.0, 60.0, ctx.Random),
+                        Duration.Minutes(45.0, 60.0, ctx.Random),
                         hasBait ? "go fishing with bait" : "cast the fishing line and wait for a bite",
                         parameters.ToResultData(),
                         new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
@@ -172,7 +172,7 @@ public class FishingPoleItem : ToolItem
                     new ActionId("maintain_rod"),
                     ActionKind.Interact,
                     parameters,
-                    EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
+                    Duration.Minutes(20.0, 25.0, ctx.Random),
                     "maintain fishing rod",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }
@@ -200,7 +200,7 @@ public class FishingPoleItem : ToolItem
                     new ActionId("repair_rod"),
                     ActionKind.Interact,
                     parameters,
-                    EngineConstants.TimeToTicks(40.0, 50.0, ctx.Random),
+                    Duration.Minutes(40.0, 50.0, ctx.Random),
                     "repair fishing rod",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(FishingPoleResource) }

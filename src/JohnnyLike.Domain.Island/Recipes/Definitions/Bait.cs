@@ -24,7 +24,7 @@ public static class Bait
 
             Location: "camp",
 
-            Duration: EngineConstants.TimeToTicks(10.0),
+            Duration: Duration.Minutes(10),
 
             IntrinsicScore: 0.18,
 

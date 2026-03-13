@@ -65,7 +65,7 @@ public class CampfireItem : ToolItem
                     new ActionId("add_fuel_campfire"),
                     ActionKind.Interact,
                     parameters,
-                    EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
+                    Duration.Minutes(20.0, 25.0, ctx.Random),
                     "add fuel to campfire",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
@@ -94,7 +94,7 @@ public class CampfireItem : ToolItem
                     new ActionId("relight_campfire"),
                     ActionKind.Interact,
                     parameters,
-                    EngineConstants.TimeToTicks(30.0, 40.0, ctx.Random),
+                    Duration.Minutes(30.0, 40.0, ctx.Random),
                     "relight campfire",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
@@ -123,7 +123,7 @@ public class CampfireItem : ToolItem
                     new ActionId("repair_campfire"),
                     ActionKind.Interact,
                     parameters,
-                    EngineConstants.TimeToTicks(25.0, 30.0, ctx.Random),
+                    Duration.Minutes(25.0, 30.0, ctx.Random),
                     "repair campfire",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }
@@ -152,7 +152,7 @@ public class CampfireItem : ToolItem
                     new ActionId("rebuild_campfire"),
                     ActionKind.Interact,
                     parameters,
-                    EngineConstants.TimeToTicks(60.0, 80.0, ctx.Random),
+                    Duration.Minutes(60.0, 80.0, ctx.Random),
                     "rebuild campfire",
                     parameters.ToResultData(),
                     new List<ResourceRequirement> { new ResourceRequirement(CampfireResource) }

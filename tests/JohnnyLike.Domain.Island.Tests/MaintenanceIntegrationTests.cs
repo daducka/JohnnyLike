@@ -102,13 +102,12 @@ public class MaintenanceIntegrationTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(11, 2, AdvantageType.Normal, "Survival"),
                     new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5)),
-            500L,
+            Duration.FromTicks(500L),
             ""
         );
 
         var outcome = new ActionOutcome(
-            new ActionId("repair_campfire"),
-            ActionOutcomeType.Success, 500L,
+            new ActionId("repair_campfire"), ActionOutcomeType.Success, Duration.FromTicks(500L),
             new Dictionary<string, object>
             {
                 ["tier"] = "Success"
@@ -141,13 +140,12 @@ public class MaintenanceIntegrationTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 2, AdvantageType.Normal, "Survival"),
                     new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5)),
-            400L,
+            Duration.FromTicks(400L),
             ""
         );
 
         var outcome = new ActionOutcome(
-            new ActionId("add_fuel_campfire"),
-            ActionOutcomeType.Success, 400L,
+            new ActionId("add_fuel_campfire"), ActionOutcomeType.Success, Duration.FromTicks(400L),
             new Dictionary<string, object>
             {
                 ["tier"] = "Success"
@@ -214,13 +212,12 @@ public class MaintenanceIntegrationTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(11, 2, AdvantageType.Normal, "Survival"),
                     new SkillCheckResult(10, 10 + 2, RollOutcomeTier.Success, true, 0.5)),
-            500L,
+            Duration.FromTicks(500L),
             ""
         );
 
         var outcome = new ActionOutcome(
-            new ActionId("repair_blanket"),
-            ActionOutcomeType.Success, 500L,
+            new ActionId("repair_blanket"), ActionOutcomeType.Success, Duration.FromTicks(500L),
             new Dictionary<string, object>
             {
                 ["tier"] = "Success"

@@ -65,7 +65,7 @@ public class FuzzableFakeExecutor
             _engine.ReportActionComplete(actorId, new ActionOutcome(
                 action.Id,
                 outcomeType,
-                _engine.CurrentTick - startTick,
+                Duration.FromTicks(_engine.CurrentTick - startTick),
                 action.ResultData
             ));
             _runningActions.Remove(actorId);
@@ -99,7 +99,7 @@ public class FuzzableFakeExecutor
                 {
                     // Apply jitter to duration
                     var jitter = 1.0 + (_rng.NextDouble() * 2.0 - 1.0) * (_config.ActionDurationJitterPct / 100.0);
-                    var adjustedDurationTicks = (long)(action.EstimatedDurationTicks * jitter);
+                    var adjustedDurationTicks = (long)(action.EstimatedDuration.Ticks * jitter);
 
                     // Add travel time jitter for MoveTo actions
                     if (action.Kind == ActionKind.MoveTo)
@@ -138,7 +138,7 @@ public class FuzzableFakeExecutor
                     new ActionId($"noshow_{actorId.Value}"),
                     ActionKind.Wait,
                     new ReasonActionParameters("unavailable"),
-                    noShowDuration,
+                    Duration.FromTicks(noShowDuration),
                     ""
                 );
 
@@ -156,7 +156,7 @@ public class FuzzableFakeExecutor
                     new ActionId($"busylock_{actorId.Value}"),
                     ActionKind.Wait,
                     new ReasonActionParameters("busy"),
-                    busyDuration,
+                    Duration.FromTicks(busyDuration),
                     ""
                 );
 

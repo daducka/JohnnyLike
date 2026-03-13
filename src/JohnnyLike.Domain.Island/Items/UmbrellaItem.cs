@@ -35,7 +35,7 @@ public class UmbrellaItem : ToolItem
                     new ActionId("deploy_umbrella"),
                     ActionKind.Interact,
                     new LocationActionParameters("camp"),
-                    EngineConstants.TimeToTicks(5.0),
+                    Duration.Minutes(5.0),
                     NarrationDescription: "deploy umbrella"
                 ),
                 0.22,
@@ -71,7 +71,7 @@ public class UmbrellaItem : ToolItem
                     new ActionId("holster_umbrella"),
                     ActionKind.Interact,
                     new LocationActionParameters("camp"),
-                    EngineConstants.TimeToTicks(3.0),
+                    Duration.Minutes(3.0),
                     NarrationDescription: "holster umbrella"
                 ),
                 0.14,

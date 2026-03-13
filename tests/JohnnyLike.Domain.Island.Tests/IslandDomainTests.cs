@@ -373,7 +373,7 @@ public class IslandActionEffectsTests
             new SkillCheckActionParameters(
                 new SkillCheckRequest(10, 3, AdvantageType.Normal, "Fishing"),
                 new SkillCheckResult(10, 10 + 3, RollOutcomeTier.Success, true, 0.5)),
-            300L,
+            Duration.FromTicks(300L),
             ""
         );
         var worldState = new IslandWorldState();
@@ -388,8 +388,7 @@ public class IslandActionEffectsTests
         Assert.NotNull(fishingCandidate.EffectHandler);
         
         var outcome = new ActionOutcome(
-            new ActionId("go_fishing"),
-            ActionOutcomeType.Success, 300L,
+            new ActionId("go_fishing"), ActionOutcomeType.Success, Duration.FromTicks(300L),
             new Dictionary<string, object>
             {
                 ["tier"] = "Success"
@@ -489,7 +488,7 @@ public class IslandActionEffectsTests
             $"Energy should not exceed starting value, got {actorState.Energy:F2}");
 
         // Morale decays in ApplyActionEffects (action-duration-based), not via buff.
-        var outcome = new ActionOutcome(new ActionId("idle"), ActionOutcomeType.Success, 200L, null);
+        var outcome = new ActionOutcome(new ActionId("idle"), ActionOutcomeType.Success, Duration.FromTicks(200L), null);
         var rng = new RandomRngStream(new Random(42));
         domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
 
@@ -698,8 +697,7 @@ public class IslandSignalHandlingTests
         Assert.NotNull(chatCandidate.EffectHandler);
         
         var outcome = new ActionOutcome(
-            new ActionId("write_name_sand"),
-            ActionOutcomeType.Success, 160L,
+            new ActionId("write_name_sand"), ActionOutcomeType.Success, Duration.FromTicks(160L),
             null
         );
         

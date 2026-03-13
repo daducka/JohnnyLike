@@ -26,7 +26,7 @@ public static class FishingPole
 
             Location: "camp",
 
-            Duration: EngineConstants.TimeToTicks(40.0),
+            Duration: Duration.Minutes(40),
 
             IntrinsicScore: 0.24,
 

@@ -494,7 +494,7 @@ public class IslandDomainPack : IDomainPack
         {
             ActorId = actorId,
             // Use a placeholder outcome: PreAction only reads world/actor state, not outcome data
-            Outcome = new ActionOutcome(new ActionId("preaction_placeholder"), ActionOutcomeType.Success, 0L),
+            Outcome = new ActionOutcome(new ActionId("preaction_placeholder"), ActionOutcomeType.Success, Duration.FromTicks(0L)),
             Actor = (IslandActorState)actorState,
             World = (IslandWorldState)worldState,
             Tier = null,
@@ -526,7 +526,7 @@ public class IslandDomainPack : IDomainPack
             metabolicBuff.Intensity = MetabolicIntensity.Light;
 
         // Morale decays proportionally to the action duration (unchanged).
-        var dtSeconds = (double)outcome.ActualDurationTicks / (double)EngineConstants.TickHz;
+        var dtSeconds = outcome.ActualDuration.TotalSeconds;
         islandActorState.Morale -= dtSeconds * 0.4;
 
         if (outcome.Type != ActionOutcomeType.Success)

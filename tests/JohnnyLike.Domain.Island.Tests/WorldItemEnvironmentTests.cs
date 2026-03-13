@@ -114,7 +114,7 @@ public class WorldItemEnvironmentTests
         var effectCtx = new EffectContext
         {
             ActorId = actor.Id,
-            Outcome = new ActionOutcome(new ActionId("explore_beach"), ActionOutcomeType.Success, 0L),
+            Outcome = new ActionOutcome(new ActionId("explore_beach"), ActionOutcomeType.Success, Duration.FromTicks(0L)),
             Actor = actor,
             World = world,
             Tier = RollOutcomeTier.Success,

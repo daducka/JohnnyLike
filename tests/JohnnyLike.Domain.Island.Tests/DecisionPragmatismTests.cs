@@ -231,7 +231,7 @@ public class DecisionPragmatismTests
                         new ActionId("action_a"),
                         ActionKind.Interact,
                         EmptyActionParameters.Instance,
-                        10L, "",
+                        Duration.FromTicks(10L), "",
                         null,
                         new List<ResourceRequirement>
                         {
@@ -242,7 +242,7 @@ public class DecisionPragmatismTests
                     Score: 1.0),
 
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("action_b"), ActionKind.Wait, EmptyActionParameters.Instance, 10L, ""),
+                    new ActionSpec(new ActionId("action_b"), ActionKind.Wait, EmptyActionParameters.Instance, Duration.FromTicks(10L), ""),
                     IntrinsicScore: 0.5,
                     Qualities: new Dictionary<QualityType, double>(),
                     Score: 0.5),

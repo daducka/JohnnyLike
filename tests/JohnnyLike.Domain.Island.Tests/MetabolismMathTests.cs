@@ -66,10 +66,10 @@ public class MetabolismMathTests
     [Fact]
     public void FullGameDay_BasalBurn_ReducesSatiety_By_Roughly_120()
     {
-        // 1 game-day = 1440 sim-seconds (1 sim-s ≈ 1 story-minute).
+        // 1 game-day = 86 400 sim-seconds (unified sim time, 1 sim-s = 1 real second).
         // BasalKcalPerDay = 2400 kcal → satiety drop = 2400/2000*100 = 120 points.
         // Order-of-magnitude check: drop should be in [50, 150].
-        const double gameDaySeconds = 1440.0;
+        const double gameDaySeconds = 86400.0;
         double satiety = 100.0;
         double energy = 100.0;
 
@@ -87,18 +87,18 @@ public class MetabolismMathTests
     public void FullSatiety_AtBasal_SurvivesMany_SimulationSeconds()
     {
         // Starting at full Satiety, the actor should not reach "starving" (<20)
-        // within a single 300-second simulation run (representing a 5-hour story-session).
+        // within a single 3600-second (1 real hour) simulation run.
         double satiety = 100.0;
         double energy = 100.0;
 
         MetabolismMath.ApplyTimeStep(
             ref satiety, ref energy,
-            300.0,
+            3600.0,
             MetabolismMath.LightActivityKcalPerSecond,
             isSleeping: false);
 
         Assert.True(satiety > 20.0,
-            $"Actor should not be starving after 300 sim-s of light activity, got Satiety={satiety:F2}");
+            $"Actor should not be starving after 3600 sim-s of light activity, got Satiety={satiety:F2}");
     }
 
     // ─── Sleep recovery ───────────────────────────────────────────────────────
@@ -106,46 +106,44 @@ public class MetabolismMathTests
     [Fact]
     public void Sleep_RestoresEnergy_MeaningfullyWithinReasonableTime()
     {
-        // Starting at Energy=0, sleeping for 151 sim-seconds (> 2.5 story-hours)
+        // Starting at Energy=0, sleeping for 5 sim-hours (18 000 sim-seconds)
         // should fully restore Energy.
-        // SleepEnergyRecoveryKcalPerSecond = 2 × BasalKcalPerSecond ≈ 3.333 kcal/s.
-        // 151 s × 3.333 kcal/s ≈ 503 kcal > EnergyKcalAt100 (500 kcal), so Energy clamps at 100.
+        // SleepEnergyRecoveryKcalPerSecond ≈ 0.05556 kcal/s.
+        // SatietyToEnergyKcalPerSecondAsleep ≈ 0.04167 kcal/s.
+        // Combined ~0.09722 kcal/s → 500 kcal / 0.09722 ≈ 5143 s ≈ 1.4 hours.
         double satiety = 100.0;
         double energy = 0.0;
 
         MetabolismMath.ApplyTimeStep(
             ref satiety, ref energy,
-            151.0,
+            18000.0,   // 5 sim-hours
             activityKcalPerSecond: 0.0,
             isSleeping: true);
 
         Assert.True(energy >= 100.0,
-            $"Energy should be fully recovered after 151 s of sleep, got {energy:F2}");
+            $"Energy should be fully recovered after 5 hours of sleep, got {energy:F2}");
     }
 
     [Fact]
     public void Sleep_DoesNotCollapseSatiety()
     {
-        // Sleeping burns basal calories from Satiety AND converts additional Satiety to Energy
-        // via SatietyToEnergyKcalPerSecondAsleep.  For 30 sim-seconds starting at energy = 30:
-        //   Basal drain: ~2.5 Satiety
-        //   Sleep recovery adds ~20 Energy (energy → 50), then conversion adds ~15 more (energy → 65).
-        //   Conversion cost: ~3.75 Satiety.
-        //   Total Satiety drop: ~6.25 points.
-        // The threshold is < 10 to confirm Satiety doesn't collapse, while allowing for the
-        // conversion-driven extra drain.
+        // Sleeping burns basal calories from Satiety AND converts additional Satiety to Energy.
+        // Over 1800 sim-seconds (30 sim-minutes) of sleep starting at energy = 30:
+        //   Basal drain: ~0.02778 * 1800 / 2000 * 100 ≈ 2.5 Satiety
+        //   Conversion cost: small additional Satiety drain.
+        //   Total Satiety drop: < 10 points.
         double satiety = 50.0;
         double energy = 30.0;
 
         MetabolismMath.ApplyTimeStep(
             ref satiety, ref energy,
-            30.0,
+            1800.0,    // 30 sim-minutes
             activityKcalPerSecond: 0.0,
             isSleeping: true);
 
         double drop = 50.0 - satiety;
         Assert.True(drop < 10.0,
-            $"Satiety should not drop more than 10 points during 30 s of sleep, dropped by {drop:F2}");
+            $"Satiety should not drop more than 10 points during 30 sim-minutes of sleep, dropped by {drop:F2}");
         Assert.True(energy > 30.0,
             $"Energy should increase during sleep, got {energy:F2}");
     }

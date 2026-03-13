@@ -40,7 +40,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                 new ActionId("bash_open_treasure_chest"),
                 ActionKind.Interact,
                 parameters,
-                EngineConstants.TimeToTicks(20.0, 25.0, ctx.Random),
+                Duration.Minutes(20.0, 25.0, ctx.Random),
                 "bash open treasure chest",
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(TreasureChestResource) }

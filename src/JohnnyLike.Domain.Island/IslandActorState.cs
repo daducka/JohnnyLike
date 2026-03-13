@@ -231,7 +231,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("idle"),
                 ActionKind.Wait,
                 EmptyActionParameters.Instance,
-                100L,
+                Duration.Seconds(5.0),
                 NarrationDescription: "wait and rest for a moment"
             ),
             0.12,
@@ -288,7 +288,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("build_sand_castle"),
                 ActionKind.Interact,
                 parameters,
-                EngineConstants.TimeToTicks(20.0, 30.0, ctx.Random),
+                Duration.Minutes(20.0, 30.0, ctx.Random),
                 "build a sand castle on the beach",
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:beach:sandcastle_spot")) }
@@ -351,7 +351,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("think_about_supplies"),
                 ActionKind.Wait,
                 EmptyActionParameters.Instance,
-                EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random),
+                Duration.Minutes(10.0, 15.0, ctx.Random),
                 NarrationDescription: "think about available supplies"
             ),
             0.08,
@@ -391,7 +391,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             new ActionId("write_name_sand"),
                             ActionKind.Emote,
                             new EmoteActionParameters("write_name", name, "beach"),
-                            160L,
+                            Duration.Seconds(8.0),
                             NarrationDescription: "write name in the sand"
                         ),
                         1.1, // High priority — chat redemptions override normal actions
@@ -421,7 +421,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             new ActionId("clap_emote"),
                             ActionKind.Emote,
                             new EmoteActionParameters("clap"),
-                            40L,
+                            Duration.Seconds(2.0),
                             NarrationDescription: "clap"
                         ),
                         1.0, // High priority — chat redemptions override normal actions
@@ -455,7 +455,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("sleep_under_tree"),
                 ActionKind.Interact,
                 new LocationActionParameters("tree"),
-                600L + (long)(ctx.Rng.NextDouble() * 200),
+                Duration.Minutes(30.0, 40.0, ctx.Random),
                 NarrationDescription: "take a nap under the shade of a tree"
             ),
             0.14,
@@ -494,7 +494,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("swim"),
                 ActionKind.Interact,
                 parameters,
-                EngineConstants.TimeToTicks(15.0, 20.0, ctx.Random),
+                Duration.Minutes(15.0, 20.0, ctx.Random),
                 "swim in the ocean",
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(new ResourceId("island:resource:water")) }

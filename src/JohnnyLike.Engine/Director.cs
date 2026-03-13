@@ -271,7 +271,7 @@ public class Director
         var reservedResources = new List<ResourceId>();
         foreach (var req in action.ResourceRequirements)
         {
-            var until = currentTick + (req.DurationTicksOverride ?? action.EstimatedDurationTicks);
+            var until = currentTick + (req.DurationOverride?.Ticks ?? action.EstimatedDuration.Ticks);
             var utilityId = $"{newGroupId}:res:{req.ResourceId.Value}";
             if (_reservations.TryReserve(req.ResourceId, utilityId, until))
             {

@@ -70,17 +70,17 @@ public class MetabolicBuffTests
     {
         var (actor, world) = MakeActor(satiety: 100.0, energy: 100.0);
 
-        // Tick 600 engine-ticks = 30 sim-seconds.
-        Tick(actor, world, 600L);
+        // Tick 72 000 engine-ticks = 3600 sim-seconds (1 hour).
+        // BasalKcalPerSecond ≈ 0.02778 kcal/s → basal burn = 100 kcal → ~5 Satiety.
+        // Plus Satiety→Energy conversion (0.5×basal * 3600 = 50 kcal → ~2.5 pts) if Energy < 100.
+        // Since Energy starts at 100, no conversion fires; total drop ≈ 5 pts.
+        // Use a generous band to avoid brittleness.
+        Tick(actor, world, 72_000L); // 1 hour
 
-        // Satiety drops from two sources:
-        //   1. Basal burn: BasalKcalPerSecond * 30 / SatietyKcalAt100 * 100 ≈ 2.5 pts
-        //   2. Satiety→Energy conversion: 0.5×basal * 30 / SatietyKcalAt100 * 100 ≈ 1.25 pts
-        // Total ≈ 3.75 pts.  Use a generous band to avoid brittleness.
         double drop = 100.0 - actor.Satiety;
         Assert.True(actor.Satiety < 100.0,
             $"Satiety should decrease after a tick at rest, got {actor.Satiety:F4}");
-        Assert.InRange(drop, 2.0, 6.0);
+        Assert.InRange(drop, 3.0, 10.0);
     }
 
     [Fact]
@@ -92,8 +92,8 @@ public class MetabolicBuffTests
         // Set heavy intensity on the first actor.
         actorHeavy.ActiveBuffs.OfType<MetabolicBuff>().Single().Intensity = MetabolicIntensity.Heavy;
 
-        Tick(actorHeavy, worldHeavy, 400L); // 20 sim-seconds
-        Tick(actorLight, worldLight, 400L);
+        Tick(actorHeavy, worldHeavy, 72_000L); // 1 hour
+        Tick(actorLight, worldLight, 72_000L);
 
         Assert.True(actorHeavy.Energy < actorLight.Energy,
             $"Heavy activity should drain Energy more than Light. Heavy={actorHeavy.Energy:F2}, Light={actorLight.Energy:F2}");
@@ -105,7 +105,7 @@ public class MetabolicBuffTests
         var (actor, world) = MakeActor(energy: 30.0);
         actor.ActiveBuffs.OfType<MetabolicBuff>().Single().Intensity = MetabolicIntensity.Sleeping;
 
-        Tick(actor, world, 400L); // 20 sim-seconds
+        Tick(actor, world, 72_000L); // 1 hour
 
         Assert.True(actor.Energy > 30.0,
             $"Sleeping should restore Energy, got {actor.Energy:F2}");
@@ -162,7 +162,7 @@ public class MetabolicBuffTests
         actorState.ActiveBuffs.OfType<MetabolicBuff>().Single().Intensity = MetabolicIntensity.Heavy;
 
         // Apply any action to trigger the reset.
-        var outcome = new ActionOutcome(new ActionId("idle"), ActionOutcomeType.Success, 200L, null);
+        var outcome = new ActionOutcome(new ActionId("idle"), ActionOutcomeType.Success, Duration.FromTicks(200L), null);
         domain.ApplyActionEffects(actorId, outcome, actorState, worldState,
             new RandomRngStream(new Random(42)), new EmptyResourceAvailability());
 
