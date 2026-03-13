@@ -231,7 +231,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("idle"),
                 ActionKind.Wait,
                 EmptyActionParameters.Instance,
-                Duration.Seconds(5.0),
+                Duration.Seconds(5.0), // Idle is a brief 5-second pause, not a sustained activity
                 NarrationDescription: "wait and rest for a moment"
             ),
             0.12,
@@ -391,7 +391,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             new ActionId("write_name_sand"),
                             ActionKind.Emote,
                             new EmoteActionParameters("write_name", name, "beach"),
-                            Duration.Seconds(8.0),
+                            Duration.Seconds(8.0), // Quick emote animation (~8 s in real time)
                             NarrationDescription: "write name in the sand"
                         ),
                         1.1, // High priority — chat redemptions override normal actions
@@ -421,7 +421,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             new ActionId("clap_emote"),
                             ActionKind.Emote,
                             new EmoteActionParameters("clap"),
-                            Duration.Seconds(2.0),
+                            Duration.Seconds(2.0), // Quick clap emote animation (~2 s in real time)
                             NarrationDescription: "clap"
                         ),
                         1.0, // High priority — chat redemptions override normal actions

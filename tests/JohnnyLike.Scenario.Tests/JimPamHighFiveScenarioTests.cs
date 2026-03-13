@@ -74,7 +74,7 @@ public class JimPamHighFiveScenarioTests
 
         // Continue simulation — advance enough time for any action to complete (up to 25 minutes).
         // Action durations are expressed in real minutes; swim can take up to 20 minutes.
-        executor.AdvanceTicks(25 * 60 * JohnnyLike.Engine.Engine.TickHz);
+        executor.AdvanceTicks(Duration.Minutes(25).Ticks);
 
         var events = traceSink.GetEvents();
         
