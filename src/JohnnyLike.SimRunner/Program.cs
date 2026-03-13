@@ -329,8 +329,8 @@ void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool
 
 void PrintPersonalityTiming(List<TraceEvent> events, TextWriter writer)
 {
-    // Build a lookup: actorId -> (actionId -> first completion time)
-    var firstTimes = new Dictionary<string, Dictionary<string, double>>();
+    // Build a lookup: actorId -> (actionId -> (first completion time, count))
+    var firstTimes = new Dictionary<string, Dictionary<string, (double FirstTime, int Count)>>();
 
     foreach (var evt in events)
     {
@@ -344,12 +344,14 @@ void PrintPersonalityTiming(List<TraceEvent> events, TextWriter writer)
         var actor = evt.ActorId.Value.Value;
         if (!firstTimes.TryGetValue(actor, out var actorMap))
         {
-            actorMap = new Dictionary<string, double>();
+            actorMap = new Dictionary<string, (double, int)>();
             firstTimes[actor] = actorMap;
         }
 
-        if (!actorMap.ContainsKey(actionId))
-            actorMap[actionId] = evt.TimeSeconds;
+        if (actorMap.TryGetValue(actionId, out var existing))
+            actorMap[actionId] = (existing.FirstTime, existing.Count + 1);
+        else
+            actorMap[actionId] = (evt.TimeSeconds, 1);
     }
 
     if (firstTimes.Count == 0)
@@ -363,7 +365,7 @@ void PrintPersonalityTiming(List<TraceEvent> events, TextWriter writer)
         .ToList();
 
     writer.WriteLine("\n=== PersonalityTiming ===");
-    const int ColWidth = 12;
+    const int ColWidth = 14;
     var actorColWidth = Math.Max(12, firstTimes.Keys.DefaultIfEmpty("").Max(a => a.Length) + 2);
 
     // Header
@@ -378,7 +380,9 @@ void PrintPersonalityTiming(List<TraceEvent> events, TextWriter writer)
         var rowParts = new List<string> { actor.PadRight(actorColWidth) };
         foreach (var action in allActions)
         {
-            var cell = times.TryGetValue(action, out var t) ? $"{t:F0}s" : "never";
+            var cell = times.TryGetValue(action, out var entry)
+                ? $"{entry.FirstTime:F0}s(×{entry.Count})"
+                : "never";
             rowParts.Add(cell.PadLeft(ColWidth));
         }
         writer.WriteLine(string.Join(" ", rowParts));
