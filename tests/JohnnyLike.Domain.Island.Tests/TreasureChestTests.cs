@@ -49,7 +49,7 @@ public class TreasureChestTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 0, AdvantageType.Normal, "Survival"),
                     new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
-            300L,
+            Duration.FromTicks(300L),
             ""
         );
         
@@ -67,8 +67,7 @@ public class TreasureChestTests
             ["tier"] = "CriticalSuccess"
         };
         var outcome = new ActionOutcome(
-            new ActionId("swim"),
-            ActionOutcomeType.Success, 300L,
+            new ActionId("swim"), ActionOutcomeType.Success, Duration.FromTicks(300L),
             resultData
         );
         
@@ -138,7 +137,7 @@ public class TreasureChestTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(20, 0, AdvantageType.Normal, "Athletics"),
                     new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
-            400L,
+            Duration.FromTicks(400L),
             ""
         );
         
@@ -156,8 +155,7 @@ public class TreasureChestTests
             ["tier"] = "Failure"
         };
         var outcome = new ActionOutcome(
-            new ActionId("bash_open_treasure_chest"),
-            ActionOutcomeType.Success, 400L,
+            new ActionId("bash_open_treasure_chest"), ActionOutcomeType.Success, Duration.FromTicks(400L),
             resultData
         );
         
@@ -201,7 +199,7 @@ public class TreasureChestTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(10, 0, AdvantageType.Normal, "Athletics"),
                     new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
-            400L,
+            Duration.FromTicks(400L),
             ""
         );
         
@@ -219,8 +217,7 @@ public class TreasureChestTests
             ["tier"] = "Success"
         };
         var outcome = new ActionOutcome(
-            new ActionId("bash_open_treasure_chest"),
-            ActionOutcomeType.Success, 400L,
+            new ActionId("bash_open_treasure_chest"), ActionOutcomeType.Success, Duration.FromTicks(400L),
             resultData
         );
         
@@ -264,7 +261,7 @@ public class TreasureChestTests
             new SkillCheckActionParameters(
                     new SkillCheckRequest(20, 0, AdvantageType.Normal, "Athletics"),
                     new SkillCheckResult(10, 10 + 0, RollOutcomeTier.Success, true, 0.5)),
-            400L,
+            Duration.FromTicks(400L),
             ""
         );
         
@@ -282,8 +279,7 @@ public class TreasureChestTests
             ["tier"] = "Failure"
         };
         var outcome1 = new ActionOutcome(
-            new ActionId("bash_open_treasure_chest"),
-            ActionOutcomeType.Success, 400L,
+            new ActionId("bash_open_treasure_chest"), ActionOutcomeType.Success, Duration.FromTicks(400L),
             resultData1
         );
         var rng1 = new FixedRngStream(8); // No longer used
@@ -309,8 +305,7 @@ public class TreasureChestTests
             ["tier"] = "Failure"
         };
         var outcome2 = new ActionOutcome(
-            new ActionId("bash_open_treasure_chest"),
-            ActionOutcomeType.Success, 400L,
+            new ActionId("bash_open_treasure_chest"), ActionOutcomeType.Success, Duration.FromTicks(400L),
             resultData2
         );
         var rng2 = new FixedRngStream(8); // No longer used

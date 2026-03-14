@@ -28,7 +28,7 @@ public class MermaidItem : ExpirableWorldItem
                 new ActionId("wave_at_mermaid"),
                 ActionKind.Interact,
                 parameters,
-                EngineConstants.TimeToTicks(5.0),
+                Duration.Minutes(5.0),
                 "wave at mermaid",
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(ShoreEastEnd) }

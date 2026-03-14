@@ -26,7 +26,7 @@ public static class Umbrella
 
             Location: "camp",
 
-            Duration: EngineConstants.TimeToTicks(30.0),
+            Duration: Duration.Minutes(30),
 
             IntrinsicScore: 0.18,
 

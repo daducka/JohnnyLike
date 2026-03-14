@@ -696,7 +696,7 @@ public class RecipeSystemTests
         return new EffectContext
         {
             ActorId = actor.Id,
-            Outcome = new ActionOutcome(new ActionId("test"), ActionOutcomeType.Success, 0L),
+            Outcome = new ActionOutcome(new ActionId("test"), ActionOutcomeType.Success, Duration.FromTicks(0L)),
             Actor = actor,
             World = world,
             Tier = null,

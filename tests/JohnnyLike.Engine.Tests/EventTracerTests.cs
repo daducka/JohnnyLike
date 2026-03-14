@@ -128,7 +128,7 @@ public class EventTracerTests
         // Act
         engine.ReportActionComplete(
             new ActorId("TestActor"),
-            new ActionOutcome(action!.Id, ActionOutcomeType.Success, 20L));
+            new ActionOutcome(action!.Id, ActionOutcomeType.Success, Duration.FromTicks(20L)));
 
         // Assert: a NarrationBeat event should appear
         var events = traceSink.GetEvents();
@@ -155,7 +155,7 @@ public class EventTracerTests
             => new List<ActionCandidate>
             {
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("idle"), ActionKind.Wait, EmptyActionParameters.Instance, 20L, ""),
+                    new ActionSpec(new ActionId("idle"), ActionKind.Wait, EmptyActionParameters.Instance, Duration.FromTicks(20L), ""),
                     1.0,
                     new Dictionary<QualityType, double>(),
                     EffectHandler: new Action<EffectContext<TestActorState, TestWorldState>>(ctx =>

@@ -39,7 +39,7 @@ public class PalmFrondBlanketItem : ToolItem
                 new ActionId("repair_blanket"),
                 ActionKind.Interact,
                 parameters,
-                EngineConstants.TimeToTicks(25.0, 35.0, ctx.Random),
+                Duration.Minutes(25.0, 35.0, ctx.Random),
                 "repair the palm frond blanket",
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(BlanketResource) }
@@ -70,7 +70,7 @@ public class PalmFrondBlanketItem : ToolItem
                 new ActionId("sleep_in_blanket"),
                 ActionKind.Interact,
                 new LocationActionParameters("blanket"),
-                600L + (long)(ctx.Rng.NextDouble() * 200),
+                Duration.Hours(5.0, 7.0, ctx.Random),
                 NarrationDescription: "sleep wrapped in the palm frond blanket"
             ),
             baseScore,

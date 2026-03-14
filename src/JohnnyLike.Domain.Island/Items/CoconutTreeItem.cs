@@ -81,7 +81,7 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 new ActionId("shake_tree_coconut"),
                 ActionKind.Interact,
                 parameters,
-                EngineConstants.TimeToTicks(10.0, 15.0, ctx.Random),
+                Duration.Minutes(10.0, 15.0, ctx.Random),
                 "shake the palm tree to knock down coconuts",
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(PalmTreeResource) }

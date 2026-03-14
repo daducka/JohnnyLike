@@ -25,7 +25,7 @@ public static class CookFish
 
             Location: "campfire",
 
-            Duration: 500L,
+            Duration: Duration.Minutes(25),
 
             IntrinsicScore: 0.16,
 

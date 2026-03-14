@@ -28,7 +28,7 @@ public class PlaneItem : ExpirableWorldItem
                 new ActionId("try_to_signal_plane"),
                 ActionKind.Interact,
                 parameters,
-                EngineConstants.TimeToTicks(10.0),
+                Duration.Minutes(10.0),
                 "signal plane",
                 parameters.ToResultData(),
                 new List<ResourceRequirement> { new ResourceRequirement(BeachOpenArea) }

@@ -209,7 +209,7 @@ public class AlivenessCandidateRequirementTests
 
         var candidate = new ActionCandidate(
             new ActionSpec(new ActionId("test_no_req"), ActionKind.Wait,
-                EmptyActionParameters.Instance, 100L, "test"),
+                EmptyActionParameters.Instance, Duration.FromTicks(100L), "test"),
             0.5,
             new Dictionary<QualityType, double>(),
             ActorRequirement: null
@@ -226,7 +226,7 @@ public class AlivenessCandidateRequirementTests
 
         var candidate = new ActionCandidate(
             new ActionSpec(new ActionId("test_alive_req"), ActionKind.Wait,
-                EmptyActionParameters.Instance, 100L, "test"),
+                EmptyActionParameters.Instance, Duration.FromTicks(100L), "test"),
             0.5,
             new Dictionary<QualityType, double>(),
             ActorRequirement: CandidateRequirements.AliveOnly
@@ -244,7 +244,7 @@ public class AlivenessCandidateRequirementTests
 
         var candidate = new ActionCandidate(
             new ActionSpec(new ActionId("test_alive_req"), ActionKind.Wait,
-                EmptyActionParameters.Instance, 100L, "test"),
+                EmptyActionParameters.Instance, Duration.FromTicks(100L), "test"),
             0.5,
             new Dictionary<QualityType, double>(),
             ActorRequirement: CandidateRequirements.AliveOnly
@@ -270,7 +270,7 @@ public class AlivenessCandidateRequirementTests
         // the collection-level filtering in GenerateCandidates will remove it from the list.
         var candidate = new ActionCandidate(
             new ActionSpec(new ActionId("alive_only_action"), ActionKind.Wait,
-                EmptyActionParameters.Instance, 100L, "test"),
+                EmptyActionParameters.Instance, Duration.FromTicks(100L), "test"),
             0.5,
             new Dictionary<QualityType, double>(),
             ActorRequirement: CandidateRequirements.AliveOnly

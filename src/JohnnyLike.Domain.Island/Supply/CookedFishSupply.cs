@@ -32,7 +32,7 @@ public class CookedFishSupply : SupplyItem, ISupplyActionCandidate
                 new ActionId("eat_cooked_fish"),
                 ActionKind.Interact,
                 new LocationActionParameters("camp"),
-                EngineConstants.TimeToTicks(8.0, 10.0, ctx.Random),
+                Duration.Minutes(8.0, 10.0, ctx.Random),
                 NarrationDescription: "eat cooked fish"
             ),
             0.22,

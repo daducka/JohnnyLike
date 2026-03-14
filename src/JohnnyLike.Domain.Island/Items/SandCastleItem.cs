@@ -62,7 +62,7 @@ public class SandCastleItem : MaintainableWorldItem
                 new ActionId("stomp_on_sandcastle"),
                 ActionKind.Interact,
                 parameters,
-                EngineConstants.TimeToTicks(5.0),
+                Duration.Minutes(5.0),
                 "stomp on sandcastle",
                 null,
                 new List<ResourceRequirement> { new ResourceRequirement(BeachSandcastleArea) }

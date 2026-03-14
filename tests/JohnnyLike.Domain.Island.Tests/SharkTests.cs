@@ -84,8 +84,7 @@ public class SharkTests
             ["tier"] = "CriticalFailure"
         };
         var outcome = new ActionOutcome(
-            new ActionId("swim"),
-            ActionOutcomeType.Success, 300L,
+            new ActionId("swim"), ActionOutcomeType.Success, Duration.FromTicks(300L),
             resultData
         );
         
@@ -203,8 +202,7 @@ public class SharkTests
             ["tier"] = "CriticalFailure"
         };
         var outcome = new ActionOutcome(
-            new ActionId("swim"),
-            ActionOutcomeType.Success, 300L,
+            new ActionId("swim"), ActionOutcomeType.Success, Duration.FromTicks(300L),
             resultData
         );
         

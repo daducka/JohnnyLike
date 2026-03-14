@@ -29,9 +29,7 @@ public class NarrationImprovementTests
         RollOutcomeTier tier)
     {
         var outcome = new ActionOutcome(
-            new ActionId("test_action"),
-            ActionOutcomeType.Success,
-            100L,
+            new ActionId("test_action"), ActionOutcomeType.Success, Duration.FromTicks(100L),
             new Dictionary<string, object> { ["tier"] = tier });
 
         return new EffectContext

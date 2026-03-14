@@ -28,7 +28,7 @@ public static class PalmFrondBed
 
             Location: "camp",
 
-            Duration: EngineConstants.TimeToTicks(70.0),
+            Duration: Duration.Minutes(70),
 
             IntrinsicScore: 0.26,
 

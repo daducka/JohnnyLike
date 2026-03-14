@@ -27,7 +27,7 @@ public static class Campfire
 
             Location: "camp",
 
-            Duration: EngineConstants.TimeToTicks(60.0),
+            Duration: Duration.Hours(1),
 
             IntrinsicScore: 0.28,
 

@@ -302,7 +302,7 @@ public class SignalHandlingTests
             return new List<ActionCandidate>
             {
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("idle"), ActionKind.Wait, EmptyActionParameters.Instance, 20L, ""),
+                    new ActionSpec(new ActionId("idle"), ActionKind.Wait, EmptyActionParameters.Instance, Duration.FromTicks(20L), ""),
                     1.0,
                     new Dictionary<QualityType, double>()
                 )
@@ -370,7 +370,7 @@ public class ActorStateSnapshotTests
         
         engine.ReportActionComplete(
             new ActorId("TestActor"),
-            new ActionOutcome(action!.Id, ActionOutcomeType.Success, 20L, null)
+            new ActionOutcome(action!.Id, ActionOutcomeType.Success, Duration.FromTicks(20L), null)
         );
         
         // Assert - Check that the trace event contains actor state snapshot
@@ -398,7 +398,7 @@ public class ActorStateSnapshotTests
             return new List<ActionCandidate>
             {
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("test_action"), ActionKind.Wait, EmptyActionParameters.Instance, 20L, ""),
+                    new ActionSpec(new ActionId("test_action"), ActionKind.Wait, EmptyActionParameters.Instance, Duration.FromTicks(20L), ""),
                     1.0,
                     new Dictionary<QualityType, double>()
                 )

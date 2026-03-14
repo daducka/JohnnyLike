@@ -26,7 +26,7 @@ public static class PalmFrondBlanket
 
             Location: "camp",
 
-            Duration: EngineConstants.TimeToTicks(50.0),
+            Duration: Duration.Minutes(50),
 
             IntrinsicScore: 0.24,
 

@@ -39,10 +39,10 @@ public class DecisionTraceTests
             => new()
             {
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("best_action"), ActionKind.Wait, EmptyActionParameters.Instance, 10L, ""),
+                    new ActionSpec(new ActionId("best_action"), ActionKind.Wait, EmptyActionParameters.Instance, Duration.FromTicks(10L), ""),
                     IntrinsicScore: 1.0, Qualities: new Dictionary<QualityType, double>(), Score: 1.0),
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("second_action"), ActionKind.Wait, EmptyActionParameters.Instance, 10L, ""),
+                    new ActionSpec(new ActionId("second_action"), ActionKind.Wait, EmptyActionParameters.Instance, Duration.FromTicks(10L), ""),
                     IntrinsicScore: 0.5, Qualities: new Dictionary<QualityType, double>(), Score: 0.5),
             };
 
@@ -69,11 +69,11 @@ public class DecisionTraceTests
             => new()
             {
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("blocked_action"), ActionKind.Interact, EmptyActionParameters.Instance, 10L, "",
+                    new ActionSpec(new ActionId("blocked_action"), ActionKind.Interact, EmptyActionParameters.Instance, Duration.FromTicks(10L), "",
                         null, new List<ResourceRequirement> { new(new ResourceId("test:res")) }),
                     IntrinsicScore: 2.0, Qualities: new Dictionary<QualityType, double>(), Score: 2.0),
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("fallback_action"), ActionKind.Wait, EmptyActionParameters.Instance, 10L, ""),
+                    new ActionSpec(new ActionId("fallback_action"), ActionKind.Wait, EmptyActionParameters.Instance, Duration.FromTicks(10L), ""),
                     IntrinsicScore: 0.5, Qualities: new Dictionary<QualityType, double>(), Score: 0.5),
             };
 
@@ -100,11 +100,11 @@ public class DecisionTraceTests
             => new()
             {
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("preaction_fail_action"), ActionKind.Wait, EmptyActionParameters.Instance, 10L, ""),
+                    new ActionSpec(new ActionId("preaction_fail_action"), ActionKind.Wait, EmptyActionParameters.Instance, Duration.FromTicks(10L), ""),
                     IntrinsicScore: 2.0, Qualities: new Dictionary<QualityType, double>(), Score: 2.0,
                     PreAction: (object)new object()), // marker; TryExecutePreAction will return false
                 new ActionCandidate(
-                    new ActionSpec(new ActionId("success_action"), ActionKind.Wait, EmptyActionParameters.Instance, 10L, ""),
+                    new ActionSpec(new ActionId("success_action"), ActionKind.Wait, EmptyActionParameters.Instance, Duration.FromTicks(10L), ""),
                     IntrinsicScore: 0.5, Qualities: new Dictionary<QualityType, double>(), Score: 0.5),
             };
 

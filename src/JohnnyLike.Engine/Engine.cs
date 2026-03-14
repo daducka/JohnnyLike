@@ -135,7 +135,7 @@ public class Engine
             {
                 ["actionId"] = plannedAction.Id.Value,
                 ["actionKind"] = plannedAction.Kind.ToString(),
-                ["estimatedDurationTicks"] = plannedAction.EstimatedDurationTicks
+                ["estimatedDurationTicks"] = plannedAction.EstimatedDuration.Ticks
             };
 
             if (!string.IsNullOrEmpty(plannedAction.NarrationDescription))
@@ -204,7 +204,7 @@ public class Engine
             ["actionId"] = outcome.ActionId.Value,
             ["actionKind"] = actorState.CurrentAction?.Kind.ToString() ?? string.Empty,
             ["outcomeType"] = outcome.Type.ToString(),
-            ["actualDurationTicks"] = outcome.ActualDurationTicks
+            ["actualDurationTicks"] = outcome.ActualDuration.Ticks
         };
 
         var narrationDesc = actorState.CurrentAction?.NarrationDescription;

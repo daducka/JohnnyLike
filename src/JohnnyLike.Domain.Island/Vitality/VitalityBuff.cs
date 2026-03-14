@@ -31,11 +31,11 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
 
     // ── Deterioration rates (health points lost per sim-second) ───────────────
     /// <summary>Health damage per sim-second when Satiety is critically low.</summary>
-    public const double StarvationDamagePerSecond = 0.04; // ~100% drain over ~40 sim-minutes of starvation
+    public const double StarvationDamagePerSecond = 0.0006; // ~100% drain over ~2 sim-days of starvation
     /// <summary>Health damage per sim-second when Energy is critically low.</summary>
-    public const double ExhaustionDamagePerSecond = 0.03; // ~100% drain over ~55 sim-minutes of exhaustion
+    public const double ExhaustionDamagePerSecond = 0.0004; // ~100% drain over ~3 sim-days of exhaustion
     /// <summary>Health damage per sim-second when Morale is critically low.</summary>
-    public const double PsycheDamagePerSecond     = 0.02; // ~100% drain over ~80 sim-minutes of despair
+    public const double PsycheDamagePerSecond     = 0.0003; // ~100% drain over ~4 sim-days of despair
 
     // ── Recovery thresholds (all must be met simultaneously for regen) ────────
     /// <summary>Satiety must be at or above this value for health recovery to occur.</summary>
@@ -47,7 +47,7 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
 
     // ── Recovery rate ─────────────────────────────────────────────────────────
     /// <summary>Health recovered per sim-second under stable/good conditions.</summary>
-    public const double RecoveryPerSecond = 0.01; // ~100% recovery over ~100 sim-minutes of stable conditions
+    public const double RecoveryPerSecond = 0.0002; // ~100% recovery over ~5 sim-days of stable conditions
 
     /// <summary>
     /// Absolute engine tick at which <see cref="OnTick"/> was last invoked.
