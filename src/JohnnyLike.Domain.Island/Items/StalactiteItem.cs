@@ -3,12 +3,12 @@ using JohnnyLike.Domain.Abstractions;
 namespace JohnnyLike.Domain.Island.Items;
 
 /// <summary>
-/// A stalactite in the cave. Drips every 60 ticks and emits a StalactiteDrip trace event.
+/// A stalactite in the cave. Drips every simulated hour and emits a StalactiteDrip trace event.
 /// </summary>
 public class StalactiteItem : WorldItem, ITickableWorldItem
 {
     private long _lastDripTick = 0L;
-    private const long DripIntervalTicks = 60L;
+    private static readonly Duration DripInterval = Duration.Hours(1);
 
     public StalactiteItem(string id = "stalactite") : base(id, "stalactite")
     {
@@ -19,14 +19,15 @@ public class StalactiteItem : WorldItem, ITickableWorldItem
     public List<TraceEvent> Tick(long currentTick, WorldState worldState)
     {
         var events = new List<TraceEvent>();
+        var dripIntervalTicks = DripInterval.Ticks;
 
-        // Emit a drip every 60 ticks
-        if (currentTick > 0 && currentTick >= _lastDripTick + DripIntervalTicks)
+        // Emit a drip every simulated hour
+        if (currentTick > 0 && currentTick >= _lastDripTick + dripIntervalTicks)
         {
-            var dripsToEmit = (currentTick - _lastDripTick) / DripIntervalTicks;
+            var dripsToEmit = (currentTick - _lastDripTick) / dripIntervalTicks;
             for (long i = 0; i < dripsToEmit; i++)
             {
-                var dripTick = _lastDripTick + DripIntervalTicks * (i + 1);
+                var dripTick = _lastDripTick + dripIntervalTicks * (i + 1);
                 events.Add(new TraceEvent(
                     dripTick,
                     null,
@@ -38,7 +39,7 @@ public class StalactiteItem : WorldItem, ITickableWorldItem
                     }
                 ));
             }
-            _lastDripTick = _lastDripTick + DripIntervalTicks * dripsToEmit;
+            _lastDripTick = _lastDripTick + dripIntervalTicks * dripsToEmit;
         }
 
         return events;
