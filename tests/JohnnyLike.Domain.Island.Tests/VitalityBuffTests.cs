@@ -294,6 +294,71 @@ public class VitalityBuffTests
         Assert.NotNull(buff2);
         Assert.Equal(42L, buff2.LastTick);
     }
+
+    // ─── Physiological morale pressure ───────────────────────────────────────
+
+    [Fact]
+    public void Morale_NotAffected_WhenPhysioIsGood()
+    {
+        // When satiety and energy are both comfortably above thresholds, morale should
+        // not be affected by the vitality tick.
+        var (actor, world) = MakeActor(health: 100.0, satiety: 80.0, energy: 70.0, morale: 50.0);
+        var startMorale = actor.Morale;
+
+        TickForSeconds(actor, world, 600.0); // 10 sim-minutes
+
+        Assert.Equal(startMorale, actor.Morale, precision: 3);
+    }
+
+    [Fact]
+    public void Morale_DecaysSlowly_WhenSatietyIsMildlyLow()
+    {
+        // Satiety < 35 (mild threshold) should cause mild morale decay over time.
+        var (actor, world) = MakeActor(health: 100.0, satiety: 25.0, energy: 70.0, morale: 50.0);
+        TickForSeconds(actor, world, 600.0); // 10 sim-minutes
+
+        Assert.True(actor.Morale < 50.0,
+            $"Morale should decay mildly with low satiety, got {actor.Morale:F4}");
+    }
+
+    [Fact]
+    public void Morale_DecaysMoreStrongly_WhenSatietyIsCriticallyLow()
+    {
+        // Satiety < 10 (strong threshold) should cause stronger morale decay than mild.
+        var (actorMild, worldMild) = MakeActor(health: 100.0, satiety: 25.0, energy: 70.0, morale: 50.0);
+        var (actorStrong, worldStrong) = MakeActor(health: 100.0, satiety: 5.0, energy: 70.0, morale: 50.0);
+
+        TickForSeconds(actorMild, worldMild, 600.0);
+        TickForSeconds(actorStrong, worldStrong, 600.0);
+
+        Assert.True(actorStrong.Morale < actorMild.Morale,
+            $"Critically low satiety ({actorStrong.Morale:F4}) should decay morale faster than mild ({actorMild.Morale:F4})");
+    }
+
+    [Fact]
+    public void Morale_DecaysSlowly_WhenEnergyIsMildlyLow()
+    {
+        // Energy < 30 (mild threshold) should cause mild morale decay over time.
+        var (actor, world) = MakeActor(health: 100.0, satiety: 80.0, energy: 20.0, morale: 50.0);
+        TickForSeconds(actor, world, 600.0); // 10 sim-minutes
+
+        Assert.True(actor.Morale < 50.0,
+            $"Morale should decay mildly with low energy, got {actor.Morale:F4}");
+    }
+
+    [Fact]
+    public void Morale_DecaysFaster_WhenBothSatietyAndEnergyAreLow()
+    {
+        // Both satiety and energy below thresholds should cause additive morale pressure.
+        var (actorBoth, worldBoth)     = MakeActor(health: 100.0, satiety: 25.0, energy: 20.0, morale: 50.0);
+        var (actorSatiety, worldSatiety) = MakeActor(health: 100.0, satiety: 25.0, energy: 70.0, morale: 50.0);
+
+        TickForSeconds(actorBoth, worldBoth, 600.0);
+        TickForSeconds(actorSatiety, worldSatiety, 600.0);
+
+        Assert.True(actorBoth.Morale < actorSatiety.Morale,
+            $"Both low satiety+energy ({actorBoth.Morale:F4}) should decay morale faster than satiety alone ({actorSatiety.Morale:F4})");
+    }
 }
 
 /// <summary>
