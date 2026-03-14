@@ -122,7 +122,7 @@ public class JimPamHighFiveScenarioTests
     }
     
     [Fact]
-    public void IslandScenario_StalactiteDripsEvery60Ticks()
+    public void IslandScenario_StalactiteDripsEveryHour()
     {
         var domainPack = new IslandDomainPack();
         var traceSink = new InMemoryTraceSink();
@@ -131,8 +131,8 @@ public class JimPamHighFiveScenarioTests
         engine.AddActor(new ActorId("Jim"), new Dictionary<string, object>());
         var executor = new FakeExecutor(engine);
         
-        // Advance 61 ticks (just past first drip)
-        executor.AdvanceTicks(61L);
+        // Advance just past one hour (first drip interval)
+        executor.AdvanceTicks(Duration.Hours(1).Ticks + 1);
         
         var events = traceSink.GetEvents();
         Assert.Contains(events, e => e.EventType == "StalactiteDrip");
@@ -149,8 +149,8 @@ public class JimPamHighFiveScenarioTests
         engine.AddActor(new ActorId("Jim"), new Dictionary<string, object>());
         var executor = new FakeExecutor(engine);
 
-        // Advance enough ticks for Jim to make decisions
-        executor.AdvanceTicks(200L);
+        // Advance enough ticks for Jim to make decisions and for at least one stalactite drip.
+        executor.AdvanceTicks(Duration.Hours(1).Ticks + 1);
 
         var events = traceSink.GetEvents();
 
@@ -166,7 +166,7 @@ public class JimPamHighFiveScenarioTests
     }
 
     [Fact]
-    public void Rooms_StalactiteDrips_TwiceBy121Ticks()
+    public void Rooms_StalactiteDrips_TwiceByTwoHours()
     {
         var domainPack = new IslandDomainPack();
         var traceSink = new InMemoryTraceSink();
@@ -175,7 +175,7 @@ public class JimPamHighFiveScenarioTests
         engine.AddActor(new ActorId("Jim"), new Dictionary<string, object>());
         var executor = new FakeExecutor(engine);
 
-        executor.AdvanceTicks(121L); // past second drip
+        executor.AdvanceTicks(Duration.Hours(2).Ticks + 1); // past second drip
 
         var drips = traceSink.GetEvents().Where(e => e.EventType == "StalactiteDrip").ToList();
         Assert.Equal(2, drips.Count);
