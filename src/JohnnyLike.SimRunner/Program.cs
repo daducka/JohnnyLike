@@ -365,25 +365,42 @@ void PrintPersonalityTiming(List<TraceEvent> events, TextWriter writer)
         .ToList();
 
     writer.WriteLine("\n=== PersonalityTiming ===");
-    const int ColWidth = 14;
-    var actorColWidth = Math.Max(12, firstTimes.Keys.DefaultIfEmpty("").Max(a => a.Length) + 2);
+    var actors = firstTimes.Keys.OrderBy(a => a).ToList();
+    var actionColWidth = Math.Max(26, allActions.DefaultIfEmpty("").Max(a => a.Length) + 2);
 
-    // Header
-    var headerParts = new List<string> { "Actor".PadRight(actorColWidth) };
-    headerParts.AddRange(allActions.Select(a => a.PadLeft(ColWidth)));
+    var actorColWidths = actors.ToDictionary(
+        actor => actor,
+        actor =>
+        {
+            var maxCellWidth = allActions
+                .Select(action =>
+                {
+                    if (!firstTimes[actor].TryGetValue(action, out var entry))
+                        return "-";
+                    return $"{entry.FirstTime:F0}s (x{entry.Count})";
+                })
+                .DefaultIfEmpty("-")
+                .Max(cell => cell.Length);
+            return Math.Max(actor.Length + 2, maxCellWidth + 2);
+        });
+
+    // Header: action rows with actor columns
+    var headerParts = new List<string> { "Action".PadRight(actionColWidth) };
+    headerParts.AddRange(actors.Select(actor => actor.PadLeft(actorColWidths[actor])));
     var header = string.Join(" ", headerParts);
     writer.WriteLine(header);
     writer.WriteLine(new string('-', header.Length));
 
-    foreach (var (actor, times) in firstTimes.OrderBy(kvp => kvp.Key))
+    foreach (var action in allActions)
     {
-        var rowParts = new List<string> { actor.PadRight(actorColWidth) };
-        foreach (var action in allActions)
+        var rowParts = new List<string> { action.PadRight(actionColWidth) };
+        foreach (var actor in actors)
         {
+            var times = firstTimes[actor];
             var cell = times.TryGetValue(action, out var entry)
-                ? $"{entry.FirstTime:F0}s(×{entry.Count})"
-                : "never";
-            rowParts.Add(cell.PadLeft(ColWidth));
+                ? $"{entry.FirstTime:F0}s (x{entry.Count})"
+                : "-";
+            rowParts.Add(cell.PadLeft(actorColWidths[actor]));
         }
         writer.WriteLine(string.Join(" ", rowParts));
     }
