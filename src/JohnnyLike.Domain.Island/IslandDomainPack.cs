@@ -506,6 +506,18 @@ public class IslandDomainPack : IDomainPack
         return preAction(effectCtx);
     }
 
+    // ── Outcome-driven morale constants ─────────────────────────────────────
+    /// <summary>Morale bonus applied when the action roll tier is CriticalSuccess.</summary>
+    public const double MoraleCriticalSuccessBonus  = +8.0;
+    /// <summary>Morale bonus applied when the action roll tier is Success.</summary>
+    public const double MoraleSuccessBonus          = +2.0;
+    /// <summary>Morale bonus applied when the action roll tier is PartialSuccess.</summary>
+    public const double MoralePartialSuccessBonus   = +1.0;
+    /// <summary>Morale penalty applied when the action roll tier is Failure.</summary>
+    public const double MoraleFailurePenalty        = -3.0;
+    /// <summary>Morale penalty applied when the action roll tier is CriticalFailure.</summary>
+    public const double MoraleCriticalFailurePenalty = -8.0;
+
     public void ApplyActionEffects(
         ActorId actorId,
         ActionOutcome outcome,
@@ -525,39 +537,82 @@ public class IslandDomainPack : IDomainPack
         if (metabolicBuff != null)
             metabolicBuff.Intensity = MetabolicIntensity.Light;
 
-        // Morale decays proportionally to the action duration (unchanged).
-        var dtSeconds = outcome.ActualDuration.TotalSeconds;
-        islandActorState.Morale -= dtSeconds * 0.4;
-
-        if (outcome.Type != ActionOutcomeType.Success)
+        // Run action-specific effect handler for successful completions.
+        if (outcome.Type == ActionOutcomeType.Success)
         {
+            var effectCtx = new EffectContext
+            {
+                ActorId = actorId,
+                Outcome = outcome,
+                Actor = islandActorState,
+                World = islandWorld,
+                Tier = GetTierFromOutcome(outcome),
+                Rng = rng,
+                Reservations = resourceAvailability,
+                Tracer = islandWorld.Tracer
+            };
+
+            // Effect handler should always be provided via ActionCandidate.EffectHandler
+            if (effectHandler is Action<EffectContext> handler)
+            {
+                handler(effectCtx);
+            }
+
+            // Propagate outcome narration set by the effect handler into ResultData so the engine
+            // can include it in the ActionCompleted trace event.
+            if (effectCtx.OutcomeNarration != null && outcome.ResultData != null)
+                outcome.ResultData["outcomeNarration"] = effectCtx.OutcomeNarration;
+        }
+
+        // Apply outcome-driven morale adjustment (after any action-specific effects).
+        ApplyOutcomeMorale(actorId, outcome, islandActorState, islandWorld);
+    }
+
+    /// <summary>
+    /// Adjusts morale based on the outcome of an action.  The adjustment is derived from
+    /// the <see cref="RollOutcomeTier"/> stored in <c>outcome.ResultData["tier"]</c> when
+    /// available, falling back to <see cref="ActionOutcomeType"/> otherwise.
+    /// </summary>
+    private void ApplyOutcomeMorale(
+        ActorId actorId,
+        ActionOutcome outcome,
+        IslandActorState actor,
+        IslandWorldState world)
+    {
+        double moraleDelta;
+        string reason;
+
+        var tier = GetTierFromOutcome(outcome);
+        if (tier.HasValue)
+        {
+            (moraleDelta, reason) = tier.Value switch
+            {
+                RollOutcomeTier.CriticalSuccess => (MoraleCriticalSuccessBonus,   "Critical success"),
+                RollOutcomeTier.Success         => (MoraleSuccessBonus,           "Success"),
+                RollOutcomeTier.PartialSuccess  => (MoralePartialSuccessBonus,    "Partial success"),
+                RollOutcomeTier.Failure         => (MoraleFailurePenalty,         "Failure"),
+                RollOutcomeTier.CriticalFailure => (MoraleCriticalFailurePenalty, "Critical failure"),
+                _                               => (0.0, string.Empty)
+            };
+        }
+        else
+        {
+            (moraleDelta, reason) = outcome.Type switch
+            {
+                ActionOutcomeType.Success => (MoraleSuccessBonus,  "Success"),
+                ActionOutcomeType.Failed  => (MoraleFailurePenalty, "Failure"),
+                _                         => (0.0, string.Empty)
+            };
+        }
+
+        if (moraleDelta == 0.0)
             return;
-        }
 
-        var actionId = outcome.ActionId.Value;
-
-        var effectCtx = new EffectContext
-        {
-            ActorId = actorId,
-            Outcome = outcome,
-            Actor = islandActorState,
-            World = islandWorld,
-            Tier = GetTierFromOutcome(outcome),
-            Rng = rng,
-            Reservations = resourceAvailability,
-            Tracer = islandWorld.Tracer
-        };
-
-        // Effect handler should always be provided via ActionCandidate.EffectHandler
-        if (effectHandler is Action<EffectContext> handler)
-        {
-            handler(effectCtx);
-        }
-
-        // Propagate outcome narration set by the effect handler into ResultData so the engine
-        // can include it in the ActionCompleted trace event.
-        if (effectCtx.OutcomeNarration != null && outcome.ResultData != null)
-            outcome.ResultData["outcomeNarration"] = effectCtx.OutcomeNarration;
+        actor.Morale += moraleDelta;
+        world.Tracer.Beat(
+            $"[Morale] {moraleDelta:+0.#;-0.#} ({reason} outcome)",
+            actorId: actorId.Value,
+            priority: 25);
     }
 
     private RollOutcomeTier? GetTierFromOutcome(ActionOutcome outcome)

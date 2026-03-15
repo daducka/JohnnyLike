@@ -400,9 +400,9 @@ public class IslandActionEffectsTests
         domain.TryExecutePreAction(actorId, actorState, worldState, rng, new EmptyResourceAvailability(), fishingCandidate.PreAction);
         domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability(), fishingCandidate.EffectHandler);
         
-        // Morale decreases from passive decay (15 * 0.4 = 6) but is partially offset by fishing effect (+5 on Success)
-        // Net: 50 - 6 + 5 = 49 — fishing counteracts most of the decay vs. not fishing (50 - 6 = 44)
-        Assert.True(actorState.Morale > 44.0, $"Expected morale > 44 (fishing should offset some morale decay), got {actorState.Morale}");
+        // Morale increases: fishing effect (+5 on Success) + outcome morale bonus (+2 for Success tier)
+        // Net: 50 + 5 + 2 = 57 — no passive decay, morale reflects the positive outcome
+        Assert.True(actorState.Morale > 50.0, $"Expected morale > 50 (fishing success should improve morale), got {actorState.Morale}");
     }
 
     [Fact]
@@ -487,13 +487,99 @@ public class IslandActionEffectsTests
         Assert.True(actorState.Energy <= 80.0,
             $"Energy should not exceed starting value, got {actorState.Energy:F2}");
 
-        // Morale decays in ApplyActionEffects (action-duration-based), not via buff.
+        // Morale is now outcome-driven, not time-based. A Success outcome with no tier gives +2 morale.
+        // After the world tick, physio is fine (satiety=70, energy=80) so no morale pressure from VitalityBuff.
         var outcome = new ActionOutcome(new ActionId("idle"), ActionOutcomeType.Success, Duration.FromTicks(200L), null);
         var rng = new RandomRngStream(new Random(42));
         domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
 
+        Assert.True(actorState.Morale >= 50.0,
+            $"Morale should not decrease after a successful idle action (no passive decay), got {actorState.Morale:F2}");
+    }
+
+    [Theory]
+    [InlineData("CriticalSuccess", IslandDomainPack.MoraleCriticalSuccessBonus)]
+    [InlineData("Success",         IslandDomainPack.MoraleSuccessBonus)]
+    [InlineData("PartialSuccess",  IslandDomainPack.MoralePartialSuccessBonus)]
+    [InlineData("Failure",         IslandDomainPack.MoraleFailurePenalty)]
+    [InlineData("CriticalFailure", IslandDomainPack.MoraleCriticalFailurePenalty)]
+    public void ApplyActionEffects_OutcomeMorale_MatchesTier(string tierStr, double expectedDelta)
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+            new Dictionary<string, object> { ["morale"] = 50.0 });
+        var worldState = new IslandWorldState();
+        var rng = new RandomRngStream(new Random(42));
+
+        var outcome = new ActionOutcome(
+            new ActionId("test_action"), ActionOutcomeType.Success, Duration.FromTicks(200L),
+            new Dictionary<string, object> { ["tier"] = tierStr });
+
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
+
+        Assert.Equal(Math.Clamp(50.0 + expectedDelta, 0.0, 100.0), actorState.Morale, precision: 5);
+    }
+
+    [Fact]
+    public void ApplyActionEffects_FailedOutcome_AppliesMoralePenalty()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+            new Dictionary<string, object> { ["morale"] = 50.0 });
+        var worldState = new IslandWorldState();
+        var rng = new RandomRngStream(new Random(42));
+
+        var outcome = new ActionOutcome(
+            new ActionId("test_action"), ActionOutcomeType.Failed, Duration.FromTicks(200L), null);
+
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
+
         Assert.True(actorState.Morale < 50.0,
-            $"Morale should decrease after idle action, got {actorState.Morale:F2}");
+            $"Failed outcome should reduce morale, got {actorState.Morale}");
+    }
+
+    [Fact]
+    public void ApplyActionEffects_CancelledOutcome_DoesNotChangeMorale()
+    {
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+            new Dictionary<string, object> { ["morale"] = 50.0 });
+        var worldState = new IslandWorldState();
+        var rng = new RandomRngStream(new Random(42));
+
+        var outcome = new ActionOutcome(
+            new ActionId("test_action"), ActionOutcomeType.Cancelled, Duration.FromTicks(200L), null);
+
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
+
+        Assert.Equal(50.0, actorState.Morale, precision: 5);
+    }
+
+    [Fact]
+    public void ApplyActionEffects_LongComfortAction_DoesNotCollapseMorale()
+    {
+        // Regression test: a 15-minute comfort action should not tank morale.
+        var domain = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+            new Dictionary<string, object> { ["morale"] = 50.0 });
+        var worldState = new IslandWorldState();
+        var rng = new RandomRngStream(new Random(42));
+
+        // Simulate a 15-minute comfort action (Success tier).
+        var duration = Duration.Minutes(15);
+        var outcome = new ActionOutcome(
+            new ActionId("sit_and_watch_waves"), ActionOutcomeType.Success, duration,
+            new Dictionary<string, object> { ["tier"] = "Success" });
+
+        domain.ApplyActionEffects(actorId, outcome, actorState, worldState, rng, new EmptyResourceAvailability());
+
+        // Morale should not drop — Success outcome gives a bonus, not a penalty.
+        Assert.True(actorState.Morale >= 50.0,
+            $"Long comfort action should not collapse morale, got {actorState.Morale}");
     }
 }
 
