@@ -31,7 +31,7 @@ Set-Location $repoRoot
 
 # Dynamically read actor names from Archetypes.cs so this list stays in sync.
 # Matches C# dictionary entries of the form: ["Name"] = new()
-$archetypesFile = Join-Path 'src' 'JohnnyLike.SimRunner' 'Archetypes.cs'
+$archetypesFile = Join-Path 'src' 'JohnnyLike.SimRunner\Archetypes.cs'
 $actors = [regex]::Matches(
     (Get-Content $archetypesFile -Raw),
     '\["([^"]+)"\]\s*=\s*new\s*\('
