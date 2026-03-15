@@ -15,7 +15,7 @@ if (args.Length == 0)
     Console.WriteLine("  --decision-summary        Emit summary decision trace events (chosen action + reason)");
     Console.WriteLine("  --decision-candidates     Emit per-candidate decision trace events");
     Console.WriteLine("  --decision-verbose        Emit verbose decision trace (includes scoring explanation)");
-    Console.WriteLine("  --save-artifacts          Save trace logs to artifacts/ directory");
+    Console.WriteLine("  --save-artifacts [folder] Save trace logs to artifacts/ directory (optional subfolder)");
     Console.WriteLine("  --actor <name>            Starting actor archetype (default: Johnny)");
     Console.WriteLine($"                            Available: {string.Join(", ", Archetypes.All.Keys)}");
     Console.WriteLine("\nFuzz Testing:");
@@ -24,7 +24,7 @@ if (args.Length == 0)
     Console.WriteLine("  --config <path>     Load fuzz config from JSON file");
     Console.WriteLine("  --profile <name>    Use predefined profile: smoke, extended, nightly");
     Console.WriteLine("  --verbose           Verbose output for fuzz runs");
-    Console.WriteLine("  --save-artifacts    Save test artifacts to disk");
+    Console.WriteLine("  --save-artifacts [folder] Save test artifacts to disk (optional subfolder)");
     return;
 }
 
@@ -39,6 +39,7 @@ var fuzzConfigPath = "";
 var fuzzProfile = "";
 var verbose = false;
 var saveArtifacts = false;
+var artifactsSubDir = "";
 var decisionTraceLevel = JohnnyLike.Engine.DecisionTraceLevel.None;
 var actorName = "Johnny";
 
@@ -89,6 +90,8 @@ for (int i = 0; i < args.Length; i++)
             break;
         case "--save-artifacts":
             saveArtifacts = true;
+            if (i + 1 < args.Length && !args[i + 1].StartsWith("--"))
+                artifactsSubDir = args[++i];
             break;
         case "--actor":
             actorName = args[++i];
@@ -98,15 +101,15 @@ for (int i = 0; i < args.Length; i++)
 
 if (fuzzMode)
 {
-    RunFuzz(seed, fuzzRuns, fuzzConfigPath, fuzzProfile, verbose, domainName, saveArtifacts);
+    RunFuzz(seed, fuzzRuns, fuzzConfigPath, fuzzProfile, verbose, domainName, saveArtifacts, artifactsSubDir);
 }
 else if (!string.IsNullOrEmpty(scenarioPath))
 {
-    RunScenario(scenarioPath, outputTrace, domainName, decisionTraceLevel, saveArtifacts);
+    RunScenario(scenarioPath, outputTrace, domainName, decisionTraceLevel, saveArtifacts, artifactsSubDir);
 }
 else
 {
-    RunDefault(seed, duration, outputTrace, domainName, decisionTraceLevel, actorName, saveArtifacts);
+    RunDefault(seed, duration, outputTrace, domainName, decisionTraceLevel, actorName, saveArtifacts, artifactsSubDir);
 }
 
 IDomainPack CreateDomainPack(string domainName)
@@ -118,10 +121,10 @@ IDomainPack CreateDomainPack(string domainName)
     };
 }
 
-void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel, bool saveArtifacts = false)
+void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel, bool saveArtifacts = false, string artifactsSubDir = "")
 {
     var scenario = ScenarioLoader.LoadFromFile(path);
-    using var writer = CreateArtifactWriter(saveArtifacts, domainName, scenario.Seed);
+    using var writer = CreateArtifactWriter(saveArtifacts, domainName, scenario.Seed, artifactsSubDir: artifactsSubDir);
 
     writer.WriteLine($"Loading scenario from: {path}");
     writer.WriteLine($"Running scenario: {scenario.Name}");
@@ -181,9 +184,9 @@ void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.D
     writer.WriteLine($"\nTrace hash: {hash}");
 }
 
-void RunDefault(int seed, double duration, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel, string actorName = "Johnny", bool saveArtifacts = false)
+void RunDefault(int seed, double duration, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel, string actorName = "Johnny", bool saveArtifacts = false, string artifactsSubDir = "")
 {
-    using var writer = CreateArtifactWriter(saveArtifacts, domainName, seed, actorName);
+    using var writer = CreateArtifactWriter(saveArtifacts, domainName, seed, actorName, artifactsSubDir);
 
     writer.WriteLine($"Running default {domainName} simulation");
     writer.WriteLine($"Seed: {seed}, Duration: {duration}s");
@@ -234,7 +237,7 @@ void RunDefault(int seed, double duration, bool trace, string domainName, Johnny
     PrintPersonalityTiming(traceSink.GetEvents(), writer);
 }
 
-void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool verbose, string domainName, bool saveArtifacts)
+void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool verbose, string domainName, bool saveArtifacts, string artifactsSubDir = "")
 {
     Console.WriteLine("=== FUZZ TESTING MODE ===");
     Console.WriteLine($"Runs: {runs}");
@@ -309,7 +312,7 @@ void RunFuzz(int baseSeed, int runs, string configPath, string profileName, bool
     // Save artifacts
     if (saveArtifacts)
     {
-        SaveFuzzArtifacts(profileName, runs, successCount, failures);
+        SaveFuzzArtifacts(profileName, runs, successCount, failures, artifactsSubDir);
     }
 
     if (failures.Count > 0)
@@ -458,12 +461,14 @@ void PrintDecisionSummary(List<TraceEvent> events, JohnnyLike.Engine.DecisionTra
     }
 }
 
-TeeWriter CreateArtifactWriter(bool saveArtifacts, string domainName, int seed, string? actorName = null)
+TeeWriter CreateArtifactWriter(bool saveArtifacts, string domainName, int seed, string? actorName = null, string artifactsSubDir = "")
 {
     if (!saveArtifacts)
         return new TeeWriter(Console.Out);
 
-    var artifactsDir = "artifacts";
+    var artifactsDir = string.IsNullOrEmpty(artifactsSubDir)
+        ? "artifacts"
+        : Path.Combine("artifacts", artifactsSubDir);
     Directory.CreateDirectory(artifactsDir);
     var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff");
     var actorPart = string.IsNullOrEmpty(actorName) ? "" : $"-{actorName}";
@@ -482,12 +487,14 @@ TeeWriter CreateArtifactWriter(bool saveArtifacts, string domainName, int seed, 
     return new TeeWriter(Console.Out, fileWriter);
 }
 
-void SaveFuzzArtifacts(string profileName, int totalRuns, int successCount, List<FuzzRunResult> failures)
+void SaveFuzzArtifacts(string profileName, int totalRuns, int successCount, List<FuzzRunResult> failures, string artifactsSubDir = "")
 {
     const int MaxRecentEventsInArtifact = 50;
     const int MaxEventScheduleInArtifact = 20;
 
-    var artifactsDir = "artifacts";
+    var artifactsDir = string.IsNullOrEmpty(artifactsSubDir)
+        ? "artifacts"
+        : Path.Combine("artifacts", artifactsSubDir);
     Directory.CreateDirectory(artifactsDir);
 
     // Save summary

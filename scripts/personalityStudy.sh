@@ -36,13 +36,26 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
-ACTORS=(Johnny Frank Sawyer Ashley Oscar Elizabeth)
+# Dynamically read actor names from Archetypes.cs so this list stays in sync.
+# Matches C# dictionary entries of the form: ["Name"] = new()
+# Requires GNU grep (standard on Linux; macOS ships GNU grep via Homebrew or
+# the system grep on macOS 13+ also supports -P).
+ARCHETYPES_FILE="src/JohnnyLike.SimRunner/Archetypes.cs"
+mapfile -t ACTORS < <(grep -oP '(?<=\[")[^"]+(?="\]\s*=\s*new\s*\(\))' "${ARCHETYPES_FILE}")
+
+if [[ ${#ACTORS[@]} -eq 0 ]]; then
+    echo "Error: could not read actor names from ${ARCHETYPES_FILE}" >&2
+    exit 1
+fi
+
 TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+STUDY_SUBDIR="personality-study-seed${SEED}-${TIMESTAMP}"
 
 echo "=== Personality Study ==="
 echo "Seed:     ${SEED}"
 echo "Duration: ${DURATION}s"
 echo "Actors:   ${ACTORS[*]}"
+echo "Subdir:   artifacts/${STUDY_SUBDIR}"
 echo ""
 
 for ACTOR in "${ACTORS[@]}"; do
@@ -54,22 +67,19 @@ for ACTOR in "${ACTORS[@]}"; do
         --actor "${ACTOR}" \
         --duration "${DURATION}" \
         --decision-verbose \
-        --save-artifacts
+        --save-artifacts "${STUDY_SUBDIR}"
     echo ""
 done
 
 echo "=== All simulations complete. Archiving artifacts... ==="
 
-ARTIFACTS_DIR="artifacts"
-mkdir -p "${ARTIFACTS_DIR}"
+STUDY_DIR="artifacts/${STUDY_SUBDIR}"
+ZIP_NAME="artifacts/personality-study-seed${SEED}-${TIMESTAMP}.zip"
 
-ZIP_NAME="${ARTIFACTS_DIR}/personality-study-seed${SEED}-${TIMESTAMP}.zip"
-
-# Collect all non-zip files in the artifacts directory (top-level and failures/).
+# Collect all files produced in the study subfolder.
 # Using -print0 / mapfile -d '' to correctly handle filenames with spaces or
-# special characters.  Existing *.zip files are excluded so that prior study
-# archives are never nested inside a new one.
-mapfile -d '' -t ARTIFACT_FILES < <(find "${ARTIFACTS_DIR}" -type f ! -name "*.zip" -print0 | sort -z)
+# special characters.
+mapfile -d '' -t ARTIFACT_FILES < <(find "${STUDY_DIR}" -type f -print0 | sort -z)
 
 if [[ ${#ARTIFACT_FILES[@]} -eq 0 ]]; then
     echo "No artifact files found to archive." >&2
