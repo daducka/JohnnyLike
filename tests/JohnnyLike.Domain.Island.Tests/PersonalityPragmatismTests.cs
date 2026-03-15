@@ -332,8 +332,8 @@ public class PersonalityPragmatismTests
         var pressure100 = (double)((Dictionary<string, object>)expl100["prepTimePressureBreakdown"])["finalPressure"];
 
         // Both should be at (or near) the cap
-        Assert.Equal(pressure10,  0.20, precision: 4);
-        Assert.Equal(pressure100, 0.20, precision: 4);
+        Assert.Equal(0.20, pressure10, precision: 4);
+        Assert.Equal(0.20, pressure100, precision: 4);
     }
 
     [Fact]
