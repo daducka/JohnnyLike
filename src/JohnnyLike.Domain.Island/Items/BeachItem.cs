@@ -494,8 +494,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
             }),
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Fun]        = 0.15,
-                [QualityType.Comfort]    = 0.60,
+                [QualityType.Fun]        = 0.12,
+                [QualityType.Comfort]    = 0.45,
                 [QualityType.Efficiency] = -0.05,
                 [QualityType.Safety]     = 0.05
             },
@@ -559,7 +559,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
             Qualities: new Dictionary<QualityType, double>
             {
                 [QualityType.Fun]         = 0.25,
-                [QualityType.Comfort]     = 0.45,
+                [QualityType.Comfort]     = 0.35,
                 [QualityType.Rest]        = -0.10,
                 [QualityType.Safety]      = 0.05,
                 [QualityType.Preparation] = 0.05
@@ -628,8 +628,8 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
             }),
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Fun]        = 0.20,
-                [QualityType.Comfort]    = 0.70,
+                [QualityType.Fun]        = 0.15,
+                [QualityType.Comfort]    = 0.55,
                 [QualityType.Efficiency] = -0.10,
                 [QualityType.Safety]     = 0.10
             },

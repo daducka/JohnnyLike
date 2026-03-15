@@ -239,7 +239,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Qualities: new Dictionary<QualityType, double>
             {
                 [QualityType.Rest]       = 0.6,
-                [QualityType.Comfort]    = 0.3,
+                [QualityType.Comfort]    = 0.2,
                 [QualityType.Efficiency] = -0.5
             },
             ActorRequirement: CandidateRequirements.AliveOnly
