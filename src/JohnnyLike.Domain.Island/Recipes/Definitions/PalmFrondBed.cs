@@ -96,7 +96,9 @@ public static class PalmFrondBed
                     return pile.GetQuantity<StickSupply>() >= 1 && pile.GetQuantity<RopeSupply>() >= 1;
                 },
 
-                BaseChance = 0.8
+                BaseChance = 0.8,
+                DiscoveryBeatText = actorName =>
+                                    $"{actorName} realizes they could build a raised bed from sticks and rope, using the palm frond blanket as a mattress to sleep more comfortably."
             },
 
             SupplyCosts: supplyCosts
