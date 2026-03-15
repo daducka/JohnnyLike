@@ -32,6 +32,7 @@ public static class CookFish
             Qualities: new Dictionary<QualityType, double>
             {
                 [QualityType.Preparation] = 0.90,
+                [QualityType.FoodConsumption] = 0.90,
                 [QualityType.Mastery]     = 0.20,
                 [QualityType.Efficiency]  = 0.65
             },
@@ -81,7 +82,9 @@ public static class CookFish
                     return campfire != null && campfire.IsLit;
                 },
 
-                BaseChance = 0.3
+                BaseChance = 0.8,
+                DiscoveryBeatText = actorName =>
+                                    $"{actorName} realizes they could cook raw fish over the campfire to make it more delicious and satisfying."
             },
 
             SupplyCosts: supplyCosts

@@ -69,7 +69,10 @@ public static class Bait
                     return pile.GetQuantity<CarcassScrapsSupply>() >= 1.0;
                 },
 
-                BaseChance = 0.4
+                BaseChance = 0.4,
+
+                DiscoveryBeatText = actorName =>
+                                    $"{actorName} realizes they could craft fishing bait from carcass scraps to improve their chances of catching fish."
             },
 
             SupplyCosts: supplyCosts
