@@ -53,6 +53,18 @@ public class IslandDomainPack : IDomainPack
             Morale = (double)(initialData?.GetValueOrDefault("morale", 50.0) ?? 50.0)
         };
 
+        // Derive DecisionPragmatism from personality traits unless the actor data
+        // explicitly overrides it (e.g., for deterministic scripted characters).
+        if (initialData?.ContainsKey("DecisionPragmatism") == true)
+        {
+            state.DecisionPragmatism = Convert.ToDouble(initialData["DecisionPragmatism"]);
+        }
+        else
+        {
+            var traits = DerivePersonalityTraits(state);
+            state.DecisionPragmatism = DeriveDecisionPragmatism(traits).FinalDecisionPragmatism;
+        }
+
         // Every actor always carries a MetabolicBuff that drives Satiety/Energy changes
         // each world tick.  It never expires; intensity is updated by PreAction/ApplyActionEffects.
         state.ActiveBuffs.Add(new MetabolicBuff
@@ -156,7 +168,7 @@ public class IslandDomainPack : IDomainPack
         candidates.RemoveAll(c => c.ActorRequirement != null && !c.ActorRequirement(islandActorState));
 
         // Post-pass: compute final Score from IntrinsicScore and Quality weights
-        var model = BuildQualityModel(ctx.Actor);
+        var model = BuildQualityModel(ctx.Actor, ctx.NowTick);
         for (var i = 0; i < candidates.Count; i++)
         {
             candidates[i] = candidates[i] with { Score = ScoreCandidate(candidates[i], model) };
@@ -198,17 +210,46 @@ public class IslandDomainPack : IDomainPack
     // Traits are normalised [0,1], so these scales set the practical weight ceiling.
 
     /// <summary>Planner + Industrious traits → Preparation personality weight.</summary>
-    private const double PersonalityPreparationScale = 0.4;
+    private const double PersonalityPreparationScale = 0.7;
     /// <summary>Planner + Craftsman traits → Efficiency personality weight.</summary>
-    private const double PersonalityEfficiencyScale  = 0.3;
+    private const double PersonalityEfficiencyScale  = 0.6;
     /// <summary>Craftsman + Industrious traits → Mastery personality weight.</summary>
-    private const double PersonalityMasteryScale     = 0.3;
+    private const double PersonalityMasteryScale     = 0.6;
     /// <summary>Hedonist trait → Comfort personality weight.</summary>
     private const double PersonalityComfortScale     = 0.4;
     /// <summary>Survivor trait → Safety personality weight.</summary>
     private const double PersonalitySafetyScale      = 0.3;
     /// <summary>Instinctive + Hedonist traits → FoodConsumption personality weight.</summary>
     private const double PersonalityFoodScale         = 0.2;
+
+    // ── DecisionPragmatism derivation constants ─────────────────────────────────────
+    // Used in DeriveDecisionPragmatism to compute a personality-driven pragmatism baseline.
+    // Final value is clamped to [PragmatismMin, PragmatismMax] so no actor goes fully
+    // random or fully deterministic by personality alone.
+
+    /// <summary>Base pragmatism before personality adjustments.</summary>
+    private const double PragmatismBase             = 0.80;
+    /// <summary>Planner trait contribution toward higher pragmatism (exploit).</summary>
+    private const double PragmatismPlannerScale     = 0.10;
+    /// <summary>Survivor trait contribution toward higher pragmatism (exploit).</summary>
+    private const double PragmatismSurvivorScale    = 0.05;
+    /// <summary>Hedonist trait contribution toward lower pragmatism (explore).</summary>
+    private const double PragmatismHedonistScale    = 0.06;
+    /// <summary>Instinctive trait contribution toward lower pragmatism (explore).</summary>
+    private const double PragmatismInstinctiveScale = 0.04;
+    /// <summary>Minimum derived DecisionPragmatism — keeps actors coherent even at max spontaneity.</summary>
+    private const double PragmatismMin              = 0.65;
+    /// <summary>Maximum derived DecisionPragmatism — keeps explore branch reachable.</summary>
+    private const double PragmatismMax              = 0.98;
+
+    // ── Preparation time-pressure constants ─────────────────────────────────────────
+    // A bounded ramp that makes planning more salient the longer the actor survives.
+    // Plateaus at PrepTimePressureCap so it never overpowers other signals.
+
+    /// <summary>Maximum bounded preparation urgency added by time-on-island pressure.</summary>
+    private const double PrepTimePressureCap         = 0.20;
+    /// <summary>Preparation urgency gained per in-sim day stranded.</summary>
+    private const double PrepTimePressureRatePerDay  = 0.05;
 
     // ── Hunger ramp thresholds and slopes ─────────────────────────────────────────
     // The staged hunger ramp builds urgency only below certain Satiety thresholds
@@ -298,6 +339,18 @@ public class IslandDomainPack : IDomainPack
         double PersonalityBase);
 
     /// <summary>
+    /// Decomposed breakdown of a personality-derived DecisionPragmatism value.
+    /// Each contribution field holds the signed delta applied to the base.
+    /// </summary>
+    private sealed record PragmatismBreakdown(
+        double Base,
+        double PlannerContribution,
+        double SurvivorContribution,
+        double HedonistContribution,
+        double InstinctiveContribution,
+        double FinalDecisionPragmatism);
+
+    /// <summary>
     /// Derives the six personality traits from an actor's core ability scores.
     /// This is the single source of truth for trait derivation used by both
     /// <see cref="BuildQualityModel"/> and <see cref="ExplainCandidateScoring"/>.
@@ -314,6 +367,29 @@ public class IslandDomainPack : IDomainPack
             Industrious: Norm(actor.STR, actor.DEX),
             STR: actor.STR, DEX: actor.DEX, CON: actor.CON,
             INT: actor.INT, WIS: actor.WIS, CHA: actor.CHA);
+    }
+
+    /// <summary>
+    /// Derives a personality-based DecisionPragmatism value from pre-computed traits.
+    /// Planners and survivors tend toward exploitation (higher pragmatism);
+    /// hedonists and instinctive actors tend toward exploration (lower pragmatism).
+    /// Result is clamped to [<see cref="PragmatismMin"/>, <see cref="PragmatismMax"/>].
+    /// </summary>
+    private static PragmatismBreakdown DeriveDecisionPragmatism(PersonalityTraits t)
+    {
+        var plannerContrib     =  t.Planner     * PragmatismPlannerScale;
+        var survivorContrib    =  t.Survivor    * PragmatismSurvivorScale;
+        var hedonistContrib    =  t.Hedonist    * PragmatismHedonistScale;
+        var instinctiveContrib =  t.Instinctive * PragmatismInstinctiveScale;
+        var raw   = PragmatismBase + plannerContrib + survivorContrib - hedonistContrib - instinctiveContrib;
+        var final = Math.Clamp(raw, PragmatismMin, PragmatismMax);
+        return new PragmatismBreakdown(
+            PragmatismBase,
+            plannerContrib,
+            survivorContrib,
+            hedonistContrib,
+            instinctiveContrib,
+            final);
     }
 
     /// <summary>
@@ -374,7 +450,7 @@ public class IslandDomainPack : IDomainPack
         return intrinsicScore + qualitySum;
     }
 
-    private static QualityModel BuildQualityModel(IslandActorState actor)
+    private static QualityModel BuildQualityModel(IslandActorState actor, long currentTick = 0L)
     {
         // ── Actor Stats ───────────────────────────────────────────────────────────
         // Dynamic physiological / psychological state.
@@ -418,12 +494,19 @@ public class IslandDomainPack : IDomainPack
         // Need pressures drive urgency directly (additive, independent of personality).
         // Scale factors keep pressures comparable across the 0-100 range.
         // Health injury adds to Safety, Rest, and Comfort needs independently of fatigue/misery.
+
+        // Bounded preparation time-pressure: ramps gently over the first few in-sim days
+        // then plateaus at PrepTimePressureCap so it never overpowers other signals.
+        var daysOnIsland      = currentTick / (EngineConstants.TickHz * 86400.0);
+        var prepTimePressure  = Math.Min(PrepTimePressureCap, daysOnIsland * PrepTimePressureRatePerDay);
+
         var needAdd = new Dictionary<QualityType, double>
         {
             [QualityType.FoodConsumption] = stagedHungerNeed,
             [QualityType.Rest]            = fatiguePressure * FatiguePressureRestScale   + injuryPressure * InjuryRestNeedScale,
             [QualityType.Comfort]         = miseryPressure  * MiseryPressureComfortScale + injuryPressure * InjuryComfortNeedScale,
-            [QualityType.Safety]          = injuryPressure  * InjurySafetyNeedScale
+            [QualityType.Safety]          = injuryPressure  * InjurySafetyNeedScale,
+            [QualityType.Preparation]     = prepTimePressure
         };
 
         // Personality weights come from traits (stable, independent of current state).
@@ -909,7 +992,7 @@ public class IslandDomainPack : IDomainPack
         IReadOnlyList<ActionCandidate> candidates)
     {
         var actor = (IslandActorState)actorState;
-        var model = BuildQualityModel(actor);
+        var model = BuildQualityModel(actor, currentTick);
 
         var hungerPressure  = 100.0 - actor.Satiety;
         var fatiguePressure = 100.0 - actor.Energy;
@@ -933,6 +1016,17 @@ public class IslandDomainPack : IDomainPack
             ["fatiguePressure"] = fatiguePressure,
             ["miseryPressure"]  = miseryPressure,
             ["injuryPressure"]  = injuryPressure
+        };
+
+        // Preparation time-pressure breakdown — matches the bounded ramp in BuildQualityModel.
+        var daysOnIsland     = currentTick / (EngineConstants.TickHz * 86400.0);
+        var prepTimePressure = Math.Min(PrepTimePressureCap, daysOnIsland * PrepTimePressureRatePerDay);
+        var prepTimePressureBreakdown = new Dictionary<string, object>
+        {
+            ["daysOnIsland"]   = Math.Round(daysOnIsland,    4),
+            ["rawRamp"]        = Math.Round(daysOnIsland * PrepTimePressureRatePerDay, 4),
+            ["cap"]            = PrepTimePressureCap,
+            ["finalPressure"]  = Math.Round(prepTimePressure, 4)
         };
 
         // Health-pressure contribution breakdown — uses same class-level constants as BuildQualityModel.
@@ -982,6 +1076,21 @@ public class IslandDomainPack : IDomainPack
         {
             ["traits"]                    = traitDetails,
             ["qualityPersonalityBreakdown"] = qualityPersonalityBreakdownExplain
+        };
+
+        // DecisionPragmatism derivation breakdown.
+        var pragmatismBreakdown = DeriveDecisionPragmatism(traits);
+        var decisionPragmatismBreakdown = new Dictionary<string, object>
+        {
+            ["base"]                   = Math.Round(pragmatismBreakdown.Base,                  4),
+            ["plannerContribution"]    = Math.Round(pragmatismBreakdown.PlannerContribution,   4),
+            ["survivorContribution"]   = Math.Round(pragmatismBreakdown.SurvivorContribution,  4),
+            ["hedonistContribution"]   = Math.Round(-pragmatismBreakdown.HedonistContribution,    4),
+            ["instinctiveContribution"]= Math.Round(-pragmatismBreakdown.InstinctiveContribution, 4),
+            ["finalDecisionPragmatism"]= Math.Round(pragmatismBreakdown.FinalDecisionPragmatism, 4),
+            ["note"] = actor.DecisionPragmatism != pragmatismBreakdown.FinalDecisionPragmatism
+                           ? "overridden by actor data"
+                           : "derived from personality"
         };
 
         var effectiveWeights = new Dictionary<string, object>();
@@ -1044,13 +1153,15 @@ public class IslandDomainPack : IDomainPack
 
         return new Dictionary<string, object>
         {
-            ["actorStats"]               = actorStats,
-            ["pressures"]                = pressures,
-            ["healthInfluence"]          = healthInfluence,
-            ["personalityInfluence"]     = personalityInfluence,
-            ["effectiveWeights"]         = effectiveWeights,
-            ["qualityModelDecomposition"] = qualityModelDecomposition,
-            ["candidateBreakdowns"]      = candidateBreakdowns
+            ["actorStats"]                  = actorStats,
+            ["pressures"]                   = pressures,
+            ["prepTimePressureBreakdown"]   = prepTimePressureBreakdown,
+            ["decisionPragmatismBreakdown"] = decisionPragmatismBreakdown,
+            ["healthInfluence"]             = healthInfluence,
+            ["personalityInfluence"]        = personalityInfluence,
+            ["effectiveWeights"]            = effectiveWeights,
+            ["qualityModelDecomposition"]   = qualityModelDecomposition,
+            ["candidateBreakdowns"]         = candidateBreakdowns
         };
     }
 }

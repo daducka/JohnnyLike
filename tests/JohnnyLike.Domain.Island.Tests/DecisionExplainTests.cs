@@ -481,7 +481,7 @@ public class DecisionExplainTests
     [Fact]
     public void ExplainCandidateScoring_PersonalityBase_Preparation_MatchesFormula()
     {
-        // planner=0.5, industrious=0.0, scale=0.4 → personalityBase = (0.5+0.0)*0.4 = 0.2
+        // planner=0.5, industrious=0.0, scale=0.7 → personalityBase = (0.5+0.0)*0.7 = 0.35
         var (domain, actorId, actor, world) = CreateStatActor();
         var resources  = new EmptyResourceAvailability();
         var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
@@ -491,7 +491,7 @@ public class DecisionExplainTests
         var breakdown = (Dictionary<string, object>)pi["qualityPersonalityBreakdown"];
         var prep      = (Dictionary<string, object>)breakdown["Preparation"];
 
-        Assert.Equal(0.2, (double)prep["personalityBase"], precision: 4);
+        Assert.Equal(0.35, (double)prep["personalityBase"], precision: 4);
         var contributors = (Dictionary<string, object>)prep["contributors"];
         Assert.Equal(0.5, (double)contributors["planner"],     precision: 4);
         Assert.Equal(0.0, (double)contributors["industrious"], precision: 4);

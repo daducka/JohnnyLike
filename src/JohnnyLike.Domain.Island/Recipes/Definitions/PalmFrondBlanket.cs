@@ -76,7 +76,10 @@ public static class PalmFrondBlanket
                     return pile != null && pile.GetQuantity<PalmFrondSupply>() > 0;
                 },
 
-                BaseChance = 0.7
+                BaseChance = 0.7,
+
+                DiscoveryBeatText = actorName =>
+                                    $"{actorName} realizes they could weave palm fronds into a blanket to sleep more comfortably."
             },
 
             SupplyCosts: supplyCosts

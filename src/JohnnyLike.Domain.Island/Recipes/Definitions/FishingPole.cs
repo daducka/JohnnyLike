@@ -81,7 +81,10 @@ public static class FishingPole
                         pile.GetQuantity<RopeSupply>() > 0;
                 },
 
-                BaseChance = 1.0
+                BaseChance = 1.0,
+
+                DiscoveryBeatText = actorName =>
+                                    $"{actorName} realizes they could craft a fishing pole from sticks and rope to catch fish."
             },
 
             SupplyCosts: supplyCosts

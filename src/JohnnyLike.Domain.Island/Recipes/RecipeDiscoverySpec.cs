@@ -18,11 +18,11 @@ public sealed class RecipeDiscoverySpec
     public required double BaseChance { get; init; }
 
     /// <summary>
-    /// Optional factory that returns a custom narration beat text when this recipe is
+    /// Factory that returns a custom narration beat text when this recipe is
     /// discovered. Receives the actor's display name (or id) as an argument.
     /// When <c>null</c> the discovery system falls back to a generic beat.
     /// </summary>
-    public Func<string, string>? DiscoveryBeatText { get; init; }
+    public required Func<string, string> DiscoveryBeatText { get; init; }
 }
 
 /// <summary>

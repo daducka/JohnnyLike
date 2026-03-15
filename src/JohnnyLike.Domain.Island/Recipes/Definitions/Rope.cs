@@ -73,7 +73,10 @@ public static class Rope
                     return true;
                 },
 
-                BaseChance = 0.4
+                BaseChance = 0.4,
+
+                DiscoveryBeatText = actorName =>
+                                    $"{actorName} realizes they could braid palm fronds into rope, which would be useful for crafting and building."
             },
 
             SupplyCosts: supplyCosts

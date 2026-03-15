@@ -79,7 +79,11 @@ public static class Campfire
                     return weather?.Temperature == TemperatureBand.Cold;
                 },
 
-                BaseChance = 0.9
+                BaseChance = 0.9,
+
+                DiscoveryBeatText = actorName =>
+                                    $"{actorName} realizes that building a campfire would help them stay warm and cook food during cold periods."
+
             },
 
             SupplyCosts: supplyCosts
