@@ -42,6 +42,10 @@ public static class Campfire
 
             CanCraft: ctx =>
             {
+                // Only one campfire per sim.
+                if (ctx.World.WorldItems.OfType<CampfireItem>().Any())
+                    return false;
+                    
                 var weather = ctx.World.GetItem<WeatherItem>("weather");
                 if (weather?.Temperature != TemperatureBand.Cold) return false;
 

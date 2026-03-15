@@ -28,6 +28,12 @@ namespace JohnnyLike.Domain.Island.Vitality;
 /// </summary>
 public class VitalityBuff : ActiveBuff, ITickableBuff
 {
+    private static readonly Duration MoralePressureBeatInterval = Duration.Minutes(1);
+
+    private long _lastMoralePressureBeatTick = long.MinValue;
+    private double _pendingMoralePressureDelta = 0.0;
+    private readonly Dictionary<string, double> _pendingMoralePressureByReason = new(StringComparer.Ordinal);
+
     // ── Deterioration thresholds ───────────────────────────────────────────────
     /// <summary>Satiety must be below this value to trigger starvation health damage.</summary>
     public const double StarvationSatietyThreshold = 20.0;
@@ -160,7 +166,7 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
         }
 
         // ── Physiological morale pressure ────────────────────────────────────
-        ApplyPhysiologicalMoralePressure(actor, worldState, dtSeconds);
+        ApplyPhysiologicalMoralePressure(actor, worldState, dtSeconds, currentTick);
     }
 
     /// <summary>
@@ -168,10 +174,11 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
     /// Each physiological stat independently contributes mild, moderate, or strong morale decay
     /// depending on how distressed the actor is.
     /// </summary>
-    private static void ApplyPhysiologicalMoralePressure(
+    private void ApplyPhysiologicalMoralePressure(
         IslandActorState actor,
         WorldState worldState,
-        double dtSeconds)
+        double dtSeconds,
+        long currentTick)
     {
         var pressures = new List<(double delta, string reason)>(2);
 
@@ -179,40 +186,43 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
         if (actor.Satiety < SatietyStrongMoraleThreshold)
         {
             var pressure = MoraleStrongPressurePerSecond * dtSeconds;
-            pressures.Add((-pressure, $"Low satiety pressure(-{pressure:F4})"));
+            pressures.Add((-pressure, "Low satiety pressure"));
         }
         else if (actor.Satiety < SatietyModerateMoraleThreshold)
         {
             var pressure = MoraleModeratePressurePerSecond * dtSeconds;
-            pressures.Add((-pressure, $"Low satiety pressure(-{pressure:F4})"));
+            pressures.Add((-pressure, "Low satiety pressure"));
         }
         else if (actor.Satiety < SatietyMildMoraleThreshold)
         {
             var pressure = MoraleMildPressurePerSecond * dtSeconds;
-            pressures.Add((-pressure, $"Low satiety pressure(-{pressure:F4})"));
+            pressures.Add((-pressure, "Low satiety pressure"));
         }
 
         // Energy-based morale pressure (only the highest applicable tier applies).
         if (actor.Energy < EnergyStrongMoraleThreshold)
         {
             var pressure = MoraleStrongPressurePerSecond * dtSeconds;
-            pressures.Add((-pressure, $"Low energy pressure(-{pressure:F4})"));
+            pressures.Add((-pressure, "Low energy pressure"));
         }
         else if (actor.Energy < EnergyModerateMoraleThreshold)
         {
             var pressure = MoraleModeratePressurePerSecond * dtSeconds;
-            pressures.Add((-pressure, $"Low energy pressure(-{pressure:F4})"));
+            pressures.Add((-pressure, "Low energy pressure"));
         }
         else if (actor.Energy < EnergyMildMoraleThreshold)
         {
             var pressure = MoraleMildPressurePerSecond * dtSeconds;
-            pressures.Add((-pressure, $"Low energy pressure(-{pressure:F4})"));
+            pressures.Add((-pressure, "Low energy pressure"));
         }
 
         if (pressures.Count == 0)
+        {
+            EmitPendingMoralePressureBeat(actor, worldState, currentTick, force: true);
             return;
+        }
 
-        // Apply all pressures and emit a trace entry per source.
+        // Apply all pressures and batch narration beats to avoid per-tick spam.
         foreach (var (delta, reason) in pressures)
         {
             var before = actor.Morale;
@@ -221,11 +231,42 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
 
             if (Math.Abs(applied) >= 0.0001)
             {
-                worldState.Tracer.Beat(
-                    $"[Morale] {applied:+0.0000;-0.0000} ({reason})",
-                    actorId: actor.Id.Value,
-                    priority: 25);
+                _pendingMoralePressureDelta += applied;
+                _pendingMoralePressureByReason[reason] =
+                    _pendingMoralePressureByReason.GetValueOrDefault(reason, 0.0) + applied;
             }
         }
+
+        EmitPendingMoralePressureBeat(actor, worldState, currentTick, force: false);
+    }
+
+    private void EmitPendingMoralePressureBeat(
+        IslandActorState actor,
+        WorldState worldState,
+        long currentTick,
+        bool force)
+    {
+        if (Math.Abs(_pendingMoralePressureDelta) < 0.0001)
+            return;
+
+        var cooldownElapsed = _lastMoralePressureBeatTick == long.MinValue
+            || currentTick - _lastMoralePressureBeatTick >= MoralePressureBeatInterval.Ticks;
+        if (!force && !cooldownElapsed)
+            return;
+
+        var reasonText = string.Join(
+            ", ",
+            _pendingMoralePressureByReason
+                .OrderBy(kvp => kvp.Key)
+                .Select(kvp => $"{kvp.Key}({kvp.Value:+0.0000;-0.0000})"));
+
+        worldState.Tracer.Beat(
+            $"[Morale] {_pendingMoralePressureDelta:+0.0000;-0.0000} ({reasonText})",
+            actorId: actor.Id.Value,
+            priority: 25);
+
+        _lastMoralePressureBeatTick = currentTick;
+        _pendingMoralePressureDelta = 0.0;
+        _pendingMoralePressureByReason.Clear();
     }
 }

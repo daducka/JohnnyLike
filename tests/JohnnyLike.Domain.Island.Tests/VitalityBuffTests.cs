@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Engine;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
@@ -358,6 +359,42 @@ public class VitalityBuffTests
 
         Assert.True(actorBoth.Morale < actorSatiety.Morale,
             $"Both low satiety+energy ({actorBoth.Morale:F4}) should decay morale faster than satiety alone ({actorSatiety.Morale:F4})");
+    }
+
+    [Fact]
+    public void MoralePressure_NarrationBeat_IsBatchedOnCooldown()
+    {
+        var domain = new IslandDomainPack();
+        var actor = (IslandActorState)domain.CreateActorState(
+            new ActorId("A"),
+            new Dictionary<string, object>
+            {
+                ["satiety"] = 25.0,
+                ["energy"] = 80.0,
+                ["morale"] = 50.0
+            });
+
+        var world = new IslandWorldState
+        {
+            Tracer = new EventTracer()
+        };
+
+        var vitalityBuff = actor.TryGetBuff<VitalityBuff>();
+        Assert.NotNull(vitalityBuff);
+
+        // Simulate 6 minutes with 0.5 second tick steps.
+        // Without batching this produced one beat nearly every step.
+        for (long tick = 10; tick <= Duration.Minutes(6).Ticks; tick += 10)
+        {
+            vitalityBuff!.OnTick(actor, world, tick);
+        }
+
+        var beats = ((EventTracer)world.Tracer)
+            .Drain()
+            .Where(b => b.ActorId == actor.Id.Value && b.Text.StartsWith("[Morale]"))
+            .ToList();
+
+        Assert.Equal(6, beats.Count);
     }
 }
 
