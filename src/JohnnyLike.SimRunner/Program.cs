@@ -15,6 +15,7 @@ if (args.Length == 0)
     Console.WriteLine("  --decision-summary        Emit summary decision trace events (chosen action + reason)");
     Console.WriteLine("  --decision-candidates     Emit per-candidate decision trace events");
     Console.WriteLine("  --decision-verbose        Emit verbose decision trace (includes scoring explanation)");
+    Console.WriteLine("  --snapshot-interval <sec> Emit periodic simulation snapshots every <sec> simulation seconds");
     Console.WriteLine("  --save-artifacts [folder] Save trace logs to artifacts/ directory (optional subfolder)");
     Console.WriteLine("  --actor <name>            Starting actor archetype (default: Johnny)");
     Console.WriteLine($"                            Available: {string.Join(", ", Archetypes.All.Keys)}");
@@ -42,6 +43,7 @@ var saveArtifacts = false;
 var artifactsSubDir = "";
 var decisionTraceLevel = JohnnyLike.Engine.DecisionTraceLevel.None;
 var actorName = "Johnny";
+var snapshotIntervalSeconds = 0.0; // 0 = disabled
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -96,6 +98,11 @@ for (int i = 0; i < args.Length; i++)
         case "--actor":
             actorName = args[++i];
             break;
+        case "--snapshot-interval":
+            snapshotIntervalSeconds = double.Parse(args[++i]);
+            if (snapshotIntervalSeconds <= 0.0)
+                throw new ArgumentException("--snapshot-interval must be a positive number of seconds.");
+            break;
     }
 }
 
@@ -105,11 +112,11 @@ if (fuzzMode)
 }
 else if (!string.IsNullOrEmpty(scenarioPath))
 {
-    RunScenario(scenarioPath, outputTrace, domainName, decisionTraceLevel, saveArtifacts, artifactsSubDir);
+    RunScenario(scenarioPath, outputTrace, domainName, decisionTraceLevel, saveArtifacts, artifactsSubDir, snapshotIntervalSeconds);
 }
 else
 {
-    RunDefault(seed, duration, outputTrace, domainName, decisionTraceLevel, actorName, saveArtifacts, artifactsSubDir);
+    RunDefault(seed, duration, outputTrace, domainName, decisionTraceLevel, actorName, saveArtifacts, artifactsSubDir, snapshotIntervalSeconds);
 }
 
 IDomainPack CreateDomainPack(string domainName)
@@ -121,7 +128,7 @@ IDomainPack CreateDomainPack(string domainName)
     };
 }
 
-void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel, bool saveArtifacts = false, string artifactsSubDir = "")
+void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel, bool saveArtifacts = false, string artifactsSubDir = "", double snapshotIntervalSeconds = 0.0)
 {
     var scenario = ScenarioLoader.LoadFromFile(path);
     using var writer = CreateArtifactWriter(saveArtifacts, domainName, scenario.Seed, artifactsSubDir: artifactsSubDir);
@@ -157,11 +164,23 @@ void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.D
     var executor = new FakeExecutor(engine);
     var timeStep = 0.5;
     var elapsed = 0.0;
-    
+
+    var snapshotIntervalTicks = snapshotIntervalSeconds > 0.0
+        ? (long)(snapshotIntervalSeconds * JohnnyLike.Engine.Engine.TickHz)
+        : 0L;
+    var nextSnapshotTick = snapshotIntervalTicks > 0L ? snapshotIntervalTicks : long.MaxValue;
+
     while (elapsed < scenario.DurationSeconds)
     {
         executor.Update(timeStep);
         elapsed += timeStep;
+
+        if (snapshotIntervalTicks > 0L && engine.CurrentTick >= nextSnapshotTick)
+        {
+            foreach (var evt in domainPack.BuildPeriodicSnapshot(engine.WorldState, engine.Actors, engine.CurrentTick))
+                traceSink.Record(evt);
+            nextSnapshotTick += snapshotIntervalTicks;
+        }
     }
     
     writer.WriteLine($"\nSimulation completed at t={engine.CurrentSeconds:F2}s");
@@ -184,7 +203,7 @@ void RunScenario(string path, bool trace, string domainName, JohnnyLike.Engine.D
     writer.WriteLine($"\nTrace hash: {hash}");
 }
 
-void RunDefault(int seed, double duration, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel, string actorName = "Johnny", bool saveArtifacts = false, string artifactsSubDir = "")
+void RunDefault(int seed, double duration, bool trace, string domainName, JohnnyLike.Engine.DecisionTraceLevel decisionLevel, string actorName = "Johnny", bool saveArtifacts = false, string artifactsSubDir = "", double snapshotIntervalSeconds = 0.0)
 {
     using var writer = CreateArtifactWriter(saveArtifacts, domainName, seed, actorName, artifactsSubDir);
 
@@ -208,11 +227,23 @@ void RunDefault(int seed, double duration, bool trace, string domainName, Johnny
     var executor = new FakeExecutor(engine);
     var timeStep = 0.5;
     var elapsed = 0.0;
-    
+
+    var snapshotIntervalTicks = snapshotIntervalSeconds > 0.0
+        ? (long)(snapshotIntervalSeconds * JohnnyLike.Engine.Engine.TickHz)
+        : 0L;
+    var nextSnapshotTick = snapshotIntervalTicks > 0L ? snapshotIntervalTicks : long.MaxValue;
+
     while (elapsed < duration)
     {
         executor.Update(timeStep);
         elapsed += timeStep;
+
+        if (snapshotIntervalTicks > 0L && engine.CurrentTick >= nextSnapshotTick)
+        {
+            foreach (var evt in domainPack.BuildPeriodicSnapshot(engine.WorldState, engine.Actors, engine.CurrentTick))
+                traceSink.Record(evt);
+            nextSnapshotTick += snapshotIntervalTicks;
+        }
     }
     
     writer.WriteLine($"\nSimulation completed at t={engine.CurrentSeconds:F2}s");

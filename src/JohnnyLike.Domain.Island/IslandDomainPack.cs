@@ -1164,4 +1164,128 @@ public class IslandDomainPack : IDomainPack
             ["candidateBreakdowns"]         = candidateBreakdowns
         };
     }
+
+    /// <summary>
+    /// Builds periodic snapshot trace events for the island domain.
+    /// Emits one <c>PeriodicWorldSnapshot</c>, one <c>PeriodicSupplySnapshot</c> per supply
+    /// pile, one <c>PeriodicWorldItemSnapshot</c> per world item, and per-actor
+    /// <c>PeriodicActorSnapshot</c> and <c>PeriodicRecipeSnapshot</c> events.
+    /// </summary>
+    public List<TraceEvent> BuildPeriodicSnapshot(
+        WorldState worldState,
+        IReadOnlyDictionary<ActorId, ActorState> actors,
+        long currentTick)
+    {
+        var islandWorld = (IslandWorldState)worldState;
+        var events = new List<TraceEvent>();
+
+        // ── World snapshot ─────────────────────────────────────────────────────
+        var calendar = islandWorld.GetItem<Items.CalendarItem>("calendar");
+        var weather  = islandWorld.GetItem<Items.WeatherItem>("weather");
+        var beach    = islandWorld.GetItem<Items.BeachItem>("beach");
+        var ocean    = islandWorld.GetItem<Items.OceanItem>("ocean");
+
+        var worldDetails = new Dictionary<string, object>();
+        if (calendar != null)
+        {
+            worldDetails["day"]      = calendar.DayCount;
+            worldDetails["hour"]     = Math.Round(calendar.HourOfDay, 2);
+            worldDetails["dayPhase"] = calendar.CurrentDayPhase.ToString();
+        }
+        if (weather != null)
+        {
+            worldDetails["temperature"]   = weather.Temperature.ToString();
+            worldDetails["precipitation"] = weather.Precipitation.ToString();
+        }
+        if (beach != null)
+            worldDetails["tide"] = beach.Tide.ToString();
+        if (ocean != null)
+        {
+            var fish = ocean.BountySupplies.OfType<Supply.FishSupply>().FirstOrDefault();
+            if (fish != null)
+                worldDetails["fishAvailable"] = Math.Round(fish.Quantity, 2);
+        }
+
+        events.Add(new TraceEvent(currentTick, null, "PeriodicWorldSnapshot", worldDetails));
+
+        // ── Supply pile snapshots ───────────────────────────────────────────────
+        foreach (var pile in islandWorld.WorldItems.OfType<Supply.SupplyPile>().OrderBy(p => p.Id))
+        {
+            var supplies = pile.Supplies
+                .Where(s => s.Quantity > 0)
+                .OrderBy(s => s.Type)
+                .Select(s => $"{s.Type.Replace("supply_", "")}:{Math.Round(s.Quantity, 0)}")
+                .ToList();
+
+            events.Add(new TraceEvent(currentTick, null, "PeriodicSupplySnapshot", new Dictionary<string, object>
+            {
+                ["pileId"]   = pile.Id,
+                ["access"]   = pile.AccessControl,
+                ["supplies"] = supplies.Count > 0 ? string.Join(", ", supplies) : "(empty)"
+            }));
+        }
+
+        // ── World item snapshots ────────────────────────────────────────────────
+        foreach (var item in islandWorld.WorldItems.OrderBy(i => i.Id))
+        {
+            // Skip supply piles (already covered above)
+            if (item is Supply.SupplyPile)
+                continue;
+
+            var room = islandWorld.GetItemRoomId(item.Id);
+
+            var details = new Dictionary<string, object>
+            {
+                ["itemId"]   = item.Id,
+                ["itemType"] = item.Type,
+                ["room"]     = room ?? "(none)"
+            };
+
+            if (item is MaintainableWorldItem maintainable)
+                details["quality"] = Math.Round(maintainable.Quality, 2);
+
+            if (item is Items.ToolItem tool)
+            {
+                details["isBroken"]      = tool.IsBroken;
+                details["ownershipType"] = tool.OwnershipType.ToString();
+                if (tool.OwnerActorId.HasValue)
+                    details["owner"] = tool.OwnerActorId.Value.Value;
+            }
+
+            events.Add(new TraceEvent(currentTick, null, "PeriodicWorldItemSnapshot", details));
+        }
+
+        // ── Per-actor snapshots ─────────────────────────────────────────────────
+        foreach (var actorId in actors.Keys.OrderBy(a => a.Value))
+        {
+            if (actors[actorId] is not IslandActorState actor)
+                continue;
+
+            var actorDetails = new Dictionary<string, object>
+            {
+                ["status"]            = actor.Status.ToString(),
+                ["currentAction"]     = actor.CurrentAction?.Id.Value ?? "idle",
+                ["satiety"]           = Math.Round(actor.Satiety, 1),
+                ["energy"]            = Math.Round(actor.Energy, 1),
+                ["morale"]            = Math.Round(actor.Morale, 1),
+                ["health"]            = Math.Round(actor.Health, 1),
+                ["decisionPragmatism"] = Math.Round(actor.DecisionPragmatism, 2),
+                ["room"]              = actor.CurrentRoomId
+            };
+
+            if (actor.ActiveBuffs.Count > 0)
+                actorDetails["buffs"] = string.Join(", ", actor.ActiveBuffs.Select(b => b.Name).OrderBy(n => n));
+
+            events.Add(new TraceEvent(currentTick, actorId, "PeriodicActorSnapshot", actorDetails));
+
+            // Recipe snapshot
+            var knownRecipes = actor.KnownRecipeIds.OrderBy(r => r).ToList();
+            events.Add(new TraceEvent(currentTick, actorId, "PeriodicRecipeSnapshot", new Dictionary<string, object>
+            {
+                ["knownRecipes"] = knownRecipes.Count > 0 ? string.Join(", ", knownRecipes) : "(none)"
+            }));
+        }
+
+        return events;
+    }
 }

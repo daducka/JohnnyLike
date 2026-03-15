@@ -141,5 +141,17 @@ public interface IDomainPack
         WorldState worldState,
         long currentTick,
         IReadOnlyList<ActionCandidate> candidates) => null;
+
+    /// <summary>
+    /// Builds a list of trace events representing a periodic simulation snapshot.
+    /// Called by SimRunner at a configurable interval (see <c>--snapshot-interval</c>).
+    /// Events should cover actor state, world state, supply piles, world items, and
+    /// known recipes. The default implementation returns an empty list so that domains
+    /// which do not opt in to snapshots are unaffected.
+    /// </summary>
+    List<TraceEvent> BuildPeriodicSnapshot(
+        WorldState worldState,
+        IReadOnlyDictionary<ActorId, ActorState> actors,
+        long currentTick) => new();
 }
 
