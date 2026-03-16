@@ -91,6 +91,9 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
     /// </summary>
     public long LastTick { get; set; } = 0L;
 
+    /// <inheritdoc/>
+    public override string Describe(long currentTick) => $"{Name}(permanent)";
+
     /// <summary>
     /// Applies one vitality time-step: computes health deterioration from starvation, exhaustion,
     /// and psyche strain, or health recovery when conditions are stable, then clamps health to [0, 100].

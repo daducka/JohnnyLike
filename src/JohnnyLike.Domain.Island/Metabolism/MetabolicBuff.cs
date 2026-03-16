@@ -46,6 +46,9 @@ public class MetabolicBuff : ActiveBuff, ITickableBuff
     /// </summary>
     public long LastTick { get; set; } = 0L;
 
+    /// <inheritdoc/>
+    public override string Describe(long currentTick) => $"{Name}(intensity={Intensity})";
+
     /// <summary>
     /// Applies one metabolism time-step using <see cref="MetabolismMath.ApplyTimeStep"/>.
     /// The elapsed time is derived from <paramref name="currentTick"/> minus <see cref="LastTick"/>.

@@ -1274,7 +1274,7 @@ public class IslandDomainPack : IDomainPack
             };
 
             if (actor.ActiveBuffs.Count > 0)
-                actorDetails["buffs"] = string.Join(", ", actor.ActiveBuffs.Select(b => b.Name).OrderBy(n => n));
+                actorDetails["buffs"] = string.Join(", ", actor.ActiveBuffs.OrderBy(b => b.Name).Select(b => b.Describe(currentTick)));
 
             events.Add(new TraceEvent(currentTick, actorId, "PeriodicActorSnapshot", actorDetails));
 

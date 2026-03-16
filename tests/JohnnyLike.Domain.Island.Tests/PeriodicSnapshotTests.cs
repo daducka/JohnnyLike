@@ -219,4 +219,107 @@ public class PeriodicSnapshotTests
         var itemEvts = events.Where(e => e.EventType == "PeriodicWorldItemSnapshot").ToList();
         Assert.DoesNotContain(itemEvts, e => (string)e.Details["itemType"] == "supply_pile");
     }
+
+    [Fact]
+    public void BuildPeriodicSnapshot_AlivenessBuffIncludesState()
+    {
+        var domain = CreateDomain();
+        var world = CreateWorld(domain);
+        var actorId = new ActorId("Eve");
+        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actors = new Dictionary<ActorId, ActorState> { [actorId] = actor };
+
+        var events = domain.BuildPeriodicSnapshot(world, actors, 600L);
+
+        var actorEvt = events.Single(e => e.EventType == "PeriodicActorSnapshot");
+        Assert.True(actorEvt.Details.ContainsKey("buffs"));
+        var buffs = (string)actorEvt.Details["buffs"];
+        // AlivenessBuff.Describe should show state
+        Assert.Contains("Aliveness(state=Alive)", buffs);
+    }
+
+    [Fact]
+    public void BuildPeriodicSnapshot_MetabolicBuffIncludesIntensity()
+    {
+        var domain = CreateDomain();
+        var world = CreateWorld(domain);
+        var actorId = new ActorId("Frank");
+        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actors = new Dictionary<ActorId, ActorState> { [actorId] = actor };
+
+        var events = domain.BuildPeriodicSnapshot(world, actors, 600L);
+
+        var actorEvt = events.Single(e => e.EventType == "PeriodicActorSnapshot");
+        var buffs = (string)actorEvt.Details["buffs"];
+        // MetabolicBuff.Describe should show intensity
+        Assert.Contains("Metabolism(intensity=Light)", buffs);
+    }
+
+    [Fact]
+    public void BuildPeriodicSnapshot_VitalityBuffDescribed()
+    {
+        var domain = CreateDomain();
+        var world = CreateWorld(domain);
+        var actorId = new ActorId("Grace");
+        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actors = new Dictionary<ActorId, ActorState> { [actorId] = actor };
+
+        var events = domain.BuildPeriodicSnapshot(world, actors, 600L);
+
+        var actorEvt = events.Single(e => e.EventType == "PeriodicActorSnapshot");
+        var buffs = (string)actorEvt.Details["buffs"];
+        // VitalityBuff.Describe should show permanent
+        Assert.Contains("Vitality(permanent)", buffs);
+    }
+
+    [Fact]
+    public void BuildPeriodicSnapshot_TemporaryBuffShowsRemainingTime()
+    {
+        var domain = CreateDomain();
+        var world = CreateWorld(domain);
+        var actorId = new ActorId("Hank");
+        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        // Add a temporary skill-bonus buff that expires 300 ticks after tick 600
+        actor.ActiveBuffs.Add(new ActiveBuff
+        {
+            Name          = "FishingBonus",
+            Type          = BuffType.SkillBonus,
+            Value         = 1,
+            ExpiresAtTick = 900L   // 300 ticks from currentTick=600
+        });
+        var actors = new Dictionary<ActorId, ActorState> { [actorId] = actor };
+
+        var events = domain.BuildPeriodicSnapshot(world, actors, 600L);
+
+        var actorEvt = events.Single(e => e.EventType == "PeriodicActorSnapshot");
+        var buffs = (string)actorEvt.Details["buffs"];
+        // Should contain remaining time in seconds (300 ticks / TickHz)
+        Assert.Contains("FishingBonus(", buffs);
+        Assert.Contains("remaining=", buffs);
+    }
+
+    [Fact]
+    public void BuildPeriodicSnapshot_ExpiredBuffShowsExpired()
+    {
+        var domain = CreateDomain();
+        var world = CreateWorld(domain);
+        var actorId = new ActorId("Ivy");
+        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        // Add a buff that has already expired (ExpiresAtTick < currentTick)
+        actor.ActiveBuffs.Add(new ActiveBuff
+        {
+            Name          = "OldBonus",
+            Type          = BuffType.SkillBonus,
+            Value         = 0,
+            ExpiresAtTick = 100L   // already expired at tick 600
+        });
+        var actors = new Dictionary<ActorId, ActorState> { [actorId] = actor };
+
+        var events = domain.BuildPeriodicSnapshot(world, actors, 600L);
+
+        var actorEvt = events.Single(e => e.EventType == "PeriodicActorSnapshot");
+        var buffs = (string)actorEvt.Details["buffs"];
+        Assert.Contains("OldBonus(expired)", buffs);
+    }
+
 }
