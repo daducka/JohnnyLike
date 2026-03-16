@@ -61,6 +61,7 @@ foreach ($actor in $actors) {
         --actor $actor `
         --duration $Duration `
         --decision-verbose `
+        --snapshot-interval 60 `
         --save-artifacts $studySubDir
     if ($LASTEXITCODE -ne 0) {
         Write-Error "SimRunner failed for actor '$actor' (exit code $LASTEXITCODE)"

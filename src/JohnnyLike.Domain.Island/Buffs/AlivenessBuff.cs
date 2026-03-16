@@ -21,4 +21,7 @@ public class AlivenessBuff : ActiveBuff
 {
     /// <summary>Current aliveness state of the actor.</summary>
     public AlivenessState State { get; set; } = AlivenessState.Alive;
+
+    /// <inheritdoc/>
+    public override string Describe(long currentTick) => $"{Name}(state={State})";
 }

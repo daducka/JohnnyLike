@@ -642,6 +642,32 @@ public class ActiveBuff
     public SkillType? SkillType { get; set; }
     public int Value { get; set; }
     public long ExpiresAtTick { get; set; }
+
+    /// <summary>
+    /// Returns a human-readable description of this buff including its state and duration.
+    /// Derived classes should override this to expose their specific state fields.
+    /// </summary>
+    /// <param name="currentTick">The current engine tick, used to compute remaining duration.</param>
+    public virtual string Describe(long currentTick)
+    {
+        var parts = new List<string>();
+        if (Value != 0)
+            parts.Add($"value={Value}");
+        if (ExpiresAtTick == long.MaxValue)
+            parts.Add("permanent");
+        else
+        {
+            var remainingTicks = ExpiresAtTick - currentTick;
+            if (remainingTicks <= 0)
+                parts.Add("expired");
+            else
+            {
+                var remainingSecs = (int)Math.Ceiling(remainingTicks / (double)EngineConstants.TickHz);
+                parts.Add($"remaining={remainingSecs}s");
+            }
+        }
+        return $"{Name}({string.Join(", ", parts)})";
+    }
 }
 
 public class PendingIntent
