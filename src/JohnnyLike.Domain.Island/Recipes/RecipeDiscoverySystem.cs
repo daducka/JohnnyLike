@@ -19,7 +19,8 @@ public static class RecipeDiscoverySystem
         IslandWorldState world,
         IRngStream rng,
         DiscoveryTrigger trigger,
-        string? actorId = null)
+        string? actorId = null,
+        string? sourceActionId = null)
     {
         var discoverableRecipes = new List<(string Id, RecipeDefinition Recipe)>();
 
@@ -64,6 +65,21 @@ public static class RecipeDiscoverySystem
             .First();
 
         actor.KnownRecipeIds.Add(topRecipe.Id);
+
+        // Emit a structured RecipeDiscovered trace event for telemetry
+        world.TraceSink.Record(new TraceEvent(
+            world.CurrentTick,
+            actorId != null ? new ActorId(actorId) : (ActorId?)null,
+            "RecipeDiscovered",
+            new Dictionary<string, object>
+            {
+                ["recipeId"] = topRecipe.Id,
+                ["trigger"] = trigger.ToString(),
+                ["discoveryScore"] = Math.Round(topRecipe.Score, 4),
+                ["sourceActionId"] = sourceActionId ?? "",
+                ["subjectId"] = $"recipe:{topRecipe.Id}"
+            }
+        ));
 
         // Emit a narration beat for the discovery
         var tracer = world.Tracer;

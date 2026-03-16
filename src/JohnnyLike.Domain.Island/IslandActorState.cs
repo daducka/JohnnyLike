@@ -362,7 +362,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 RecipeDiscoverySystem.TryDiscover(
                     effectCtx.Actor, effectCtx.World, effectCtx.Rng,
                     DiscoveryTrigger.ThinkAboutSupplies,
-                    actorId: effectCtx.ActorId.Value);
+                    actorId: effectCtx.ActorId.Value,
+                    sourceActionId: "think_about_supplies");
             }),
             Qualities: new Dictionary<QualityType, double>
             {

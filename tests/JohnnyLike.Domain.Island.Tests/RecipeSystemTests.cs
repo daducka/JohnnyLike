@@ -933,6 +933,63 @@ public class RecipeSystemTests
         Assert.Contains("supply pile", beat.Text);
     }
 
+    [Fact]
+    public void TryDiscover_EmitsRecipeDiscoveredTraceEvent_WithCorrectFields()
+    {
+        // Arrange: set up world with rainy weather and required supplies for umbrella discovery.
+        int lowSeed = FindSeedBelow(0.25);
+        var (actor, world) = MakeBase();
+        world.CurrentTick = 8400L;
+        world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
+        actor.KnownRecipeIds.Add("palm_frond_blanket");
+        var pile = world.SharedSupplyPile!;
+        pile.AddSupply("stick", 1, id => new StickSupply(id));
+        pile.AddSupply("palm_frond", 1, id => new PalmFrondSupply(id));
+
+        var sink = new InMemoryTraceSink();
+        world.TraceSink = sink;
+        var tracer = new JohnnyLike.Engine.EventTracer();
+        world.Tracer = tracer;
+
+        // Act
+        RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(lowSeed)),
+            DiscoveryTrigger.ThinkAboutSupplies, actorId: "Johnny", sourceActionId: "think_about_supplies");
+
+        // Assert: exactly one RecipeDiscovered event was recorded
+        var events = sink.GetEvents();
+        var evt = Assert.Single(events.Where(e => e.EventType == "RecipeDiscovered"));
+
+        Assert.Equal("umbrella", evt.Details["recipeId"]);
+        Assert.Equal("ThinkAboutSupplies", evt.Details["trigger"].ToString());
+        Assert.Equal("think_about_supplies", evt.Details["sourceActionId"].ToString());
+        Assert.Equal("recipe:umbrella", evt.Details["subjectId"].ToString());
+        Assert.True(evt.Details.ContainsKey("discoveryScore"));
+        Assert.Equal(new ActorId("Johnny"), evt.ActorId);
+        Assert.Equal(8400L, evt.Tick);
+    }
+
+    [Fact]
+    public void TryDiscover_DoesNotEmitRecipeDiscoveredTraceEvent_WhenNothingDiscovered()
+    {
+        // Arrange: all recipes already known, so nothing will be discovered.
+        var (actor, world) = MakeBase();
+        foreach (var id in IslandRecipeRegistry.All.Keys)
+            actor.KnownRecipeIds.Add(id);
+
+        var sink = new InMemoryTraceSink();
+        world.TraceSink = sink;
+        var tracer = new JohnnyLike.Engine.EventTracer();
+        world.Tracer = tracer;
+
+        // Act
+        RecipeDiscoverySystem.TryDiscover(actor, world, new RandomRngStream(new Random(1)),
+            DiscoveryTrigger.ThinkAboutSupplies, actorId: "Johnny");
+
+        // Assert: no RecipeDiscovered event was emitted
+        var events = sink.GetEvents();
+        Assert.Empty(events.Where(e => e.EventType == "RecipeDiscovered"));
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private static int FindSeedBelow(double threshold)
