@@ -67,6 +67,7 @@ for ACTOR in "${ACTORS[@]}"; do
         --actor "${ACTOR}" \
         --duration "${DURATION}" \
         --decision-verbose \
+        --snapshot-interval 60 \
         --save-artifacts "${STUDY_SUBDIR}"
     echo ""
 done
