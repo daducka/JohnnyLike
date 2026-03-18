@@ -1043,12 +1043,12 @@ public class ScoringPostPassTests
         var fullCoconutIntrinsic = fullCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").IntrinsicScore;
         Assert.Equal(fullCoconutIntrinsic, hungryCoconutIntrinsic);
 
-        // But the quality post-pass uses FoodConsumption weight, so hungry actor gets a higher final Score
+        // But the quality post-pass uses FoodAcquisition weight (shake_tree gathers food), so hungry actor gets a higher final Score
         var hungryCoconutScore = hungryCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").Score;
         var fullCoconutScore = fullCandidates.First(c => c.Action.Id.Value == "shake_tree_coconut").Score;
 
         Assert.True(hungryCoconutScore > fullCoconutScore,
-            $"Hungry actor coconut final score ({hungryCoconutScore:F3}) should be > full actor ({fullCoconutScore:F3}) due to FoodConsumption quality weight");
+            $"Hungry actor coconut final score ({hungryCoconutScore:F3}) should be > full actor ({fullCoconutScore:F3}) due to FoodAcquisition quality weight");
     }
 
     [Fact]
@@ -1151,8 +1151,10 @@ public class ScoringPostPassTests
 
         Assert.True(coconut.Qualities.ContainsKey(QualityType.Preparation),
             "shake_tree_coconut should have Preparation quality after reclassification");
-        Assert.True(coconut.Qualities[QualityType.FoodConsumption] < 0.5,
-            $"shake_tree_coconut FoodConsumption quality ({coconut.Qualities[QualityType.FoodConsumption]}) should be < 0.5 after reclassification");
+        Assert.True(coconut.Qualities.ContainsKey(QualityType.FoodAcquisition),
+            "shake_tree_coconut should have FoodAcquisition quality (gathering action)");
+        Assert.False(coconut.Qualities.ContainsKey(QualityType.FoodConsumption),
+            "shake_tree_coconut should NOT have FoodConsumption quality — it gathers, not eats");
     }
 
     [Fact]
@@ -1245,6 +1247,168 @@ public class ScoringPostPassTests
         // think_about_supplies has Preparation + Efficiency and should be competitive
         Assert.True(swimScore < 1.0,
             $"Swim score ({swimScore:F3}) should stay below 1.0 when actor is satisfied and morale is decent");
+    }
+
+    [Fact]
+    public void HungryActor_WithImmediateFood_FoodConsumptionWeightExceedsFoodAcquisition()
+    {
+        // When edible food is available in the shared supply pile the quality model should
+        // bias hunger pressure toward FoodConsumption rather than FoodAcquisition.
+        var domain  = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actor   = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 15.0 });
+
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        // Add edible coconuts directly to the shared supply pile (immediate food).
+        worldState.SharedSupplyPile!.GetOrCreateSupply(() => new Supply.CoconutSupply()).Quantity = 5;
+
+        var candidates = domain.GenerateCandidates(actorId, actor, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+
+        // bash_and_eat_coconut is the direct eat action (FoodConsumption quality)
+        // shake_tree_coconut gathers coconuts (FoodAcquisition quality)
+        var eatCandidate    = candidates.FirstOrDefault(c => c.Action.Id.Value == "bash_and_eat_coconut");
+        var shakeCandidate  = candidates.FirstOrDefault(c => c.Action.Id.Value == "shake_tree_coconut");
+
+        Assert.NotNull(eatCandidate);
+        Assert.NotNull(shakeCandidate);
+
+        // With immediate food available the eat action should score higher than the gather action.
+        Assert.True(eatCandidate!.Score > shakeCandidate!.Score,
+            $"bash_and_eat_coconut ({eatCandidate.Score:F3}) should outscore shake_tree_coconut ({shakeCandidate.Score:F3}) when food is immediately available");
+    }
+
+    [Fact]
+    public void HungryActor_WithNoImmediateFood_FoodAcquisitionWeightDominates()
+    {
+        // When the shared supply pile has no edible food but the tree has coconuts the model
+        // should bias hunger pressure toward FoodAcquisition so gathering actions rank higher.
+        var domain  = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actor   = domain.CreateActorState(actorId, new Dictionary<string, object> { ["satiety"] = 15.0 });
+
+        var worldState = (IslandWorldState)domain.CreateInitialWorldState();
+        // Coconuts on the tree only (acquirable, not immediately edible).
+        ((ISupplyBounty)worldState.GetItem<CoconutTreeItem>("palm_tree")!).GetSupply<CoconutSupply>("coconut")!.Quantity = 10;
+
+        var candidates = domain.GenerateCandidates(actorId, actor, worldState, 0L, new Random(42), new EmptyResourceAvailability());
+        var shakeCandidate = candidates.FirstOrDefault(c => c.Action.Id.Value == "shake_tree_coconut");
+
+        Assert.NotNull(shakeCandidate);
+
+        // FoodAcquisition quality weight should be active — score should be well above intrinsic.
+        Assert.True(shakeCandidate!.Score > shakeCandidate.IntrinsicScore + 0.5,
+            $"shake_tree_coconut score ({shakeCandidate.Score:F3}) should significantly exceed intrinsic ({shakeCandidate.IntrinsicScore:F3}) when starving with only acquirable food");
+    }
+
+    [Fact]
+    public void GoFishing_HasFoodAcquisitionQuality_NotFoodConsumption()
+    {
+        // go_fishing acquires food (fish) rather than consuming it; it should carry
+        // FoodAcquisition quality, not FoodConsumption.
+        var domain  = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actor   = (IslandActorState)domain.CreateActorState(actorId);
+        var world   = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, world);
+        // OceanItem starts with 100 fish by default, so go_fishing should be available.
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+        var fishing = candidates.FirstOrDefault(c => c.Action.Id.Value == "go_fishing");
+
+        if (fishing != null)
+        {
+            Assert.True(fishing.Qualities.ContainsKey(QualityType.FoodAcquisition),
+                "go_fishing should carry FoodAcquisition quality");
+            Assert.False(fishing.Qualities.ContainsKey(QualityType.FoodConsumption),
+                "go_fishing should NOT carry FoodConsumption quality — it acquires food, not consumes it");
+        }
+    }
+
+    [Fact]
+    public void ThinkAboutSupplies_UsesFallback_WhenNoDiscoverableRecipes()
+    {
+        // In the default initial world state no recipes are discoverable.
+        // think_about_supplies should use low fallback qualities and have a modest score.
+        var domain  = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actor   = domain.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            ["satiety"] = 80.0, ["energy"] = 80.0, ["morale"] = 60.0
+        });
+        var world = (IslandWorldState)domain.CreateInitialWorldState();
+
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
+        var think = candidates.First(c => c.Action.Id.Value == "think_about_supplies");
+
+        // With fallback qualities (0.15 Preparation, 0.10 Efficiency) the score should be low.
+        Assert.True(think.Score < 0.5,
+            $"think_about_supplies score ({think.Score:F3}) should be modest when no discoverable recipes exist");
+    }
+
+    [Fact]
+    public void ThinkAboutSupplies_ScoresHigher_WhenRecipesAreDiscoverable()
+    {
+        // When there are discoverable recipes the dynamic quality blend should push
+        // think_about_supplies above its fallback score.
+        var domain  = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+        var actor   = domain.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            ["satiety"] = 80.0, ["energy"] = 80.0, ["morale"] = 60.0
+        });
+
+        // Baseline world — no discoverable recipes.
+        var worldFallback = (IslandWorldState)domain.CreateInitialWorldState();
+        var fallbackCandidates = domain.GenerateCandidates(actorId, actor, worldFallback, 0L, new Random(42), new EmptyResourceAvailability());
+        var fallbackScore = fallbackCandidates.First(c => c.Action.Id.Value == "think_about_supplies").Score;
+
+        // World with palm fronds → palm_frond_blanket becomes discoverable.
+        var worldRich = (IslandWorldState)domain.CreateInitialWorldState();
+        worldRich.SharedSupplyPile!.AddSupply(5.0, () => new Supply.PalmFrondSupply());
+        var richCandidates = domain.GenerateCandidates(actorId, actor, worldRich, 0L, new Random(42), new EmptyResourceAvailability());
+        var richScore = richCandidates.First(c => c.Action.Id.Value == "think_about_supplies").Score;
+
+        Assert.True(richScore > fallbackScore,
+            $"think_about_supplies with discoverable recipe ({richScore:F3}) should score higher than fallback ({fallbackScore:F3})");
+    }
+
+    [Fact]
+    public void ThinkAboutSupplies_Suppressed_WhenStarving_AndNoFoodRelevantRecipes()
+    {
+        // When the actor is starving and discoverable recipes do not help with food/safety,
+        // think_about_supplies qualities should be suppressed.
+        // Use a planner archetype (INT=16, WIS=16) so Preparation/Efficiency have
+        // positive personality weight, making the quality suppression effect observable.
+        var domain  = new IslandDomainPack();
+        var actorId = new ActorId("TestActor");
+
+        // Starving planner: satiety=15 is below ThinkSuppliesStarvationThreshold=25.
+        var starvingActor = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            ["INT"] = 16, ["WIS"] = 16,
+            ["satiety"] = 15.0, ["energy"] = 80.0, ["morale"] = 50.0
+        });
+        var satisfiedActor = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            ["INT"] = 16, ["WIS"] = 16,
+            ["satiety"] = 80.0, ["energy"] = 80.0, ["morale"] = 50.0
+        });
+
+        // CarcassScraps in the pile: only the bait recipe becomes discoverable.
+        // Bait has {Preparation, Mastery, Efficiency, Comfort(-)} but no Food/Safety qualities.
+        // So starvation suppression should apply for the starving actor.
+        var world = (IslandWorldState)domain.CreateInitialWorldState();
+        world.SharedSupplyPile!.AddSupply(3.0, () => new Supply.CarcassScrapsSupply());
+
+        var starvingCandidates  = domain.GenerateCandidates(actorId, starvingActor,  world, 0L, new Random(42), new EmptyResourceAvailability());
+        var satisfiedCandidates = domain.GenerateCandidates(actorId, satisfiedActor, world, 0L, new Random(42), new EmptyResourceAvailability());
+
+        var starvingThinkScore  = starvingCandidates.First(c => c.Action.Id.Value == "think_about_supplies").Score;
+        var satisfiedThinkScore = satisfiedCandidates.First(c => c.Action.Id.Value == "think_about_supplies").Score;
+
+        Assert.True(starvingThinkScore < satisfiedThinkScore,
+            $"think_about_supplies should be suppressed when starving and no food-relevant recipes are discoverable " +
+            $"(starving: {starvingThinkScore:F3} vs satisfied: {satisfiedThinkScore:F3})");
     }
 }
 

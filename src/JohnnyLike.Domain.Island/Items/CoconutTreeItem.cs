@@ -147,7 +147,7 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
             }),
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.FoodConsumption] = 0.3,
+                [QualityType.FoodAcquisition] = 0.75,
                 [QualityType.Preparation]     = 0.25,
                 [QualityType.Efficiency]      = 0.15,
                 [QualityType.Safety]          = -0.35

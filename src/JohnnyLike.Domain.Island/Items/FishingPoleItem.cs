@@ -152,7 +152,7 @@ public class FishingPoleItem : ToolItem
                     }),
                     Qualities: new Dictionary<QualityType, double>
                     {
-                        [QualityType.FoodConsumption] = 1.0,
+                        [QualityType.FoodAcquisition] = 1.0,
                         [QualityType.Efficiency]      = 0.5,
                         [QualityType.Fun]             = 0.3
                     },

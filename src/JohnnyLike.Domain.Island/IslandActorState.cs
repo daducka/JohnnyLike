@@ -346,6 +346,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
     private void AddThinkAboutSuppliesCandidate(IslandContext ctx, List<ActionCandidate> output)
     {
+        var qualities = ComputeThinkAboutSuppliesQualities(this, ctx.World);
+
         output.Add(new ActionCandidate(
             new ActionSpec(
                 new ActionId("think_about_supplies"),
@@ -365,13 +367,103 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                     actorId: effectCtx.ActorId.Value,
                     sourceActionId: "think_about_supplies");
             }),
-            Qualities: new Dictionary<QualityType, double>
-            {
-                [QualityType.Preparation] = 0.68,
-                [QualityType.Efficiency]  = 0.62
-            },
+            Qualities: qualities,
             ActorRequirement: CandidateRequirements.AliveOnly
         ));
+    }
+
+    // Satiety threshold below which the actor is considered survival-distressed
+    // for the purpose of suppressing think_about_supplies when no food-relevant
+    // recipes are discoverable.
+    private const double ThinkSuppliesStarvationThreshold = 25.0;
+    // Multiplier applied to think_about_supplies qualities when starving and
+    // no food/safety-relevant discoverable recipes are available.
+    private const double ThinkSuppliesStarvationSuppression = 0.2;
+    // Small fallback Preparation quality used when no recipes are currently discoverable.
+    private const double ThinkSuppliesFallbackPreparation = 0.15;
+    // Small fallback Efficiency quality used when no recipes are currently discoverable.
+    private const double ThinkSuppliesFallbackEfficiency = 0.10;
+    // Maximum number of top recipes considered when blending opportunity qualities.
+    private const int ThinkSuppliesTopN = 3;
+
+    /// <summary>
+    /// Computes dynamic action qualities for <c>think_about_supplies</c> based on which
+    /// recipes the actor can currently discover.  Uses a weighted top-N blend so that a
+    /// single highly relevant survival recipe is not drowned out by many mediocre ones.
+    /// Falls back to a small default when no meaningful discovery opportunity exists.
+    /// When the actor is starving and discoverable recipes would not materially help with
+    /// food or safety, qualities are further suppressed so the action loses priority.
+    /// </summary>
+    private static Dictionary<QualityType, double> ComputeThinkAboutSuppliesQualities(
+        IslandActorState actor,
+        IslandWorldState world)
+    {
+        // Collect discoverable recipes for this trigger and actor state.
+        var discoverable = new List<(double weight, IReadOnlyDictionary<QualityType, double> qualities)>();
+
+        foreach (var (id, recipe) in IslandRecipeRegistry.All)
+        {
+            if (recipe.Discovery == null || recipe.Discovery.Trigger != DiscoveryTrigger.ThinkAboutSupplies)
+                continue;
+
+            if (actor.KnownRecipeIds.Contains(id))
+                continue;
+
+            if (!recipe.Discovery.CanDiscover(actor, world))
+                continue;
+
+            discoverable.Add((recipe.Discovery.BaseChance, recipe.Qualities));
+        }
+
+        if (discoverable.Count == 0)
+        {
+            // No discoverable recipes — use a small fallback so the action stays in the
+            // pool but cannot dominate over more urgent survival options.
+            return new Dictionary<QualityType, double>
+            {
+                [QualityType.Preparation] = ThinkSuppliesFallbackPreparation,
+                [QualityType.Efficiency]  = ThinkSuppliesFallbackEfficiency
+            };
+        }
+
+        // Sort by weighted usefulness (baseChance × sum of quality values) and take top-N.
+        // This prevents many low-value recipes from diluting a single high-value one.
+        var topRecipes = discoverable
+            .OrderByDescending(r => r.weight * r.qualities.Values.Sum())
+            .Take(ThinkSuppliesTopN)
+            .ToList();
+
+        // Compute a weight-normalised blend of the top recipes' qualities.
+        var result = new Dictionary<QualityType, double>();
+        var totalWeight = topRecipes.Sum(r => r.weight);
+
+        foreach (var (weight, qualities) in topRecipes)
+        {
+            foreach (var (q, v) in qualities)
+            {
+                result.TryGetValue(q, out var existing);
+                result[q] = existing + v * weight / totalWeight;
+            }
+        }
+
+        // Survival distress suppression: when the actor is starving and none of the
+        // discoverable recipes materially help with food access or safety, reduce the
+        // qualities significantly so direct food actions take priority.
+        if (actor.Satiety < ThinkSuppliesStarvationThreshold)
+        {
+            bool hasSurvivalRelevantRecipe = topRecipes.Any(r =>
+                r.qualities.ContainsKey(QualityType.FoodConsumption) ||
+                r.qualities.ContainsKey(QualityType.FoodAcquisition) ||
+                r.qualities.ContainsKey(QualityType.Safety));
+
+            if (!hasSurvivalRelevantRecipe)
+            {
+                foreach (var key in result.Keys.ToList())
+                    result[key] *= ThinkSuppliesStarvationSuppression;
+            }
+        }
+
+        return result;
     }
 
     private void AddChatCandidates(IslandContext ctx, List<ActionCandidate> output)
