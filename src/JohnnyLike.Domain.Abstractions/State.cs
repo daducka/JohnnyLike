@@ -30,6 +30,13 @@ public abstract class WorldState
     public IEventTracer Tracer { get; set; } = NullEventTracer.Instance;
 
     /// <summary>
+    /// Trace sink for emitting structured <see cref="TraceEvent"/>s from within effect handlers.
+    /// Set by the engine before calling <c>ApplyActionEffects</c> and cleared afterwards.
+    /// Defaults to <see cref="NullTraceSink.Instance"/> when no sink is wired up.
+    /// </summary>
+    public ITraceSink TraceSink { get; set; } = NullTraceSink.Instance;
+
+    /// <summary>
     /// Room index. Maps room ID strings to Room objects.
     /// The engine uses this to scope candidate visibility by actor room.
     /// </summary>

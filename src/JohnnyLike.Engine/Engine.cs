@@ -195,8 +195,10 @@ public class Engine
 
         var rngStream = new RandomRngStream(_rng);
         _worldState.Tracer = _eventTracer;
+        _worldState.TraceSink = _traceSink;
         _domainPack.ApplyActionEffects(actorId, outcome, actorState, _worldState, rngStream, _reservations, effectHandler);
         _worldState.Tracer = NullEventTracer.Instance;
+        _worldState.TraceSink = NullTraceSink.Instance;
         EmitBeats(_eventTracer.Drain(), defaultActorId: actorId.Value);
 
         var details = new Dictionary<string, object>

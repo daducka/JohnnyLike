@@ -45,3 +45,16 @@ public class InMemoryTraceSink : ITraceSink
 
     public void Clear() => _events.Clear();
 }
+
+/// <summary>
+/// No-op trace sink used when no sink is wired up.
+/// </summary>
+public sealed class NullTraceSink : ITraceSink
+{
+    public static readonly NullTraceSink Instance = new();
+    private NullTraceSink() { }
+
+    public void Record(TraceEvent evt) { }
+    public List<TraceEvent> GetEvents() => new();
+    public void Clear() { }
+}
