@@ -263,8 +263,8 @@ public class IslandDomainPack : IDomainPack
     private const double FoodConsumptionShareHigh = 0.80;
     /// <summary>FoodConsumption share of hunger when no immediate food but acquirable food exists.</summary>
     private const double FoodConsumptionShareLow  = 0.20;
-    /// <summary>FoodConsumption share when neither immediate nor acquirable food is available (both needed).</summary>
-    private const double FoodConsumptionShareNone = 0.50;
+    /// <summary>Neutral 50/50 share used when neither immediate nor acquirable food is available, or as a baseline for blending.</summary>
+    private const double FoodShareNeutral = 0.50;
 
     // ── Hunger ramp thresholds and slopes ─────────────────────────────────────────
     // The staged hunger ramp builds urgency only below certain Satiety thresholds
@@ -530,7 +530,7 @@ public class IslandDomainPack : IDomainPack
             {
                 // Edible food is available — bias strongly toward consuming it.
                 consumptionShare = FoodConsumptionShareHigh * normImmediate
-                                 + FoodConsumptionShareNone * (1.0 - normImmediate);
+                                 + FoodShareNeutral * (1.0 - normImmediate);
                 acquisitionShare = 1.0 - consumptionShare;
             }
             else if (normAcquirable >= 0.2)
@@ -542,15 +542,15 @@ public class IslandDomainPack : IDomainPack
             else
             {
                 // No food anywhere — distribute equally (both are needed urgently).
-                consumptionShare = FoodConsumptionShareNone;
-                acquisitionShare = FoodConsumptionShareNone;
+                consumptionShare = FoodShareNeutral;
+                acquisitionShare = FoodShareNeutral;
             }
         }
         else
         {
             // No world state available (e.g., recipe scoring): neutral 50/50 split.
-            consumptionShare = 0.5;
-            acquisitionShare = 0.5;
+            consumptionShare = FoodShareNeutral;
+            acquisitionShare = FoodShareNeutral;
         }
 
         // ── Traits ────────────────────────────────────────────────────────────────

@@ -434,7 +434,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             .ToList();
 
         // Compute a weight-normalised blend of the top recipes' qualities.
-        var result = new Dictionary<QualityType, double>();
+        var result = new Dictionary<QualityType, double>(Enum.GetValues<QualityType>().Length);
         var totalWeight = topRecipes.Sum(r => r.weight);
 
         foreach (var (weight, qualities) in topRecipes)
