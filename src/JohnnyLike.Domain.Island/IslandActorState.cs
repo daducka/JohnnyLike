@@ -346,7 +346,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
     private void AddThinkAboutSuppliesCandidate(IslandContext ctx, List<ActionCandidate> output)
     {
-        var qualities = ComputeThinkAboutSuppliesQualities(this, ctx.World);
+        var qualities = ComputeThinkAboutSuppliesQualities(this, ctx.World, ctx.QualityEffectiveWeight);
 
         output.Add(new ActionCandidate(
             new ActionSpec(
@@ -394,9 +394,16 @@ public class IslandActorState : ActorState, IIslandActionCandidate
     /// When the actor is starving and discoverable recipes would not materially help with
     /// food or safety, qualities are further suppressed so the action loses priority.
     /// </summary>
+    /// <param name="effectiveWeight">
+    /// Optional function returning the current effective quality weight for a given quality type.
+    /// When provided, recipes are ranked by <c>baseChance × Σ(qualityValue × effectiveWeight)</c>
+    /// so state-relevant discoveries (e.g. food recipes when hungry) score higher naturally.
+    /// Falls back to <c>baseChance × Σ(qualityValue)</c> when null.
+    /// </param>
     private static Dictionary<QualityType, double> ComputeThinkAboutSuppliesQualities(
         IslandActorState actor,
-        IslandWorldState world)
+        IslandWorldState world,
+        Func<QualityType, double>? effectiveWeight = null)
     {
         // Collect discoverable recipes for this trigger and actor state.
         var discoverable = new List<(double weight, IReadOnlyDictionary<QualityType, double> qualities)>();
@@ -426,10 +433,19 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             };
         }
 
-        // Sort by weighted usefulness (baseChance × sum of quality values) and take top-N.
+        // Sort by state-aware weighted usefulness and take top-N.
+        // When effective quality weights are available (normal path), rank by
+        //   baseChance × Σ(qualityValue × effectiveWeight(quality))
+        // so recipes whose qualities align with current actor needs (e.g. food when hungry,
+        // safety when injured) naturally rank higher.  Falls back to raw quality sum otherwise.
         // This prevents many low-value recipes from diluting a single high-value one.
+        double RecipeScore((double weight, IReadOnlyDictionary<QualityType, double> qualities) r)
+            => effectiveWeight != null
+                ? r.weight * r.qualities.Sum(kvp => kvp.Value * effectiveWeight(kvp.Key))
+                : r.weight * r.qualities.Values.Sum();
+
         var topRecipes = discoverable
-            .OrderByDescending(r => r.weight * r.qualities.Values.Sum())
+            .OrderByDescending(RecipeScore)
             .Take(ThinkSuppliesTopN)
             .ToList();
 

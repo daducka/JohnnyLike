@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island.Items;
 
-public class OceanItem : WorldItem, ITickableWorldItem, ISupplyBounty
+public class OceanItem : WorldItem, ITickableWorldItem, ISupplyBounty, IFoodSource
 {
     public List<SupplyItem> BountySupplies { get; set; } = new() { new FishSupply(100) };
     public Dictionary<string, Dictionary<string, double>> ActiveReservations { get; } = new();
@@ -83,4 +83,8 @@ public class OceanItem : WorldItem, ITickableWorldItem, ISupplyBounty
             }
         }
     }
+
+    // IFoodSource: the ocean provides fish acquirable through go_fishing.
+    double IFoodSource.GetAcquirableFoodUnits(IslandActorState actor, IslandWorldState world)
+        => ((ISupplyBounty)this).GetQuantity<FishSupply>();
 }

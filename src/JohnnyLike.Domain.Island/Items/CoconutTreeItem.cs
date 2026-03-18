@@ -11,7 +11,7 @@ namespace JohnnyLike.Domain.Island.Items;
 /// Represents a coconut palm tree. Owns its own CoconutSupply and PalmFrondSupply
 /// bounty that regenerates daily via CalendarItem.
 /// </summary>
-public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorldItem, ISupplyBounty
+public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorldItem, ISupplyBounty, IFoodSource
 {
     private static readonly ResourceId PalmTreeResource = new("island:resource:palm_tree");
 
@@ -193,4 +193,8 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
             }
         }
     }
+
+    // IFoodSource: coconuts on the tree are acquirable through shake_tree_coconut.
+    double IFoodSource.GetAcquirableFoodUnits(IslandActorState actor, IslandWorldState world)
+        => ((ISupplyBounty)this).GetQuantity<CoconutSupply>();
 }

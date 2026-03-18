@@ -124,6 +124,10 @@ public class IslandDomainPack : IDomainPack
 
         islandActorState.ActiveBuffs.RemoveAll(b => b.ExpiresAtTick <= currentTick);
 
+        // Build quality model before context so recipe opportunity scoring in think_about_supplies
+        // can use current effective quality weights to favour state-relevant discoveries.
+        var model = BuildQualityModel(islandActorState, currentTick, islandWorld);
+
         // Create context for providers
         var ctx = new IslandContext(
             actorId,
@@ -132,7 +136,8 @@ public class IslandDomainPack : IDomainPack
             currentTick,
             rngStream,
             rng,
-            resourceAvailability
+            resourceAvailability,
+            model.EffectiveWeight
         );
 
         // Generate candidates using all registered providers
@@ -167,8 +172,7 @@ public class IslandDomainPack : IDomainPack
         // merely scoring them low.
         candidates.RemoveAll(c => c.ActorRequirement != null && !c.ActorRequirement(islandActorState));
 
-        // Post-pass: compute final Score from IntrinsicScore and Quality weights
-        var model = BuildQualityModel(ctx.Actor, ctx.NowTick, islandWorld);
+        // Post-pass: compute final Score from IntrinsicScore and Quality weights (model built above)
         for (var i = 0; i < candidates.Count; i++)
         {
             candidates[i] = candidates[i] with { Score = ScoreCandidate(candidates[i], model) };
@@ -501,27 +505,24 @@ public class IslandDomainPack : IDomainPack
         // how much edible food is immediately available vs. how much can be acquired soon.
         // This ensures hungry actors with food already in supply prefer eating (FoodConsumption),
         // while hungry actors who need to go gather prefer gathering actions (FoodAcquisition).
+        //
+        // Extension points: supply types implement IEdibleSupply; world items implement IFoodSource.
+        // No changes to this method are needed when new food supplies or sources are added.
         double consumptionShare;
         double acquisitionShare;
         if (world != null)
         {
-            // Immediate food: edible items already in the shared supply pile.
-            var sharedPile = world.SharedSupplyPile;
-            double immediateFood = 0.0;
-            if (sharedPile != null)
-            {
-                immediateFood =
-                    sharedPile.GetQuantity<Supply.CoconutSupply>()
-                    + sharedPile.GetQuantity<Supply.FishSupply>()
-                    + sharedPile.GetQuantity<Supply.CookedFishSupply>();
-            }
+            // Immediate food: sum IEdibleSupply.GetImmediateFoodUnits across all accessible piles.
+            // Using GetAccessiblePiles ensures correctness as inventory/storage expands.
+            var accessiblePiles = world.GetAccessiblePiles(actor.Id);
+            var immediateFood   = accessiblePiles
+                .SelectMany(p => p.Supplies.OfType<Supply.IEdibleSupply>())
+                .Sum(e => e.GetImmediateFoodUnits(actor, world));
 
-            // Acquirable food: food that can be gathered from world sources soon.
-            double acquirableFood = 0.0;
-            var tree = world.GetItem<Items.CoconutTreeItem>("palm_tree") as Supply.ISupplyBounty;
-            acquirableFood += tree?.GetQuantity<Supply.CoconutSupply>() ?? 0.0;
-            var ocean = world.GetItem<Items.OceanItem>("ocean") as Supply.ISupplyBounty;
-            acquirableFood += ocean?.GetQuantity<Supply.FishSupply>() ?? 0.0;
+            // Acquirable food: sum IFoodSource.GetAcquirableFoodUnits across all world items.
+            var acquirableFood  = world.WorldItems
+                .OfType<IFoodSource>()
+                .Sum(s => s.GetAcquirableFoodUnits(actor, world));
 
             var normImmediate  = Math.Min(immediateFood  / FoodAvailabilityNormCap, 1.0);
             var normAcquirable = Math.Min(acquirableFood / FoodAvailabilityNormCap, 1.0);

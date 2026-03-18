@@ -7,7 +7,7 @@ namespace JohnnyLike.Domain.Island.Supply;
 /// <summary>
 /// Raw fish caught from the ocean. Can be eaten raw (minor benefit) or cooked for better results.
 /// </summary>
-public class FishSupply : SupplyItem, ISupplyActionCandidate
+public class FishSupply : SupplyItem, ISupplyActionCandidate, IEdibleSupply
 {
     // ─── Calorie value ────────────────────────────────────────────────────────
     // Less bioavailable than cooked fish due to moisture content and proteins.
@@ -59,4 +59,8 @@ public class FishSupply : SupplyItem, ISupplyActionCandidate
             ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
+
+    // IEdibleSupply: raw fish in the supply pile can be eaten immediately.
+    double IEdibleSupply.GetImmediateFoodUnits(IslandActorState actor, IslandWorldState world)
+        => Quantity;
 }
