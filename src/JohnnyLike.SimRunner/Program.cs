@@ -1,7 +1,15 @@
 ﻿using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.SimRunner;
+using JohnnyLike.SimRunner.PressureFuzzer;
 using System.Text.Json;
+
+// ── Pressure Fuzzer subcommand ─────────────────────────────────────────────
+if (args.Length > 0 && args[0] == "pressure-fuzzer")
+{
+    RunPressureFuzzer(args[1..]);
+    return;
+}
 
 if (args.Length == 0)
 {
@@ -26,6 +34,15 @@ if (args.Length == 0)
     Console.WriteLine("  --profile <name>    Use predefined profile: smoke, extended, nightly");
     Console.WriteLine("  --verbose           Verbose output for fuzz runs");
     Console.WriteLine("  --save-artifacts [folder] Save test artifacts to disk (optional subfolder)");
+    Console.WriteLine("\nDecision Surface Explorer (Pressure Fuzzer):");
+    Console.WriteLine("  pressure-fuzzer             Run the decision surface sampler");
+    Console.WriteLine("  --actors <names|all>        Comma-separated actor names or 'all' (default: all)");
+    Console.WriteLine($"                              Available: {string.Join(", ", Archetypes.All.Keys)}");
+    Console.WriteLine("  --scenario <name|all>       Scenario name or 'all' (default: all)");
+    Console.WriteLine($"                              Available: {string.Join(", ", Enum.GetNames<FuzzerScenarioKind>())}");
+    Console.WriteLine("  --output <path>             Output JSON file path (default: ./fuzzer-output.json)");
+    Console.WriteLine("  --grid coarse|fine          Stat sampling density (default: coarse)");
+    Console.WriteLine("  --top <n>                   Top N candidates to include (default: 5)");
     return;
 }
 
@@ -516,6 +533,100 @@ TeeWriter CreateArtifactWriter(bool saveArtifacts, string domainName, int seed, 
         return new TeeWriter(Console.Out);
     }
     return new TeeWriter(Console.Out, fileWriter);
+}
+
+void RunPressureFuzzer(string[] fuzzerArgs)
+{
+    var actorFilter   = new List<string>();
+    var scenarioFilter = new List<FuzzerScenarioKind>();
+    var outputPath    = "./fuzzer-output.json";
+    var topN          = 5;
+    var coarseGrid    = true;
+
+    for (int i = 0; i < fuzzerArgs.Length; i++)
+    {
+        switch (fuzzerArgs[i])
+        {
+            case "--actors":
+            {
+                var arg = fuzzerArgs[++i];
+                if (arg.Equals("all", StringComparison.OrdinalIgnoreCase))
+                    actorFilter.AddRange(Archetypes.All.Keys);
+                else
+                    actorFilter.AddRange(arg.Split(',', StringSplitOptions.TrimEntries));
+                break;
+            }
+            case "--scenario":
+            {
+                var arg = fuzzerArgs[++i];
+                if (arg.Equals("all", StringComparison.OrdinalIgnoreCase))
+                    scenarioFilter.AddRange(Enum.GetValues<FuzzerScenarioKind>());
+                else
+                    scenarioFilter.Add(Enum.Parse<FuzzerScenarioKind>(arg, ignoreCase: true));
+                break;
+            }
+            case "--output":
+                outputPath = fuzzerArgs[++i];
+                break;
+            case "--top":
+                topN = int.Parse(fuzzerArgs[++i]);
+                break;
+            case "--grid":
+                coarseGrid = !fuzzerArgs[++i].Equals("fine", StringComparison.OrdinalIgnoreCase);
+                break;
+        }
+    }
+
+    var options = new PressureFuzzerOptions(
+        ActorFilter:   actorFilter.Count  > 0 ? actorFilter   : null,
+        ScenarioFilter: scenarioFilter.Count > 0 ? scenarioFilter : null,
+        OutputPath:    outputPath,
+        TopCandidateCount: topN,
+        CoarseGrid:    coarseGrid);
+
+    var effectiveActors    = options.ActorFilter    ?? Archetypes.All.Keys.OrderBy(k => k).ToList();
+    var effectiveScenarios = options.ScenarioFilter ?? Enum.GetValues<FuzzerScenarioKind>().ToList();
+    var gridName           = options.CoarseGrid ? "coarse" : "fine";
+
+    Console.WriteLine("=== PRESSURE FUZZER / DECISION SURFACE EXPLORER ===");
+    Console.WriteLine($"Actors:    {string.Join(", ", effectiveActors)}");
+    Console.WriteLine($"Scenarios: {string.Join(", ", effectiveScenarios)}");
+    Console.WriteLine($"Grid:      {gridName}");
+    Console.WriteLine($"Top-N:     {topN}");
+    Console.WriteLine($"Output:    {outputPath}");
+    Console.WriteLine();
+
+    Console.Write("Sampling...");
+    var samples = PressureFuzzerRunner.Run(options);
+    Console.WriteLine($" {samples.Count} samples generated.");
+
+    var dir = Path.GetDirectoryName(outputPath);
+    if (!string.IsNullOrEmpty(dir))
+        Directory.CreateDirectory(dir);
+
+    PressureFuzzerRunner.WriteJson(samples, outputPath);
+    Console.WriteLine($"✓ Written to {outputPath}");
+
+    // Print a brief flag summary so issues are visible on the console.
+    var flagged = samples.Where(s => s.Flags.FoodAvailableButNotChosen ||
+                                     s.Flags.NoFoodButNoAcquisition    ||
+                                     s.Flags.PrepDominatesFood         ||
+                                     s.Flags.BedLoopRisk).ToList();
+    Console.WriteLine($"\n--- Flag Summary ---");
+    Console.WriteLine($"  criticalState:             {samples.Count(s => s.Flags.CriticalState)}");
+    Console.WriteLine($"  foodAvailableButNotChosen: {samples.Count(s => s.Flags.FoodAvailableButNotChosen)}");
+    Console.WriteLine($"  noFoodButNoAcquisition:    {samples.Count(s => s.Flags.NoFoodButNoAcquisition)}");
+    Console.WriteLine($"  prepDominatesFood:         {samples.Count(s => s.Flags.PrepDominatesFood)}");
+    Console.WriteLine($"  bedLoopRisk:               {samples.Count(s => s.Flags.BedLoopRisk)}");
+
+    if (flagged.Count > 0)
+    {
+        Console.WriteLine($"\n⚠ {flagged.Count} samples flagged for potential issues. Review {outputPath} for details.");
+    }
+    else
+    {
+        Console.WriteLine("\n✓ No pathology flags raised.");
+    }
 }
 
 void SaveFuzzArtifacts(string profileName, int totalRuns, int successCount, List<FuzzRunResult> failures, string artifactsSubDir = "")
