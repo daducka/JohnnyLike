@@ -7,6 +7,7 @@ public enum QualityType
 {
     Rest,
     FoodConsumption,
+    FoodAcquisition,
     Fun,
     Safety,
     Preparation,

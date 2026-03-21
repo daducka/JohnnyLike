@@ -8,7 +8,7 @@ namespace JohnnyLike.Domain.Island.Supply;
 /// <summary>
 /// A coconut retrieved from a palm tree. Must be bashed open before eating.
 /// </summary>
-public class CoconutSupply : SupplyItem, ISupplyActionCandidate
+public class CoconutSupply : SupplyItem, ISupplyActionCandidate, IEdibleSupply
 {
     // ─── Calorie values by outcome tier ──────────────────────────────────────
     private const double KcalCriticalSuccess = 400.0; // cracked cleanly → +20 Satiety
@@ -95,4 +95,8 @@ public class CoconutSupply : SupplyItem, ISupplyActionCandidate
             ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
+
+    // IEdibleSupply: coconuts in the supply pile are immediately edible (bash-and-eat).
+    double IEdibleSupply.GetImmediateFoodUnits(IslandActorState actor, IslandWorldState world)
+        => Quantity;
 }

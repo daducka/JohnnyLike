@@ -13,6 +13,15 @@ public class IslandContext
     public Random Random { get; }
     public IResourceAvailability ResourceAvailability { get; }
 
+    /// <summary>
+    /// Returns the current effective quality weight for a given quality type,
+    /// pre-computed from actor state and world state before candidate generation.
+    /// Used by candidate providers (e.g., <c>think_about_supplies</c>) to score
+    /// recipe discovery opportunity relative to current actor needs.
+    /// May be null when no quality model is available.
+    /// </summary>
+    public Func<QualityType, double>? QualityEffectiveWeight { get; }
+
     public IslandContext(
         ActorId actorId,
         IslandActorState actor,
@@ -20,7 +29,8 @@ public class IslandContext
         long nowTick,
         IRngStream rng,
         Random random,
-        IResourceAvailability resourceAvailability)
+        IResourceAvailability resourceAvailability,
+        Func<QualityType, double>? qualityEffectiveWeight = null)
     {
         ActorId = actorId;
         Actor = actor;
@@ -29,6 +39,7 @@ public class IslandContext
         Rng = rng;
         Random = random;
         ResourceAvailability = resourceAvailability;
+        QualityEffectiveWeight = qualityEffectiveWeight;
     }
 
     // Helper methods for scoring

@@ -25,6 +25,9 @@ public class FuzzableFakeExecutor
         DoUpdate();
     }
 
+    /// <summary>Returns true if the actor currently has a running action tracked by this executor.</summary>
+    public bool HasRunningAction(ActorId actorId) => _runningActions.ContainsKey(actorId);
+
     public void Update(double dtSeconds)
     {
         // Preserve fractional ticks across frames so sub-50ms updates still advance sim time.

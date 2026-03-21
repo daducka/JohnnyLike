@@ -124,6 +124,10 @@ public class IslandDomainPack : IDomainPack
 
         islandActorState.ActiveBuffs.RemoveAll(b => b.ExpiresAtTick <= currentTick);
 
+        // Build quality model before context so recipe opportunity scoring in think_about_supplies
+        // can use current effective quality weights to favour state-relevant discoveries.
+        var model = BuildQualityModel(islandActorState, currentTick, islandWorld);
+
         // Create context for providers
         var ctx = new IslandContext(
             actorId,
@@ -132,7 +136,8 @@ public class IslandDomainPack : IDomainPack
             currentTick,
             rngStream,
             rng,
-            resourceAvailability
+            resourceAvailability,
+            model.EffectiveWeight
         );
 
         // Generate candidates using all registered providers
@@ -167,8 +172,7 @@ public class IslandDomainPack : IDomainPack
         // merely scoring them low.
         candidates.RemoveAll(c => c.ActorRequirement != null && !c.ActorRequirement(islandActorState));
 
-        // Post-pass: compute final Score from IntrinsicScore and Quality weights
-        var model = BuildQualityModel(ctx.Actor, ctx.NowTick);
+        // Post-pass: compute final Score from IntrinsicScore and Quality weights (model built above)
         for (var i = 0; i < candidates.Count; i++)
         {
             candidates[i] = candidates[i] with { Score = ScoreCandidate(candidates[i], model) };
@@ -221,6 +225,8 @@ public class IslandDomainPack : IDomainPack
     private const double PersonalitySafetyScale      = 0.3;
     /// <summary>Instinctive + Hedonist traits → FoodConsumption personality weight.</summary>
     private const double PersonalityFoodScale         = 0.2;
+    /// <summary>Planner + Survivor traits → FoodAcquisition personality weight.</summary>
+    private const double PersonalityFoodAcquisitionScale = 0.15;
 
     // ── DecisionPragmatism derivation constants ─────────────────────────────────────
     // Used in DeriveDecisionPragmatism to compute a personality-driven pragmatism baseline.
@@ -250,6 +256,19 @@ public class IslandDomainPack : IDomainPack
     private const double PrepTimePressureCap         = 0.20;
     /// <summary>Preparation urgency gained per in-sim day stranded.</summary>
     private const double PrepTimePressureRatePerDay  = 0.05;
+
+    // ── Food availability constants ─────────────────────────────────────────────────
+    // Used to split hunger pressure between FoodConsumption and FoodAcquisition based
+    // on how much edible food is immediately available vs. how much can be acquired soon.
+
+    /// <summary>Number of food units that counts as "plenty" for normalization purposes.</summary>
+    private const double FoodAvailabilityNormCap = 5.0;
+    /// <summary>FoodConsumption share of hunger when immediate food is plentiful.</summary>
+    private const double FoodConsumptionShareHigh = 0.80;
+    /// <summary>FoodConsumption share of hunger when no immediate food but acquirable food exists.</summary>
+    private const double FoodConsumptionShareLow  = 0.20;
+    /// <summary>Neutral 50/50 share used when neither immediate nor acquirable food is available, or as a baseline for blending.</summary>
+    private const double FoodShareNeutral = 0.50;
 
     // ── Hunger ramp thresholds and slopes ─────────────────────────────────────────
     // The staged hunger ramp builds urgency only below certain Satiety thresholds
@@ -427,6 +446,10 @@ public class IslandDomainPack : IDomainPack
                 Formula:       $"(instinctive + hedonist) * {PersonalityFoodScale}",
                 Contributors:  new() { ["instinctive"] = t.Instinctive, ["hedonist"] = t.Hedonist },
                 PersonalityBase: (t.Instinctive + t.Hedonist) * PersonalityFoodScale),
+            [QualityType.FoodAcquisition] = new(
+                Formula:       $"(planner + survivor) * {PersonalityFoodAcquisitionScale}",
+                Contributors:  new() { ["planner"] = t.Planner, ["survivor"] = t.Survivor },
+                PersonalityBase: (t.Planner + t.Survivor) * PersonalityFoodAcquisitionScale),
             [QualityType.Fun]             = new(
                 Formula:       "1.0",
                 Contributors:  new(),
@@ -450,7 +473,7 @@ public class IslandDomainPack : IDomainPack
         return intrinsicScore + qualitySum;
     }
 
-    private static QualityModel BuildQualityModel(IslandActorState actor, long currentTick = 0L)
+    private static QualityModel BuildQualityModel(IslandActorState actor, long currentTick = 0L, IslandWorldState? world = null)
     {
         // ── Actor Stats ───────────────────────────────────────────────────────────
         // Dynamic physiological / psychological state.
@@ -477,6 +500,60 @@ public class IslandDomainPack : IDomainPack
         else
             stagedHungerNeed = (HungerMildMax + HungerModerateRange) + (SatietyRampStrong - actor.Satiety) / SatietyRampStrong * HungerStrongRange;
 
+        // ── Food availability split ───────────────────────────────────────────────
+        // Split hunger pressure between FoodConsumption and FoodAcquisition based on
+        // how much edible food is immediately available vs. how much can be acquired soon.
+        // This ensures hungry actors with food already in supply prefer eating (FoodConsumption),
+        // while hungry actors who need to go gather prefer gathering actions (FoodAcquisition).
+        //
+        // Extension points: supply types implement IEdibleSupply; world items implement IFoodSource.
+        // No changes to this method are needed when new food supplies or sources are added.
+        double consumptionShare;
+        double acquisitionShare;
+        if (world != null)
+        {
+            // Immediate food: sum IEdibleSupply.GetImmediateFoodUnits across all accessible piles.
+            // Using GetAccessiblePiles ensures correctness as inventory/storage expands.
+            var accessiblePiles = world.GetAccessiblePiles(actor.Id);
+            var immediateFood   = accessiblePiles
+                .SelectMany(p => p.Supplies.OfType<Supply.IEdibleSupply>())
+                .Sum(e => e.GetImmediateFoodUnits(actor, world));
+
+            // Acquirable food: sum IFoodSource.GetAcquirableFoodUnits across all world items.
+            var acquirableFood  = world.WorldItems
+                .OfType<IFoodSource>()
+                .Sum(s => s.GetAcquirableFoodUnits(actor, world));
+
+            var normImmediate  = Math.Min(immediateFood  / FoodAvailabilityNormCap, 1.0);
+            var normAcquirable = Math.Min(acquirableFood / FoodAvailabilityNormCap, 1.0);
+
+            if (normImmediate >= 0.2)
+            {
+                // Edible food is available — bias strongly toward consuming it.
+                consumptionShare = FoodConsumptionShareHigh * normImmediate
+                                 + FoodShareNeutral * (1.0 - normImmediate);
+                acquisitionShare = 1.0 - consumptionShare;
+            }
+            else if (normAcquirable >= 0.2)
+            {
+                // No immediate food but acquirable food exists — bias toward acquiring it.
+                consumptionShare = FoodConsumptionShareLow;
+                acquisitionShare = 1.0 - consumptionShare;
+            }
+            else
+            {
+                // No food anywhere — distribute equally (both are needed urgently).
+                consumptionShare = FoodShareNeutral;
+                acquisitionShare = FoodShareNeutral;
+            }
+        }
+        else
+        {
+            // No world state available (e.g., recipe scoring): neutral 50/50 split.
+            consumptionShare = FoodShareNeutral;
+            acquisitionShare = FoodShareNeutral;
+        }
+
         // ── Traits ────────────────────────────────────────────────────────────────
         // Derived via DerivePersonalityTraits (shared with ExplainCandidateScoring).
         var traits = DerivePersonalityTraits(actor);
@@ -488,7 +565,7 @@ public class IslandDomainPack : IDomainPack
 
         // ── Qualities ─────────────────────────────────────────────────────────────
         // Labels on actions describing what they provide:
-        // FoodConsumption, Rest, Comfort, Fun, Safety,
+        // FoodConsumption, FoodAcquisition, Rest, Comfort, Fun, Safety,
         // Preparation, Efficiency, Mastery, ResourcePreservation
 
         // Need pressures drive urgency directly (additive, independent of personality).
@@ -502,7 +579,8 @@ public class IslandDomainPack : IDomainPack
 
         var needAdd = new Dictionary<QualityType, double>
         {
-            [QualityType.FoodConsumption] = stagedHungerNeed,
+            [QualityType.FoodConsumption] = stagedHungerNeed * consumptionShare,
+            [QualityType.FoodAcquisition] = stagedHungerNeed * acquisitionShare,
             [QualityType.Rest]            = fatiguePressure * FatiguePressureRestScale   + injuryPressure * InjuryRestNeedScale,
             [QualityType.Comfort]         = miseryPressure  * MiseryPressureComfortScale + injuryPressure * InjuryComfortNeedScale,
             [QualityType.Safety]          = injuryPressure  * InjurySafetyNeedScale,
@@ -540,7 +618,8 @@ public class IslandDomainPack : IDomainPack
             [QualityType.Efficiency]      = 1.0,
             [QualityType.Comfort]         = 1.0,
             [QualityType.Safety]          = 1.0,
-            [QualityType.FoodConsumption] = 1.0
+            [QualityType.FoodConsumption] = 1.0,
+            [QualityType.FoodAcquisition] = 1.0
         };
 
         return new QualityModel(needAdd, personalityBase, moodMultiplier);
@@ -992,7 +1071,8 @@ public class IslandDomainPack : IDomainPack
         IReadOnlyList<ActionCandidate> candidates)
     {
         var actor = (IslandActorState)actorState;
-        var model = BuildQualityModel(actor, currentTick);
+        var islandWorld = worldState as IslandWorldState;
+        var model = BuildQualityModel(actor, currentTick, islandWorld);
 
         var hungerPressure  = 100.0 - actor.Satiety;
         var fatiguePressure = 100.0 - actor.Energy;

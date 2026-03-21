@@ -265,7 +265,10 @@ public class PersonalityPragmatismTests
     public void PlannerActor_ThinkAboutSupplies_RanksAboveComfortActionsEarly()
     {
         // Frank-archetype planner — should start productive actions before beach-vibing.
+        // Add palm fronds to the world so the palm_frond_blanket recipe is discoverable,
+        // giving think_about_supplies a meaningful opportunity value for this planner.
         var (domain, actorId, actor, world) = MakeSetup(@int: 16, wis: 16, energy: 90.0, morale: 70.0, satiety: 90.0);
+        world.SharedSupplyPile!.AddSupply(3.0, () => new JohnnyLike.Domain.Island.Supply.PalmFrondSupply());
         var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), new EmptyResourceAvailability())
             .OrderByDescending(c => c.Score).ToList();
 

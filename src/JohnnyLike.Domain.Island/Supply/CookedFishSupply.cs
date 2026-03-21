@@ -7,7 +7,7 @@ namespace JohnnyLike.Domain.Island.Supply;
 /// <summary>
 /// Fish that has been cooked over the campfire — more filling and better for morale.
 /// </summary>
-public class CookedFishSupply : SupplyItem, ISupplyActionCandidate
+public class CookedFishSupply : SupplyItem, ISupplyActionCandidate, IEdibleSupply
 {
     // ─── Calorie value ────────────────────────────────────────────────────────
     // Cooked fish is more bioavailable; a small fraction becomes immediate Energy.
@@ -60,4 +60,8 @@ public class CookedFishSupply : SupplyItem, ISupplyActionCandidate
             ActorRequirement: CandidateRequirements.AliveOnly
         ));
     }
+
+    // IEdibleSupply: cooked fish in the supply pile can be eaten immediately.
+    double IEdibleSupply.GetImmediateFoodUnits(IslandActorState actor, IslandWorldState world)
+        => Quantity;
 }

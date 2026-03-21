@@ -130,10 +130,19 @@ public class FuzzRunner
                     // Note: We can't access director directly, so we'll do limited checks
                     // In a real implementation, we'd expose GetDirector() or GetReservations() on Engine
                     
-                    // Check for starvation
+                    // Check for starvation.
+                    // An actor is only considered starving when it is IDLE (no running action) and
+                    // has not completed anything (or not completed recently).  Actors busy with a long
+                    // action — e.g. a 45-minute fishing session or 8-hour sleep — are making progress
+                    // and must not be flagged as starved.
                     foreach (var actorId in actorIds)
                     {
                         var actorKey = actorId.Value;
+
+                        // Skip actors that are currently executing an action — they are not starving.
+                        if (executor.HasRunningAction(actorId))
+                            continue;
+
                         if (!metricsCollector.Metrics.ActorLastCompletionTime.ContainsKey(actorKey) && 
                             currentTime > config.StarvationThresholdSeconds)
                         {

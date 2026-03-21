@@ -7,10 +7,12 @@ using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island.Items;
 
-public class FishingPoleItem : ToolItem
+public class FishingPoleItem : ToolItem, IFoodSource
 {
     private static readonly ResourceId FishingPoleResource = new("island:resource:fishing_pole");
     public const double BreakageQualityThreshold = 20.0;
+    /// <summary>Minimum pole quality required to offer the go_fishing action candidate.</summary>
+    public const double MinFishingQualityThreshold = 10.0;
     
     public FishingPoleItem(string id, ActorId? ownerActorId = null) 
         : base(id, "fishing_pole", OwnershipType.Exclusive, baseDecayPerSecond: 0.005, maxOwners: 1)
@@ -55,7 +57,7 @@ public class FishingPoleItem : ToolItem
             return;
 
         // GoFishing action - only if pole is not broken and ocean has fish
-        if (!IsBroken && Quality > 10.0)
+        if (!IsBroken && Quality > MinFishingQualityThreshold)
         {
             var ocean = ctx.World.GetItem<OceanItem>("ocean") as ISupplyBounty;
             var fishAvailable = ocean?.GetQuantity<FishSupply>() ?? 0.0;
@@ -152,7 +154,7 @@ public class FishingPoleItem : ToolItem
                     }),
                     Qualities: new Dictionary<QualityType, double>
                     {
-                        [QualityType.FoodConsumption] = 1.0,
+                        [QualityType.FoodAcquisition] = 1.0,
                         [QualityType.Efficiency]      = 0.5,
                         [QualityType.Fun]             = 0.3
                     },
@@ -280,5 +282,17 @@ public class FishingPoleItem : ToolItem
     {
         base.DeserializeFromDict(data);
         // Base ToolItem already deserializes OwnerActorId, IsBroken, etc.
+    }
+
+    // IFoodSource: a working fishing pole held by the requesting actor can yield fish
+    // from the ocean soon via go_fishing.  Returns 0 when the actor doesn't own the pole,
+    // the pole is broken, or quality is too low to offer the action.
+    double IFoodSource.GetAcquirableFoodUnits(IslandActorState actor, IslandWorldState world)
+    {
+        if (!CanActorUseTool(actor.Id) || IsBroken || Quality <= MinFishingQualityThreshold)
+            return 0.0;
+
+        var ocean = world.GetItem<OceanItem>("ocean") as ISupplyBounty;
+        return ocean?.GetQuantity<FishSupply>() ?? 0.0;
     }
 }

@@ -60,8 +60,8 @@ public record FuzzConfig(
 
     public static FuzzConfig Smoke => new(
         Seed: 42,
-        SimulatedDurationSeconds: 60,
-        DtSeconds: 0.1,
+        SimulatedDurationSeconds: 7200,    // 2 story-hours; island actions take 8-80 min so actors complete several cycles
+        DtSeconds: 10.0,                   // 10-second steps keep iteration count low while preserving tick accuracy
         NumActors: 2,
         EventRatePerMinute: 8.0,
         BurstProbability: 0.05,
@@ -76,14 +76,14 @@ public record FuzzConfig(
         ResourceScarcityProfile: ResourceScarcityProfile.Normal,
         MaxActorQueueLength: 8,
         MaxSceneLifetimeSeconds: 45,
-        StarvationThresholdSeconds: 90,
+        StarvationThresholdSeconds: 120,   // only fires for idle actors (see FuzzRunner); 120 s idle is a real problem
         MaxAllowedReservationConflicts: 0
     );
 
     public static FuzzConfig Extended => new(
         Seed: 42,
-        SimulatedDurationSeconds: 180,
-        DtSeconds: 0.1,
+        SimulatedDurationSeconds: 21600,   // 6 story-hours
+        DtSeconds: 30.0,                   // 30-second steps
         NumActors: 6,
         EventRatePerMinute: 12.0,
         BurstProbability: 0.12,
@@ -98,14 +98,14 @@ public record FuzzConfig(
         ResourceScarcityProfile: ResourceScarcityProfile.Scarce,
         MaxActorQueueLength: 12,
         MaxSceneLifetimeSeconds: 70,
-        StarvationThresholdSeconds: 100,
+        StarvationThresholdSeconds: 120,
         MaxAllowedReservationConflicts: 0
     );
 
     public static FuzzConfig Nightly => new(
         Seed: 42,
-        SimulatedDurationSeconds: 240,
-        DtSeconds: 0.1,
+        SimulatedDurationSeconds: 43200,   // 12 story-hours; enough for actors to complete many action cycles
+        DtSeconds: 60.0,                   // 60-second steps: 720 iterations/run × 1 000 runs ≈ fast nightly run
         NumActors: 8,
         EventRatePerMinute: 15.0,
         BurstProbability: 0.15,
@@ -120,7 +120,7 @@ public record FuzzConfig(
         ResourceScarcityProfile: ResourceScarcityProfile.VeryScarce,
         MaxActorQueueLength: 15,
         MaxSceneLifetimeSeconds: 80,
-        StarvationThresholdSeconds: 120,
+        StarvationThresholdSeconds: 120,   // idle-only starvation check; 120 s without an action is a real deadlock
         MaxAllowedReservationConflicts: 0
     );
 
