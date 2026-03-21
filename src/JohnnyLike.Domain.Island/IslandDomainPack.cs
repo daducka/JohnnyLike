@@ -15,8 +15,11 @@ public class IslandDomainPack : IDomainPack
     private static readonly IReadOnlyDictionary<ActorId, ActorState> EmptyActors =
         new Dictionary<ActorId, ActorState>();
 
-    public IslandDomainPack()
+    private readonly DecisionTuningProfile _profile;
+
+    public IslandDomainPack(DecisionTuningProfile? profile = null)
     {
+        _profile = profile ?? DecisionTuningProfile.Default;
     }
 
     public WorldState CreateInitialWorldState()
@@ -62,7 +65,7 @@ public class IslandDomainPack : IDomainPack
         else
         {
             var traits = DerivePersonalityTraits(state);
-            state.DecisionPragmatism = DeriveDecisionPragmatism(traits).FinalDecisionPragmatism;
+            state.DecisionPragmatism = DeriveDecisionPragmatism(traits, _profile.Personality).FinalDecisionPragmatism;
         }
 
         // Every actor always carries a MetabolicBuff that drives Satiety/Energy changes
@@ -126,7 +129,7 @@ public class IslandDomainPack : IDomainPack
 
         // Build quality model before context so recipe opportunity scoring in think_about_supplies
         // can use current effective quality weights to favour state-relevant discoveries.
-        var model = BuildQualityModel(islandActorState, currentTick, islandWorld);
+        var model = BuildQualityModel(islandActorState, currentTick, islandWorld, _profile);
 
         // Create context for providers
         var ctx = new IslandContext(
@@ -180,134 +183,6 @@ public class IslandDomainPack : IDomainPack
 
         return candidates;
     }
-
-    // ── Health-pressure tuning constants ──────────────────────────────────────────
-    // These class-level constants control how strongly low health (injuryPressure)
-    // shifts decision weights. They are shared between BuildQualityModel and
-    // ExplainCandidateScoring so both methods stay in sync.
-
-    /// <summary>Safety need urgency per point of injuryPressure. Max +2.5 at 0 HP.</summary>
-    private const double InjurySafetyNeedScale   = 0.025;
-    /// <summary>Rest need urgency per point of injuryPressure (stacks with fatigue). Max +1.0 at 0 HP.</summary>
-    private const double InjuryRestNeedScale     = 0.010;
-    /// <summary>Comfort need urgency per point of injuryPressure (stacks with misery). Max +0.5 at 0 HP.</summary>
-    private const double InjuryComfortNeedScale  = 0.005;
-
-    /// <summary>Minimum multiplier for Fun personality at 0 HP (suppressed to 15%).</summary>
-    private const double InjuryFunSuppressionFloor         = 0.15;
-    /// <summary>Minimum multiplier for Mastery personality at 0 HP (suppressed to 30%).</summary>
-    private const double InjuryMasterySuppressionFloor     = 0.30;
-    /// <summary>Minimum multiplier for Preparation personality at 0 HP (suppressed to 40%).</summary>
-    private const double InjuryPreparationSuppressionFloor = 0.40;
-
-    // ── Need pressure scale constants ─────────────────────────────────────────────
-    // Control how strongly each stat deficit translates into a need-quality weight.
-    // All pressures are in [0, 100], so these scales keep derived weights comparable.
-
-    /// <summary>Scales fatigue pressure (100 − Energy) into Rest need urgency. Max +1.5 at Energy=0.</summary>
-    private const double FatiguePressureRestScale  = 0.015;
-    /// <summary>Scales misery pressure (100 − Morale) into Comfort need urgency. Max +1.0 at Morale=0.</summary>
-    private const double MiseryPressureComfortScale = 0.01;
-
-    // ── Personality base weight scales ─────────────────────────────────────────────
-    // Control how strongly each trait pair contributes to its corresponding quality.
-    // Traits are normalised [0,1], so these scales set the practical weight ceiling.
-
-    /// <summary>Planner + Industrious traits → Preparation personality weight.</summary>
-    private const double PersonalityPreparationScale = 0.7;
-    /// <summary>Planner + Craftsman traits → Efficiency personality weight.</summary>
-    private const double PersonalityEfficiencyScale  = 0.6;
-    /// <summary>Craftsman + Industrious traits → Mastery personality weight.</summary>
-    private const double PersonalityMasteryScale     = 0.6;
-    /// <summary>Hedonist trait → Comfort personality weight.</summary>
-    private const double PersonalityComfortScale     = 0.4;
-    /// <summary>Survivor trait → Safety personality weight.</summary>
-    private const double PersonalitySafetyScale      = 0.3;
-    /// <summary>Instinctive + Hedonist traits → FoodConsumption personality weight.</summary>
-    private const double PersonalityFoodScale         = 0.2;
-    /// <summary>Planner + Survivor traits → FoodAcquisition personality weight.</summary>
-    private const double PersonalityFoodAcquisitionScale = 0.15;
-
-    // ── DecisionPragmatism derivation constants ─────────────────────────────────────
-    // Used in DeriveDecisionPragmatism to compute a personality-driven pragmatism baseline.
-    // Final value is clamped to [PragmatismMin, PragmatismMax] so no actor goes fully
-    // random or fully deterministic by personality alone.
-
-    /// <summary>Base pragmatism before personality adjustments.</summary>
-    private const double PragmatismBase             = 0.80;
-    /// <summary>Planner trait contribution toward higher pragmatism (exploit).</summary>
-    private const double PragmatismPlannerScale     = 0.10;
-    /// <summary>Survivor trait contribution toward higher pragmatism (exploit).</summary>
-    private const double PragmatismSurvivorScale    = 0.05;
-    /// <summary>Hedonist trait contribution toward lower pragmatism (explore).</summary>
-    private const double PragmatismHedonistScale    = 0.06;
-    /// <summary>Instinctive trait contribution toward lower pragmatism (explore).</summary>
-    private const double PragmatismInstinctiveScale = 0.04;
-    /// <summary>Minimum derived DecisionPragmatism — keeps actors coherent even at max spontaneity.</summary>
-    private const double PragmatismMin              = 0.65;
-    /// <summary>Maximum derived DecisionPragmatism — keeps explore branch reachable.</summary>
-    private const double PragmatismMax              = 0.98;
-
-    // ── Preparation time-pressure constants ─────────────────────────────────────────
-    // A bounded ramp that makes planning more salient the longer the actor survives.
-    // Plateaus at PrepTimePressureCap so it never overpowers other signals.
-
-    /// <summary>Maximum bounded preparation urgency added by time-on-island pressure.</summary>
-    private const double PrepTimePressureCap         = 0.20;
-    /// <summary>Preparation urgency gained per in-sim day stranded.</summary>
-    private const double PrepTimePressureRatePerDay  = 0.05;
-
-    // ── Food availability constants ─────────────────────────────────────────────────
-    // Used to split hunger pressure between FoodConsumption and FoodAcquisition based
-    // on how much edible food is immediately available vs. how much can be acquired soon.
-
-    /// <summary>Number of food units that counts as "plenty" for normalization purposes.</summary>
-    private const double FoodAvailabilityNormCap = 5.0;
-    /// <summary>FoodConsumption share of hunger when immediate food is plentiful.</summary>
-    private const double FoodConsumptionShareHigh = 0.80;
-    /// <summary>FoodConsumption share of hunger when no immediate food but acquirable food exists.</summary>
-    private const double FoodConsumptionShareLow  = 0.20;
-    /// <summary>Neutral 50/50 share used when neither immediate nor acquirable food is available, or as a baseline for blending.</summary>
-    private const double FoodShareNeutral = 0.50;
-
-    // ── Hunger ramp thresholds and slopes ─────────────────────────────────────────
-    // The staged hunger ramp builds urgency only below certain Satiety thresholds
-    // so actors do not seek food when already satisfied.
-    // Bands: >= SatietyRampMild (none), Mild, Moderate, Strong.
-
-    /// <summary>Satiety at or above which hunger urgency is zero; also the top of the mild urgency band.</summary>
-    private const double SatietyRampMild     = 70.0;
-    /// <summary>Satiety below which moderate urgency begins (ramp from HungerMildMax → HungerMildMax+HungerModerateRange).</summary>
-    private const double SatietyRampModerate = 50.0;
-    /// <summary>Satiety below which strong urgency begins (ramp from HungerMildMax+HungerModerateRange upwards).</summary>
-    private const double SatietyRampStrong   = 30.0;
-    /// <summary>Maximum hunger urgency in the mild band (Satiety 50–70).</summary>
-    private const double HungerMildMax       = 0.3;
-    /// <summary>Additional hunger urgency added across the moderate band (Satiety 30–50).</summary>
-    private const double HungerModerateRange = 1.2;
-    /// <summary>Additional hunger urgency added across the strong band (Satiety 0–30).</summary>
-    private const double HungerStrongRange   = 0.5;
-
-    // ── Mood multiplier suppression constants ─────────────────────────────────────
-    // These suppress longer-horizon personality tendencies when the actor's state is critical,
-    // so survival instinct takes over.
-
-    /// <summary>Satiety threshold below which the actor is considered starving (suppresses Preparation to PrepStarvationFloor).</summary>
-    private const double StarvatingSatietyThreshold   = 20.0;
-    /// <summary>Preparation multiplier floor when actor is starving.</summary>
-    private const double PrepStarvationFloor          = 0.3;
-    /// <summary>Energy threshold below which the actor is considered exhausted (suppresses Mastery to MasteryExhaustionFloor).</summary>
-    private const double ExhaustedEnergyThreshold     = 20.0;
-    /// <summary>Mastery multiplier floor when actor is exhausted.</summary>
-    private const double MasteryExhaustionFloor       = 0.4;
-    /// <summary>Base Fun multiplier scale — keeps fun weight below 0.6 even at maximum misery.</summary>
-    private const double FunBaseScale                 = 0.6;
-    /// <summary>Critical-survival Fun suppression: reduces Fun weight to 35% when starving or exhausted.</summary>
-    private const double FunCriticalSurvivalScale     = 0.35;
-    /// <summary>Satiety threshold below which critical-survival Fun suppression activates.</summary>
-    private const double FunCriticalSatietyThreshold  = 25.0;
-    /// <summary>Energy threshold below which critical-survival Fun suppression activates.</summary>
-    private const double FunCriticalEnergyThreshold   = 20.0;
 
     /// <summary>
     /// Encapsulates the three scoring influences — Needs, Personality, Mood — as separate
@@ -392,18 +267,18 @@ public class IslandDomainPack : IDomainPack
     /// Derives a personality-based DecisionPragmatism value from pre-computed traits.
     /// Planners and survivors tend toward exploitation (higher pragmatism);
     /// hedonists and instinctive actors tend toward exploration (lower pragmatism).
-    /// Result is clamped to [<see cref="PragmatismMin"/>, <see cref="PragmatismMax"/>].
+    /// Result is clamped to [<see cref="PersonalityTuning.PragmatismMin"/>, <see cref="PersonalityTuning.PragmatismMax"/>].
     /// </summary>
-    private static PragmatismBreakdown DeriveDecisionPragmatism(PersonalityTraits t)
+    private static PragmatismBreakdown DeriveDecisionPragmatism(PersonalityTraits t, PersonalityTuning p)
     {
-        var plannerContrib     =  t.Planner     * PragmatismPlannerScale;
-        var survivorContrib    =  t.Survivor    * PragmatismSurvivorScale;
-        var hedonistContrib    =  t.Hedonist    * PragmatismHedonistScale;
-        var instinctiveContrib =  t.Instinctive * PragmatismInstinctiveScale;
-        var raw   = PragmatismBase + plannerContrib + survivorContrib - hedonistContrib - instinctiveContrib;
-        var final = Math.Clamp(raw, PragmatismMin, PragmatismMax);
+        var plannerContrib     =  t.Planner     * p.PragmatismPlannerScale;
+        var survivorContrib    =  t.Survivor    * p.PragmatismSurvivorScale;
+        var hedonistContrib    =  t.Hedonist    * p.PragmatismHedonistScale;
+        var instinctiveContrib =  t.Instinctive * p.PragmatismInstinctiveScale;
+        var raw   = p.PragmatismBase + plannerContrib + survivorContrib - hedonistContrib - instinctiveContrib;
+        var final = Math.Clamp(raw, p.PragmatismMin, p.PragmatismMax);
         return new PragmatismBreakdown(
-            PragmatismBase,
+            p.PragmatismBase,
             plannerContrib,
             survivorContrib,
             hedonistContrib,
@@ -418,38 +293,38 @@ public class IslandDomainPack : IDomainPack
     /// <see cref="BuildQualityModel"/> and <see cref="ExplainCandidateScoring"/>.
     /// </summary>
     private static Dictionary<QualityType, QualityPersonalityEntry> BuildQualityPersonalityBreakdown(
-        PersonalityTraits t)
+        PersonalityTraits t, PersonalityTuning p)
     {
         return new Dictionary<QualityType, QualityPersonalityEntry>
         {
             [QualityType.Preparation]     = new(
-                Formula:       $"(planner + industrious) * {PersonalityPreparationScale}",
+                Formula:       $"(planner + industrious) * {p.PreparationScale}",
                 Contributors:  new() { ["planner"] = t.Planner, ["industrious"] = t.Industrious },
-                PersonalityBase: (t.Planner + t.Industrious) * PersonalityPreparationScale),
+                PersonalityBase: (t.Planner + t.Industrious) * p.PreparationScale),
             [QualityType.Efficiency]      = new(
-                Formula:       $"(planner + craftsman) * {PersonalityEfficiencyScale}",
+                Formula:       $"(planner + craftsman) * {p.EfficiencyScale}",
                 Contributors:  new() { ["planner"] = t.Planner, ["craftsman"] = t.Craftsman },
-                PersonalityBase: (t.Planner + t.Craftsman) * PersonalityEfficiencyScale),
+                PersonalityBase: (t.Planner + t.Craftsman) * p.EfficiencyScale),
             [QualityType.Mastery]         = new(
-                Formula:       $"(craftsman + industrious) * {PersonalityMasteryScale}",
+                Formula:       $"(craftsman + industrious) * {p.MasteryScale}",
                 Contributors:  new() { ["craftsman"] = t.Craftsman, ["industrious"] = t.Industrious },
-                PersonalityBase: (t.Craftsman + t.Industrious) * PersonalityMasteryScale),
+                PersonalityBase: (t.Craftsman + t.Industrious) * p.MasteryScale),
             [QualityType.Comfort]         = new(
-                Formula:       $"hedonist * {PersonalityComfortScale}",
+                Formula:       $"hedonist * {p.ComfortScale}",
                 Contributors:  new() { ["hedonist"] = t.Hedonist },
-                PersonalityBase: t.Hedonist * PersonalityComfortScale),
+                PersonalityBase: t.Hedonist * p.ComfortScale),
             [QualityType.Safety]          = new(
-                Formula:       $"survivor * {PersonalitySafetyScale}",
+                Formula:       $"survivor * {p.SafetyScale}",
                 Contributors:  new() { ["survivor"] = t.Survivor },
-                PersonalityBase: t.Survivor * PersonalitySafetyScale),
+                PersonalityBase: t.Survivor * p.SafetyScale),
             [QualityType.FoodConsumption] = new(
-                Formula:       $"(instinctive + hedonist) * {PersonalityFoodScale}",
+                Formula:       $"(instinctive + hedonist) * {p.FoodConsumptionScale}",
                 Contributors:  new() { ["instinctive"] = t.Instinctive, ["hedonist"] = t.Hedonist },
-                PersonalityBase: (t.Instinctive + t.Hedonist) * PersonalityFoodScale),
+                PersonalityBase: (t.Instinctive + t.Hedonist) * p.FoodConsumptionScale),
             [QualityType.FoodAcquisition] = new(
-                Formula:       $"(planner + survivor) * {PersonalityFoodAcquisitionScale}",
+                Formula:       $"(planner + survivor) * {p.FoodAcquisitionScale}",
                 Contributors:  new() { ["planner"] = t.Planner, ["survivor"] = t.Survivor },
-                PersonalityBase: (t.Planner + t.Survivor) * PersonalityFoodAcquisitionScale),
+                PersonalityBase: (t.Planner + t.Survivor) * p.FoodAcquisitionScale),
             [QualityType.Fun]             = new(
                 Formula:       "1.0",
                 Contributors:  new(),
@@ -460,12 +335,13 @@ public class IslandDomainPack : IDomainPack
     internal static double ScoreByQualities(
         IslandActorState actor,
         double intrinsicScore,
-        IReadOnlyDictionary<QualityType, double>? qualities)
+        IReadOnlyDictionary<QualityType, double>? qualities,
+        DecisionTuningProfile? profile = null)
     {
         if (qualities == null || qualities.Count == 0)
             return intrinsicScore;
 
-        var model = BuildQualityModel(actor);
+        var model = BuildQualityModel(actor, profile: profile ?? DecisionTuningProfile.Default);
         var qualitySum = 0.0;
         foreach (var (quality, value) in qualities)
             qualitySum += model.EffectiveWeight(quality) * value;
@@ -473,8 +349,16 @@ public class IslandDomainPack : IDomainPack
         return intrinsicScore + qualitySum;
     }
 
-    private static QualityModel BuildQualityModel(IslandActorState actor, long currentTick = 0L, IslandWorldState? world = null)
+    private static QualityModel BuildQualityModel(
+        IslandActorState actor,
+        long currentTick = 0L,
+        IslandWorldState? world = null,
+        DecisionTuningProfile? profile = null)
     {
+        var need = (profile ?? DecisionTuningProfile.Default).Need;
+        var mood = (profile ?? DecisionTuningProfile.Default).Mood;
+        var personality = (profile ?? DecisionTuningProfile.Default).Personality;
+
         // ── Actor Stats ───────────────────────────────────────────────────────────
         // Dynamic physiological / psychological state.
         // Each deficit becomes a "pressure" that adds weight to a need quality.
@@ -486,19 +370,19 @@ public class IslandDomainPack : IDomainPack
         // ── Staged hunger ramp ────────────────────────────────────────────────────
         // Hunger urgency only builds meaningfully below certain satiety thresholds
         // so actors don't seek food when already satisfied.
-        //   Satiety >= SatietyRampMild     : ~0    (no urgency)
-        //   Satiety SatietyRampModerate–SatietyRampMild :  0 → HungerMildMax  (very mild)
-        //   Satiety SatietyRampStrong–SatietyRampModerate:  HungerMildMax → HungerMildMax+HungerModerateRange (moderate)
-        //   Satiety  0–SatietyRampStrong   :  HungerMildMax+HungerModerateRange → ... (strong)
+        //   Satiety >= need.SatietyRampMild     : ~0    (no urgency)
+        //   Satiety need.SatietyRampModerate–need.SatietyRampMild :  0 → need.HungerMildMax  (very mild)
+        //   Satiety need.SatietyRampStrong–need.SatietyRampModerate:  need.HungerMildMax → need.HungerMildMax+need.HungerModerateRange (moderate)
+        //   Satiety  0–need.SatietyRampStrong   :  need.HungerMildMax+need.HungerModerateRange → ... (strong)
         double stagedHungerNeed;
-        if (actor.Satiety >= SatietyRampMild)
+        if (actor.Satiety >= need.SatietyRampMild)
             stagedHungerNeed = 0.0;
-        else if (actor.Satiety >= SatietyRampModerate)
-            stagedHungerNeed = (SatietyRampMild - actor.Satiety) / (SatietyRampMild - SatietyRampModerate) * HungerMildMax;
-        else if (actor.Satiety >= SatietyRampStrong)
-            stagedHungerNeed = HungerMildMax + (SatietyRampModerate - actor.Satiety) / (SatietyRampModerate - SatietyRampStrong) * HungerModerateRange;
+        else if (actor.Satiety >= need.SatietyRampModerate)
+            stagedHungerNeed = (need.SatietyRampMild - actor.Satiety) / (need.SatietyRampMild - need.SatietyRampModerate) * need.HungerMildMax;
+        else if (actor.Satiety >= need.SatietyRampStrong)
+            stagedHungerNeed = need.HungerMildMax + (need.SatietyRampModerate - actor.Satiety) / (need.SatietyRampModerate - need.SatietyRampStrong) * need.HungerModerateRange;
         else
-            stagedHungerNeed = (HungerMildMax + HungerModerateRange) + (SatietyRampStrong - actor.Satiety) / SatietyRampStrong * HungerStrongRange;
+            stagedHungerNeed = (need.HungerMildMax + need.HungerModerateRange) + (need.SatietyRampStrong - actor.Satiety) / need.SatietyRampStrong * need.HungerStrongRange;
 
         // ── Food availability split ───────────────────────────────────────────────
         // Split hunger pressure between FoodConsumption and FoodAcquisition based on
@@ -524,34 +408,34 @@ public class IslandDomainPack : IDomainPack
                 .OfType<IFoodSource>()
                 .Sum(s => s.GetAcquirableFoodUnits(actor, world));
 
-            var normImmediate  = Math.Min(immediateFood  / FoodAvailabilityNormCap, 1.0);
-            var normAcquirable = Math.Min(acquirableFood / FoodAvailabilityNormCap, 1.0);
+            var normImmediate  = Math.Min(immediateFood  / need.FoodAvailabilityNormCap, 1.0);
+            var normAcquirable = Math.Min(acquirableFood / need.FoodAvailabilityNormCap, 1.0);
 
-            if (normImmediate >= 0.2)
+            if (normImmediate >= need.ImmediateFoodSignificanceThreshold)
             {
                 // Edible food is available — bias strongly toward consuming it.
-                consumptionShare = FoodConsumptionShareHigh * normImmediate
-                                 + FoodShareNeutral * (1.0 - normImmediate);
+                consumptionShare = need.FoodConsumptionShareHigh * normImmediate
+                                 + need.FoodShareNeutral * (1.0 - normImmediate);
                 acquisitionShare = 1.0 - consumptionShare;
             }
-            else if (normAcquirable >= 0.2)
+            else if (normAcquirable >= need.AcquirableFoodSignificanceThreshold)
             {
                 // No immediate food but acquirable food exists — bias toward acquiring it.
-                consumptionShare = FoodConsumptionShareLow;
+                consumptionShare = need.FoodConsumptionShareLow;
                 acquisitionShare = 1.0 - consumptionShare;
             }
             else
             {
                 // No food anywhere — distribute equally (both are needed urgently).
-                consumptionShare = FoodShareNeutral;
-                acquisitionShare = FoodShareNeutral;
+                consumptionShare = need.FoodShareNeutral;
+                acquisitionShare = need.FoodShareNeutral;
             }
         }
         else
         {
             // No world state available (e.g., recipe scoring): neutral 50/50 split.
-            consumptionShare = FoodShareNeutral;
-            acquisitionShare = FoodShareNeutral;
+            consumptionShare = need.FoodShareNeutral;
+            acquisitionShare = need.FoodShareNeutral;
         }
 
         // ── Traits ────────────────────────────────────────────────────────────────
@@ -559,8 +443,6 @@ public class IslandDomainPack : IDomainPack
         var traits = DerivePersonalityTraits(actor);
 
         // Normalised injury factor [0,1]: 0 = healthy, 1 = 0 HP.
-        // Health-pressure scale constants are defined at class level (InjurySafetyNeedScale etc.)
-        // so they are shared with ExplainCandidateScoring.
         var injuryFactor = injuryPressure / 100.0;
 
         // ── Qualities ─────────────────────────────────────────────────────────────
@@ -573,23 +455,23 @@ public class IslandDomainPack : IDomainPack
         // Health injury adds to Safety, Rest, and Comfort needs independently of fatigue/misery.
 
         // Bounded preparation time-pressure: ramps gently over the first few in-sim days
-        // then plateaus at PrepTimePressureCap so it never overpowers other signals.
+        // then plateaus at need.PrepTimePressureCap so it never overpowers other signals.
         var daysOnIsland      = currentTick / (EngineConstants.TickHz * 86400.0);
-        var prepTimePressure  = Math.Min(PrepTimePressureCap, daysOnIsland * PrepTimePressureRatePerDay);
+        var prepTimePressure  = Math.Min(need.PrepTimePressureCap, daysOnIsland * need.PrepTimePressureRatePerDay);
 
         var needAdd = new Dictionary<QualityType, double>
         {
             [QualityType.FoodConsumption] = stagedHungerNeed * consumptionShare,
             [QualityType.FoodAcquisition] = stagedHungerNeed * acquisitionShare,
-            [QualityType.Rest]            = fatiguePressure * FatiguePressureRestScale   + injuryPressure * InjuryRestNeedScale,
-            [QualityType.Comfort]         = miseryPressure  * MiseryPressureComfortScale + injuryPressure * InjuryComfortNeedScale,
-            [QualityType.Safety]          = injuryPressure  * InjurySafetyNeedScale,
+            [QualityType.Rest]            = fatiguePressure * need.FatiguePressureRestScale   + injuryPressure * need.InjuryRestNeedScale,
+            [QualityType.Comfort]         = miseryPressure  * need.MiseryPressureComfortScale + injuryPressure * need.InjuryComfortNeedScale,
+            [QualityType.Safety]          = injuryPressure  * need.InjurySafetyNeedScale,
             [QualityType.Preparation]     = prepTimePressure
         };
 
         // Personality weights come from traits (stable, independent of current state).
         // Derived via BuildQualityPersonalityBreakdown (shared with ExplainCandidateScoring).
-        var personalityBreakdown = BuildQualityPersonalityBreakdown(traits);
+        var personalityBreakdown = BuildQualityPersonalityBreakdown(traits, personality);
         var personalityBase = personalityBreakdown.ToDictionary(
             kvp => kvp.Key,
             kvp => kvp.Value.PersonalityBase);
@@ -601,20 +483,20 @@ public class IslandDomainPack : IDomainPack
         var moodMultiplier = new Dictionary<QualityType, double>
         {
             [QualityType.Preparation]     = Math.Min(
-                                                actor.Satiety < StarvatingSatietyThreshold ? PrepStarvationFloor : 1.0,
-                                                Math.Max(InjuryPreparationSuppressionFloor,
-                                                         1.0 - injuryFactor * (1.0 - InjuryPreparationSuppressionFloor))
+                                                actor.Satiety < mood.StarvatingSatietyThreshold ? mood.PrepStarvationFloor : 1.0,
+                                                Math.Max(mood.InjuryPreparationSuppressionFloor,
+                                                         1.0 - injuryFactor * (1.0 - mood.InjuryPreparationSuppressionFloor))
                                             ),
             [QualityType.Mastery]         = Math.Min(
-                                                actor.Energy < ExhaustedEnergyThreshold ? MasteryExhaustionFloor : 1.0,
-                                                Math.Max(InjuryMasterySuppressionFloor,
-                                                         1.0 - injuryFactor * (1.0 - InjuryMasterySuppressionFloor))
+                                                actor.Energy < mood.ExhaustedEnergyThreshold ? mood.MasteryExhaustionFloor : 1.0,
+                                                Math.Max(mood.InjuryMasterySuppressionFloor,
+                                                         1.0 - injuryFactor * (1.0 - mood.InjuryMasterySuppressionFloor))
                                             ),
-            [QualityType.Fun]             = (1.0 - (actor.Morale / 100.0)) * FunBaseScale *
-                                                (actor.Satiety < FunCriticalSatietyThreshold || actor.Energy < FunCriticalEnergyThreshold
-                                                    ? FunCriticalSurvivalScale : 1.0) *
-                                                Math.Max(InjuryFunSuppressionFloor,
-                                                         1.0 - injuryFactor * (1.0 - InjuryFunSuppressionFloor)),
+            [QualityType.Fun]             = (1.0 - (actor.Morale / 100.0)) * mood.FunBaseScale *
+                                                (actor.Satiety < mood.FunCriticalSatietyThreshold || actor.Energy < mood.FunCriticalEnergyThreshold
+                                                    ? mood.FunCriticalSurvivalScale : 1.0) *
+                                                Math.Max(mood.InjuryFunSuppressionFloor,
+                                                         1.0 - injuryFactor * (1.0 - mood.InjuryFunSuppressionFloor)),
             [QualityType.Efficiency]      = 1.0,
             [QualityType.Comfort]         = 1.0,
             [QualityType.Safety]          = 1.0,
@@ -1072,7 +954,10 @@ public class IslandDomainPack : IDomainPack
     {
         var actor = (IslandActorState)actorState;
         var islandWorld = worldState as IslandWorldState;
-        var model = BuildQualityModel(actor, currentTick, islandWorld);
+        var model = BuildQualityModel(actor, currentTick, islandWorld, _profile);
+
+        var need = _profile.Need;
+        var mood = _profile.Mood;
 
         var hungerPressure  = 100.0 - actor.Satiety;
         var fatiguePressure = 100.0 - actor.Energy;
@@ -1100,34 +985,34 @@ public class IslandDomainPack : IDomainPack
 
         // Preparation time-pressure breakdown — matches the bounded ramp in BuildQualityModel.
         var daysOnIsland     = currentTick / (EngineConstants.TickHz * 86400.0);
-        var prepTimePressure = Math.Min(PrepTimePressureCap, daysOnIsland * PrepTimePressureRatePerDay);
+        var prepTimePressure = Math.Min(need.PrepTimePressureCap, daysOnIsland * need.PrepTimePressureRatePerDay);
         var prepTimePressureBreakdown = new Dictionary<string, object>
         {
             ["daysOnIsland"]   = Math.Round(daysOnIsland,    4),
-            ["rawRamp"]        = Math.Round(daysOnIsland * PrepTimePressureRatePerDay, 4),
-            ["cap"]            = PrepTimePressureCap,
+            ["rawRamp"]        = Math.Round(daysOnIsland * need.PrepTimePressureRatePerDay, 4),
+            ["cap"]            = need.PrepTimePressureCap,
             ["finalPressure"]  = Math.Round(prepTimePressure, 4)
         };
 
-        // Health-pressure contribution breakdown — uses same class-level constants as BuildQualityModel.
+        // Health-pressure contribution breakdown — uses same profile values as BuildQualityModel.
         var injuryFactor = injuryPressure / 100.0;
         var healthInfluence = new Dictionary<string, object>
         {
             ["injuryFactor"]                 = Math.Round(injuryFactor, 4),
-            ["safety_needAdd_contribution"]  = Math.Round(injuryPressure * InjurySafetyNeedScale,  4),
-            ["rest_needAdd_contribution"]    = Math.Round(injuryPressure * InjuryRestNeedScale,    4),
-            ["comfort_needAdd_contribution"] = Math.Round(injuryPressure * InjuryComfortNeedScale, 4),
-            ["fun_suppressor"]               = Math.Round(Math.Max(InjuryFunSuppressionFloor,
-                                                 1.0 - injuryFactor * (1.0 - InjuryFunSuppressionFloor)), 4),
-            ["mastery_suppressor"]           = Math.Round(Math.Max(InjuryMasterySuppressionFloor,
-                                                 1.0 - injuryFactor * (1.0 - InjuryMasterySuppressionFloor)), 4),
-            ["preparation_suppressor"]       = Math.Round(Math.Max(InjuryPreparationSuppressionFloor,
-                                                 1.0 - injuryFactor * (1.0 - InjuryPreparationSuppressionFloor)), 4)
+            ["safety_needAdd_contribution"]  = Math.Round(injuryPressure * need.InjurySafetyNeedScale,  4),
+            ["rest_needAdd_contribution"]    = Math.Round(injuryPressure * need.InjuryRestNeedScale,    4),
+            ["comfort_needAdd_contribution"] = Math.Round(injuryPressure * need.InjuryComfortNeedScale, 4),
+            ["fun_suppressor"]               = Math.Round(Math.Max(mood.InjuryFunSuppressionFloor,
+                                                 1.0 - injuryFactor * (1.0 - mood.InjuryFunSuppressionFloor)), 4),
+            ["mastery_suppressor"]           = Math.Round(Math.Max(mood.InjuryMasterySuppressionFloor,
+                                                 1.0 - injuryFactor * (1.0 - mood.InjuryMasterySuppressionFloor)), 4),
+            ["preparation_suppressor"]       = Math.Round(Math.Max(mood.InjuryPreparationSuppressionFloor,
+                                                 1.0 - injuryFactor * (1.0 - mood.InjuryPreparationSuppressionFloor)), 4)
         };
 
         // Personality influence breakdown — uses same helpers as BuildQualityModel to avoid formula drift.
         var traits = DerivePersonalityTraits(actor);
-        var qualityPersonalityBreakdown = BuildQualityPersonalityBreakdown(traits);
+        var qualityPersonalityBreakdown = BuildQualityPersonalityBreakdown(traits, _profile.Personality);
 
         var traitDetails = new Dictionary<string, object>
         {
@@ -1159,7 +1044,7 @@ public class IslandDomainPack : IDomainPack
         };
 
         // DecisionPragmatism derivation breakdown.
-        var pragmatismBreakdown = DeriveDecisionPragmatism(traits);
+        var pragmatismBreakdown = DeriveDecisionPragmatism(traits, _profile.Personality);
         var decisionPragmatismBreakdown = new Dictionary<string, object>
         {
             ["base"]                   = Math.Round(pragmatismBreakdown.Base,                  4),
