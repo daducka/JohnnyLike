@@ -54,12 +54,32 @@ public record QualityContribution(
 
 /// <summary>
 /// Scored candidate with full decomposition of how the score was reached.
+/// <para><see cref="ActionCategory"/> is the name of the quality type with the
+/// highest weighted contribution — used for category-level summaries and
+/// reverse-engineering target definitions without hard-coding action IDs.</para>
 /// </summary>
 public record TopCandidateInfo(
     string Action,
+    string ActionCategory,
     double Score,
     double IntrinsicScore,
     IReadOnlyDictionary<string, QualityContribution> QualityContributions);
+
+/// <summary>
+/// Score delta fields that quantify the competitive margin between candidates.
+/// These are the raw ingredients for detecting "close misses" versus
+/// "strongly wrong" decisions and for reverse-engineering optimization targets.
+/// </summary>
+public record ScoreDeltas(
+    /// <summary>top1.score - top2.score (0 when fewer than 2 candidates).</summary>
+    double TopScoreDelta,
+    /// <summary>Score of the highest-scoring FoodConsumption candidate, or 0 if none.</summary>
+    double BestFoodActionScore,
+    /// <summary>
+    /// bestFoodActionScore - top1.score. Negative when food lost; 0 when food won;
+    /// null when no food action was generated.
+    /// </summary>
+    double? BestFoodActionDelta);
 
 public record FuzzerFlags(
     bool CriticalState,
@@ -73,6 +93,13 @@ public record FuzzerFlags(
     bool PersonalityCollapseRisk);
 
 public record PressureSample(
+    /// <summary>
+    /// Deterministic stable identifier for this row:
+    /// <c>{actor}|{scenario}|s{satiety}|h{health}|e{energy}|m{morale}</c>.
+    /// Suitable for joins, diffs, and attaching desired-outcome annotations.
+    /// Golden-state samples additionally carry a <see cref="GoldenStateLabel"/>.
+    /// </summary>
+    string SampleKey,
     string Actor,
     string Scenario,
     ActorStatSnapshot State,
@@ -81,7 +108,13 @@ public record PressureSample(
     FoodContextInfo FoodContext,
     Dictionary<string, double> QualityWeights,
     IReadOnlyList<TopCandidateInfo> TopCandidates,
-    FuzzerFlags Flags);
+    ScoreDeltas ScoreDeltas,
+    FuzzerFlags Flags,
+    /// <summary>
+    /// Non-null only for golden-state samples: a short human-readable description
+    /// of the intended failure mode or balancing concern being tested.
+    /// </summary>
+    string? GoldenStateLabel = null);
 
 // ─── Runner options ───────────────────────────────────────────────────────────
 
@@ -90,7 +123,12 @@ public record PressureFuzzerOptions(
     IReadOnlyList<FuzzerScenarioKind>? ScenarioFilter = null,
     string OutputPath = "./fuzzer-output.json",
     int TopCandidateCount = 5,
-    bool CoarseGrid = true);
+    bool CoarseGrid = true,
+    /// <summary>
+    /// When true (default), the curated golden states from
+    /// <see cref="GoldenStates.All"/> are included alongside the grid samples.
+    /// </summary>
+    bool IncludeGoldenStates = true);
 
 // ─── Runner ───────────────────────────────────────────────────────────────────
 
@@ -172,7 +210,50 @@ public static class PressureFuzzerRunner
                 results.Add(SampleState(
                     domain, actorId, actorName, archetypeData,
                     scenario, satiety, health, energy, morale,
-                    options.TopCandidateCount, rng));
+                    options.TopCandidateCount, rng, goldenLabel: null));
+            }
+        }
+
+        // ── Golden states ────────────────────────────────────────────────────
+        // Curated hand-authored states always included (all actors unless filtered).
+        // These are de-duplicated from the grid by their sampleKey so they only
+        // appear once even if the grid also covers the same point.
+        if (options.IncludeGoldenStates)
+        {
+            var gridKeys = new HashSet<string>(results.Select(s => s.SampleKey));
+
+            foreach (var gs in GoldenStates.All)
+            {
+                var actorNames2 = options.ActorFilter?.ToList()
+                    ?? Archetypes.All.Keys.OrderBy(k => k).ToList();
+                foreach (var actorName in actorNames2)
+                {
+                    if (!Archetypes.All.TryGetValue(actorName, out var archetypeData))
+                        continue;
+
+                    var actorId = new ActorId(actorName);
+                    var sample = SampleState(
+                        domain, actorId, actorName, archetypeData,
+                        gs.Scenario, gs.Satiety, gs.Health, gs.Energy, gs.Morale,
+                        options.TopCandidateCount, rng, goldenLabel: gs.Label);
+
+                    // Only add if this exact key isn't already in the grid.
+                    if (!gridKeys.Contains(sample.SampleKey))
+                        results.Add(sample);
+                    else
+                    {
+                        // Patch the existing grid row with the golden label so it's
+                        // still visible as a named test case.
+                        for (int i = 0; i < results.Count; i++)
+                        {
+                            if (results[i].SampleKey == sample.SampleKey)
+                            {
+                                results[i] = results[i] with { GoldenStateLabel = gs.Label };
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -235,7 +316,8 @@ public static class PressureFuzzerRunner
 
     /// <summary>
     /// Writes a companion summary file with aggregated flag counts, top-action
-    /// distributions, dominant quality breakdowns, and crossover statistics.
+    /// distributions, dominant quality breakdowns, crossover statistics,
+    /// dominant-quality pattern metrics, and actor convergence metrics.
     /// </summary>
     public static void WriteSummaryJson(List<PressureSample> samples, string summaryPath)
     {
@@ -321,17 +403,121 @@ public static class PressureFuzzerRunner
             })
         };
 
+        // ── Dominant-quality pattern metrics ──────────────────────────────────
+        // Answers: "For what fraction of all states is each quality the single
+        // highest-weighted one?" — surfaces quality-surface imbalances without
+        // having to read individual rows.
+        var total   = samples.Count;
+        var plausibleSamples = samples.Where(s => s.Plausibility.IsPlausibleGameplayState).ToList();
+        var plausibleCount   = plausibleSamples.Count;
+
+        // Count dominant quality across all states and across plausible states.
+        static string DominantQualityOf(PressureSample s) =>
+            s.QualityWeights.Count == 0 ? ""
+            : s.QualityWeights.MaxBy(kv => kv.Value).Key;
+
+        var dominantQualityDistAll = samples
+            .GroupBy(DominantQualityOf)
+            .Where(g => g.Key != "")
+            .OrderByDescending(g => g.Count())
+            .ToDictionary(g => g.Key, g => new Dictionary<string, object>
+            {
+                ["count"]   = g.Count(),
+                ["pct"]     = total > 0 ? Math.Round(100.0 * g.Count() / total, 1) : 0.0
+            });
+
+        // % states where FoodConsumption is highest but a non-food action wins
+        var foodWtHighNonFoodWin = samples.Count(s =>
+            DominantQualityOf(s) == "FoodConsumption" &&
+            s.TopCandidates.Count > 0 &&
+            s.TopCandidates[0].ActionCategory != "FoodConsumption");
+
+        var dominantQualityPatterns = new Dictionary<string, object>
+        {
+            ["dominantQualityDistribution"]        = dominantQualityDistAll,
+            ["statesFoodWtHighestButNonFoodWins"]   = foodWtHighNonFoodWin,
+            ["pctFoodWtHighestButNonFoodWins"]      = total > 0
+                ? Math.Round(100.0 * foodWtHighNonFoodWin / total, 2) : 0.0,
+        };
+
+        // ── Actor convergence / diversity metrics ─────────────────────────────
+        // Groups samples by (scenario, state) — the same grid point across actors.
+        // Measures how often actors converge on the same top action / top category.
+        int identicalActionCount    = 0;
+        int identicalCategoryCount  = 0;
+        int totalGroups             = 0;
+        double totalEntropy         = 0.0;
+        int criticalIdenticalAction = 0;
+        int criticalGroups          = 0;
+
+        foreach (var group in samples.GroupBy(s =>
+            (s.Scenario, s.State.Satiety, s.State.Health, s.State.Energy, s.State.Morale)))
+        {
+            var items = group.ToList();
+            if (items.Count < 2) continue;
+            totalGroups++;
+
+            var topActions = items
+                .Select(s => s.TopCandidates.Count > 0 ? s.TopCandidates[0].Action : "")
+                .ToList();
+
+            var topCategories = items
+                .Select(s => s.TopCandidates.Count > 0 ? s.TopCandidates[0].ActionCategory : "")
+                .ToList();
+
+            // Shannon entropy of top actions for this grid point.
+            var n = (double)topActions.Count;
+            var entropy = -topActions
+                .GroupBy(a => a)
+                .Where(g => g.Key != "")
+                .Sum(g => { var p = g.Count() / n; return p * Math.Log2(p); });
+            totalEntropy += entropy;
+
+            // All actors agree on same top action?
+            if (topActions.Distinct().Count() == 1)
+            {
+                identicalActionCount++;
+                if (items.Any(s => s.Flags.CriticalState)) criticalIdenticalAction++;
+            }
+
+            // All actors agree on same top category?
+            if (topCategories.Distinct().Count() == 1)
+                identicalCategoryCount++;
+
+            if (items.Any(s => s.Flags.CriticalState)) criticalGroups++;
+        }
+
+        var avgEntropy = totalGroups > 0 ? Math.Round(totalEntropy / totalGroups, 4) : 0.0;
+        var convergenceMetrics = new Dictionary<string, object>
+        {
+            ["totalComparisonGroups"]           = totalGroups,
+            ["identicalTopActionGroups"]        = identicalActionCount,
+            ["identicalTopCategoryGroups"]      = identicalCategoryCount,
+            ["pctIdenticalTopAction"]           = totalGroups > 0
+                ? Math.Round(100.0 * identicalActionCount / totalGroups, 2) : 0.0,
+            ["pctIdenticalTopCategory"]         = totalGroups > 0
+                ? Math.Round(100.0 * identicalCategoryCount / totalGroups, 2) : 0.0,
+            ["avgTopActionShannonEntropy"]      = avgEntropy,
+            ["criticalStateGroups"]             = criticalGroups,
+            ["criticalIdenticalTopAction"]      = criticalIdenticalAction,
+            ["pctCriticalIdenticalTopAction"]   = criticalGroups > 0
+                ? Math.Round(100.0 * criticalIdenticalAction / criticalGroups, 2) : 0.0
+        };
+
         var summary = new
         {
             generatedAt            = DateTime.UtcNow.ToString("o"),
-            totalSamples           = samples.Count,
+            totalSamples           = total,
             terminalStateSamples   = samples.Count(s => s.Plausibility.IsTerminalState),
             extremeStateSamples    = samples.Count(s => s.Plausibility.IsExtremeState),
-            plausibleSamples       = samples.Count(s => s.Plausibility.IsPlausibleGameplayState),
+            plausibleSamples       = plausibleCount,
+            goldenStateSamples     = samples.Count(s => s.GoldenStateLabel != null),
             flagCounts,
-            topActionDistribution  = topActionDist,
+            topActionDistribution          = topActionDist,
             dominantQualityByActorScenario = dominantQuality,
-            crossoverStats
+            crossoverStats,
+            dominantQualityPatterns,
+            actorConvergenceMetrics        = convergenceMetrics
         };
 
         File.WriteAllText(summaryPath, JsonSerializer.Serialize(summary, JsonOpts));
@@ -346,7 +532,7 @@ public static class PressureFuzzerRunner
         Dictionary<string, object> archetypeData,
         FuzzerScenarioKind scenario,
         double satiety, double health, double energy, double morale,
-        int topN, Random rng)
+        int topN, Random rng, string? goldenLabel)
     {
         // Build actor state from archetype with overridden stats.
         var stateData = new Dictionary<string, object>(archetypeData)
@@ -379,9 +565,13 @@ public static class PressureFuzzerRunner
         var foodContext    = ComputeFoodContext(actorState, worldState, actorId);
         var plausibility   = ComputePlausibility(actorState);
         var scenarioMeta   = ComputeScenarioMetadata(worldState, actorState, actorId);
+        var scoreDeltas    = ComputeScoreDeltas(sorted);
         var flags          = ComputeFlags(actorState, sorted, qualityWeights, foodContext);
 
+        var sampleKey = BuildSampleKey(actorName, scenario.ToString(), satiety, health, energy, morale);
+
         return new PressureSample(
+            sampleKey,
             actorName,
             scenario.ToString(),
             new ActorStatSnapshot(satiety, health, energy, morale),
@@ -390,10 +580,22 @@ public static class PressureFuzzerRunner
             foodContext,
             qualityWeights,
             topCandidates,
-            flags);
+            scoreDeltas,
+            flags,
+            GoldenStateLabel: goldenLabel);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Builds a stable deterministic key for a sampled row. Stat values are
+    /// formatted without decimal points (they are integers in practice) to keep
+    /// keys short and readable. Format: <c>{actor}|{scenario}|s{satiety}|h{health}|e{energy}|m{morale}</c>.
+    /// </summary>
+    private static string BuildSampleKey(
+        string actor, string scenario,
+        double satiety, double health, double energy, double morale) =>
+        $"{actor}|{scenario}|s{(int)satiety}|h{(int)health}|e{(int)energy}|m{(int)morale}";
 
     private static StatePlausibility ComputePlausibility(IslandActorState actor)
     {
@@ -436,6 +638,24 @@ public static class PressureFuzzerRunner
             EdibleFoodCount:         Math.Round(edibleFoodCount, 2),
             AcquirableFoodSourceCount: acquirableSources,
             RecipeOpportunityScore:  Math.Round(recipeScore, 4));
+    }
+
+    private static ScoreDeltas ComputeScoreDeltas(IReadOnlyList<ActionCandidate> sorted)
+    {
+        var top1Score = sorted.Count > 0 ? sorted[0].Score : 0.0;
+        var top2Score = sorted.Count > 1 ? sorted[1].Score : top1Score;
+        var topScoreDelta = Math.Round(top1Score - top2Score, 4);
+
+        // Best food action: highest-scoring candidate carrying FoodConsumption quality.
+        var bestFood = sorted
+            .Where(c => c.Qualities.TryGetValue(QualityType.FoodConsumption, out var v) && v > 0.0)
+            .FirstOrDefault();
+
+        double  bestFoodScore = Math.Round(bestFood?.Score ?? 0.0, 4);
+        double? bestFoodDelta = bestFood is null ? null
+            : Math.Round(bestFood.Score - top1Score, 4);
+
+        return new ScoreDeltas(topScoreDelta, bestFoodScore, bestFoodDelta);
     }
 
     private static Dictionary<string, double> ExtractQualityWeights(Dictionary<string, object>? explain)
@@ -511,10 +731,25 @@ public static class PressureFuzzerRunner
             }
 
             result.Add(new TopCandidateInfo(
-                actionId, Math.Round(c.Score, 4), Math.Round(intrinsicScore, 4), contributions));
+                actionId,
+                ActionCategory: DeriveActionCategory(contributions),
+                Math.Round(c.Score, 4), Math.Round(intrinsicScore, 4), contributions));
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Derives a human-readable action category label from the candidate's quality
+    /// contributions. The category is the name of the quality with the highest total
+    /// weighted contribution, enabling category-level summaries without hard-coding
+    /// action IDs. Falls back to <c>"Other"</c> when no contributions are available.
+    /// </summary>
+    private static string DeriveActionCategory(
+        IReadOnlyDictionary<string, QualityContribution> contributions)
+    {
+        if (contributions.Count == 0) return "Other";
+        return contributions.MaxBy(kv => kv.Value.Contribution).Key;
     }
 
     private static FoodContextInfo ComputeFoodContext(

@@ -537,11 +537,12 @@ TeeWriter CreateArtifactWriter(bool saveArtifacts, string domainName, int seed, 
 
 void RunPressureFuzzer(string[] fuzzerArgs)
 {
-    var actorFilter   = new List<string>();
-    var scenarioFilter = new List<FuzzerScenarioKind>();
-    var outputPath    = "./fuzzer-output.json";
-    var topN          = 5;
-    var coarseGrid    = true;
+    var actorFilter        = new List<string>();
+    var scenarioFilter     = new List<FuzzerScenarioKind>();
+    var outputPath         = "./fuzzer-output.json";
+    var topN               = 5;
+    var coarseGrid         = true;
+    var includeGoldenStates = true;
 
     for (int i = 0; i < fuzzerArgs.Length; i++)
     {
@@ -574,15 +575,19 @@ void RunPressureFuzzer(string[] fuzzerArgs)
             case "--grid":
                 coarseGrid = !fuzzerArgs[++i].Equals("fine", StringComparison.OrdinalIgnoreCase);
                 break;
+            case "--no-golden":
+                includeGoldenStates = false;
+                break;
         }
     }
 
     var options = new PressureFuzzerOptions(
-        ActorFilter:   actorFilter.Count  > 0 ? actorFilter   : null,
-        ScenarioFilter: scenarioFilter.Count > 0 ? scenarioFilter : null,
-        OutputPath:    outputPath,
-        TopCandidateCount: topN,
-        CoarseGrid:    coarseGrid);
+        ActorFilter:        actorFilter.Count   > 0 ? actorFilter   : null,
+        ScenarioFilter:     scenarioFilter.Count > 0 ? scenarioFilter : null,
+        OutputPath:         outputPath,
+        TopCandidateCount:  topN,
+        CoarseGrid:         coarseGrid,
+        IncludeGoldenStates: includeGoldenStates);
 
     var effectiveActors    = options.ActorFilter    ?? Archetypes.All.Keys.OrderBy(k => k).ToList();
     var effectiveScenarios = options.ScenarioFilter ?? Enum.GetValues<FuzzerScenarioKind>().ToList();
@@ -593,12 +598,14 @@ void RunPressureFuzzer(string[] fuzzerArgs)
     Console.WriteLine($"Scenarios: {string.Join(", ", effectiveScenarios)}");
     Console.WriteLine($"Grid:      {gridName}");
     Console.WriteLine($"Top-N:     {topN}");
+    Console.WriteLine($"Golden:    {(includeGoldenStates ? $"yes ({GoldenStates.All.Count} states)" : "no")}");
     Console.WriteLine($"Output:    {outputPath}");
     Console.WriteLine();
 
     Console.Write("Sampling...");
     var samples = PressureFuzzerRunner.Run(options);
     Console.WriteLine($" {samples.Count} samples generated.");
+    Console.WriteLine($"  (incl. {samples.Count(s => s.GoldenStateLabel != null)} golden-state samples)");
 
     var dir = Path.GetDirectoryName(outputPath);
     if (!string.IsNullOrEmpty(dir))
