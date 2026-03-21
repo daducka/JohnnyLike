@@ -1,5 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
+using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Recipes;
 using JohnnyLike.Domain.Island.Supply;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -18,19 +20,64 @@ public record FoodContextInfo(
     bool ImmediateFoodAvailable,
     bool AcquirableFoodAvailable);
 
-public record TopCandidateInfo(string Action, double Score);
+/// <summary>
+/// Tags the plausibility of a sampled state: terminal states (dead actor),
+/// extreme states (multiple stats near zero), and ordinary gameplay states.
+/// Terminal/extreme rows are included in output but should be interpreted carefully.
+/// </summary>
+public record StatePlausibility(
+    bool IsTerminalState,
+    bool IsExtremeState,
+    bool IsPlausibleGameplayState);
+
+/// <summary>
+/// Concrete world facts derived from the built scenario.
+/// Included per-row so the output is self-contained and the scenario setup
+/// can be verified externally without reading source code.
+/// </summary>
+public record ScenarioMetadata(
+    bool BedAvailable,
+    bool BedDamaged,
+    bool CampfireAvailable,
+    bool CampfireDamaged,
+    double EdibleFoodCount,
+    int AcquirableFoodSourceCount,
+    double RecipeOpportunityScore);
+
+/// <summary>
+/// Per-quality score decomposition for a single candidate action.
+/// </summary>
+public record QualityContribution(
+    double QualityValue,
+    double EffectiveWeight,
+    double Contribution);
+
+/// <summary>
+/// Scored candidate with full decomposition of how the score was reached.
+/// </summary>
+public record TopCandidateInfo(
+    string Action,
+    double Score,
+    double IntrinsicScore,
+    IReadOnlyDictionary<string, QualityContribution> QualityContributions);
 
 public record FuzzerFlags(
     bool CriticalState,
     bool FoodAvailableButNotChosen,
     bool NoFoodButNoAcquisition,
     bool PrepDominatesFood,
-    bool BedLoopRisk);
+    bool BedLoopRisk,
+    bool DirectFoodActionPresentButLost,
+    bool ComfortBeatFood,
+    bool SafetyBeatFood,
+    bool PersonalityCollapseRisk);
 
 public record PressureSample(
     string Actor,
     string Scenario,
     ActorStatSnapshot State,
+    StatePlausibility Plausibility,
+    ScenarioMetadata ScenarioInfo,
     FoodContextInfo FoodContext,
     Dictionary<string, double> QualityWeights,
     IReadOnlyList<TopCandidateInfo> TopCandidates,
@@ -70,8 +117,26 @@ public static class PressureFuzzerRunner
     private const double CriticalHealthThreshold  = 20.0;
     private const double FoodPressureThreshold    = 30.0;
 
+    // ── State classification thresholds ──────────────────────────────────────
+    private const double TerminalHealthThreshold = 0.0;
+    private const double ExtremeStatThreshold    = 10.0;
+    private const int    ExtremeStatMinCount     = 3;
+
+    // ── PersonalityCollapseRisk threshold (fraction of actors sharing top action) ─
+    private const double PersonalityCollapseThreshold = 0.67;
+
+    // ── ComfortBeatFood / SafetyBeatFood quality thresholds ──────────────────
+    private const double ComfortQualityThreshold = 0.3;
+    private const double SafetyQualityThreshold  = 0.2;
+
+    // ── Scenario metadata quality thresholds ─────────────────────────────────
+    private const double BedDamagedQualityThreshold      = 80.0;
+    private const double CampfireDamagedQualityThreshold = 50.0;
+
     /// <summary>
     /// Runs the full pressure fuzzer grid sampling and returns the results.
+    /// PersonalityCollapseRisk is computed in a post-processing pass after all
+    /// samples are generated, since it requires cross-actor comparison.
     /// </summary>
     public static List<PressureSample> Run(PressureFuzzerOptions options)
     {
@@ -111,22 +176,165 @@ public static class PressureFuzzerRunner
             }
         }
 
+        // ── Post-processing: PersonalityCollapseRisk ──────────────────────────
+        // Group samples by (scenario, state) and flag states where >= 67% of actors
+        // agree on the same top action — indicating personality isn't differentiating.
+        var collapseKeys = new HashSet<(string, double, double, double, double)>();
+        foreach (var group in results.GroupBy(s =>
+            (s.Scenario, s.State.Satiety, s.State.Health, s.State.Energy, s.State.Morale)))
+        {
+            var items = group.ToList();
+            if (items.Count < 2) continue;
+
+            var maxSameAction = items
+                .Select(s => s.TopCandidates.Count > 0 ? s.TopCandidates[0].Action : "")
+                .GroupBy(a => a)
+                .Max(g => g.Count());
+
+            if (maxSameAction >= Math.Ceiling(items.Count * PersonalityCollapseThreshold))
+                collapseKeys.Add(group.Key);
+        }
+
+        for (int i = 0; i < results.Count; i++)
+        {
+            var s = results[i];
+            if (collapseKeys.Contains((s.Scenario, s.State.Satiety, s.State.Health, s.State.Energy, s.State.Morale)))
+                results[i] = s with { Flags = s.Flags with { PersonalityCollapseRisk = true } };
+        }
+
         return results;
     }
 
+    // ── JSON writers ─────────────────────────────────────────────────────────
+
+    private static readonly JsonSerializerOptions JsonOpts = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.Never
+    };
+
     /// <summary>
-    /// Serializes the results to JSON and writes them to the specified output path.
+    /// Serializes all samples to the primary JSON output file.
     /// </summary>
     public static void WriteJson(List<PressureSample> samples, string outputPath)
     {
-        var jsonOptions = new JsonSerializerOptions
+        File.WriteAllText(outputPath, JsonSerializer.Serialize(samples, JsonOpts));
+    }
+
+    /// <summary>
+    /// Derives the summary path from the primary output path
+    /// (e.g. <c>fuzzer-output.json</c> → <c>fuzzer-output.summary.json</c>).
+    /// </summary>
+    public static string DeriveSummaryPath(string outputPath)
+    {
+        var dir  = Path.GetDirectoryName(outputPath) ?? "";
+        var stem = Path.GetFileNameWithoutExtension(outputPath);
+        return Path.Combine(dir, $"{stem}.summary.json");
+    }
+
+    /// <summary>
+    /// Writes a companion summary file with aggregated flag counts, top-action
+    /// distributions, dominant quality breakdowns, and crossover statistics.
+    /// </summary>
+    public static void WriteSummaryJson(List<PressureSample> samples, string summaryPath)
+    {
+        // ── Flag counts ────────────────────────────────────────────────────────
+        var flagCounts = new Dictionary<string, int>
         {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = JsonIgnoreCondition.Never
+            ["criticalState"]                 = samples.Count(s => s.Flags.CriticalState),
+            ["foodAvailableButNotChosen"]      = samples.Count(s => s.Flags.FoodAvailableButNotChosen),
+            ["noFoodButNoAcquisition"]         = samples.Count(s => s.Flags.NoFoodButNoAcquisition),
+            ["prepDominatesFood"]              = samples.Count(s => s.Flags.PrepDominatesFood),
+            ["bedLoopRisk"]                    = samples.Count(s => s.Flags.BedLoopRisk),
+            ["directFoodActionPresentButLost"] = samples.Count(s => s.Flags.DirectFoodActionPresentButLost),
+            ["comfortBeatFood"]                = samples.Count(s => s.Flags.ComfortBeatFood),
+            ["safetyBeatFood"]                 = samples.Count(s => s.Flags.SafetyBeatFood),
+            ["personalityCollapseRisk"]        = samples.Count(s => s.Flags.PersonalityCollapseRisk)
         };
-        var json = JsonSerializer.Serialize(samples, jsonOptions);
-        File.WriteAllText(outputPath, json);
+
+        // ── Top-action distribution by actor × scenario ────────────────────────
+        // Shows which actions dominate each (actor, scenario) pairing.
+        var topActionDist = new Dictionary<string, IReadOnlyList<object>>();
+        foreach (var group in samples.GroupBy(s => $"{s.Actor}|{s.Scenario}"))
+        {
+            var actionCounts = group
+                .Where(s => s.TopCandidates.Count > 0)
+                .GroupBy(s => s.TopCandidates[0].Action)
+                .Select(g => new { action = g.Key, count = g.Count() })
+                .OrderByDescending(x => x.count)
+                .Take(5)
+                .Select(x => (object)new Dictionary<string, object>
+                    { ["action"] = x.action, ["count"] = x.count })
+                .ToList();
+            topActionDist[group.Key] = actionCounts;
+        }
+
+        // ── Dominant quality by actor × scenario ──────────────────────────────
+        // The quality with the highest average effective weight per (actor, scenario).
+        var dominantQuality = new Dictionary<string, string>();
+        foreach (var group in samples.GroupBy(s => $"{s.Actor}|{s.Scenario}"))
+        {
+            var avgWeights = new Dictionary<string, double>();
+            foreach (var s in group)
+            {
+                foreach (var (q, w) in s.QualityWeights)
+                {
+                    avgWeights.TryGetValue(q, out var cur);
+                    avgWeights[q] = cur + w;
+                }
+            }
+            var count = group.Count();
+            if (count > 0 && avgWeights.Count > 0)
+            {
+                var dominant = avgWeights.MaxBy(kv => kv.Value / count);
+                dominantQuality[group.Key] = dominant.Key;
+            }
+        }
+
+        // ── Crossover statistics ───────────────────────────────────────────────
+        var crossoverStats = new Dictionary<string, int>
+        {
+            ["foodConsumptionGtSafety"] = samples.Count(s =>
+            {
+                s.QualityWeights.TryGetValue("FoodConsumption", out var f);
+                s.QualityWeights.TryGetValue("Safety",          out var sf);
+                return f > sf;
+            }),
+            ["foodConsumptionGtRest"] = samples.Count(s =>
+            {
+                s.QualityWeights.TryGetValue("FoodConsumption", out var f);
+                s.QualityWeights.TryGetValue("Rest",            out var r);
+                return f > r;
+            }),
+            ["safetyGtFoodConsumption"] = samples.Count(s =>
+            {
+                s.QualityWeights.TryGetValue("FoodConsumption", out var f);
+                s.QualityWeights.TryGetValue("Safety",          out var sf);
+                return sf > f;
+            }),
+            ["restGtFoodConsumption"] = samples.Count(s =>
+            {
+                s.QualityWeights.TryGetValue("FoodConsumption", out var f);
+                s.QualityWeights.TryGetValue("Rest",            out var r);
+                return r > f;
+            })
+        };
+
+        var summary = new
+        {
+            generatedAt            = DateTime.UtcNow.ToString("o"),
+            totalSamples           = samples.Count,
+            terminalStateSamples   = samples.Count(s => s.Plausibility.IsTerminalState),
+            extremeStateSamples    = samples.Count(s => s.Plausibility.IsExtremeState),
+            plausibleSamples       = samples.Count(s => s.Plausibility.IsPlausibleGameplayState),
+            flagCounts,
+            topActionDistribution  = topActionDist,
+            dominantQualityByActorScenario = dominantQuality,
+            crossoverStats
+        };
+
+        File.WriteAllText(summaryPath, JsonSerializer.Serialize(summary, JsonOpts));
     }
 
     // ── Core sampling ─────────────────────────────────────────────────────────
@@ -167,19 +375,18 @@ public static class PressureFuzzerRunner
 
         // ── Extract results ────────────────────────────────────────────────────
         var qualityWeights = ExtractQualityWeights(explain);
-
-        var topCandidates = sorted
-            .Take(topN)
-            .Select(c => new TopCandidateInfo(c.Action.Id.Value, Math.Round(c.Score, 4)))
-            .ToList();
-
-        var foodContext = ComputeFoodContext(actorState, worldState, actorId);
-        var flags = ComputeFlags(actorState, sorted, qualityWeights, foodContext);
+        var topCandidates  = ExtractCandidateDecompositions(explain, sorted, topN);
+        var foodContext    = ComputeFoodContext(actorState, worldState, actorId);
+        var plausibility   = ComputePlausibility(actorState);
+        var scenarioMeta   = ComputeScenarioMetadata(worldState, actorState, actorId);
+        var flags          = ComputeFlags(actorState, sorted, qualityWeights, foodContext);
 
         return new PressureSample(
             actorName,
             scenario.ToString(),
             new ActorStatSnapshot(satiety, health, energy, morale),
+            plausibility,
+            scenarioMeta,
             foodContext,
             qualityWeights,
             topCandidates,
@@ -187,6 +394,49 @@ public static class PressureFuzzerRunner
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static StatePlausibility ComputePlausibility(IslandActorState actor)
+    {
+        var isTerminal  = actor.Health <= TerminalHealthThreshold;
+        // An extreme state has 3+ stats near zero, regardless of whether health is also
+        // at the terminal threshold — terminal states may simultaneously be extreme.
+        // Consumers can use isTerminalState to further filter if needed.
+        var extremeCount = new[] { actor.Satiety, actor.Health, actor.Energy, actor.Morale }
+            .Count(v => v < ExtremeStatThreshold);
+        var isExtreme   = extremeCount >= ExtremeStatMinCount;
+        return new StatePlausibility(isTerminal, isExtreme, !isTerminal && !isExtreme);
+    }
+
+    private static ScenarioMetadata ComputeScenarioMetadata(
+        IslandWorldState world, IslandActorState actor, ActorId actorId)
+    {
+        var bed      = world.WorldItems.OfType<PalmFrondBedItem>().FirstOrDefault();
+        var campfire = world.MainCampfire;
+
+        var piles = world.GetAccessiblePiles(actorId);
+        var edibleFoodCount = piles
+            .SelectMany(p => p.Supplies.OfType<IEdibleSupply>())
+            .Sum(e => e.GetImmediateFoodUnits(actor, world));
+
+        var acquirableSources = world.WorldItems.OfType<IFoodSource>().Count();
+
+        // Recipe opportunity score: sum of BaseChance for currently discoverable recipes.
+        var recipeScore = IslandRecipeRegistry.All.Values
+            .Where(r => r.Discovery != null &&
+                        r.Discovery.Trigger == DiscoveryTrigger.ThinkAboutSupplies &&
+                        !actor.KnownRecipeIds.Contains(r.Id) &&
+                        r.Discovery.CanDiscover(actor, world))
+            .Sum(r => r.Discovery!.BaseChance);
+
+        return new ScenarioMetadata(
+            BedAvailable:            bed != null,
+            BedDamaged:              bed != null && bed.Quality < BedDamagedQualityThreshold,
+            CampfireAvailable:       campfire != null,
+            CampfireDamaged:         campfire != null && (!campfire.IsLit || campfire.Quality < CampfireDamagedQualityThreshold),
+            EdibleFoodCount:         Math.Round(edibleFoodCount, 2),
+            AcquirableFoodSourceCount: acquirableSources,
+            RecipeOpportunityScore:  Math.Round(recipeScore, 4));
+    }
 
     private static Dictionary<string, double> ExtractQualityWeights(Dictionary<string, object>? explain)
     {
@@ -205,6 +455,66 @@ public static class PressureFuzzerRunner
                 : Math.Round(Convert.ToDouble(v), 4);
         }
         return weights;
+    }
+
+    /// <summary>
+    /// Extracts per-candidate score decompositions from the ExplainCandidateScoring output.
+    /// Matches candidates by action ID so ordering differences don't cause mismatches.
+    /// </summary>
+    private static IReadOnlyList<TopCandidateInfo> ExtractCandidateDecompositions(
+        Dictionary<string, object>? explain,
+        IReadOnlyList<ActionCandidate> sorted,
+        int topN)
+    {
+        // Build lookup from explain's candidateBreakdowns by actionId.
+        var breakdownByAction = new Dictionary<string, Dictionary<string, object>>();
+        if (explain?.TryGetValue("candidateBreakdowns", out var rawBreakdowns) == true &&
+            rawBreakdowns is List<object> breakdownList)
+        {
+            foreach (var item in breakdownList)
+            {
+                if (item is Dictionary<string, object> bd &&
+                    bd.TryGetValue("actionId", out var ai) && ai is string actionId)
+                    breakdownByAction[actionId] = bd;
+            }
+        }
+
+        var result = new List<TopCandidateInfo>();
+        foreach (var c in sorted.Take(topN))
+        {
+            var actionId      = c.Action.Id.Value;
+            var intrinsicScore = c.IntrinsicScore;
+            var contributions  = new Dictionary<string, QualityContribution>();
+
+            if (breakdownByAction.TryGetValue(actionId, out var bd))
+            {
+                if (bd.TryGetValue("intrinsicScore", out var isObj) && isObj is double isd)
+                    intrinsicScore = Math.Round(isd, 4);
+
+                if (bd.TryGetValue("qualityContributions", out var qcObj) &&
+                    qcObj is Dictionary<string, object> qcDict)
+                {
+                    foreach (var (q, v) in qcDict)
+                    {
+                        if (v is Dictionary<string, object> contribDict)
+                        {
+                            contribDict.TryGetValue("qualityValue",    out var qv);
+                            contribDict.TryGetValue("effectiveWeight", out var ew);
+                            contribDict.TryGetValue("contribution",    out var con);
+                            contributions[q] = new QualityContribution(
+                                Math.Round(Convert.ToDouble(qv),  4),
+                                Math.Round(Convert.ToDouble(ew),  4),
+                                Math.Round(Convert.ToDouble(con), 4));
+                        }
+                    }
+                }
+            }
+
+            result.Add(new TopCandidateInfo(
+                actionId, Math.Round(c.Score, 4), Math.Round(intrinsicScore, 4), contributions));
+        }
+
+        return result;
     }
 
     private static FoodContextInfo ComputeFoodContext(
@@ -230,12 +540,13 @@ public static class PressureFuzzerRunner
     {
         var topCandidate = sortedCandidates.Count > 0 ? sortedCandidates[0] : null;
 
-        // criticalState: dangerously low satiety or health
+        // ── criticalState ────────────────────────────────────────────────────
         var criticalState =
             actor.Satiety < CriticalSatietyThreshold ||
             actor.Health  < CriticalHealthThreshold;
 
-        // foodAvailableButNotChosen: food in pile but top action is not eating
+        // ── foodAvailableButNotChosen ────────────────────────────────────────
+        // Food in pile; hungry; top action isn't a food consumption action.
         var topIsFoodConsumption = topCandidate?.Qualities
             .TryGetValue(QualityType.FoodConsumption, out var fcv) == true && fcv > 0.0;
         var foodAvailableButNotChosen =
@@ -243,7 +554,8 @@ public static class PressureFuzzerRunner
             foodContext.ImmediateFoodAvailable &&
             !topIsFoodConsumption;
 
-        // noFoodButNoAcquisition: no food in pile, and top-N doesn't include any acquisition action
+        // ── noFoodButNoAcquisition ───────────────────────────────────────────
+        // Starving, no supply, and top-N contains no acquisition action.
         var topNIncludesAcquisition = sortedCandidates
             .Take(5)
             .Any(c => c.Qualities.TryGetValue(QualityType.FoodAcquisition, out var fav) && fav > 0.0);
@@ -252,28 +564,65 @@ public static class PressureFuzzerRunner
             !foodContext.ImmediateFoodAvailable &&
             !topNIncludesAcquisition;
 
-        // prepDominatesFood: Preparation weight beats FoodConsumption when hungry
+        // ── prepDominatesFood ────────────────────────────────────────────────
         qualityWeights.TryGetValue("Preparation",     out var prepWeight);
         qualityWeights.TryGetValue("FoodConsumption", out var foodConsWeight);
         var prepDominatesFood =
             actor.Satiety < CriticalSatietyThreshold &&
             prepWeight > foodConsWeight;
 
-        // bedLoopRisk: a rest-quality action tops the list while food pressure is high.
-        // Uses the Rest quality on the candidate rather than action-name string matching
-        // so that any future rest-providing action (e.g. hammock) is caught automatically.
+        // ── bedLoopRisk ──────────────────────────────────────────────────────
+        // Quality-based: avoids fragile string matching on action IDs.
         var topIsRestAction = topCandidate?.Qualities
             .TryGetValue(QualityType.Rest, out var restVal) == true && restVal >= 0.4;
         var bedLoopRisk =
             actor.Satiety < FoodPressureThreshold &&
             topIsRestAction;
 
+        // ── directFoodActionPresentButLost ───────────────────────────────────
+        // A food consumption action actually exists in candidates but isn't chosen.
+        // Differs from foodAvailableButNotChosen: requires the eat action to be
+        // generated (not just food being in supply).
+        var anyFoodConsumptionCandidate = sortedCandidates
+            .Any(c => c.Qualities.TryGetValue(QualityType.FoodConsumption, out var v) && v > 0.0);
+        var directFoodActionPresentButLost =
+            actor.Satiety < CriticalSatietyThreshold &&
+            anyFoodConsumptionCandidate &&
+            !topIsFoodConsumption;
+
+        // ── comfortBeatFood ──────────────────────────────────────────────────
+        // Top action is primarily a Comfort action while the actor is hungry
+        // and immediate food is available.
+        var topIsComfortAction = topCandidate?.Qualities
+            .TryGetValue(QualityType.Comfort, out var comfortVal) == true &&
+            comfortVal >= ComfortQualityThreshold;
+        var comfortBeatFood =
+            actor.Satiety < CriticalSatietyThreshold &&
+            foodContext.ImmediateFoodAvailable &&
+            topIsComfortAction;
+
+        // ── safetyBeatFood ───────────────────────────────────────────────────
+        // Top action carries significant Safety quality while the actor is hungry
+        // and immediate food is available.
+        var topIsSafetyAction = topCandidate?.Qualities
+            .TryGetValue(QualityType.Safety, out var safetyVal) == true &&
+            safetyVal >= SafetyQualityThreshold;
+        var safetyBeatFood =
+            actor.Satiety < CriticalSatietyThreshold &&
+            foodContext.ImmediateFoodAvailable &&
+            topIsSafetyAction;
+
         return new FuzzerFlags(
             criticalState,
             foodAvailableButNotChosen,
             noFoodButNoAcquisition,
             prepDominatesFood,
-            bedLoopRisk);
+            bedLoopRisk,
+            directFoodActionPresentButLost,
+            comfortBeatFood,
+            safetyBeatFood,
+            PersonalityCollapseRisk: false  // filled in post-processing pass in Run()
+        );
     }
 
     // ── Null IResourceAvailability stub ──────────────────────────────────────
@@ -290,3 +639,4 @@ public static class PressureFuzzerRunner
         public void Release(ResourceId _) { }
     }
 }
+

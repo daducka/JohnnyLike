@@ -607,21 +607,39 @@ void RunPressureFuzzer(string[] fuzzerArgs)
     PressureFuzzerRunner.WriteJson(samples, outputPath);
     Console.WriteLine($"✓ Written to {outputPath}");
 
-    // Print a brief flag summary so issues are visible on the console.
-    var flagged = samples.Where(s => s.Flags.FoodAvailableButNotChosen ||
-                                     s.Flags.NoFoodButNoAcquisition    ||
-                                     s.Flags.PrepDominatesFood         ||
-                                     s.Flags.BedLoopRisk).ToList();
-    Console.WriteLine($"\n--- Flag Summary ---");
-    Console.WriteLine($"  criticalState:             {samples.Count(s => s.Flags.CriticalState)}");
-    Console.WriteLine($"  foodAvailableButNotChosen: {samples.Count(s => s.Flags.FoodAvailableButNotChosen)}");
-    Console.WriteLine($"  noFoodButNoAcquisition:    {samples.Count(s => s.Flags.NoFoodButNoAcquisition)}");
-    Console.WriteLine($"  prepDominatesFood:         {samples.Count(s => s.Flags.PrepDominatesFood)}");
-    Console.WriteLine($"  bedLoopRisk:               {samples.Count(s => s.Flags.BedLoopRisk)}");
+    var summaryPath = PressureFuzzerRunner.DeriveSummaryPath(outputPath);
+    PressureFuzzerRunner.WriteSummaryJson(samples, summaryPath);
+    Console.WriteLine($"✓ Summary written to {summaryPath}");
 
-    if (flagged.Count > 0)
+    // ── Console flag summary ────────────────────────────────────────────────
+    Console.WriteLine($"\n--- Plausibility ---");
+    Console.WriteLine($"  plausible:    {samples.Count(s => s.Plausibility.IsPlausibleGameplayState)}");
+    Console.WriteLine($"  terminal:     {samples.Count(s => s.Plausibility.IsTerminalState)}");
+    Console.WriteLine($"  extreme:      {samples.Count(s => s.Plausibility.IsExtremeState)}");
+
+    Console.WriteLine($"\n--- Flag Summary ---");
+    Console.WriteLine($"  criticalState:                  {samples.Count(s => s.Flags.CriticalState)}");
+    Console.WriteLine($"  foodAvailableButNotChosen:      {samples.Count(s => s.Flags.FoodAvailableButNotChosen)}");
+    Console.WriteLine($"  noFoodButNoAcquisition:         {samples.Count(s => s.Flags.NoFoodButNoAcquisition)}");
+    Console.WriteLine($"  prepDominatesFood:              {samples.Count(s => s.Flags.PrepDominatesFood)}");
+    Console.WriteLine($"  bedLoopRisk:                    {samples.Count(s => s.Flags.BedLoopRisk)}");
+    Console.WriteLine($"  directFoodActionPresentButLost: {samples.Count(s => s.Flags.DirectFoodActionPresentButLost)}");
+    Console.WriteLine($"  comfortBeatFood:                {samples.Count(s => s.Flags.ComfortBeatFood)}");
+    Console.WriteLine($"  safetyBeatFood:                 {samples.Count(s => s.Flags.SafetyBeatFood)}");
+    Console.WriteLine($"  personalityCollapseRisk:        {samples.Count(s => s.Flags.PersonalityCollapseRisk)}");
+
+    var anyFlagged = samples.Any(s =>
+        s.Flags.FoodAvailableButNotChosen ||
+        s.Flags.NoFoodButNoAcquisition    ||
+        s.Flags.PrepDominatesFood         ||
+        s.Flags.BedLoopRisk               ||
+        s.Flags.DirectFoodActionPresentButLost ||
+        s.Flags.ComfortBeatFood           ||
+        s.Flags.SafetyBeatFood);
+
+    if (anyFlagged)
     {
-        Console.WriteLine($"\n⚠ {flagged.Count} samples flagged for potential issues. Review {outputPath} for details.");
+        Console.WriteLine($"\n⚠ Pathology flags raised. Review {outputPath} for details.");
     }
     else
     {
