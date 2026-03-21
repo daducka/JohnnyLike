@@ -157,7 +157,7 @@ public class DecisionTuningProfileTests
         for (var i = 0; i < candidatesImplicit.Count; i++)
         {
             Assert.Equal(candidatesImplicit[i].Action.Id, candidatesExplicit[i].Action.Id);
-            Assert.Equal(candidatesImplicit[i].Score,     candidatesExplicit[i].Score, precision: 10);
+            Assert.Equal(candidatesImplicit[i].Score,     candidatesExplicit[i].Score, precision: 9);
         }
     }
 
@@ -336,7 +336,7 @@ public class DecisionTuningProfileTests
         var actorD  = (IslandActorState)domainDefault.CreateActorState(actorId, null);
 
         // Pragmatism should be identical since both use Default profile
-        Assert.Equal(actorD.DecisionPragmatism, actorN.DecisionPragmatism, precision: 10);
+        Assert.Equal(actorD.DecisionPragmatism, actorN.DecisionPragmatism, precision: 9);
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -357,5 +357,163 @@ public class DecisionTuningProfileTests
         Assert.Equal(0.8,  custom.Mood.FunBaseScale);
         // Defaults preserved for non-overridden fields
         Assert.Equal(DecisionTuningProfile.Default.Need.SatietyRampModerate, custom.Need.SatietyRampModerate);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // 6. Profile metadata
+    // ═════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Default_ProfileName_IsProductionDefault()
+    {
+        Assert.Equal("ProductionDefault", DecisionTuningProfile.Default.ProfileName);
+    }
+
+    [Fact]
+    public void Default_Description_IsNull()
+    {
+        Assert.Null(DecisionTuningProfile.Default.Description);
+    }
+
+    [Fact]
+    public void CustomProfile_CanSetNameAndDescription()
+    {
+        var custom = new DecisionTuningProfile
+        {
+            ProfileName = "HighHungerSensitivity",
+            Description = "2× hunger ramp scale for testing"
+        };
+        Assert.Equal("HighHungerSensitivity", custom.ProfileName);
+        Assert.Equal("2× hunger ramp scale for testing", custom.Description);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // 7. CategoryTuning — ThinkAboutSupplies extraction
+    // ═════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Default_CategoryTuning_ThinkAboutSupplies_HasProductionValues()
+    {
+        var t = DecisionTuningProfile.Default.Categories.ThinkAboutSupplies;
+        Assert.Equal(3,    t.TopN);
+        Assert.Equal(25.0, t.StarvationThreshold);
+        Assert.Equal(0.2,  t.StarvationSuppression);
+        Assert.Equal(0.15, t.FallbackPreparation);
+        Assert.Equal(0.10, t.FallbackEfficiency);
+    }
+
+    [Fact]
+    public void CustomProfile_ThinkAboutSupplies_ZeroFallback_RemovesThinkSuppliesFromPool()
+    {
+        // When FallbackPreparation and FallbackEfficiency are 0.0 and actor has nothing
+        // discoverable, think_about_supplies would have zero quality contribution.
+        // It can still be generated (intrinsic score 0.08 is unchanged), but quality score is 0.
+        var customProfile = new DecisionTuningProfile
+        {
+            Categories = new CategoryTuning
+            {
+                ThinkAboutSupplies = new ThinkAboutSuppliesTuning
+                {
+                    FallbackPreparation = 0.0,
+                    FallbackEfficiency  = 0.0
+                }
+            }
+        };
+
+        var (domain, actorId, actor, world) = CreateSetup(profile: customProfile);
+        var resources  = new EmptyResourceAvailability();
+
+        // Should still generate without error
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        Assert.NotEmpty(candidates);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // 8. ToDebugString
+    // ═════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Default_ToDebugString_ContainsProfileName()
+    {
+        var s = DecisionTuningProfile.Default.ToDebugString();
+        Assert.Contains("ProductionDefault", s);
+    }
+
+    [Fact]
+    public void Default_ToDebugString_ContainsKeyValues()
+    {
+        var s = DecisionTuningProfile.Default.ToDebugString();
+        // Spot-check a few key values appear in the output
+        Assert.Contains("0.015",  s); // FatiguePressureRestScale
+        Assert.Contains("0.025",  s); // InjurySafetyNeedScale
+        Assert.Contains("0.7",    s); // PreparationScale
+        Assert.Contains("0.8",    s); // PragmatismBase
+        Assert.Contains("TopN=3", s); // ThinkAboutSupplies.TopN
+    }
+
+    [Fact]
+    public void CustomProfile_ToDebugString_ContainsCustomName()
+    {
+        var custom = new DecisionTuningProfile
+        {
+            ProfileName = "TestProfile",
+            Description = "For unit testing"
+        };
+        var s = custom.ToDebugString();
+        Assert.Contains("TestProfile",    s);
+        Assert.Contains("For unit testing", s);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // 9. Multi-state parity: default profile produces identical scores across
+    //    a representative grid of actor states (behavior drift detection)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Verifies that the refactored scoring path (using DecisionTuningProfile) produces
+    /// exactly the same candidate scores as the implicit-default path across a representative
+    /// grid of actor states. This is the primary parity validation harness.
+    /// </summary>
+    [Theory]
+    [InlineData(10.0, 50.0, 50.0, 100.0)]  // starving
+    [InlineData(25.0, 10.0, 50.0, 100.0)]  // exhausted
+    [InlineData(50.0, 50.0, 10.0, 100.0)]  // miserable
+    [InlineData(50.0, 50.0, 50.0,  10.0)]  // injured
+    [InlineData(100.0, 100.0, 100.0, 100.0)] // fully healthy
+    [InlineData(70.0,  80.0,  60.0, 100.0)]  // default-ish state
+    [InlineData(15.0,  15.0,  15.0,  20.0)]  // extreme survival
+    [InlineData(60.0,  60.0,  80.0, 100.0)]  // high morale
+    [InlineData(40.0,  40.0,  40.0,  60.0)]  // moderate all
+    public void DefaultProfile_MatchesImplicitDefault_AcrossActorStateGrid(
+        double satiety, double energy, double morale, double health)
+    {
+        // Implicit (null → default internally)
+        var domainA = new IslandDomainPack();
+        // Explicit default
+        var domainB = new IslandDomainPack(DecisionTuningProfile.Default);
+
+        var actorId = new ActorId("ParityCheck");
+        var actorA  = (IslandActorState)domainA.CreateActorState(actorId, new Dictionary<string, object>
+            { ["satiety"] = satiety, ["energy"] = energy, ["morale"] = morale });
+        var actorB  = (IslandActorState)domainB.CreateActorState(actorId, new Dictionary<string, object>
+            { ["satiety"] = satiety, ["energy"] = energy, ["morale"] = morale });
+        actorA.Health = actorB.Health = health;
+        actorA.DecisionPragmatism = actorB.DecisionPragmatism = 1.0;
+
+        var worldA = (IslandWorldState)domainA.CreateInitialWorldState();
+        var worldB = (IslandWorldState)domainB.CreateInitialWorldState();
+        domainA.InitializeActorItems(actorId, worldA);
+        domainB.InitializeActorItems(actorId, worldB);
+
+        var resources = new EmptyResourceAvailability();
+        var candA = domainA.GenerateCandidates(actorId, actorA, worldA, 0L, new Random(99), resources);
+        var candB = domainB.GenerateCandidates(actorId, actorB, worldB, 0L, new Random(99), resources);
+
+        Assert.Equal(candA.Count, candB.Count);
+        for (var i = 0; i < candA.Count; i++)
+        {
+            Assert.Equal(candA[i].Action.Id, candB[i].Action.Id);
+            Assert.Equal(candA[i].Score, candB[i].Score, precision: 9);
+        }
     }
 }

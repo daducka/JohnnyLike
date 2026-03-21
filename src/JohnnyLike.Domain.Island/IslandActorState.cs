@@ -346,7 +346,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
     private void AddThinkAboutSuppliesCandidate(IslandContext ctx, List<ActionCandidate> output)
     {
-        var qualities = ComputeThinkAboutSuppliesQualities(this, ctx.World, ctx.QualityEffectiveWeight);
+        var tuning   = ctx.TuningProfile.Categories.ThinkAboutSupplies;
+        var qualities = ComputeThinkAboutSuppliesQualities(this, ctx.World, tuning, ctx.QualityEffectiveWeight);
 
         output.Add(new ActionCandidate(
             new ActionSpec(
@@ -372,20 +373,6 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         ));
     }
 
-    // Satiety threshold below which the actor is considered survival-distressed
-    // for the purpose of suppressing think_about_supplies when no food-relevant
-    // recipes are discoverable.
-    private const double ThinkSuppliesStarvationThreshold = 25.0;
-    // Multiplier applied to think_about_supplies qualities when starving and
-    // no food/safety-relevant discoverable recipes are available.
-    private const double ThinkSuppliesStarvationSuppression = 0.2;
-    // Small fallback Preparation quality used when no recipes are currently discoverable.
-    private const double ThinkSuppliesFallbackPreparation = 0.15;
-    // Small fallback Efficiency quality used when no recipes are currently discoverable.
-    private const double ThinkSuppliesFallbackEfficiency = 0.10;
-    // Maximum number of top recipes considered when blending opportunity qualities.
-    private const int ThinkSuppliesTopN = 3;
-
     /// <summary>
     /// Computes dynamic action qualities for <c>think_about_supplies</c> based on which
     /// recipes the actor can currently discover.  Uses a weighted top-N blend so that a
@@ -394,6 +381,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
     /// When the actor is starving and discoverable recipes would not materially help with
     /// food or safety, qualities are further suppressed so the action loses priority.
     /// </summary>
+    /// <param name="tuning">Tuning parameters from the active <see cref="ThinkAboutSuppliesTuning"/>.</param>
     /// <param name="effectiveWeight">
     /// Optional function returning the current effective quality weight for a given quality type.
     /// When provided, recipes are ranked by <c>baseChance × Σ(qualityValue × effectiveWeight)</c>
@@ -403,6 +391,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
     private static Dictionary<QualityType, double> ComputeThinkAboutSuppliesQualities(
         IslandActorState actor,
         IslandWorldState world,
+        ThinkAboutSuppliesTuning tuning,
         Func<QualityType, double>? effectiveWeight = null)
     {
         // Collect discoverable recipes for this trigger and actor state.
@@ -428,8 +417,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             // pool but cannot dominate over more urgent survival options.
             return new Dictionary<QualityType, double>
             {
-                [QualityType.Preparation] = ThinkSuppliesFallbackPreparation,
-                [QualityType.Efficiency]  = ThinkSuppliesFallbackEfficiency
+                [QualityType.Preparation] = tuning.FallbackPreparation,
+                [QualityType.Efficiency]  = tuning.FallbackEfficiency
             };
         }
 
@@ -446,7 +435,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
         var topRecipes = discoverable
             .OrderByDescending(RecipeScore)
-            .Take(ThinkSuppliesTopN)
+            .Take(tuning.TopN)
             .ToList();
 
         // Compute a weight-normalised blend of the top recipes' qualities.
@@ -465,7 +454,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         // Survival distress suppression: when the actor is starving and none of the
         // discoverable recipes materially help with food access or safety, reduce the
         // qualities significantly so direct food actions take priority.
-        if (actor.Satiety < ThinkSuppliesStarvationThreshold)
+        if (actor.Satiety < tuning.StarvationThreshold)
         {
             bool hasSurvivalRelevantRecipe = topRecipes.Any(r =>
                 r.qualities.ContainsKey(QualityType.FoodConsumption) ||
@@ -475,7 +464,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             if (!hasSurvivalRelevantRecipe)
             {
                 foreach (var key in result.Keys.ToList())
-                    result[key] *= ThinkSuppliesStarvationSuppression;
+                    result[key] *= tuning.StarvationSuppression;
             }
         }
 

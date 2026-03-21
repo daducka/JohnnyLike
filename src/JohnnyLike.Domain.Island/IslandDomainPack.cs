@@ -140,7 +140,8 @@ public class IslandDomainPack : IDomainPack
             rngStream,
             rng,
             resourceAvailability,
-            model.EffectiveWeight
+            model.EffectiveWeight,
+            _profile
         );
 
         // Generate candidates using all registered providers
