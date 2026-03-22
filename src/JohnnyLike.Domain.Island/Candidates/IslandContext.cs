@@ -22,6 +22,13 @@ public class IslandContext
     /// </summary>
     public Func<QualityType, double>? QualityEffectiveWeight { get; }
 
+    /// <summary>
+    /// The active tuning profile for this decision pass.
+    /// Candidate providers use this to read decision-policy parameters (e.g., starvation thresholds)
+    /// without hardcoding constants.
+    /// </summary>
+    public DecisionTuningProfile TuningProfile { get; }
+
     public IslandContext(
         ActorId actorId,
         IslandActorState actor,
@@ -30,7 +37,8 @@ public class IslandContext
         IRngStream rng,
         Random random,
         IResourceAvailability resourceAvailability,
-        Func<QualityType, double>? qualityEffectiveWeight = null)
+        Func<QualityType, double>? qualityEffectiveWeight = null,
+        DecisionTuningProfile? tuningProfile = null)
     {
         ActorId = actorId;
         Actor = actor;
@@ -40,6 +48,7 @@ public class IslandContext
         Random = random;
         ResourceAvailability = resourceAvailability;
         QualityEffectiveWeight = qualityEffectiveWeight;
+        TuningProfile = tuningProfile ?? DecisionTuningProfile.Default;
     }
 
     // Helper methods for scoring
