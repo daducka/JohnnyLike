@@ -1,0 +1,450 @@
+[
+  // ═══════════════════════════════════════════════════════════════════════
+  // Bucket 1: Starving + immediate food available
+  // Expectation: actor always chooses FoodConsumption.
+  // These are the highest-priority survival-critical states.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  {
+    "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
+    "actor": "Johnny",
+    "scenario": "FoodAvailableNow",
+    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodConsumption",
+      "forbiddenTopCategories": [ "Preparation", "Efficiency", "Fun", "Mastery" ],
+      "notes": "Starving with food in pile — eating is the only sensible choice."
+    },
+    "priority": 10,
+    "label": "starving+food_available/Johnny"
+  },
+  {
+    "sampleKey": "Frank|FoodAvailableNow|s10|h70|e50|m50",
+    "actor": "Frank",
+    "scenario": "FoodAvailableNow",
+    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodConsumption",
+      "forbiddenTopCategories": [ "Preparation", "Efficiency", "Fun", "Mastery" ],
+      "notes": "Starving with food in pile — archetype does not override survival."
+    },
+    "priority": 10,
+    "label": "starving+food_available/Frank"
+  },
+  {
+    "sampleKey": "Sawyer|FoodAvailableNow|s10|h70|e50|m50",
+    "actor": "Sawyer",
+    "scenario": "FoodAvailableNow",
+    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodConsumption",
+      "forbiddenTopCategories": [ "Fun", "Mastery" ],
+      "notes": "Even Sawyer (playful archetype) must eat when starving."
+    },
+    "priority": 10,
+    "label": "starving+food_available/Sawyer"
+  },
+  {
+    "sampleKey": "Ashley|FoodAvailableNow|s10|h70|e50|m50",
+    "actor": "Ashley",
+    "scenario": "FoodAvailableNow",
+    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodConsumption",
+      "forbiddenTopCategories": [ "Preparation", "Efficiency", "Fun", "Mastery" ],
+      "notes": "Starving with food available — survival overrides all flavour."
+    },
+    "priority": 10,
+    "label": "starving+food_available/Ashley"
+  },
+  {
+    "sampleKey": "Johnny|FoodAvailable_WithComfort|s10|h70|e50|m50",
+    "actor": "Johnny",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodConsumption",
+      "forbiddenTopCategories": [ "Rest", "Comfort", "Fun", "Mastery" ],
+      "notes": "Bed and campfire present but starvation trumps comfort."
+    },
+    "priority": 10,
+    "label": "starving+food+comfort/Johnny"
+  },
+  {
+    "sampleKey": "Sawyer|FoodAvailable_WithComfort|s10|h70|e50|m50",
+    "actor": "Sawyer",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodConsumption",
+      "forbiddenTopCategories": [ "Fun", "Comfort" ],
+      "notes": "Sawyer with bed present — starvation must still win."
+    },
+    "priority": 9,
+    "label": "starving+food+comfort/Sawyer"
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Bucket 2: Starving + no food pile but food source available
+  // Expectation: actor chooses FoodAcquisition (go get food).
+  // ═══════════════════════════════════════════════════════════════════════
+
+  {
+    "sampleKey": "Johnny|NoFood_SourceAvailable|s10|h70|e50|m50",
+    "actor": "Johnny",
+    "scenario": "NoFood_SourceAvailable",
+    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodAcquisition",
+      "forbiddenTopCategories": [ "Preparation", "Fun", "Mastery", "Comfort" ],
+      "notes": "No food in pile but sources available — must acquire food."
+    },
+    "priority": 10,
+    "label": "starving+source_only/Johnny"
+  },
+  {
+    "sampleKey": "Frank|NoFood_SourceAvailable|s10|h70|e50|m50",
+    "actor": "Frank",
+    "scenario": "NoFood_SourceAvailable",
+    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodAcquisition",
+      "forbiddenTopCategories": [ "Preparation", "Efficiency", "Fun", "Mastery" ],
+      "notes": "No food in pile, sources available — Frank must acquire food."
+    },
+    "priority": 10,
+    "label": "starving+source_only/Frank"
+  },
+  {
+    "sampleKey": "Sawyer|NoFood_SourceAvailable|s10|h70|e50|m50",
+    "actor": "Sawyer",
+    "scenario": "NoFood_SourceAvailable",
+    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodAcquisition",
+      "forbiddenTopCategories": [ "Fun", "Comfort" ],
+      "notes": "Sawyer — starvation with source only; must acquire food."
+    },
+    "priority": 10,
+    "label": "starving+source_only/Sawyer"
+  },
+  {
+    "sampleKey": "Oscar|NoFood_SourceAvailable|s10|h70|e50|m50",
+    "actor": "Oscar",
+    "scenario": "NoFood_SourceAvailable",
+    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodAcquisition",
+      "forbiddenTopCategories": [ "Preparation", "Mastery" ],
+      "notes": "Oscar (analytical) — high-Prep archetype must not over-prepare when starving."
+    },
+    "priority": 9,
+    "label": "starving+source_only/Oscar"
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Bucket 3: Low health + low satiety + bed available
+  // Tension between Rest/Safety (injury) and FoodConsumption.
+  // Acceptable to choose either; forbidden to choose flavour actions.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  {
+    "sampleKey": "Johnny|FoodAvailable_WithComfort|s15|h15|e50|m30",
+    "actor": "Johnny",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 15, "health": 15, "energy": 50, "morale": 30 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodConsumption",
+      "acceptableTopCategories": [ "Rest", "Safety" ],
+      "forbiddenTopCategories": [ "Fun", "Mastery", "Preparation", "Efficiency" ],
+      "notes": "Injured and hungry with bed — food or rest are both valid; fun/mastery are not."
+    },
+    "priority": 8,
+    "label": "injured+hungry+bed/Johnny"
+  },
+  {
+    "sampleKey": "Frank|FoodAvailable_WithComfort|s15|h15|e50|m30",
+    "actor": "Frank",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 15, "health": 15, "energy": 50, "morale": 30 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodConsumption",
+      "acceptableTopCategories": [ "Rest", "Safety" ],
+      "forbiddenTopCategories": [ "Fun", "Mastery", "Preparation", "Efficiency" ],
+      "notes": "Frank injured and hungry — survival focus expected."
+    },
+    "priority": 7,
+    "label": "injured+hungry+bed/Frank"
+  },
+  {
+    "sampleKey": "Sawyer|FoodAvailable_WithComfort|s15|h15|e50|m30",
+    "actor": "Sawyer",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 15, "health": 15, "energy": 50, "morale": 30 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodConsumption",
+      "acceptableTopCategories": [ "Rest", "Safety" ],
+      "forbiddenTopCategories": [ "Fun", "Comfort" ],
+      "notes": "Sawyer is playful but injury + hunger must suppress leisure."
+    },
+    "priority": 7,
+    "label": "injured+hungry+bed/Sawyer"
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Bucket 4: Low morale but otherwise safe
+  // Sub-case A: still hungry → survival beats mood
+  // Sub-case B: well-fed + stable → comfort/mood actions are fine
+  // ═══════════════════════════════════════════════════════════════════════
+
+  {
+    "sampleKey": "Johnny|FoodAvailableNow|s15|h70|e70|m10",
+    "actor": "Johnny",
+    "scenario": "FoodAvailableNow",
+    "state": { "satiety": 15, "health": 70, "energy": 70, "morale": 10 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodConsumption",
+      "forbiddenTopCategories": [ "Fun", "Mastery" ],
+      "notes": "Low morale but hungry — food need overrides mood recovery."
+    },
+    "priority": 8,
+    "label": "low_morale+hungry/Johnny"
+  },
+  {
+    "sampleKey": "Johnny|FoodAvailable_WithComfort|s70|h70|e70|m10",
+    "actor": "Johnny",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 10 },
+    "desiredOutcome": {
+      "acceptableTopCategories": [ "Comfort", "Rest", "Fun" ],
+      "forbiddenTopCategories": [ "Preparation", "Efficiency" ],
+      "notes": "Well-fed, low morale — comfort or rest should surface; prep should not dominate."
+    },
+    "priority": 5,
+    "label": "low_morale+stable/Johnny"
+  },
+  {
+    "sampleKey": "Sawyer|FoodAvailable_WithComfort|s70|h70|e70|m10",
+    "actor": "Sawyer",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 10 },
+    "desiredOutcome": {
+      "desiredTopCategory": "Fun",
+      "acceptableTopCategories": [ "Comfort" ],
+      "forbiddenTopCategories": [ "Preparation", "Efficiency" ],
+      "notes": "Sawyer's playful archetype should steer toward Fun when stable."
+    },
+    "priority": 5,
+    "label": "low_morale+stable/Sawyer"
+  },
+  {
+    "sampleKey": "Frank|FoodAvailable_WithComfort|s70|h70|e70|m10",
+    "actor": "Frank",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 10 },
+    "desiredOutcome": {
+      "acceptableTopCategories": [ "Comfort", "Rest", "Preparation" ],
+      "forbiddenTopCategories": [ "Fun" ],
+      "notes": "Frank is methodical — mood recovery via comfort/rest or preparation is expected."
+    },
+    "priority": 4,
+    "label": "low_morale+stable/Frank"
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Bucket 5: Recipe temptation / Preparation pressure
+  // ═══════════════════════════════════════════════════════════════════════
+
+  {
+    "sampleKey": "Johnny|HighRecipeOpportunity|s10|h70|e70|m50",
+    "actor": "Johnny",
+    "scenario": "HighRecipeOpportunity",
+    "state": { "satiety": 10, "health": 70, "energy": 70, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodAcquisition",
+      "acceptableTopCategories": [ "FoodConsumption" ],
+      "forbiddenTopCategories": [ "Preparation", "Efficiency" ],
+      "notes": "Hungry with abundant crafting materials — prep temptation must be suppressed."
+    },
+    "priority": 9,
+    "label": "hungry+high_recipe_opportunity/Johnny"
+  },
+  {
+    "sampleKey": "Oscar|HighRecipeOpportunity|s10|h70|e70|m50",
+    "actor": "Oscar",
+    "scenario": "HighRecipeOpportunity",
+    "state": { "satiety": 10, "health": 70, "energy": 70, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "FoodAcquisition",
+      "acceptableTopCategories": [ "FoodConsumption" ],
+      "forbiddenTopCategories": [ "Preparation", "Efficiency" ],
+      "notes": "Oscar is prep-oriented but must not craft when starving."
+    },
+    "priority": 9,
+    "label": "hungry+high_recipe_opportunity/Oscar"
+  },
+  {
+    "sampleKey": "Frank|HighRecipeOpportunity|s70|h70|e70|m50",
+    "actor": "Frank",
+    "scenario": "HighRecipeOpportunity",
+    "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "Preparation",
+      "acceptableTopCategories": [ "Efficiency", "Mastery" ],
+      "notes": "Frank well-fed with high recipe opportunity — crafting/prep should surface."
+    },
+    "priority": 5,
+    "label": "well_fed+high_recipe_opportunity/Frank"
+  },
+  {
+    "sampleKey": "Oscar|HighRecipeOpportunity|s70|h70|e70|m50",
+    "actor": "Oscar",
+    "scenario": "HighRecipeOpportunity",
+    "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "Preparation",
+      "acceptableTopCategories": [ "Efficiency", "Mastery" ],
+      "notes": "Oscar well-fed, analytical — prep/efficiency should dominate."
+    },
+    "priority": 5,
+    "label": "well_fed+high_recipe_opportunity/Oscar"
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Bucket 6: Late-collapse (exhausted + hungry in degraded world)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  {
+    "sampleKey": "Johnny|LateCollapse|s15|h50|e10|m30",
+    "actor": "Johnny",
+    "scenario": "LateCollapse",
+    "state": { "satiety": 15, "health": 50, "energy": 10, "morale": 30 },
+    "desiredOutcome": {
+      "acceptableTopCategories": [ "Rest", "FoodConsumption" ],
+      "forbiddenTopCategories": [ "Fun", "Mastery", "Preparation", "Efficiency" ],
+      "notes": "Exhausted + hungry + degraded world — rest or food; no leisure."
+    },
+    "priority": 7,
+    "label": "late_collapse+exhausted+hungry/Johnny"
+  },
+  {
+    "sampleKey": "Sawyer|LateCollapse|s15|h50|e10|m30",
+    "actor": "Sawyer",
+    "scenario": "LateCollapse",
+    "state": { "satiety": 15, "health": 50, "energy": 10, "morale": 30 },
+    "desiredOutcome": {
+      "acceptableTopCategories": [ "Rest", "FoodConsumption" ],
+      "forbiddenTopCategories": [ "Fun", "Comfort" ],
+      "notes": "Sawyer late-collapse — even playful archetype cannot choose fun here."
+    },
+    "priority": 7,
+    "label": "late_collapse+exhausted+hungry/Sawyer"
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Bucket 7: Bed-loop risk (borderline hunger + exhausted + bed available)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  {
+    "sampleKey": "Johnny|FoodAvailable_WithComfort|s25|h70|e10|m50",
+    "actor": "Johnny",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 25, "health": 70, "energy": 10, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "Rest",
+      "acceptableTopCategories": [ "FoodConsumption" ],
+      "forbiddenTopCategories": [ "Fun", "Mastery", "Preparation" ],
+      "notes": "Borderline hunger + exhausted with bed — rest should edge out food."
+    },
+    "priority": 7,
+    "label": "borderline_hunger+exhausted+bed/Johnny"
+  },
+  {
+    "sampleKey": "Sawyer|FoodAvailable_WithComfort|s25|h70|e10|m50",
+    "actor": "Sawyer",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 25, "health": 70, "energy": 10, "morale": 50 },
+    "desiredOutcome": {
+      "desiredTopCategory": "Rest",
+      "acceptableTopCategories": [ "FoodConsumption", "Comfort" ],
+      "forbiddenTopCategories": [ "Fun" ],
+      "notes": "Sawyer exhausted + borderline hunger — rest expected even for playful archetype."
+    },
+    "priority": 6,
+    "label": "borderline_hunger+exhausted+bed/Sawyer"
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Bucket 8: Stable "flavour" states — archetypes should differ
+  // All actors well-fed, healthy, rested. Flavour / archetype expression.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  {
+    "sampleKey": "Sawyer|FoodAvailable_WithComfort|s100|h100|e100|m100",
+    "actor": "Sawyer",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
+    "desiredOutcome": {
+      "desiredTopCategory": "Fun",
+      "acceptableTopCategories": [ "Comfort" ],
+      "forbiddenTopCategories": [ "FoodConsumption", "FoodAcquisition" ],
+      "notes": "Sawyer fully satisfied — Fun/Comfort should dominate; food should score low."
+    },
+    "priority": 4,
+    "label": "fully_satisfied_baseline/Sawyer"
+  },
+  {
+    "sampleKey": "Frank|FoodAvailable_WithComfort|s100|h100|e100|m100",
+    "actor": "Frank",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
+    "desiredOutcome": {
+      "desiredTopCategory": "Mastery",
+      "acceptableTopCategories": [ "Preparation", "Efficiency" ],
+      "forbiddenTopCategories": [ "FoodConsumption", "FoodAcquisition" ],
+      "notes": "Frank fully satisfied — analytical archetype should gravitate to Mastery/Prep."
+    },
+    "priority": 4,
+    "label": "fully_satisfied_baseline/Frank"
+  },
+  {
+    "sampleKey": "Oscar|FoodAvailable_WithComfort|s100|h100|e100|m100",
+    "actor": "Oscar",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
+    "desiredOutcome": {
+      "desiredTopCategory": "Mastery",
+      "acceptableTopCategories": [ "Preparation", "Efficiency" ],
+      "forbiddenTopCategories": [ "FoodConsumption", "FoodAcquisition" ],
+      "notes": "Oscar fully satisfied — high-INT archetype should favour Mastery/Efficiency."
+    },
+    "priority": 4,
+    "label": "fully_satisfied_baseline/Oscar"
+  },
+  {
+    "sampleKey": "Johnny|FoodAvailable_WithComfort|s100|h100|e100|m100",
+    "actor": "Johnny",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
+    "desiredOutcome": {
+      "acceptableTopCategories": [ "Fun", "Mastery", "Comfort" ],
+      "forbiddenTopCategories": [ "FoodConsumption", "FoodAcquisition" ],
+      "notes": "Johnny fully satisfied — broad flavour expected; food should not appear."
+    },
+    "priority": 3,
+    "label": "fully_satisfied_baseline/Johnny"
+  },
+  {
+    "sampleKey": "Ashley|FoodAvailable_WithComfort|s100|h100|e100|m100",
+    "actor": "Ashley",
+    "scenario": "FoodAvailable_WithComfort",
+    "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
+    "desiredOutcome": {
+      "acceptableTopCategories": [ "Fun", "Mastery", "Comfort", "Preparation" ],
+      "forbiddenTopCategories": [ "FoodConsumption", "FoodAcquisition" ],
+      "notes": "Ashley fully satisfied — flavour expression; food irrelevant."
+    },
+    "priority": 3,
+    "label": "fully_satisfied_baseline/Ashley"
+  }
+]
