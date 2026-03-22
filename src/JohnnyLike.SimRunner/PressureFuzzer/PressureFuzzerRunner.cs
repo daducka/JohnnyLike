@@ -92,6 +92,22 @@ public record FuzzerFlags(
     bool SafetyBeatFood,
     bool PersonalityCollapseRisk);
 
+/// <summary>
+/// Identifies the tuning profile used to produce a run of fuzzer samples.
+/// Included in every <see cref="PressureSample"/> and in the run summary so that
+/// two output files can be unambiguously compared or attributed.
+/// </summary>
+public record ProfileMetadata(
+    /// <summary>Human-readable name from <see cref="DecisionTuningProfile.ProfileName"/>.</summary>
+    string ProfileName,
+    /// <summary>Optional description from <see cref="DecisionTuningProfile.Description"/>.</summary>
+    string? ProfileDescription,
+    /// <summary>
+    /// Deterministic 8-character hex hash of all tuning values.
+    /// Two profiles with identical parameters share the same hash.
+    /// </summary>
+    string ProfileHash);
+
 public record PressureSample(
     /// <summary>
     /// Deterministic stable identifier for this row:
@@ -111,6 +127,11 @@ public record PressureSample(
     ScoreDeltas ScoreDeltas,
     FuzzerFlags Flags,
     /// <summary>
+    /// Identifies the tuning profile that produced this sample.
+    /// Always present; defaults to the production-default profile.
+    /// </summary>
+    ProfileMetadata TuningProfile,
+    /// <summary>
     /// Non-null only for golden-state samples: a short human-readable description
     /// of the intended failure mode or balancing concern being tested.
     /// </summary>
@@ -128,7 +149,12 @@ public record PressureFuzzerOptions(
     /// When true (default), the curated golden states from
     /// <see cref="GoldenStates.All"/> are included alongside the grid samples.
     /// </summary>
-    bool IncludeGoldenStates = true);
+    bool IncludeGoldenStates = true,
+    /// <summary>
+    /// Optional alternate tuning profile to use for all scoring.
+    /// When null (default), <see cref="DecisionTuningProfile.Default"/> is used.
+    /// </summary>
+    DecisionTuningProfile? TuningProfile = null);
 
 // ─── Runner ───────────────────────────────────────────────────────────────────
 
@@ -188,11 +214,18 @@ public static class PressureFuzzerRunner
         var energyGrid  = options.CoarseGrid ? EnergyCoarse  : EnergyFine;
         var moraleGrid  = options.CoarseGrid ? MoraleCoarse  : MoraleFine;
 
-        var domain  = new IslandDomainPack();
+        var domain  = new IslandDomainPack(options.TuningProfile);
         var results = new List<PressureSample>();
         // Deterministic RNG: rolling dice during GenerateCandidates (skill checks etc.)
         // uses this seeded random, keeping the fuzzer fully reproducible.
         var rng = new Random(42);
+
+        // Profile metadata is shared across all samples in this run.
+        var profile    = options.TuningProfile ?? DecisionTuningProfile.Default;
+        var profileMeta = new ProfileMetadata(
+            profile.ProfileName,
+            profile.Description,
+            profile.ComputeHash());
 
         foreach (var actorName in actorNames)
         {
@@ -210,7 +243,7 @@ public static class PressureFuzzerRunner
                 results.Add(SampleState(
                     domain, actorId, actorName, archetypeData,
                     scenario, satiety, health, energy, morale,
-                    options.TopCandidateCount, rng, goldenLabel: null));
+                    options.TopCandidateCount, rng, profileMeta, goldenLabel: null));
             }
         }
 
@@ -235,7 +268,7 @@ public static class PressureFuzzerRunner
                     var sample = SampleState(
                         domain, actorId, actorName, archetypeData,
                         gs.Scenario, gs.Satiety, gs.Health, gs.Energy, gs.Morale,
-                        options.TopCandidateCount, rng, goldenLabel: gs.Label);
+                        options.TopCandidateCount, rng, profileMeta, goldenLabel: gs.Label);
 
                     // Only add if this exact key isn't already in the grid.
                     if (!gridKeys.Contains(sample.SampleKey))
@@ -504,9 +537,20 @@ public static class PressureFuzzerRunner
                 ? Math.Round(100.0 * criticalIdenticalAction / criticalGroups, 2) : 0.0
         };
 
+        // ── Profile metadata ──────────────────────────────────────────────────
+        // All samples in one run share the same profile; read it from the first sample.
+        var sampleProfile = samples.Count > 0 ? samples[0].TuningProfile : null;
+        var profileInfo = sampleProfile is null ? null : new
+        {
+            profileName        = sampleProfile.ProfileName,
+            profileDescription = sampleProfile.ProfileDescription,
+            profileHash        = sampleProfile.ProfileHash
+        };
+
         var summary = new
         {
             generatedAt            = DateTime.UtcNow.ToString("o"),
+            tuningProfile          = (object?)profileInfo,
             totalSamples           = total,
             terminalStateSamples   = samples.Count(s => s.Plausibility.IsTerminalState),
             extremeStateSamples    = samples.Count(s => s.Plausibility.IsExtremeState),
@@ -532,7 +576,7 @@ public static class PressureFuzzerRunner
         Dictionary<string, object> archetypeData,
         FuzzerScenarioKind scenario,
         double satiety, double health, double energy, double morale,
-        int topN, Random rng, string? goldenLabel)
+        int topN, Random rng, ProfileMetadata profileMeta, string? goldenLabel)
     {
         // Build actor state from archetype with overridden stats.
         var stateData = new Dictionary<string, object>(archetypeData)
@@ -582,6 +626,7 @@ public static class PressureFuzzerRunner
             topCandidates,
             scoreDeltas,
             flags,
+            TuningProfile: profileMeta,
             GoldenStateLabel: goldenLabel);
     }
 

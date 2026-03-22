@@ -1,4 +1,7 @@
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace JohnnyLike.Domain.Island;
 
@@ -102,6 +105,38 @@ public sealed class DecisionTuningProfile
 
         return sb.ToString().TrimEnd();
     }
+
+    /// <summary>
+    /// Returns a deterministic 8-character hex hash of all tuning values.
+    /// Identical parameter sets always produce the same hash; any change produces a different one.
+    /// Suitable for tagging fuzzer outputs and comparing runs.
+    /// </summary>
+    public string ComputeHash()
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(ToDebugString()));
+        return Convert.ToHexString(bytes)[..8];
+    }
+
+    // ── JSON serialization ────────────────────────────────────────────────────
+
+    private static readonly JsonSerializerOptions _jsonOpts = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    /// <summary>Serializes this profile to a JSON string.</summary>
+    public string ToJson() => JsonSerializer.Serialize(this, _jsonOpts);
+
+    /// <summary>Deserializes a <see cref="DecisionTuningProfile"/> from a JSON string.</summary>
+    public static DecisionTuningProfile FromJson(string json) =>
+        JsonSerializer.Deserialize<DecisionTuningProfile>(json, _jsonOpts)
+            ?? throw new InvalidOperationException("Deserialized profile was null.");
+
+    /// <summary>Loads a <see cref="DecisionTuningProfile"/> from a JSON file on disk.</summary>
+    public static DecisionTuningProfile LoadFromFile(string path) =>
+        FromJson(File.ReadAllText(path));
 
     private static void AppendSection(StringBuilder sb, string header, params string[] entries)
     {
