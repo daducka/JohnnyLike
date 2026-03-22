@@ -550,7 +550,7 @@ public static class PressureFuzzerRunner
         var summary = new
         {
             generatedAt            = DateTime.UtcNow.ToString("o"),
-            tuningProfile          = (object?)profileInfo,
+            tuningProfile          = profileInfo,
             totalSamples           = total,
             terminalStateSamples   = samples.Count(s => s.Plausibility.IsTerminalState),
             extremeStateSamples    = samples.Count(s => s.Plausibility.IsExtremeState),

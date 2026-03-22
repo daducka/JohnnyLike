@@ -113,7 +113,7 @@ public sealed class DecisionTuningProfile
     /// </summary>
     public string ComputeHash()
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(ToDebugString()));
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(ToJson()));
         return Convert.ToHexString(bytes)[..8];
     }
 

@@ -117,7 +117,7 @@ public class PressureFuzzerProfileTests
         var altProfile = new DecisionTuningProfile
         {
             ProfileName = "AltRestHeavy",
-            Need = new NeedTuning { FatiguePressureRestScale = 0.5 }   // 33× default
+            Need = new NeedTuning { FatiguePressureRestScale = 0.5 }   // 0.5 vs default 0.015 (~33×)
         };
         var altSamples = PressureFuzzerRunner.Run(MinimalOptions(altProfile));
 
