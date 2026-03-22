@@ -623,7 +623,11 @@ void RunPressureFuzzer(string[] fuzzerArgs)
     Console.WriteLine($"✓ Written to {outputPath}");
 
     var summaryPath = PressureFuzzerRunner.DeriveSummaryPath(outputPath);
-    PressureFuzzerRunner.WriteSummaryJson(samples, summaryPath);
+    var profileMeta = new ProfileMetadata(
+        effectiveProfile.ProfileName,
+        effectiveProfile.Description,
+        effectiveProfile.ComputeHash());
+    PressureFuzzerRunner.WriteSummaryJson(samples, summaryPath, profileMeta);
     Console.WriteLine($"✓ Summary written to {summaryPath}");
 
     // ── Console flag summary ────────────────────────────────────────────────

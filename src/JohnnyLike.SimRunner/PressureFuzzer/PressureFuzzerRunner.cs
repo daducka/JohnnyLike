@@ -352,7 +352,7 @@ public static class PressureFuzzerRunner
     /// distributions, dominant quality breakdowns, crossover statistics,
     /// dominant-quality pattern metrics, and actor convergence metrics.
     /// </summary>
-    public static void WriteSummaryJson(List<PressureSample> samples, string summaryPath)
+    public static void WriteSummaryJson(List<PressureSample> samples, string summaryPath, ProfileMetadata profile)
     {
         // ── Flag counts ────────────────────────────────────────────────────────
         var flagCounts = new Dictionary<string, int>
@@ -538,13 +538,11 @@ public static class PressureFuzzerRunner
         };
 
         // ── Profile metadata ──────────────────────────────────────────────────
-        // All samples in one run share the same profile; read it from the first sample.
-        var sampleProfile = samples.Count > 0 ? samples[0].TuningProfile : null;
-        var profileInfo = sampleProfile is null ? null : new
+        var profileInfo = new
         {
-            profileName        = sampleProfile.ProfileName,
-            profileDescription = sampleProfile.ProfileDescription,
-            profileHash        = sampleProfile.ProfileHash
+            profileName        = profile.ProfileName,
+            profileDescription = profile.ProfileDescription,
+            profileHash        = profile.ProfileHash
         };
 
         var summary = new

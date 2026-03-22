@@ -172,6 +172,16 @@ public class PressureFuzzerProfileTests
     }
 
     [Fact]
+    public void ComputeHash_SameParametersDifferentName_ReturnsSameHash()
+    {
+        // Two profiles with identical tuning values but different labels must hash identically.
+        // This is the key contract: the hash represents tunable behavior, not display metadata.
+        var profileA = new DecisionTuningProfile { ProfileName = "Alpha", Description = "First label" };
+        var profileB = new DecisionTuningProfile { ProfileName = "Beta",  Description = "Second label" };
+        Assert.Equal(profileA.ComputeHash(), profileB.ComputeHash());
+    }
+
+    [Fact]
     public void JsonRoundTrip_DefaultProfile_PreservesAllValues()
     {
         var original = DecisionTuningProfile.Default;
@@ -218,6 +228,34 @@ public class PressureFuzzerProfileTests
             Assert.Equal("FileRoundTrip", loaded.ProfileName);
             Assert.Equal(0.042, loaded.Need.FatiguePressureRestScale);
             Assert.Equal(original.ComputeHash(), loaded.ComputeHash());
+        }
+        finally
+        {
+            File.Delete(tmpPath);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 5. WriteSummaryJson is independent of sample presence
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void WriteSummaryJson_WithEmptySamples_StillIncludesProfileMetadata()
+    {
+        var profile = new DecisionTuningProfile
+        {
+            ProfileName = "EmptyRunProfile",
+            Description = "Used when no samples are produced"
+        };
+        var meta     = new ProfileMetadata(profile.ProfileName, profile.Description, profile.ComputeHash());
+        var tmpPath  = Path.GetTempFileName();
+        try
+        {
+            PressureFuzzerRunner.WriteSummaryJson(new List<PressureSample>(), tmpPath, meta);
+
+            var json = File.ReadAllText(tmpPath);
+            Assert.Contains("EmptyRunProfile", json);
+            Assert.Contains(profile.ComputeHash(), json);
         }
         finally
         {

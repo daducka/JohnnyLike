@@ -107,13 +107,18 @@ public sealed class DecisionTuningProfile
     }
 
     /// <summary>
-    /// Returns a deterministic 8-character hex hash of all tuning values.
-    /// Identical parameter sets always produce the same hash; any change produces a different one.
-    /// Suitable for tagging fuzzer outputs and comparing runs.
+    /// Returns a deterministic 8-character hex hash of the <em>tuning values only</em>
+    /// (Need, Mood, Personality, Categories). Metadata fields such as
+    /// <see cref="ProfileName"/> and <see cref="Description"/> are intentionally excluded
+    /// so that two profiles with identical parameters always share the same hash,
+    /// regardless of how they are labelled.
     /// </summary>
     public string ComputeHash()
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(ToJson()));
+        // Serialize only the tunable sub-objects to get a parameter-only fingerprint.
+        var tuningValues = new { need = Need, mood = Mood, personality = Personality, categories = Categories };
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(tuningValues, _jsonOpts)));
         return Convert.ToHexString(bytes)[..8];
     }
 
