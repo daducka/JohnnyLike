@@ -1,4 +1,7 @@
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace JohnnyLike.Domain.Island;
 
@@ -102,6 +105,43 @@ public sealed class DecisionTuningProfile
 
         return sb.ToString().TrimEnd();
     }
+
+    /// <summary>
+    /// Returns a deterministic 8-character hex hash of the <em>tuning values only</em>
+    /// (Need, Mood, Personality, Categories). Metadata fields such as
+    /// <see cref="ProfileName"/> and <see cref="Description"/> are intentionally excluded
+    /// so that two profiles with identical parameters always share the same hash,
+    /// regardless of how they are labelled.
+    /// </summary>
+    public string ComputeHash()
+    {
+        // Serialize only the tunable sub-objects to get a parameter-only fingerprint.
+        var tuningValues = new { need = Need, mood = Mood, personality = Personality, categories = Categories };
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(tuningValues, _jsonOpts)));
+        return Convert.ToHexString(bytes)[..8];
+    }
+
+    // ── JSON serialization ────────────────────────────────────────────────────
+
+    private static readonly JsonSerializerOptions _jsonOpts = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    /// <summary>Serializes this profile to a JSON string.</summary>
+    public string ToJson() => JsonSerializer.Serialize(this, _jsonOpts);
+
+    /// <summary>Deserializes a <see cref="DecisionTuningProfile"/> from a JSON string.</summary>
+    public static DecisionTuningProfile FromJson(string json) =>
+        JsonSerializer.Deserialize<DecisionTuningProfile>(json, _jsonOpts)
+            ?? throw new InvalidOperationException("Deserialized profile was null.");
+
+    /// <summary>Loads a <see cref="DecisionTuningProfile"/> from a JSON file on disk.</summary>
+    public static DecisionTuningProfile LoadFromFile(string path) =>
+        FromJson(File.ReadAllText(path));
 
     private static void AppendSection(StringBuilder sb, string header, params string[] entries)
     {

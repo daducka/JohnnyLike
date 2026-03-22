@@ -43,6 +43,7 @@ if (args.Length == 0)
     Console.WriteLine("  --output <path>             Output JSON file path (default: ./fuzzer-output.json)");
     Console.WriteLine("  --grid coarse|fine          Stat sampling density (default: coarse)");
     Console.WriteLine("  --top <n>                   Top N candidates to include (default: 5)");
+    Console.WriteLine("  --profile <path>            Path to a tuning profile JSON file (default: production profile)");
     return;
 }
 
@@ -543,6 +544,7 @@ void RunPressureFuzzer(string[] fuzzerArgs)
     var topN               = 5;
     var coarseGrid         = true;
     var includeGoldenStates = true;
+    DecisionTuningProfile? tuningProfile = null;
 
     for (int i = 0; i < fuzzerArgs.Length; i++)
     {
@@ -578,6 +580,9 @@ void RunPressureFuzzer(string[] fuzzerArgs)
             case "--no-golden":
                 includeGoldenStates = false;
                 break;
+            case "--profile":
+                tuningProfile = DecisionTuningProfile.LoadFromFile(fuzzerArgs[++i]);
+                break;
         }
     }
 
@@ -587,11 +592,13 @@ void RunPressureFuzzer(string[] fuzzerArgs)
         OutputPath:         outputPath,
         TopCandidateCount:  topN,
         CoarseGrid:         coarseGrid,
-        IncludeGoldenStates: includeGoldenStates);
+        IncludeGoldenStates: includeGoldenStates,
+        TuningProfile:      tuningProfile);
 
     var effectiveActors    = options.ActorFilter    ?? Archetypes.All.Keys.OrderBy(k => k).ToList();
     var effectiveScenarios = options.ScenarioFilter ?? Enum.GetValues<FuzzerScenarioKind>().ToList();
     var gridName           = options.CoarseGrid ? "coarse" : "fine";
+    var effectiveProfile   = options.TuningProfile ?? DecisionTuningProfile.Default;
 
     Console.WriteLine("=== PRESSURE FUZZER / DECISION SURFACE EXPLORER ===");
     Console.WriteLine($"Actors:    {string.Join(", ", effectiveActors)}");
@@ -599,6 +606,7 @@ void RunPressureFuzzer(string[] fuzzerArgs)
     Console.WriteLine($"Grid:      {gridName}");
     Console.WriteLine($"Top-N:     {topN}");
     Console.WriteLine($"Golden:    {(includeGoldenStates ? $"yes ({GoldenStates.All.Count} states)" : "no")}");
+    Console.WriteLine($"Profile:   {effectiveProfile.ProfileName} [{effectiveProfile.ComputeHash()}]");
     Console.WriteLine($"Output:    {outputPath}");
     Console.WriteLine();
 
@@ -615,7 +623,11 @@ void RunPressureFuzzer(string[] fuzzerArgs)
     Console.WriteLine($"✓ Written to {outputPath}");
 
     var summaryPath = PressureFuzzerRunner.DeriveSummaryPath(outputPath);
-    PressureFuzzerRunner.WriteSummaryJson(samples, summaryPath);
+    var profileMeta = new ProfileMetadata(
+        effectiveProfile.ProfileName,
+        effectiveProfile.Description,
+        effectiveProfile.ComputeHash());
+    PressureFuzzerRunner.WriteSummaryJson(samples, summaryPath, profileMeta);
     Console.WriteLine($"✓ Summary written to {summaryPath}");
 
     // ── Console flag summary ────────────────────────────────────────────────
