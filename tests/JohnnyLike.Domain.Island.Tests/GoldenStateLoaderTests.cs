@@ -1,3 +1,5 @@
+using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.SimRunner;
 using JohnnyLike.SimRunner.PressureFuzzer;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -8,7 +10,7 @@ namespace JohnnyLike.Domain.Island.Tests;
 public class GoldenStateLoaderTests
 {
     // ═══════════════════════════════════════════════════════════════════════
-    // 1. Embedded dataset
+    // 1. Embedded dataset structural checks
     // ═══════════════════════════════════════════════════════════════════════
 
     [Fact]
@@ -23,20 +25,18 @@ public class GoldenStateLoaderTests
     {
         var entries = GoldenStateLoader.LoadEmbedded();
         foreach (var e in entries)
-            Assert.False(string.IsNullOrWhiteSpace(e.SampleKey),
-                $"Entry with label '{e.Label}' has an empty SampleKey.");
+        {
+            var expected = GoldenStateLoader.BuildExpectedSampleKey(e);
+            Assert.Equal(expected, e.SampleKey);
+        }
     }
 
     [Fact]
     public void LoadEmbedded_AllEntriesHaveValidActor()
     {
-        var validActors = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "Johnny", "Frank", "Sawyer", "Ashley", "Oscar", "Elizabeth"
-        };
         var entries = GoldenStateLoader.LoadEmbedded();
         foreach (var e in entries)
-            Assert.Contains(e.Actor, validActors);
+            Assert.Contains(e.Actor, Archetypes.All.Keys);
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class GoldenStateLoaderTests
         var entries = GoldenStateLoader.LoadEmbedded();
         foreach (var e in entries)
         {
-            bool hasDesired    = !string.IsNullOrWhiteSpace(e.DesiredOutcome.DesiredTopCategory);
+            bool hasDesired    = e.DesiredOutcome.DesiredTopCategory.HasValue;
             bool hasAcceptable = e.DesiredOutcome.AcceptableTopCategories?.Count > 0;
             Assert.True(hasDesired || hasAcceptable,
                 $"Entry '{e.SampleKey}' has no desired or acceptable categories.");
@@ -85,21 +85,31 @@ public class GoldenStateLoaderTests
     }
 
     [Fact]
+    public void LoadEmbedded_AllSampleKeysUnique()
+    {
+        var entries = GoldenStateLoader.LoadEmbedded();
+        var keys    = entries.Select(e => e.SampleKey).ToList();
+        Assert.Equal(keys.Count, keys.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
     public void LoadEmbedded_HasExpectedBucketCoverage()
     {
         var entries = GoldenStateLoader.LoadEmbedded();
 
-        // At least one entry per core bucket
+        // Each core scenario bucket must have at least one entry.
+        Assert.Contains(entries, e => e.Scenario == nameof(FuzzerScenarioKind.FoodAvailableNow));
+        Assert.Contains(entries, e => e.Scenario == nameof(FuzzerScenarioKind.NoFood_SourceAvailable));
+        Assert.Contains(entries, e => e.Scenario == nameof(FuzzerScenarioKind.FoodAvailable_WithComfort));
+
+        // Core survival categories must appear in desired or acceptable outcomes.
         Assert.Contains(entries, e =>
-            e.DesiredOutcome.DesiredTopCategory == nameof(FuzzerScenarioKind.FoodAvailableNow) ||
-            e.Scenario == nameof(FuzzerScenarioKind.FoodAvailableNow));
+            e.DesiredOutcome.DesiredTopCategory == QualityType.FoodConsumption ||
+            (e.DesiredOutcome.AcceptableTopCategories?.Contains(QualityType.FoodConsumption) ?? false));
 
         Assert.Contains(entries, e =>
-            e.Scenario == nameof(FuzzerScenarioKind.NoFood_SourceAvailable));
-
-        Assert.Contains(entries, e =>
-            e.DesiredOutcome.DesiredTopCategory == "FoodConsumption" ||
-            (e.DesiredOutcome.AcceptableTopCategories?.Contains("FoodConsumption") ?? false));
+            e.DesiredOutcome.DesiredTopCategory == QualityType.FoodAcquisition ||
+            (e.DesiredOutcome.AcceptableTopCategories?.Contains(QualityType.FoodAcquisition) ?? false));
     }
 
     [Fact]
@@ -142,7 +152,7 @@ public class GoldenStateLoaderTests
         Assert.Equal(70, e.State.Health);
         Assert.Equal(50, e.State.Energy);
         Assert.Equal(50, e.State.Morale);
-        Assert.Equal("FoodConsumption", e.DesiredOutcome.DesiredTopCategory);
+        Assert.Equal(QualityType.FoodConsumption, e.DesiredOutcome.DesiredTopCategory);
         Assert.Equal(10, e.Priority);
         Assert.Null(e.Label);
     }
@@ -172,9 +182,9 @@ public class GoldenStateLoaderTests
         var entries = GoldenStateLoader.LoadFromJson(json);
 
         var e = entries[0];
-        Assert.Equal("FoodAcquisition", e.DesiredOutcome.DesiredTopCategory);
-        Assert.Equal(new[] { "FoodConsumption" }, e.DesiredOutcome.AcceptableTopCategories);
-        Assert.Equal(new[] { "Fun", "Comfort" }, e.DesiredOutcome.ForbiddenTopCategories);
+        Assert.Equal(QualityType.FoodAcquisition, e.DesiredOutcome.DesiredTopCategory);
+        Assert.Equal(new[] { QualityType.FoodConsumption }, e.DesiredOutcome.AcceptableTopCategories);
+        Assert.Equal(new[] { QualityType.Fun, QualityType.Comfort }, e.DesiredOutcome.ForbiddenTopCategories);
         Assert.Equal("Test entry", e.DesiredOutcome.Notes);
         Assert.Equal("test+label", e.Label);
     }
@@ -201,7 +211,7 @@ public class GoldenStateLoaderTests
 
         Assert.Single(entries);
         Assert.Null(entries[0].DesiredOutcome.DesiredTopCategory);
-        Assert.Equal(new[] { "Rest", "FoodConsumption" },
+        Assert.Equal(new[] { QualityType.Rest, QualityType.FoodConsumption },
             entries[0].DesiredOutcome.AcceptableTopCategories);
     }
 
@@ -356,6 +366,49 @@ public class GoldenStateLoaderTests
     }
 
     [Fact]
+    public void LoadFromJson_UnknownActor_ThrowsValidationException()
+    {
+        // "Jhonny" is a typo — not a known archetype.
+        const string json = """
+            [
+              {
+                "sampleKey": "Jhonny|FoodAvailableNow|s10|h70|e50|m50",
+                "actor": "Jhonny",
+                "scenario": "FoodAvailableNow",
+                "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+                "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
+                "priority": 10
+              }
+            ]
+            """;
+
+        var ex = Assert.Throws<GoldenStateValidationException>(
+            () => GoldenStateLoader.LoadFromJson(json));
+        Assert.Contains("Jhonny", ex.Message);
+    }
+
+    [Fact]
+    public void LoadFromJson_ActorWrongCase_ThrowsValidationException()
+    {
+        // Actor names are case-sensitive; "johnny" should not match "Johnny".
+        const string json = """
+            [
+              {
+                "sampleKey": "johnny|FoodAvailableNow|s10|h70|e50|m50",
+                "actor": "johnny",
+                "scenario": "FoodAvailableNow",
+                "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+                "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
+                "priority": 10
+              }
+            ]
+            """;
+
+        Assert.Throws<GoldenStateValidationException>(
+            () => GoldenStateLoader.LoadFromJson(json));
+    }
+
+    [Fact]
     public void LoadFromJson_InvalidCategory_ThrowsValidationException()
     {
         const string json = """
@@ -371,9 +424,10 @@ public class GoldenStateLoaderTests
             ]
             """;
 
-        var ex = Assert.Throws<GoldenStateValidationException>(
+        // JsonStringEnumConverter rejects unknown enum values during parsing,
+        // and the GoldenStateLoader re-wraps the JsonException.
+        Assert.Throws<GoldenStateValidationException>(
             () => GoldenStateLoader.LoadFromJson(json));
-        Assert.Contains("NotACategory", ex.Message);
     }
 
     [Fact]
@@ -395,9 +449,63 @@ public class GoldenStateLoaderTests
             ]
             """;
 
+        // JsonStringEnumConverter rejects "BogusCategory" during parsing.
+        Assert.Throws<GoldenStateValidationException>(
+            () => GoldenStateLoader.LoadFromJson(json));
+    }
+
+    [Fact]
+    public void LoadFromJson_SampleKeyMismatch_ThrowsValidationException()
+    {
+        // SampleKey says s99 but state has satiety=10.
+        const string json = """
+            [
+              {
+                "sampleKey": "Johnny|FoodAvailableNow|s99|h70|e50|m50",
+                "actor": "Johnny",
+                "scenario": "FoodAvailableNow",
+                "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+                "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
+                "priority": 10
+              }
+            ]
+            """;
+
         var ex = Assert.Throws<GoldenStateValidationException>(
             () => GoldenStateLoader.LoadFromJson(json));
-        Assert.Contains("BogusCategory", ex.Message);
+        Assert.Contains("SampleKey", ex.Message);
+        Assert.Contains("s99", ex.Message);
+    }
+
+    [Fact]
+    public void LoadFromJson_DuplicateSampleKeys_ThrowsValidationException()
+    {
+        // Two identical entries — duplicate SampleKey must be rejected.
+        const string json = """
+            [
+              {
+                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
+                "actor": "Johnny",
+                "scenario": "FoodAvailableNow",
+                "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+                "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
+                "priority": 10
+              },
+              {
+                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
+                "actor": "Johnny",
+                "scenario": "FoodAvailableNow",
+                "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+                "desiredOutcome": { "desiredTopCategory": "Rest" },
+                "priority": 5
+              }
+            ]
+            """;
+
+        var ex = Assert.Throws<GoldenStateValidationException>(
+            () => GoldenStateLoader.LoadFromJson(json));
+        Assert.Contains("Duplicate", ex.Message);
+        Assert.Contains("Johnny|FoodAvailableNow|s10|h70|e50|m50", ex.Message);
     }
 
     [Theory]
@@ -405,6 +513,8 @@ public class GoldenStateLoaderTests
     [InlineData(101)]
     public void LoadFromJson_StatOutOfRange_ThrowsValidationException(double badValue)
     {
+        // Note: we embed the stat value in both the sampleKey and state fields so they
+        // match each other; the stat-range check fires before the SampleKey check.
         var json = $$"""
             [
               {
@@ -481,7 +591,62 @@ public class GoldenStateLoaderTests
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 6. Validate — direct call
+    // 6. Contradictory desired outcome validation
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void LoadFromJson_DesiredCategoryAlsoForbidden_ThrowsValidationException()
+    {
+        // FoodConsumption is both desired and forbidden — must be rejected.
+        const string json = """
+            [
+              {
+                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
+                "actor": "Johnny",
+                "scenario": "FoodAvailableNow",
+                "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+                "desiredOutcome": {
+                  "desiredTopCategory": "FoodConsumption",
+                  "forbiddenTopCategories": [ "FoodConsumption" ]
+                },
+                "priority": 10
+              }
+            ]
+            """;
+
+        var ex = Assert.Throws<GoldenStateValidationException>(
+            () => GoldenStateLoader.LoadFromJson(json));
+        Assert.Contains("forbidden", ex.Message.ToLowerInvariant());
+    }
+
+    [Fact]
+    public void LoadFromJson_AcceptableAndForbiddenOverlap_ThrowsValidationException()
+    {
+        // Rest appears in both acceptable and forbidden — must be rejected.
+        const string json = """
+            [
+              {
+                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
+                "actor": "Johnny",
+                "scenario": "FoodAvailableNow",
+                "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+                "desiredOutcome": {
+                  "desiredTopCategory": "FoodConsumption",
+                  "acceptableTopCategories": [ "Rest", "Safety" ],
+                  "forbiddenTopCategories": [ "Rest", "Fun" ]
+                },
+                "priority": 10
+              }
+            ]
+            """;
+
+        var ex = Assert.Throws<GoldenStateValidationException>(
+            () => GoldenStateLoader.LoadFromJson(json));
+        Assert.Contains("overlap", ex.Message.ToLowerInvariant());
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 7. Validate — direct call
     // ═══════════════════════════════════════════════════════════════════════
 
     [Fact]
@@ -492,7 +657,7 @@ public class GoldenStateLoaderTests
             Actor:         "Johnny",
             Scenario:      "FoodAvailableNow",
             State:         new GoldenStateValues(10, 70, 50, 50),
-            DesiredOutcome: new GoldenStateDesiredOutcome("FoodConsumption", null, null),
+            DesiredOutcome: new GoldenStateDesiredOutcome(QualityType.FoodConsumption, null, null),
             Priority:      10);
 
         // Should not throw
@@ -500,7 +665,7 @@ public class GoldenStateLoaderTests
     }
 
     [Fact]
-    public void Validate_InvalidForbiddenCategory_ThrowsValidationException()
+    public void Validate_DesiredCategoryAlsoForbidden_ThrowsValidationException()
     {
         var entry = new GoldenStateEntry(
             SampleKey:     "Johnny|FoodAvailableNow|s10|h70|e50|m50",
@@ -508,13 +673,46 @@ public class GoldenStateLoaderTests
             Scenario:      "FoodAvailableNow",
             State:         new GoldenStateValues(10, 70, 50, 50),
             DesiredOutcome: new GoldenStateDesiredOutcome(
-                "FoodConsumption",
+                QualityType.FoodConsumption,
                 null,
-                ForbiddenTopCategories: ["InvalidCat"]),
+                ForbiddenTopCategories: [QualityType.FoodConsumption]),
             Priority: 10);
 
         var ex = Assert.Throws<GoldenStateValidationException>(
             () => GoldenStateLoader.Validate(entry));
-        Assert.Contains("InvalidCat", ex.Message);
+        Assert.Contains("forbidden", ex.Message.ToLowerInvariant());
+    }
+
+    [Fact]
+    public void Validate_SampleKeyMismatch_ThrowsValidationException()
+    {
+        // SampleKey references satiety=99 but State has satiety=10.
+        var entry = new GoldenStateEntry(
+            SampleKey:     "Johnny|FoodAvailableNow|s99|h70|e50|m50",
+            Actor:         "Johnny",
+            Scenario:      "FoodAvailableNow",
+            State:         new GoldenStateValues(10, 70, 50, 50),
+            DesiredOutcome: new GoldenStateDesiredOutcome(QualityType.FoodConsumption, null, null),
+            Priority:      10);
+
+        var ex = Assert.Throws<GoldenStateValidationException>(
+            () => GoldenStateLoader.Validate(entry));
+        Assert.Contains("SampleKey", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_UnknownActor_ThrowsValidationException()
+    {
+        var entry = new GoldenStateEntry(
+            SampleKey:     "Jhonny|FoodAvailableNow|s10|h70|e50|m50",
+            Actor:         "Jhonny",
+            Scenario:      "FoodAvailableNow",
+            State:         new GoldenStateValues(10, 70, 50, 50),
+            DesiredOutcome: new GoldenStateDesiredOutcome(QualityType.FoodConsumption, null, null),
+            Priority:      10);
+
+        var ex = Assert.Throws<GoldenStateValidationException>(
+            () => GoldenStateLoader.Validate(entry));
+        Assert.Contains("Jhonny", ex.Message);
     }
 }

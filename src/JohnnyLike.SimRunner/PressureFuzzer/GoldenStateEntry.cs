@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+using JohnnyLike.Domain.Abstractions;
 
 namespace JohnnyLike.SimRunner.PressureFuzzer;
 
@@ -14,7 +14,8 @@ public sealed record GoldenStateValues(
 
 /// <summary>
 /// Defines the expected decision outcome for a golden state.
-/// Category fields reference <c>QualityType</c> names (e.g. "FoodConsumption", "Rest").
+/// Category fields use <see cref="QualityType"/> so downstream tooling receives
+/// parsed, type-safe values rather than raw strings.
 /// At least one of <see cref="DesiredTopCategory"/> or <see cref="AcceptableTopCategories"/>
 /// must be provided.
 /// </summary>
@@ -23,18 +24,18 @@ public sealed record GoldenStateDesiredOutcome(
     /// The single most important category that should win for this state.
     /// Null when only a set of acceptable categories is specified.
     /// </summary>
-    string? DesiredTopCategory,
+    QualityType? DesiredTopCategory,
     /// <summary>
     /// Additional categories that are also considered acceptable outcomes.
     /// When <see cref="DesiredTopCategory"/> is set, these are alternatives that are
     /// not preferred but still acceptable (no regression).
     /// </summary>
-    IReadOnlyList<string>? AcceptableTopCategories,
+    IReadOnlyList<QualityType>? AcceptableTopCategories,
     /// <summary>
     /// Categories that must never win in this state, regardless of scoring.
     /// Used for hard "must-not-do" constraints.
     /// </summary>
-    IReadOnlyList<string>? ForbiddenTopCategories,
+    IReadOnlyList<QualityType>? ForbiddenTopCategories,
     /// <summary>
     /// Optional free-text rationale explaining why this outcome is expected.
     /// Not used by tooling; purely for human readers.

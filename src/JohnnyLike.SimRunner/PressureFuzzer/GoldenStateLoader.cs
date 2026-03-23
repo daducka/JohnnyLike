@@ -1,5 +1,4 @@
 using JohnnyLike.Domain.Abstractions;
-using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -29,8 +28,12 @@ public static class GoldenStateLoader
         Converters = { new JsonStringEnumConverter() }
     };
 
-    private static readonly HashSet<string> _validCategories =
-        Enum.GetNames<QualityType>().ToHashSet(StringComparer.Ordinal);
+    /// <summary>
+    /// Canonical actor names sourced from <see cref="Archetypes.All"/>.
+    /// Validation uses ordinal (case-sensitive) comparison to catch casing mistakes.
+    /// </summary>
+    private static readonly HashSet<string> _validActors =
+        Archetypes.All.Keys.ToHashSet(StringComparer.Ordinal);
 
     private static readonly HashSet<string> _validScenarios =
         Enum.GetNames<FuzzerScenarioKind>().ToHashSet(StringComparer.Ordinal);
@@ -91,8 +94,11 @@ public static class GoldenStateLoader
         if (entries is null)
             throw new GoldenStateValidationException("golden-states JSON deserialized to null.");
 
+        // Validate each entry individually, then enforce dataset-level uniqueness.
         for (int i = 0; i < entries.Count; i++)
             Validate(entries[i], i);
+
+        EnforceUniqueKeys(entries);
 
         return entries.AsReadOnly();
     }
@@ -108,29 +114,75 @@ public static class GoldenStateLoader
         string At(string field) =>
             index >= 0 ? $"Entry[{index}].{field}" : field;
 
+        // ── Required string fields ────────────────────────────────────────
         RequireNonEmpty(entry.SampleKey, At(nameof(entry.SampleKey)));
         RequireNonEmpty(entry.Actor,     At(nameof(entry.Actor)));
-        RequireNonEmpty(entry.Scenario,  At(nameof(entry.Scenario)));
+
+        // ── Actor must be a known archetype ───────────────────────────────
+        if (!_validActors.Contains(entry.Actor))
+            throw new GoldenStateValidationException(
+                $"{At(nameof(entry.Actor))}: '{entry.Actor}' is not a known actor archetype. " +
+                $"Valid actors: {string.Join(", ", _validActors.OrderBy(x => x))}");
+
+        RequireNonEmpty(entry.Scenario, At(nameof(entry.Scenario)));
 
         if (!_validScenarios.Contains(entry.Scenario))
             throw new GoldenStateValidationException(
                 $"{At(nameof(entry.Scenario))}: '{entry.Scenario}' is not a valid FuzzerScenarioKind. " +
                 $"Valid values: {string.Join(", ", _validScenarios)}");
 
+        // ── State fields ──────────────────────────────────────────────────
         ValidateState(entry.State, At(nameof(entry.State)));
 
+        // ── SampleKey must match the canonical form derived from fields ───
+        var expectedKey = BuildExpectedSampleKey(entry);
+        if (!string.Equals(entry.SampleKey, expectedKey, StringComparison.Ordinal))
+            throw new GoldenStateValidationException(
+                $"{At(nameof(entry.SampleKey))}: SampleKey '{entry.SampleKey}' does not match " +
+                $"the canonical form '{expectedKey}' derived from Actor/Scenario/State. " +
+                "Update SampleKey to match or correct the mismatched field.");
+
+        // ── Desired outcome ───────────────────────────────────────────────
         if (entry.DesiredOutcome is null)
             throw new GoldenStateValidationException(
                 $"{At(nameof(entry.DesiredOutcome))} is required.");
 
         ValidateDesiredOutcome(entry.DesiredOutcome, At(nameof(entry.DesiredOutcome)));
 
+        // ── Priority ──────────────────────────────────────────────────────
         if (entry.Priority <= 0)
             throw new GoldenStateValidationException(
                 $"{At(nameof(entry.Priority))}: must be > 0, got {entry.Priority}.");
     }
 
     // ── Private helpers ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Builds the canonical SampleKey for an entry.
+    /// Stats are rounded to integers, matching how <c>PressureFuzzerRunner</c> constructs keys.
+    /// </summary>
+    public static string BuildExpectedSampleKey(GoldenStateEntry entry) =>
+        $"{entry.Actor}|{entry.Scenario}" +
+        $"|s{(int)entry.State.Satiety}|h{(int)entry.State.Health}" +
+        $"|e{(int)entry.State.Energy}|m{(int)entry.State.Morale}";
+
+    private static void EnforceUniqueKeys(List<GoldenStateEntry> entries)
+    {
+        var seen   = new HashSet<string>(StringComparer.Ordinal);
+        var dupes  = new List<string>();
+
+        foreach (var e in entries)
+        {
+            if (!seen.Add(e.SampleKey))
+                dupes.Add(e.SampleKey);
+        }
+
+        if (dupes.Count > 0)
+            throw new GoldenStateValidationException(
+                $"Duplicate SampleKey(s) found in golden-states dataset: " +
+                $"{string.Join(", ", dupes.Distinct().Select(k => $"'{k}'"))}. " +
+                "All SampleKeys must be unique.");
+    }
 
     private static void ValidateState(GoldenStateValues state, string path)
     {
@@ -153,31 +205,30 @@ public static class GoldenStateLoader
     private static void ValidateDesiredOutcome(GoldenStateDesiredOutcome outcome, string path)
     {
         // At least one category constraint must be present.
-        bool hasDesired    = !string.IsNullOrWhiteSpace(outcome.DesiredTopCategory);
+        bool hasDesired    = outcome.DesiredTopCategory.HasValue;
         bool hasAcceptable = outcome.AcceptableTopCategories?.Count > 0;
 
         if (!hasDesired && !hasAcceptable)
             throw new GoldenStateValidationException(
                 $"{path}: at least one of DesiredTopCategory or AcceptableTopCategories must be provided.");
 
-        if (hasDesired)
-            ValidateCategory(outcome.DesiredTopCategory!, $"{path}.DesiredTopCategory");
-
-        if (outcome.AcceptableTopCategories is not null)
-            foreach (var cat in outcome.AcceptableTopCategories)
-                ValidateCategory(cat, $"{path}.AcceptableTopCategories[]");
-
-        if (outcome.ForbiddenTopCategories is not null)
-            foreach (var cat in outcome.ForbiddenTopCategories)
-                ValidateCategory(cat, $"{path}.ForbiddenTopCategories[]");
-    }
-
-    private static void ValidateCategory(string category, string path)
-    {
-        if (!_validCategories.Contains(category))
+        // DesiredTopCategory must not also appear in ForbiddenTopCategories.
+        if (hasDesired && outcome.ForbiddenTopCategories?.Contains(outcome.DesiredTopCategory!.Value) == true)
             throw new GoldenStateValidationException(
-                $"{path}: '{category}' is not a valid QualityType. " +
-                $"Valid values: {string.Join(", ", _validCategories)}");
+                $"{path}.DesiredTopCategory: '{outcome.DesiredTopCategory.Value}' cannot also appear in " +
+                $"ForbiddenTopCategories — a desired category cannot be simultaneously forbidden.");
+
+        // AcceptableTopCategories and ForbiddenTopCategories must not overlap.
+        if (outcome.AcceptableTopCategories is not null && outcome.ForbiddenTopCategories is not null)
+        {
+            var overlap = outcome.AcceptableTopCategories
+                .Intersect(outcome.ForbiddenTopCategories)
+                .ToList();
+            if (overlap.Count > 0)
+                throw new GoldenStateValidationException(
+                    $"{path}: [{string.Join(", ", overlap)}] appear in both AcceptableTopCategories " +
+                    "and ForbiddenTopCategories — acceptable and forbidden sets must not overlap.");
+        }
     }
 
     private static void RequireNonEmpty(string? value, string path)
