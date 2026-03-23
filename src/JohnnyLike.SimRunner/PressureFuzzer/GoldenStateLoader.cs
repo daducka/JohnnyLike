@@ -212,6 +212,22 @@ public static class GoldenStateLoader
             throw new GoldenStateValidationException(
                 $"{path}: at least one of DesiredTopCategory or AcceptableTopCategories must be provided.");
 
+        // Validate that every parsed QualityType value is a defined enum member.
+        // JsonStringEnumConverter allows numeric payloads that produce undefined values;
+        // Enum.IsDefined catches those cases explicitly.
+        if (hasDesired)
+            RequireDefinedQualityType(outcome.DesiredTopCategory!.Value, $"{path}.DesiredTopCategory");
+
+        if (outcome.AcceptableTopCategories is not null)
+            for (int i = 0; i < outcome.AcceptableTopCategories.Count; i++)
+                RequireDefinedQualityType(outcome.AcceptableTopCategories[i],
+                    $"{path}.AcceptableTopCategories[{i}]");
+
+        if (outcome.ForbiddenTopCategories is not null)
+            for (int i = 0; i < outcome.ForbiddenTopCategories.Count; i++)
+                RequireDefinedQualityType(outcome.ForbiddenTopCategories[i],
+                    $"{path}.ForbiddenTopCategories[{i}]");
+
         // DesiredTopCategory must not also appear in ForbiddenTopCategories.
         if (hasDesired && outcome.ForbiddenTopCategories?.Contains(outcome.DesiredTopCategory!.Value) == true)
             throw new GoldenStateValidationException(
@@ -229,6 +245,14 @@ public static class GoldenStateLoader
                     $"{path}: [{string.Join(", ", overlap)}] appear in both AcceptableTopCategories " +
                     "and ForbiddenTopCategories — acceptable and forbidden sets must not overlap.");
         }
+    }
+
+    private static void RequireDefinedQualityType(QualityType value, string path)
+    {
+        if (!Enum.IsDefined(value))
+            throw new GoldenStateValidationException(
+                $"{path}: numeric value {(int)value} is not a defined QualityType member. " +
+                "Use a named QualityType string in JSON (e.g. \"FoodConsumption\"), not a raw integer.");
     }
 
     private static void RequireNonEmpty(string? value, string path)

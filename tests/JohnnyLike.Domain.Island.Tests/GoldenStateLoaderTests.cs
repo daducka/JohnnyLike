@@ -590,6 +590,69 @@ public class GoldenStateLoaderTests
             () => GoldenStateLoader.LoadFromJson("{ not valid json }"));
     }
 
+    [Fact]
+    public void LoadFromJson_NumericDesiredTopCategory_ThrowsValidationException()
+    {
+        // JsonStringEnumConverter can let numeric payloads through as undefined enum values.
+        // The loader must explicitly reject them via Enum.IsDefined.
+        const string json = """
+            [
+              {
+                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
+                "actor": "Johnny",
+                "scenario": "FoodAvailableNow",
+                "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+                "desiredOutcome": { "desiredTopCategory": 9999 },
+                "priority": 10
+              }
+            ]
+            """;
+
+        Assert.Throws<GoldenStateValidationException>(
+            () => GoldenStateLoader.LoadFromJson(json));
+    }
+
+    [Fact]
+    public void LoadFromJson_NumericAcceptableCategory_ThrowsValidationException()
+    {
+        const string json = """
+            [
+              {
+                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
+                "actor": "Johnny",
+                "scenario": "FoodAvailableNow",
+                "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
+                "desiredOutcome": { "acceptableTopCategories": [ 9999 ] },
+                "priority": 10
+              }
+            ]
+            """;
+
+        Assert.Throws<GoldenStateValidationException>(
+            () => GoldenStateLoader.LoadFromJson(json));
+    }
+
+    [Fact]
+    public void Validate_UndefinedQualityTypeValue_ThrowsValidationException()
+    {
+        // Simulates a scenario where an undefined numeric enum value slips in at the C# level.
+        var entry = new GoldenStateEntry(
+            SampleKey:     "Johnny|FoodAvailableNow|s10|h70|e50|m50",
+            Actor:         "Johnny",
+            Scenario:      "FoodAvailableNow",
+            State:         new GoldenStateValues(10, 70, 50, 50),
+            DesiredOutcome: new GoldenStateDesiredOutcome(
+                (QualityType)9999,
+                null,
+                null),
+            Priority: 10);
+
+        var ex = Assert.Throws<GoldenStateValidationException>(
+            () => GoldenStateLoader.Validate(entry));
+        Assert.Contains("9999", ex.Message);
+        Assert.Contains("defined QualityType", ex.Message);
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // 6. Contradictory desired outcome validation
     // ═══════════════════════════════════════════════════════════════════════
