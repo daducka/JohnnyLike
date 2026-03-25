@@ -597,10 +597,13 @@ public static class OptimizerRunner
             actorId, actorState, worldState, 0L, rng,
             NullResourceAvailability.Instance);
 
-        var sorted      = candidates.OrderByDescending(c => c.Score).ToList();
-        var explain     = domain.ExplainCandidateScoring(actorId, actorState, worldState, 0L, sorted);
+        var sorted = candidates.OrderByDescending(c => c.Score).ToList();
 
-        return ScoreGoldenState(entry, sorted, explain);
+        // Compute typed quality contributions once for all candidates —
+        // no opaque explain dictionary needed.
+        var contributions = domain.ComputeQualityContributions(actorState, worldState, 0L, sorted);
+
+        return ScoreGoldenState(entry, sorted, contributions);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -608,7 +611,7 @@ public static class OptimizerRunner
     private static GoldenStateResult ScoreGoldenState(
         GoldenStateEntry entry,
         List<ActionCandidate> sorted,
-        Dictionary<string, object>? explain)
+        IReadOnlyList<IReadOnlyList<(QualityType Quality, double Contribution)>> contributions)
     {
         var outcome   = entry.DesiredOutcome;
         var desired   = outcome.DesiredTopCategory?.ToString();
@@ -619,9 +622,9 @@ public static class OptimizerRunner
 
         // ── Winning action details ─────────────────────────────────────────
         var winningActionId = sorted.Count > 0 ? sorted[0].Action.Id.Value : (string?)null;
-        var topCategory     = sorted.Count > 0 ? GetCandidateTopCategory(sorted[0], explain) : null;
+        var topCategory     = sorted.Count > 0 ? GetTopCategory(contributions[0]) : null;
         var topCategories   = sorted.Count > 0
-            ? GetAllCandidateCategories(sorted[0], explain)
+            ? GetCategoryList(contributions[0])
             : Array.Empty<string>();
 
         var desiredMet         = topCategory != null && topCategory == desired;
@@ -629,7 +632,7 @@ public static class OptimizerRunner
         var forbiddenTriggered = topCategory != null && forbidden.Contains(topCategory);
 
         // ── Best desired candidate rank and delta ──────────────────────────
-        int?    bestDesiredRank  = null;
+        int?    bestDesiredRank      = null;
         double? desiredVsWinnerDelta = null;
 
         if (desired != null)
@@ -637,7 +640,7 @@ public static class OptimizerRunner
             var winnerScore = sorted.Count > 0 ? sorted[0].Score : 0.0;
             for (int i = 0; i < sorted.Count; i++)
             {
-                if (GetCandidateTopCategory(sorted[i], explain) == desired)
+                if (GetTopCategory(contributions[i]) == desired)
                 {
                     bestDesiredRank      = i + 1;       // 1-based
                     desiredVsWinnerDelta = Math.Round(sorted[i].Score - winnerScore, 4);
@@ -647,9 +650,9 @@ public static class OptimizerRunner
         }
 
         // ── Desired in top-N (for objective scoring) ───────────────────────
-        var desiredInTopN = desired != null && sorted
-            .Take(5)
-            .Any(c => GetCandidateTopCategory(c, explain) == desired);
+        var desiredInTopN = desired != null &&
+            Enumerable.Range(0, Math.Min(5, sorted.Count))
+                .Any(i => GetTopCategory(contributions[i]) == desired);
 
         double score = 0.0;
         if (desiredMet)
@@ -679,88 +682,20 @@ public static class OptimizerRunner
     }
 
     /// <summary>
-    /// Derives the dominant category for the top candidate using the scoring explanation.
-    private static string? GetCandidateTopCategory(
-        ActionCandidate candidate,
-        Dictionary<string, object>? explain)
-    {
-        // Try to use the explain breakdown for the most accurate category label,
-        // then fall back to reading the candidate's qualities directly.
-        if (explain?.TryGetValue("candidateBreakdowns", out var rawBreakdowns) == true &&
-            rawBreakdowns is List<object> breakdownList)
-        {
-            foreach (var item in breakdownList)
-            {
-                if (item is Dictionary<string, object> bd &&
-                    bd.TryGetValue("actionId", out var ai) && ai is string actionId &&
-                    actionId == candidate.Action.Id.Value &&
-                    bd.TryGetValue("qualityContributions", out var qcObj) &&
-                    qcObj is Dictionary<string, object> qcDict &&
-                    qcDict.Count > 0)
-                {
-                    return qcDict
-                        .OrderByDescending(kv =>
-                        {
-                            if (kv.Value is Dictionary<string, object> c &&
-                                c.TryGetValue("contribution", out var con))
-                                return Convert.ToDouble(con);
-                            return 0.0;
-                        })
-                        .First().Key;
-                }
-            }
-        }
-
-        // Fallback: use the highest-valued quality on the candidate directly.
-        return candidate.Qualities.Count == 0
-            ? null
-            : candidate.Qualities.MaxBy(kv => kv.Value).Key.ToString();
-    }
+    /// Returns the dominant category name for a candidate given its pre-computed contributions.
+    /// The dominant category is the quality with the highest weighted contribution.
+    /// </summary>
+    private static string? GetTopCategory(
+        IReadOnlyList<(QualityType Quality, double Contribution)> contributions)
+        => contributions.Count > 0 ? contributions[0].Quality.ToString() : null;
 
     /// <summary>
-    /// Returns all quality names with positive weighted contribution for <paramref name="candidate"/>,
-    /// ordered by contribution descending. Provides full multi-quality context rather than just the
-    /// single dominant category.
+    /// Returns all category names for a candidate given its pre-computed contributions,
+    /// in contribution-descending order.
     /// </summary>
-    private static IReadOnlyList<string> GetAllCandidateCategories(
-        ActionCandidate candidate,
-        Dictionary<string, object>? explain)
-    {
-        if (explain?.TryGetValue("candidateBreakdowns", out var rawBreakdowns) == true &&
-            rawBreakdowns is List<object> breakdownList)
-        {
-            foreach (var item in breakdownList)
-            {
-                if (item is Dictionary<string, object> bd &&
-                    bd.TryGetValue("actionId", out var ai) && ai is string actionId &&
-                    actionId == candidate.Action.Id.Value &&
-                    bd.TryGetValue("qualityContributions", out var qcObj) &&
-                    qcObj is Dictionary<string, object> qcDict)
-                {
-                    return qcDict
-                        .Where(kv => kv.Value is Dictionary<string, object> c &&
-                                     c.TryGetValue("contribution", out var con) &&
-                                     Convert.ToDouble(con) > 0.0)
-                        .OrderByDescending(kv =>
-                        {
-                            if (kv.Value is Dictionary<string, object> c &&
-                                c.TryGetValue("contribution", out var con))
-                                return Convert.ToDouble(con);
-                            return 0.0;
-                        })
-                        .Select(kv => kv.Key)
-                        .ToList();
-                }
-            }
-        }
-
-        // Fallback: qualities sorted by raw value descending.
-        return candidate.Qualities
-            .Where(kv => kv.Value > 0.0)
-            .OrderByDescending(kv => kv.Value)
-            .Select(kv => kv.Key.ToString())
-            .ToList();
-    }
+    private static IReadOnlyList<string> GetCategoryList(
+        IReadOnlyList<(QualityType Quality, double Contribution)> contributions)
+        => contributions.Select(x => x.Quality.ToString()).ToList();
 
     /// <summary>
     /// Computes a stable, process-independent 32-bit hash of <paramref name="s"/>

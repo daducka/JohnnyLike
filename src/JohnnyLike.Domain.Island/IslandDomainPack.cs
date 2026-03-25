@@ -1132,6 +1132,45 @@ public class IslandDomainPack : IDomainPack
     }
 
     /// <summary>
+    /// Computes weighted quality contributions for each candidate in <paramref name="candidates"/>.
+    /// Builds the quality model once and applies it across all candidates.
+    ///
+    /// <para>
+    /// Returns one entry per candidate: a list of <c>(Quality, Contribution)</c> pairs where
+    /// <c>Contribution = EffectiveWeight(quality) × qualityValue</c>, filtered to positive
+    /// contributions only and sorted by contribution descending. This is the typed, stable
+    /// alternative to parsing the opaque <see cref="ExplainCandidateScoring"/> dictionary.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<(QualityType Quality, double Contribution)>> ComputeQualityContributions(
+        ActorState actorState,
+        WorldState worldState,
+        long currentTick,
+        IReadOnlyList<ActionCandidate> candidates)
+    {
+        var model = BuildQualityModel(
+            (IslandActorState)actorState,
+            currentTick,
+            worldState as IslandWorldState,
+            _profile);
+
+        var result = new List<IReadOnlyList<(QualityType, double)>>(candidates.Count);
+        foreach (var candidate in candidates)
+        {
+            var contribs = new List<(QualityType Quality, double Contribution)>(candidate.Qualities.Count);
+            foreach (var (q, value) in candidate.Qualities)
+            {
+                var contribution = model.EffectiveWeight(q) * value;
+                if (contribution > 0.0)
+                    contribs.Add((q, contribution));
+            }
+            contribs.Sort((a, b) => b.Contribution.CompareTo(a.Contribution));
+            result.Add(contribs);
+        }
+        return result;
+    }
+
+    /// <summary>
     /// Builds periodic snapshot trace events for the island domain.
     /// Emits one <c>PeriodicWorldSnapshot</c>, one <c>PeriodicSupplySnapshot</c> per supply
     /// pile, one <c>PeriodicWorldItemSnapshot</c> per world item, and per-actor
