@@ -1,6 +1,7 @@
 ﻿using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.SimRunner;
+using JohnnyLike.SimRunner.Optimizer;
 using JohnnyLike.SimRunner.PressureFuzzer;
 using System.Text.Json;
 
@@ -8,6 +9,13 @@ using System.Text.Json;
 if (args.Length > 0 && args[0] == "pressure-fuzzer")
 {
     RunPressureFuzzer(args[1..]);
+    return;
+}
+
+// ── Optimizer subcommand ───────────────────────────────────────────────────
+if (args.Length > 0 && args[0] == "optimizer")
+{
+    RunOptimizer(args[1..]);
     return;
 }
 
@@ -44,6 +52,12 @@ if (args.Length == 0)
     Console.WriteLine("  --grid coarse|fine          Stat sampling density (default: coarse)");
     Console.WriteLine("  --top <n>                   Top N candidates to include (default: 5)");
     Console.WriteLine("  --profile <path>            Path to a tuning profile JSON file (default: production profile)");
+    Console.WriteLine("\nOptimizer:");
+    Console.WriteLine("  optimizer                   Run parameter-space optimizer against golden states");
+    Console.WriteLine("  --base-profile <path>       Path to base tuning profile JSON (default: production profile)");
+    Console.WriteLine("  --golden-states <path>      Path to golden-states JSON file (default: embedded dataset)");
+    Console.WriteLine("  --output <path>             Output JSON file path (default: ./optimizer-results.json)");
+    Console.WriteLine("  --max-iterations <n>        Max coordinate-descent iterations (default: 20)");
     return;
 }
 
@@ -727,4 +741,133 @@ void SaveFuzzArtifacts(string profileName, int totalRuns, int successCount, List
             Console.WriteLine($"✓ Saved failure details to {failurePath}");
         }
     }
+}
+
+void RunOptimizer(string[] optimizerArgs)
+{
+    DecisionTuningProfile? baseProfile  = null;
+    IReadOnlyList<GoldenStateEntry>? goldenStates = null;
+    var outputPath    = "./optimizer-results.json";
+    var maxIterations = 20;
+
+    for (int i = 0; i < optimizerArgs.Length; i++)
+    {
+        switch (optimizerArgs[i])
+        {
+            case "--base-profile":
+                baseProfile = DecisionTuningProfile.LoadFromFile(optimizerArgs[++i]);
+                break;
+            case "--golden-states":
+                goldenStates = GoldenStateLoader.LoadFromFile(optimizerArgs[++i]);
+                break;
+            case "--output":
+                outputPath = optimizerArgs[++i];
+                break;
+            case "--max-iterations":
+                maxIterations = int.Parse(optimizerArgs[++i]);
+                break;
+        }
+    }
+
+    var effectiveProfile    = baseProfile  ?? DecisionTuningProfile.Default;
+    var effectiveGolden     = goldenStates ?? GoldenStateLoader.LoadEmbedded();
+
+    Console.WriteLine("=== OPTIMIZER ===");
+    Console.WriteLine($"Base profile:   {effectiveProfile.ProfileName} [{effectiveProfile.ComputeHash()}]");
+    Console.WriteLine($"Golden states:  {effectiveGolden.Count} entries");
+    Console.WriteLine($"Parameters:     {OptimizerRunner.DefaultParameters.Count} tunable");
+    Console.WriteLine($"Max iterations: {maxIterations}");
+    Console.WriteLine($"Output:         {outputPath}");
+    Console.WriteLine();
+
+    Console.Write("Running optimizer...");
+    var result = OptimizerRunner.Run(new OptimizerOptions(
+        BaseProfile:   effectiveProfile,
+        GoldenStates:  effectiveGolden,
+        MaxIterations: maxIterations));
+    Console.WriteLine(" done.");
+
+    // ── Console summary ─────────────────────────────────────────────────────
+    Console.WriteLine();
+    Console.WriteLine("--- Objective scores ---");
+    Console.WriteLine($"  Base score:  {result.BaseScore:F2}" +
+                      $"  ({result.BaseDesiredPassCount}/{effectiveGolden.Count} exact-desired," +
+                      $" {result.BaseSatisfiedCount}/{effectiveGolden.Count} satisfied)");
+    Console.WriteLine($"  Best score:  {result.BestScore:F2}" +
+                      $"  ({result.BestDesiredPassCount}/{effectiveGolden.Count} exact-desired," +
+                      $" {result.BestSatisfiedCount}/{effectiveGolden.Count} satisfied)");
+    Console.WriteLine($"  Improvement: {result.ScoreImprovement:+0.##;-0.##;0} over {result.IterationsPerformed} iteration(s)");
+
+    if (result.ProfileDiff.Count > 0)
+    {
+        Console.WriteLine();
+        Console.WriteLine("--- Parameter changes ---");
+        foreach (var d in result.ProfileDiff)
+            Console.WriteLine($"  {d.ParameterName}: {d.BaselineValue} → {d.CandidateValue} ({d.Delta:+0.######;-0.######})");
+    }
+    else
+    {
+        Console.WriteLine();
+        Console.WriteLine("No parameter changes found (base profile is already locally optimal).");
+    }
+
+    // ── Per-state regression / improvement report ────────────────────────────
+    var regressions  = result.BestResults
+        .Zip(result.BaseResults, (best, @base) => (best, @base))
+        .Where(pair => pair.best.StateSatisfied != pair.@base.StateSatisfied ||
+                       pair.best.ForbiddenCategoryTriggered != pair.@base.ForbiddenCategoryTriggered)
+        .ToList();
+
+    if (regressions.Count > 0)
+    {
+        Console.WriteLine();
+        Console.WriteLine("--- Per-state changes ---");
+        foreach (var (best, @base) in regressions)
+        {
+            var direction = best.Score > @base.Score ? "▲ improved" : "▼ regressed";
+            var rankInfo  = best.BestDesiredCategoryRank.HasValue
+                ? $"  rank={best.BestDesiredCategoryRank}"
+                : "";
+            Console.WriteLine($"  {direction}: [{best.Label ?? best.SampleKey}]  " +
+                              $"base={@base.ActualTopCategory}  best={best.ActualTopCategory}  " +
+                              $"desired={best.DesiredTopCategory}{rankInfo}");
+        }
+    }
+
+    // ── Failed golden states on best profile ─────────────────────────────────
+    var stillFailing = result.BestResults
+        .Where(r => !r.StateSatisfied)
+        .OrderBy(r => r.Score)
+        .ToList();
+
+    if (stillFailing.Count > 0)
+    {
+        Console.WriteLine();
+        Console.WriteLine("--- Remaining failures (not satisfied) ---");
+        foreach (var r in stillFailing.Take(10))
+        {
+            var forbidden = r.ForbiddenCategoryTriggered ? "  ⚠ FORBIDDEN" : "";
+            var delta     = r.DesiredCategoryVsWinnerDelta.HasValue
+                ? $"  delta={r.DesiredCategoryVsWinnerDelta:F3}"
+                : "";
+            var rank      = r.BestDesiredCategoryRank.HasValue
+                ? $"  rank={r.BestDesiredCategoryRank}"
+                : "";
+            Console.WriteLine($"  [{r.Label ?? r.SampleKey}]  " +
+                              $"actual={r.ActualTopCategory}  desired={r.DesiredTopCategory}" +
+                              $"{rank}{delta}{forbidden}");
+        }
+        if (stillFailing.Count > 10)
+            Console.WriteLine($"  ... and {stillFailing.Count - 10} more.");
+    }
+
+    // ── Write JSON output ────────────────────────────────────────────────────
+    var dir = Path.GetDirectoryName(outputPath);
+    if (!string.IsNullOrEmpty(dir))
+        Directory.CreateDirectory(dir);
+
+    var jsonOpts = new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    File.WriteAllText(outputPath, JsonSerializer.Serialize(result, jsonOpts));
+    Console.WriteLine();
+    Console.WriteLine($"✓ Results written to {outputPath}");
 }
