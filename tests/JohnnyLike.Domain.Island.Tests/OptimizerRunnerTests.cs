@@ -75,9 +75,8 @@ public class OptimizerRunnerTests
         // FoodAvailableNow + very low satiety → food should win.
         var entry  = MakeFoodState(satiety: 10, priority: 1.0, desired: QualityType.FoodConsumption);
         var domain = new IslandDomainPack(DecisionTuningProfile.Default);
-        var rng    = new Random(42);
 
-        var result = OptimizerRunner.EvaluateEntry(entry, domain, rng);
+        var result = OptimizerRunner.EvaluateEntry(entry, domain);
 
         // If food wins, DesiredTopCategoryMet = true and score = 10 × priority.
         if (result.DesiredTopCategoryMet)
@@ -92,31 +91,35 @@ public class OptimizerRunnerTests
     [Fact]
     public void EvaluateEntry_WhenForbiddenCategoryWins_ScoreIsReduced()
     {
-        // Wellrested actor with high satiety — desire = FoodConsumption is not realistic,
-        // so another category (e.g. Preparation) likely wins.
-        // We mark FoodConsumption as forbidden to create a forbidden-triggers scenario.
-        var entry = new GoldenStateEntry(
-            SampleKey: "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-            Actor:     "Johnny",
-            Scenario:  "FoodAvailableNow",
-            State:     new GoldenStateValues(10, 70, 50, 50),
-            DesiredOutcome: new GoldenStateDesiredOutcome(
-                DesiredTopCategory:        null,
-                AcceptableTopCategories:   new[] { QualityType.Rest },
-                ForbiddenTopCategories:    new[] { QualityType.Rest }),  // forbidden == acceptable to force a penalty
-            Priority: 2.0,
-            Label: "test/forbidden_wins");
+        // Use the known failing golden state "starving+food+comfort/Johnny"
+        // (Johnny|FoodAvailable_WithComfort|s10|h70|e50|m50) where under the default profile
+        // Rest wins but FoodConsumption is desired and Rest is forbidden.
+        // This is a loader-valid golden state from the embedded dataset.
+        var goldenStates = GoldenStateLoader.LoadEmbedded();
+        var forbiddenEntry = goldenStates.FirstOrDefault(e =>
+            e.DesiredOutcome.ForbiddenTopCategories?.Count > 0);
+
+        // The embedded dataset must contain at least one golden state with forbidden categories
+        // for this test to be meaningful. If it doesn't, the dataset has been incorrectly modified.
+        Assert.NotNull(forbiddenEntry);
 
         var domain = new IslandDomainPack(DecisionTuningProfile.Default);
-        var rng    = new Random(42);
+        var result = OptimizerRunner.EvaluateEntry(forbiddenEntry, domain);
 
-        var result = OptimizerRunner.EvaluateEntry(entry, domain, rng);
-
-        // If Rest wins (which is both acceptable and forbidden), the net effect is
-        // AcceptableCategoryReward - ForbiddenCategoryPenalty = (3 - 15) × 2 = -24.
-        // If Rest doesn't win, the score depends on what actually wins.
-        Assert.True(result.Score <= 6.0 * entry.Priority,
-            "Score should not be higher than max acceptable reward when forbidden may trigger.");
+        // When a forbidden category triggers, the score must be reduced by the penalty.
+        if (result.ForbiddenCategoryTriggered)
+        {
+            // Score must be ≤ 0 when desired is not met but forbidden fires.
+            Assert.True(result.Score < 0,
+                $"Expected negative score when forbidden category '{result.ActualTopCategory}' triggered. " +
+                $"Score was {result.Score}.");
+        }
+        // If the forbidden category didn't fire for this state/profile, the test is still
+        // valid — we just verify the result is self-consistent.
+        Assert.Equal(
+            result.ForbiddenCategoryTriggered,
+            forbiddenEntry.DesiredOutcome.ForbiddenTopCategories!
+                .Any(f => f.ToString() == result.ActualTopCategory));
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -140,6 +143,11 @@ public class OptimizerRunnerTests
         Assert.True(result.MaxIterations == 1);
         Assert.NotEmpty(result.SearchBounds);
         Assert.False(string.IsNullOrEmpty(result.CompletedAt));
+        // New fields
+        Assert.True(result.BaseDesiredPassCount >= 0);
+        Assert.True(result.BaseSatisfiedCount >= result.BaseDesiredPassCount);
+        Assert.True(result.BestDesiredPassCount >= 0);
+        Assert.True(result.BestSatisfiedCount >= result.BestDesiredPassCount);
     }
 
     [Fact]
@@ -308,5 +316,129 @@ public class OptimizerRunnerTests
         foreach (var p in OptimizerRunner.DefaultParameters)
             Assert.True(result.SearchBounds.ContainsKey(p.Name),
                 $"SearchBounds is missing parameter '{p.Name}'.");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 8. Per-state result contains rich outcome fields
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void EvaluateProfile_ResultsHaveActualTopActionId()
+    {
+        var goldenStates = GoldenStateLoader.LoadEmbedded();
+        var results      = OptimizerRunner.EvaluateProfile(DecisionTuningProfile.Default, goldenStates);
+
+        foreach (var r in results)
+            Assert.False(string.IsNullOrEmpty(r.ActualTopActionId),
+                $"Result for '{r.Label ?? r.SampleKey}' has null/empty ActualTopActionId.");
+    }
+
+    [Fact]
+    public void EvaluateProfile_ResultsHaveNonEmptyActualTopCategories()
+    {
+        var goldenStates = GoldenStateLoader.LoadEmbedded();
+        var results      = OptimizerRunner.EvaluateProfile(DecisionTuningProfile.Default, goldenStates);
+
+        foreach (var r in results)
+            Assert.NotEmpty(r.ActualTopCategories);
+    }
+
+    [Fact]
+    public void EvaluateProfile_ActualTopCategoryIsFirstInActualTopCategories()
+    {
+        var goldenStates = GoldenStateLoader.LoadEmbedded();
+        var results      = OptimizerRunner.EvaluateProfile(DecisionTuningProfile.Default, goldenStates);
+
+        foreach (var r in results)
+        {
+            if (r.ActualTopCategory != null && r.ActualTopCategories.Count > 0)
+                Assert.Equal(r.ActualTopCategory, r.ActualTopCategories[0]);
+        }
+    }
+
+    [Fact]
+    public void EvaluateProfile_DesiredPassHasRankOne()
+    {
+        var goldenStates = GoldenStateLoader.LoadEmbedded();
+        var results      = OptimizerRunner.EvaluateProfile(DecisionTuningProfile.Default, goldenStates);
+
+        foreach (var r in results.Where(r => r.DesiredTopCategoryMet))
+        {
+            Assert.True(r.BestDesiredCategoryRank == 1,
+                $"State '{r.Label ?? r.SampleKey}' has DesiredTopCategoryMet=true but rank={r.BestDesiredCategoryRank}.");
+            Assert.Equal(0.0, r.DesiredCategoryVsWinnerDelta ?? double.NaN, precision: 3);
+        }
+    }
+
+    [Fact]
+    public void EvaluateProfile_NonPassHasNegativeDeltaOrMissingDesired()
+    {
+        var goldenStates = GoldenStateLoader.LoadEmbedded();
+        var results      = OptimizerRunner.EvaluateProfile(DecisionTuningProfile.Default, goldenStates);
+
+        foreach (var r in results.Where(r => !r.DesiredTopCategoryMet && r.DesiredTopCategory != null))
+        {
+            if (r.DesiredCategoryVsWinnerDelta.HasValue)
+                Assert.True(r.DesiredCategoryVsWinnerDelta.Value <= 0,
+                    $"State '{r.Label ?? r.SampleKey}' did not pass but delta={r.DesiredCategoryVsWinnerDelta} is positive.");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 9. Satisfied vs. desired pass count
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Run_SatisfiedCountIsAtLeastDesiredPassCount()
+    {
+        var goldenStates = GoldenStateLoader.LoadEmbedded();
+        var result = OptimizerRunner.Run(new OptimizerOptions(
+            GoldenStates:  goldenStates,
+            MaxIterations: 2));
+
+        Assert.True(result.BaseSatisfiedCount >= result.BaseDesiredPassCount,
+            $"BaseSatisfiedCount ({result.BaseSatisfiedCount}) must be ≥ BaseDesiredPassCount ({result.BaseDesiredPassCount}).");
+        Assert.True(result.BestSatisfiedCount >= result.BestDesiredPassCount,
+            $"BestSatisfiedCount ({result.BestSatisfiedCount}) must be ≥ BestDesiredPassCount ({result.BestDesiredPassCount}).");
+    }
+
+    [Fact]
+    public void GoldenStateResult_StateSatisfied_EqualsDesiredOrAcceptable()
+    {
+        var goldenStates = GoldenStateLoader.LoadEmbedded();
+        var results      = OptimizerRunner.EvaluateProfile(DecisionTuningProfile.Default, goldenStates);
+
+        foreach (var r in results)
+            Assert.Equal(r.DesiredTopCategoryMet || r.AcceptableCategoryMet, r.StateSatisfied);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 10. Evaluation is deterministic independent of ordering
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void EvaluateProfile_SameResultsRegardlessOfOrdering()
+    {
+        var goldenStates = GoldenStateLoader.LoadEmbedded();
+
+        var resultsA = OptimizerRunner.EvaluateProfile(DecisionTuningProfile.Default, goldenStates);
+        var resultsB = OptimizerRunner.EvaluateProfile(DecisionTuningProfile.Default,
+            goldenStates.Reverse().ToList());
+
+        // Match by SampleKey since ordering differs.
+        var byKeyA = resultsA.ToDictionary(r => r.SampleKey);
+        var byKeyB = resultsB.ToDictionary(r => r.SampleKey);
+
+        foreach (var key in byKeyA.Keys)
+        {
+            Assert.True(byKeyB.ContainsKey(key));
+            var a = byKeyA[key];
+            var b = byKeyB[key];
+            Assert.Equal(a.ActualTopCategory,     b.ActualTopCategory);
+            Assert.Equal(a.ActualTopActionId,      b.ActualTopActionId);
+            Assert.Equal(a.DesiredTopCategoryMet,  b.DesiredTopCategoryMet);
+            Assert.Equal(a.StateSatisfied,         b.StateSatisfied);
+            Assert.Equal(a.Score,                  b.Score, precision: 4);
+        }
     }
 }

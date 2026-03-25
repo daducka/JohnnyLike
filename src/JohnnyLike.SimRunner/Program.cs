@@ -784,15 +784,18 @@ void RunOptimizer(string[] optimizerArgs)
     var result = OptimizerRunner.Run(new OptimizerOptions(
         BaseProfile:   effectiveProfile,
         GoldenStates:  effectiveGolden,
-        MaxIterations: maxIterations,
-        OutputPath:    outputPath));
+        MaxIterations: maxIterations));
     Console.WriteLine(" done.");
 
     // ── Console summary ─────────────────────────────────────────────────────
     Console.WriteLine();
     Console.WriteLine("--- Objective scores ---");
-    Console.WriteLine($"  Base score:  {result.BaseScore:F2}  ({result.BasePassCount}/{effectiveGolden.Count} desired-category passes)");
-    Console.WriteLine($"  Best score:  {result.BestScore:F2}  ({result.BestPassCount}/{effectiveGolden.Count} desired-category passes)");
+    Console.WriteLine($"  Base score:  {result.BaseScore:F2}" +
+                      $"  ({result.BaseDesiredPassCount}/{effectiveGolden.Count} exact-desired," +
+                      $" {result.BaseSatisfiedCount}/{effectiveGolden.Count} satisfied)");
+    Console.WriteLine($"  Best score:  {result.BestScore:F2}" +
+                      $"  ({result.BestDesiredPassCount}/{effectiveGolden.Count} exact-desired," +
+                      $" {result.BestSatisfiedCount}/{effectiveGolden.Count} satisfied)");
     Console.WriteLine($"  Improvement: {result.ScoreImprovement:+0.##;-0.##;0} over {result.IterationsPerformed} iteration(s)");
 
     if (result.ProfileDiff.Count > 0)
@@ -811,7 +814,7 @@ void RunOptimizer(string[] optimizerArgs)
     // ── Per-state regression / improvement report ────────────────────────────
     var regressions  = result.BestResults
         .Zip(result.BaseResults, (best, @base) => (best, @base))
-        .Where(pair => pair.best.DesiredTopCategoryMet != pair.@base.DesiredTopCategoryMet ||
+        .Where(pair => pair.best.StateSatisfied != pair.@base.StateSatisfied ||
                        pair.best.ForbiddenCategoryTriggered != pair.@base.ForbiddenCategoryTriggered)
         .ToList();
 
@@ -822,27 +825,37 @@ void RunOptimizer(string[] optimizerArgs)
         foreach (var (best, @base) in regressions)
         {
             var direction = best.Score > @base.Score ? "▲ improved" : "▼ regressed";
+            var rankInfo  = best.BestDesiredCategoryRank.HasValue
+                ? $"  rank={best.BestDesiredCategoryRank}"
+                : "";
             Console.WriteLine($"  {direction}: [{best.Label ?? best.SampleKey}]  " +
                               $"base={@base.ActualTopCategory}  best={best.ActualTopCategory}  " +
-                              $"desired={best.DesiredTopCategory}");
+                              $"desired={best.DesiredTopCategory}{rankInfo}");
         }
     }
 
     // ── Failed golden states on best profile ─────────────────────────────────
     var stillFailing = result.BestResults
-        .Where(r => !r.DesiredTopCategoryMet && !r.AcceptableCategoryMet)
+        .Where(r => !r.StateSatisfied)
         .OrderBy(r => r.Score)
         .ToList();
 
     if (stillFailing.Count > 0)
     {
         Console.WriteLine();
-        Console.WriteLine("--- Remaining failures (desired category not met) ---");
+        Console.WriteLine("--- Remaining failures (not satisfied) ---");
         foreach (var r in stillFailing.Take(10))
         {
             var forbidden = r.ForbiddenCategoryTriggered ? "  ⚠ FORBIDDEN" : "";
+            var delta     = r.DesiredCategoryVsWinnerDelta.HasValue
+                ? $"  delta={r.DesiredCategoryVsWinnerDelta:F3}"
+                : "";
+            var rank      = r.BestDesiredCategoryRank.HasValue
+                ? $"  rank={r.BestDesiredCategoryRank}"
+                : "";
             Console.WriteLine($"  [{r.Label ?? r.SampleKey}]  " +
-                              $"actual={r.ActualTopCategory}  desired={r.DesiredTopCategory}{forbidden}");
+                              $"actual={r.ActualTopCategory}  desired={r.DesiredTopCategory}" +
+                              $"{rank}{delta}{forbidden}");
         }
         if (stillFailing.Count > 10)
             Console.WriteLine($"  ... and {stillFailing.Count - 10} more.");

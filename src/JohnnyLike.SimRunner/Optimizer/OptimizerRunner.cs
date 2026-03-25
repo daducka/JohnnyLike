@@ -33,9 +33,7 @@ public sealed record OptimizerOptions(
     /// </summary>
     IReadOnlyList<TunableParameter>? Parameters = null,
     /// <summary>Maximum coordinate-descent iterations (outer loops). Default: 20.</summary>
-    int MaxIterations = 20,
-    /// <summary>Output JSON file path. Null means no file is written.</summary>
-    string? OutputPath = null);
+    int MaxIterations = 20);
 
 // ─── Objective scoring ────────────────────────────────────────────────────────
 
@@ -518,50 +516,58 @@ public static class OptimizerRunner
         };
 
         return new OptimizerRunResult(
-            BaseProfileName:    baseProfile.ProfileName,
-            BaseProfileHash:    baseProfile.ComputeHash(),
-            BestProfileName:    bestProfile.ProfileName,
-            BestProfileHash:    bestProfile.ComputeHash(),
-            BestProfileJson:    bestProfile.ToJson(),
-            BaseScore:          Math.Round(baseScore, 4),
-            BestScore:          Math.Round(bestScore, 4),
-            ScoreImprovement:   Math.Round(bestScore - baseScore, 4),
-            BasePassCount:      baseResults.Count(r => r.DesiredTopCategoryMet),
-            BestPassCount:      bestResults.Count(r => r.DesiredTopCategoryMet),
-            BaseResults:        baseResults,
-            BestResults:        bestResults,
-            ProfileDiff:        diff,
-            IterationsPerformed: iterations,
-            MaxIterations:      maxIterations,
-            SearchBounds:       searchBounds,
-            CompletedAt:        DateTime.UtcNow.ToString("o"));
+            BaseProfileName:      baseProfile.ProfileName,
+            BaseProfileHash:      baseProfile.ComputeHash(),
+            BestProfileName:      bestProfile.ProfileName,
+            BestProfileHash:      bestProfile.ComputeHash(),
+            BestProfileJson:      bestProfile.ToJson(),
+            BaseScore:            Math.Round(baseScore, 4),
+            BestScore:            Math.Round(bestScore, 4),
+            ScoreImprovement:     Math.Round(bestScore - baseScore, 4),
+            BaseDesiredPassCount: baseResults.Count(r => r.DesiredTopCategoryMet),
+            BestDesiredPassCount: bestResults.Count(r => r.DesiredTopCategoryMet),
+            BaseSatisfiedCount:   baseResults.Count(r => r.StateSatisfied),
+            BestSatisfiedCount:   bestResults.Count(r => r.StateSatisfied),
+            BaseResults:          baseResults,
+            BestResults:          bestResults,
+            ProfileDiff:          diff,
+            IterationsPerformed:  iterations,
+            MaxIterations:        maxIterations,
+            SearchBounds:         searchBounds,
+            CompletedAt:          DateTime.UtcNow.ToString("o"));
     }
 
     /// <summary>
     /// Evaluates a single <see cref="DecisionTuningProfile"/> against all provided golden states
     /// and returns per-state results.
+    ///
+    /// <para>
+    /// Each golden state is evaluated with its own deterministic RNG seeded from the
+    /// state's <see cref="GoldenStateEntry.SampleKey"/>. This ensures evaluation of a given
+    /// state is always identical regardless of dataset ordering.
+    /// </para>
     /// </summary>
     public static IReadOnlyList<GoldenStateResult> EvaluateProfile(
         DecisionTuningProfile profile,
         IReadOnlyList<GoldenStateEntry> goldenStates)
     {
         var domain = new IslandDomainPack(profile);
-        var rng    = new Random(42);
 
         var results = new List<GoldenStateResult>(goldenStates.Count);
         foreach (var gs in goldenStates)
-            results.Add(EvaluateEntry(gs, domain, rng));
+            results.Add(EvaluateEntry(gs, domain));
 
         return results;
     }
 
     /// <summary>
     /// Evaluates a single golden state entry against an already-configured domain pack.
+    /// Uses a deterministic RNG seeded from the entry's <see cref="GoldenStateEntry.SampleKey"/>
+    /// so evaluation is always order-independent.
     /// </summary>
     public static GoldenStateResult EvaluateEntry(
         GoldenStateEntry entry,
-        IslandDomainPack domain,
-        Random rng)
+        IslandDomainPack domain)
     {
         if (!Archetypes.All.TryGetValue(entry.Actor, out var archetypeData))
             throw new ArgumentException($"Unknown actor archetype '{entry.Actor}'.");
@@ -583,22 +589,24 @@ public static class OptimizerRunner
 
         var worldState = PressureFuzzerScenarios.Build(scenario, actorId);
 
+        // Use a per-entry deterministic RNG seeded from the SampleKey so evaluation
+        // is identical regardless of golden-state list ordering.
+        var rng = new Random(StableSeed(entry.SampleKey));
+
         var candidates = domain.GenerateCandidates(
             actorId, actorState, worldState, 0L, rng,
             NullResourceAvailability.Instance);
 
         var sorted      = candidates.OrderByDescending(c => c.Score).ToList();
         var explain     = domain.ExplainCandidateScoring(actorId, actorState, worldState, 0L, sorted);
-        var topCategory = GetTopCategory(sorted, explain);
 
-        return ScoreGoldenState(entry, topCategory, sorted, explain);
+        return ScoreGoldenState(entry, sorted, explain);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private static GoldenStateResult ScoreGoldenState(
         GoldenStateEntry entry,
-        string? topCategory,
         List<ActionCandidate> sorted,
         Dictionary<string, object>? explain)
     {
@@ -609,11 +617,36 @@ public static class OptimizerRunner
         var acceptable = outcome.AcceptableTopCategories?.Select(q => q.ToString()).ToHashSet()
                          ?? new HashSet<string>();
 
-        var desiredMet      = topCategory != null && topCategory == desired;
-        var acceptableMet   = !desiredMet && topCategory != null && acceptable.Contains(topCategory);
+        // ── Winning action details ─────────────────────────────────────────
+        var winningActionId = sorted.Count > 0 ? sorted[0].Action.Id.Value : (string?)null;
+        var topCategory     = sorted.Count > 0 ? GetCandidateTopCategory(sorted[0], explain) : null;
+        var topCategories   = sorted.Count > 0
+            ? GetAllCandidateCategories(sorted[0], explain)
+            : Array.Empty<string>();
+
+        var desiredMet         = topCategory != null && topCategory == desired;
+        var acceptableMet      = !desiredMet && topCategory != null && acceptable.Contains(topCategory);
         var forbiddenTriggered = topCategory != null && forbidden.Contains(topCategory);
 
-        // Check if desired category is present in top-N even if not top-1.
+        // ── Best desired candidate rank and delta ──────────────────────────
+        int?    bestDesiredRank  = null;
+        double? desiredVsWinnerDelta = null;
+
+        if (desired != null)
+        {
+            var winnerScore = sorted.Count > 0 ? sorted[0].Score : 0.0;
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                if (GetCandidateTopCategory(sorted[i], explain) == desired)
+                {
+                    bestDesiredRank      = i + 1;       // 1-based
+                    desiredVsWinnerDelta = Math.Round(sorted[i].Score - winnerScore, 4);
+                    break;
+                }
+            }
+        }
+
+        // ── Desired in top-N (for objective scoring) ───────────────────────
         var desiredInTopN = desired != null && sorted
             .Take(5)
             .Any(c => GetCandidateTopCategory(c, explain) == desired);
@@ -630,29 +663,23 @@ public static class OptimizerRunner
             score -= ObjectiveWeights.ForbiddenCategoryPenalty * entry.Priority;
 
         return new GoldenStateResult(
-            SampleKey:                entry.SampleKey,
-            Label:                    entry.Label,
-            Priority:                 entry.Priority,
-            ActualTopCategory:        topCategory,
-            DesiredTopCategory:       desired,
-            DesiredTopCategoryMet:    desiredMet,
-            AcceptableCategoryMet:    acceptableMet,
+            SampleKey:                  entry.SampleKey,
+            Label:                      entry.Label,
+            Priority:                   entry.Priority,
+            ActualTopActionId:          winningActionId,
+            ActualTopCategory:          topCategory,
+            ActualTopCategories:        topCategories,
+            DesiredTopCategory:         desired,
+            DesiredTopCategoryMet:      desiredMet,
+            AcceptableCategoryMet:      acceptableMet,
             ForbiddenCategoryTriggered: forbiddenTriggered,
-            Score:                    Math.Round(score, 4));
+            BestDesiredCategoryRank:    bestDesiredRank,
+            DesiredCategoryVsWinnerDelta: desiredVsWinnerDelta,
+            Score:                      Math.Round(score, 4));
     }
 
     /// <summary>
     /// Derives the dominant category for the top candidate using the scoring explanation.
-    /// Falls back to reading qualities directly when explanation is unavailable.
-    /// </summary>
-    private static string? GetTopCategory(
-        List<ActionCandidate> sorted,
-        Dictionary<string, object>? explain)
-    {
-        if (sorted.Count == 0) return null;
-        return GetCandidateTopCategory(sorted[0], explain);
-    }
-
     private static string? GetCandidateTopCategory(
         ActionCandidate candidate,
         Dictionary<string, object>? explain)
@@ -688,6 +715,70 @@ public static class OptimizerRunner
         return candidate.Qualities.Count == 0
             ? null
             : candidate.Qualities.MaxBy(kv => kv.Value).Key.ToString();
+    }
+
+    /// <summary>
+    /// Returns all quality names with positive weighted contribution for <paramref name="candidate"/>,
+    /// ordered by contribution descending. Provides full multi-quality context rather than just the
+    /// single dominant category.
+    /// </summary>
+    private static IReadOnlyList<string> GetAllCandidateCategories(
+        ActionCandidate candidate,
+        Dictionary<string, object>? explain)
+    {
+        if (explain?.TryGetValue("candidateBreakdowns", out var rawBreakdowns) == true &&
+            rawBreakdowns is List<object> breakdownList)
+        {
+            foreach (var item in breakdownList)
+            {
+                if (item is Dictionary<string, object> bd &&
+                    bd.TryGetValue("actionId", out var ai) && ai is string actionId &&
+                    actionId == candidate.Action.Id.Value &&
+                    bd.TryGetValue("qualityContributions", out var qcObj) &&
+                    qcObj is Dictionary<string, object> qcDict)
+                {
+                    return qcDict
+                        .Where(kv => kv.Value is Dictionary<string, object> c &&
+                                     c.TryGetValue("contribution", out var con) &&
+                                     Convert.ToDouble(con) > 0.0)
+                        .OrderByDescending(kv =>
+                        {
+                            if (kv.Value is Dictionary<string, object> c &&
+                                c.TryGetValue("contribution", out var con))
+                                return Convert.ToDouble(con);
+                            return 0.0;
+                        })
+                        .Select(kv => kv.Key)
+                        .ToList();
+                }
+            }
+        }
+
+        // Fallback: qualities sorted by raw value descending.
+        return candidate.Qualities
+            .Where(kv => kv.Value > 0.0)
+            .OrderByDescending(kv => kv.Value)
+            .Select(kv => kv.Key.ToString())
+            .ToList();
+    }
+
+    /// <summary>
+    /// Computes a stable, process-independent 32-bit hash of <paramref name="s"/>
+    /// using FNV-1a. Used to seed per-entry RNGs so evaluation is deterministic
+    /// regardless of golden-state list ordering.
+    /// </summary>
+    private static int StableSeed(string input)
+    {
+        unchecked
+        {
+            uint hash = 2166136261u;
+            foreach (char c in input)
+            {
+                hash ^= c;
+                hash *= 16777619u;
+            }
+            return (int)hash;
+        }
     }
 
     private static IReadOnlyList<ProfileDiffEntry> BuildProfileDiff(
