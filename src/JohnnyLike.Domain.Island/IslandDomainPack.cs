@@ -186,6 +186,79 @@ public class IslandDomainPack : IDomainPack
     }
 
     /// <summary>
+    /// Direct trait-injection overload for golden-state evaluation.
+    /// Generates candidates for <paramref name="actorState"/> using the physiological pressures
+    /// (satiety, energy, morale, health) from the actor state but with personality weights
+    /// sourced directly from <paramref name="explicitTraits"/> instead of being re-derived
+    /// from the actor's ability scores.
+    ///
+    /// <para>
+    /// This ensures evaluation reflects the <em>exact</em> authored trait vector rather than
+    /// an approximation produced by any inverse mapping from traits back to stats.
+    /// The production scoring path (via <see cref="GenerateCandidates"/>) is unchanged.
+    /// </para>
+    /// </summary>
+    public List<ActionCandidate> GenerateCandidates(
+        ActorId actorId,
+        ActorState actorState,
+        WorldState worldState,
+        long currentTick,
+        Random rng,
+        IResourceAvailability resourceAvailability,
+        TraitProfile explicitTraits)
+    {
+        var islandActorState = (IslandActorState)actorState;
+        var islandWorld = (IslandWorldState)worldState;
+        var rngStream = new RandomRngStream(rng);
+
+        islandActorState.ActiveBuffs.RemoveAll(b => b.ExpiresAtTick <= currentTick);
+
+        // Build quality model using the explicit trait profile directly — no stat derivation.
+        var model = BuildQualityModel(islandActorState, currentTick, islandWorld, _profile, explicitTraits);
+
+        var ctx = new IslandContext(
+            actorId,
+            islandActorState,
+            islandWorld,
+            currentTick,
+            rngStream,
+            rng,
+            resourceAvailability,
+            model.EffectiveWeight,
+            _profile
+        );
+
+        var candidates = new List<ActionCandidate>();
+
+        foreach (var item in islandWorld.WorldItems
+            .OfType<IIslandActionCandidate>()
+            .Cast<WorldItem>()
+            .OrderBy(wi => wi.Id)
+            .Cast<IIslandActionCandidate>())
+        {
+            var wi = (WorldItem)item;
+            var itemCandidates = new List<ActionCandidate>();
+            item.AddCandidates(ctx, itemCandidates);
+            foreach (var c in itemCandidates)
+                candidates.Add(c with { ProviderItemId = wi.Id });
+        }
+
+        var actorCandidates = new List<ActionCandidate>();
+        islandActorState.AddCandidates(ctx, actorCandidates);
+        foreach (var c in actorCandidates)
+            candidates.Add(c with { ProviderItemId = actorId.Value });
+
+        candidates.RemoveAll(c => c.ActorRequirement != null && !c.ActorRequirement(islandActorState));
+
+        for (var i = 0; i < candidates.Count; i++)
+        {
+            candidates[i] = candidates[i] with { Score = ScoreCandidate(candidates[i], model) };
+        }
+
+        return candidates;
+    }
+
+    /// <summary>
     /// Encapsulates the three scoring influences — Needs, Personality, Mood — as separate
     /// dictionaries so each can be tuned independently.
     /// Effective weight = needAdd[q] + personalityBase[q] * moodMultiplier[q]
@@ -263,6 +336,27 @@ public class IslandDomainPack : IDomainPack
             STR: actor.STR, DEX: actor.DEX, CON: actor.CON,
             INT: actor.INT, WIS: actor.WIS, CHA: actor.CHA);
     }
+
+    /// <summary>
+    /// Creates a <see cref="PersonalityTraits"/> snapshot directly from an explicit
+    /// <see cref="TraitProfile"/>, bypassing stat-derived reconstruction.
+    /// Raw stat fields (STR, DEX, CON, INT, WIS, CHA) are set to zero because they
+    /// are only used in <see cref="ExplainCandidateScoring"/> to populate the
+    /// diagnostic <c>inputs</c> dictionary (e.g., <c>"inputs": {INT: 0, WIS: 0}</c>).
+    /// They have no effect on quality-model computation, scoring, or candidate ordering.
+    /// Callers of <see cref="ExplainCandidateScoring"/> on a trait-injected actor will
+    /// see zeroed inputs in the personality breakdown, which is acceptable because
+    /// <see cref="ExplainCandidateScoring"/> is not used for golden-state evaluation.
+    /// </summary>
+    private static PersonalityTraits TraitsFromProfile(TraitProfile profile) =>
+        new(
+            Planner:     profile.Planner,
+            Craftsman:   profile.Craftsman,
+            Survivor:    profile.Survivor,
+            Hedonist:    profile.Hedonist,
+            Instinctive: profile.Instinctive,
+            Industrious: profile.Industrious,
+            STR: 0, DEX: 0, CON: 0, INT: 0, WIS: 0, CHA: 0);
 
     /// <summary>
     /// Derives a personality-based DecisionPragmatism value from pre-computed traits.
@@ -354,7 +448,8 @@ public class IslandDomainPack : IDomainPack
         IslandActorState actor,
         long currentTick = 0L,
         IslandWorldState? world = null,
-        DecisionTuningProfile? profile = null)
+        DecisionTuningProfile? profile = null,
+        TraitProfile? explicitTraits = null)
     {
         var need = (profile ?? DecisionTuningProfile.Default).Need;
         var mood = (profile ?? DecisionTuningProfile.Default).Mood;
@@ -440,8 +535,12 @@ public class IslandDomainPack : IDomainPack
         }
 
         // ── Traits ────────────────────────────────────────────────────────────────
-        // Derived via DerivePersonalityTraits (shared with ExplainCandidateScoring).
-        var traits = DerivePersonalityTraits(actor);
+        // When an explicit TraitProfile is supplied (golden-state evaluation path),
+        // use those values directly so evaluation reflects the exact authored contract.
+        // Otherwise derive traits from actor ability scores (normal production path).
+        var traits = explicitTraits != null
+            ? TraitsFromProfile(explicitTraits)
+            : DerivePersonalityTraits(actor);
 
         // Normalised injury factor [0,1]: 0 = healthy, 1 = 0 HP.
         var injuryFactor = injuryPressure / 100.0;
@@ -1153,6 +1252,42 @@ public class IslandDomainPack : IDomainPack
             currentTick,
             worldState as IslandWorldState,
             _profile);
+
+        var result = new List<IReadOnlyList<(QualityType, double)>>(candidates.Count);
+        foreach (var candidate in candidates)
+        {
+            var contribs = new List<(QualityType Quality, double Contribution)>(candidate.Qualities.Count);
+            foreach (var (q, value) in candidate.Qualities)
+            {
+                var contribution = model.EffectiveWeight(q) * value;
+                if (contribution > 0.0)
+                    contribs.Add((q, contribution));
+            }
+            contribs.Sort((a, b) => b.Contribution.CompareTo(a.Contribution));
+            result.Add(contribs);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Direct trait-injection overload for golden-state evaluation.
+    /// Computes quality contributions using <paramref name="explicitTraits"/> for the
+    /// personality component instead of re-deriving traits from the actor's ability scores.
+    /// This ensures the quality model reflects the exact authored <see cref="TraitProfile"/>.
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<(QualityType Quality, double Contribution)>> ComputeQualityContributions(
+        ActorState actorState,
+        WorldState worldState,
+        long currentTick,
+        IReadOnlyList<ActionCandidate> candidates,
+        TraitProfile explicitTraits)
+    {
+        var model = BuildQualityModel(
+            (IslandActorState)actorState,
+            currentTick,
+            worldState as IslandWorldState,
+            _profile,
+            explicitTraits);
 
         var result = new List<IReadOnlyList<(QualityType, double)>>(candidates.Count);
         foreach (var candidate in candidates)

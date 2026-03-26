@@ -456,69 +456,58 @@ public class OptimizerRunnerTests
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 11. SynthesizeStatsFromTraits — stat synthesis from trait profiles
+    // 11. Direct trait injection — EvaluateEntry uses exact TraitProfile
     // ═══════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void SynthesizeStatsFromTraits_NeutralProfile_AllStatsTen()
+    public void EvaluateEntry_DifferentTraitProfiles_ProduceDifferentScores()
     {
-        // All traits = 0 → all stats should equal the INT anchor (10).
-        var profile = new TraitProfile(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-        var stats = OptimizerRunner.SynthesizeStatsFromTraits(profile);
-        Assert.Equal(10, stats.STR);
-        Assert.Equal(10, stats.DEX);
-        Assert.Equal(10, stats.CON);
-        Assert.Equal(10, stats.INT);
-        Assert.Equal(10, stats.WIS);
-        Assert.Equal(10, stats.CHA);
-    }
+        // Two golden states with identical physiological state and scenario but very different
+        // trait profiles should be evaluated differently — proving that the TraitProfile is
+        // used directly for personality weights and not approximated via stat synthesis.
+        var domain = new IslandDomainPack();
 
-    [Fact]
-    public void SynthesizeStatsFromTraits_AllStatsInValidRange()
-    {
-        // Test a range of diverse profiles — all synthesized stats must be in [1, 20].
-        var profiles = new[]
-        {
-            new TraitProfile(0.05, 0.20, 0.20, 0.40, 0.35, 0.30), // Johnny-equivalent
-            new TraitProfile(0.45, 0.35, 0.45, 0.10, 0.00, 0.20), // Frank-equivalent
-            new TraitProfile(0.00, 0.00, 0.10, 0.40, 0.45, 0.20), // Sawyer-equivalent
-            new TraitProfile(0.55, 0.20, 0.30, 0.05, 0.00, 0.00), // Oscar-equivalent
-            new TraitProfile(1.00, 1.00, 1.00, 1.00, 1.00, 1.00), // all-max
-            new TraitProfile(0.00, 0.00, 0.00, 0.00, 0.00, 0.00), // all-min
-        };
+        // High-Planner, low-Hedonist profile (Frank-like): should value Preparation/Efficiency
+        var plannerProfile = new TraitProfile(
+            Planner: 0.45, Craftsman: 0.35, Survivor: 0.45,
+            Hedonist: 0.10, Instinctive: 0.00, Industrious: 0.20);
 
-        foreach (var p in profiles)
+        // High-Hedonist, zero-Planner profile (Sawyer-like): should value Fun/Comfort
+        var hedonistProfile = new TraitProfile(
+            Planner: 0.00, Craftsman: 0.00, Survivor: 0.10,
+            Hedonist: 0.40, Instinctive: 0.45, Industrious: 0.20);
+
+        // Fully-satisfied physiological state so need pressures are near-zero and
+        // personality weights dominate the scoring outcome.
+        // At satiety=100, energy=100, health=100, morale=100 all staged hunger/fatigue/misery
+        // pressures resolve to 0.0, ensuring personality is the differentiating signal.
+        var stableState = new GoldenStateValues(Satiety: 100, Health: 100, Energy: 100, Morale: 100);
+        var desiredOutcome = new GoldenStateDesiredOutcome(null, null, null);
+
+        GoldenStateEntry MakeEntry(TraitProfile profile)
         {
-            var s = OptimizerRunner.SynthesizeStatsFromTraits(p);
-            Assert.InRange(s.STR, 1, 20);
-            Assert.InRange(s.DEX, 1, 20);
-            Assert.InRange(s.CON, 1, 20);
-            Assert.InRange(s.INT, 1, 20);
-            Assert.InRange(s.WIS, 1, 20);
-            Assert.InRange(s.CHA, 1, 20);
+            var proto = new GoldenStateEntry(
+                SampleKey: "",
+                TraitProfile: profile,
+                Scenario: "FoodAvailable_WithComfort",
+                State: stableState,
+                DesiredOutcome: desiredOutcome,
+                Priority: 5.0);
+            var key = GoldenStateLoader.BuildExpectedSampleKey(proto);
+            return proto with { SampleKey = key };
         }
-    }
 
-    [Fact]
-    public void SynthesizeStatsFromTraits_KnownProfile_ReproducesExpectedTraits()
-    {
-        // Verify that re-deriving traits from synthesized stats closely matches
-        // the input trait profile. Planner, Craftsman, Survivor, Hedonist, and
-        // Instinctive should be reproduced exactly (within rounding); Industrious
-        // is intentionally approximate.
-        static double Norm(int a, int b) =>
-            Math.Clamp(((double)(a + b) - 20.0) / 20.0, 0.0, 1.0);
+        var plannerResult  = OptimizerRunner.EvaluateEntry(MakeEntry(plannerProfile), domain);
+        var hedonistResult = OptimizerRunner.EvaluateEntry(MakeEntry(hedonistProfile), domain);
 
-        var input = new TraitProfile(
-            Planner: 0.05, Craftsman: 0.20, Survivor: 0.20,
-            Hedonist: 0.40, Instinctive: 0.35, Industrious: 0.30);
+        // Both evaluations should succeed and produce a top action.
+        Assert.NotNull(plannerResult.ActualTopActionId);
+        Assert.NotNull(hedonistResult.ActualTopActionId);
 
-        var s = OptimizerRunner.SynthesizeStatsFromTraits(input);
-
-        Assert.Equal(input.Planner,     Norm(s.INT, s.WIS), precision: 1);
-        Assert.Equal(input.Craftsman,   Norm(s.DEX, s.INT), precision: 1);
-        Assert.Equal(input.Survivor,    Norm(s.CON, s.WIS), precision: 1);
-        Assert.Equal(input.Hedonist,    Norm(s.CHA, s.CON), precision: 1);
-        Assert.Equal(input.Instinctive, Norm(s.STR, s.CHA), precision: 1);
+        // With fully-satisfied needs and contrasting trait profiles, the top quality category
+        // should differ: Planner → Preparation/Efficiency; Hedonist → Fun/Comfort.
+        Assert.NotEqual(
+            plannerResult.ActualTopCategory,
+            hedonistResult.ActualTopCategory);
     }
 }

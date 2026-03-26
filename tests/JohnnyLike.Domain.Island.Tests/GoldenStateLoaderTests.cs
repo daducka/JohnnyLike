@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island;
 using JohnnyLike.SimRunner.PressureFuzzer;
 
 namespace JohnnyLike.Domain.Island.Tests;

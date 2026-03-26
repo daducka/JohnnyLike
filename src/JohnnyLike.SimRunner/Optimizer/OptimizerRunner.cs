@@ -564,6 +564,15 @@ public static class OptimizerRunner
     /// Evaluates a single golden state entry against an already-configured domain pack.
     /// Uses a deterministic RNG seeded from the entry's <see cref="GoldenStateEntry.SampleKey"/>
     /// so evaluation is always order-independent.
+    ///
+    /// <para>
+    /// The actor's ability scores (STR/DEX/CON/INT/WIS/CHA) are set to neutral defaults and
+    /// are not used for personality scoring. Instead, <see cref="GoldenStateEntry.TraitProfile"/>
+    /// is injected directly into the quality model, ensuring evaluation reflects the exact
+    /// authored trait vector without any lossy inverse mapping.
+    /// Physiological state (satiety, health, energy, morale) is taken from the golden entry as
+    /// usual and still drives need pressures.
+    /// </para>
     /// </summary>
     public static GoldenStateResult EvaluateEntry(
         GoldenStateEntry entry,
@@ -572,19 +581,12 @@ public static class OptimizerRunner
         if (!Enum.TryParse<FuzzerScenarioKind>(entry.Scenario, out var scenario))
             throw new ArgumentException($"Unknown scenario kind '{entry.Scenario}'.");
 
-        // Synthesize actor stats from the trait profile so evaluation is trait-driven
-        // and independent of any named actor archetype.
-        var (str, dex, con, @int, wis, cha) = SynthesizeStatsFromTraits(entry.TraitProfile);
         var actorId = new ActorId("trait-actor");
 
+        // Ability scores are irrelevant — the TraitProfile is injected directly into the scoring
+        // model. Only the physiological state (satiety, energy, morale) matters here.
         var stateData = new Dictionary<string, object>
         {
-            ["STR"] = str,
-            ["DEX"] = dex,
-            ["CON"] = con,
-            ["INT"] = @int,
-            ["WIS"] = wis,
-            ["CHA"] = cha,
             ["satiety"] = entry.State.Satiety,
             ["energy"]  = entry.State.Energy,
             ["morale"]  = entry.State.Morale,
@@ -598,45 +600,21 @@ public static class OptimizerRunner
         // is identical regardless of golden-state list ordering.
         var rng = new Random(StableSeed(entry.SampleKey));
 
+        // Pass the TraitProfile directly — no stat synthesis, no trait re-derivation.
         var candidates = domain.GenerateCandidates(
             actorId, actorState, worldState, 0L, rng,
-            NullResourceAvailability.Instance);
+            NullResourceAvailability.Instance,
+            entry.TraitProfile);
 
         var sorted = candidates.OrderByDescending(c => c.Score).ToList();
 
-        // Compute typed quality contributions once for all candidates —
-        // no opaque explain dictionary needed.
-        var contributions = domain.ComputeQualityContributions(actorState, worldState, 0L, sorted);
+        // Compute quality contributions using the same explicit trait profile so
+        // contribution weights are consistent with the candidate scoring above.
+        var contributions = domain.ComputeQualityContributions(
+            actorState, worldState, 0L, sorted,
+            entry.TraitProfile);
 
         return ScoreGoldenState(entry, sorted, contributions);
-    }
-
-    /// <summary>
-    /// Synthesizes D&amp;D ability scores (each clamped to [1, 20]) from a <see cref="TraitProfile"/>.
-    /// Uses INT = 10 as a neutral anchor, then derives the remaining five stats from the
-    /// six trait equations so that Planner, Craftsman, Survivor, Hedonist, and Instinctive
-    /// are reproduced exactly; Industrious is approximated.
-    /// </summary>
-    public static (int STR, int DEX, int CON, int INT, int WIS, int CHA)
-        SynthesizeStatsFromTraits(TraitProfile t)
-    {
-        // Trait formulas: Norm(a,b) = (a+b-20)/20 → a+b = 20+20*trait
-        // With INT = 10 as anchor:
-        //   WIS   = 20 + 20*Planner   - INT
-        //   DEX   = 20 + 20*Craftsman - INT
-        //   CON   = 20*(Survivor - Planner) + INT
-        //   CHA   = 20*(Hedonist - Survivor + Planner) + 20 - INT
-        //   STR   = 20*(Instinctive - Hedonist + Survivor - Planner) + INT
-        const int intBase = 10;
-        int Clamp(double v) => (int)Math.Clamp(Math.Round(v), 1.0, 20.0);
-
-        int wis = Clamp(20.0 + 20.0 * t.Planner     - intBase);
-        int dex = Clamp(20.0 + 20.0 * t.Craftsman   - intBase);
-        int con = Clamp(20.0 * (t.Survivor - t.Planner) + intBase);
-        int cha = Clamp(20.0 * (t.Hedonist - t.Survivor + t.Planner) + 20.0 - intBase);
-        int str = Clamp(20.0 * (t.Instinctive - t.Hedonist + t.Survivor - t.Planner) + intBase);
-
-        return (STR: str, DEX: dex, CON: con, INT: intBase, WIS: wis, CHA: cha);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
