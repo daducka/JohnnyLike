@@ -585,12 +585,10 @@
     "morale": 65
   },
   "desiredOutcome": {
+    "desiredTopCategory": "Mastery",
     "acceptableTopCategories": [
       "Fun",
-      "Mastery",
-      "Comfort",
-      "Preparation",
-      "Safety"
+      "Comfort"
     ],
     "forbiddenTopCategories": [
       "FoodConsumption",
@@ -938,10 +936,9 @@
     "morale": 55
   },
   "desiredOutcome": {
+    "desiredTopCategory": "Comfort",
     "acceptableTopCategories": [
-      "FoodConsumption",
-      "Comfort",
-      "Rest"
+      "FoodConsumption"
     ],
     "forbiddenTopCategories": [
       "Fun",
@@ -1135,36 +1132,7 @@
   "label": "training/boundary/no-food-source/high-planner/s10"
 },
 {
-  "sampleKey": "trait:15cc8081|FoodAvailableNow|s15|h70|e50|m50",
-  "setType": "Holdout",
-  "traitProfile": {
-    "planner": 0.5,
-    "craftsman": 0.5,
-    "survivor": 0.5,
-    "hedonist": 0.5,
-    "instinctive": 0.5,
-    "industrious": 0.5
-  },
-  "traitIntent": "Holdout variant of training Balanced/s10. At satiety=15, behavior should remain food-first \u2014 testing smooth generalization near the threshold.",
-  "scenario": "FoodAvailableNow",
-  "state": {
-    "satiety": 15,
-    "health": 70,
-    "energy": 50,
-    "morale": 50
-  },
-  "desiredOutcome": {
-    "desiredTopCategory": "FoodConsumption",
-    "forbiddenTopCategories": [
-      "Fun",
-      "Preparation"
-    ]
-  },
-  "priority": 3,
-  "label": "holdout/boundary/food-now/balanced/s15"
-},
-{
-  "sampleKey": "trait:74ae3b4d|FoodAvailableNow|s15|h70|e50|m50",
+  "sampleKey": "trait:74ae3b4d|LateCollapse|s15|h50|e10|m30",
   "setType": "Holdout",
   "traitProfile": {
     "planner": 0.1,
@@ -1174,23 +1142,59 @@
     "instinctive": 0.7,
     "industrious": 0.2
   },
-  "traitIntent": "Holdout variant of training HighHedonist/s10. At satiety=15, food must still beat fun \u2014 ensuring the survival override generalizes properly.",
-  "scenario": "FoodAvailableNow",
+  "traitIntent": "High Hedonist under late-collapse distress (exhausted + hungry in degraded world). Tests whether fun suppression generalizes beyond the clean FoodAvailableNow scenario into degraded-world conditions.",
+  "scenario": "LateCollapse",
   "state": {
     "satiety": 15,
-    "health": 70,
-    "energy": 50,
-    "morale": 50
+    "health": 50,
+    "energy": 10,
+    "morale": 30
   },
   "desiredOutcome": {
     "desiredTopCategory": "FoodConsumption",
+    "acceptableTopCategories": [
+      "Rest"
+    ],
     "forbiddenTopCategories": [
       "Fun",
       "Comfort"
     ]
   },
   "priority": 3,
-  "label": "holdout/boundary/food-now/high-hedonist/s15"
+  "label": "holdout/late-collapse/high-hedonist/exhausted-hungry"
+},
+{
+  "sampleKey": "trait:f34d05d4|LateCollapse|s15|h50|e10|m30",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.9,
+    "craftsman": 0.8,
+    "survivor": 0.6,
+    "hedonist": 0.2,
+    "instinctive": 0.3,
+    "industrious": 0.7
+  },
+  "traitIntent": "High Planner under late-collapse distress (exhausted + hungry in degraded world). Tests whether prep suppression generalizes beyond clean food-available scenarios into degraded conditions where planning is even less appropriate.",
+  "scenario": "LateCollapse",
+  "state": {
+    "satiety": 15,
+    "health": 50,
+    "energy": 10,
+    "morale": 30
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "acceptableTopCategories": [
+      "Rest"
+    ],
+    "forbiddenTopCategories": [
+      "Preparation",
+      "Mastery",
+      "Fun"
+    ]
+  },
+  "priority": 3,
+  "label": "holdout/late-collapse/high-planner/exhausted-hungry"
 },
 {
   "sampleKey": "trait:f34d05d4|FoodAvailableNow|s20|h75|e55|m55",
@@ -1287,62 +1291,66 @@
   "label": "holdout/boundary/comfort-avail/balanced/s15-reduced"
 },
 {
-  "sampleKey": "trait:15cc8081|NoFood_SourceAvailable|s15|h65|e50|m45",
+  "sampleKey": "trait:74ae3b4d|HighRecipeOpportunity|s65|h90|e80|m65",
   "setType": "Holdout",
   "traitProfile": {
-    "planner": 0.5,
-    "craftsman": 0.5,
-    "survivor": 0.5,
-    "hedonist": 0.5,
-    "instinctive": 0.5,
-    "industrious": 0.5
+    "planner": 0.1,
+    "craftsman": 0.2,
+    "survivor": 0.3,
+    "hedonist": 0.9,
+    "instinctive": 0.7,
+    "industrious": 0.2
   },
-  "traitIntent": "Holdout variant of training Balanced/NoFood/s10. At satiety=15, food acquisition should still dominate \u2014 testing smooth generalization near the threshold.",
+  "traitIntent": "High Hedonist in a recipe-rich safe state. Even with abundant crafting opportunity, fun preference must dominate over preparation — tests profile differentiation against High Planner (sacred S5) in the exact same scenario/state.",
+  "scenario": "HighRecipeOpportunity",
+  "state": {
+    "satiety": 65,
+    "health": 90,
+    "energy": 80,
+    "morale": 65
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "Fun",
+    "acceptableTopCategories": [
+      "Comfort"
+    ],
+    "forbiddenTopCategories": [
+      "Preparation",
+      "FoodAcquisition"
+    ]
+  },
+  "priority": 2,
+  "label": "holdout/stable-flavor/high-hedonist/recipe-rich"
+},
+{
+  "sampleKey": "trait:ca4e875a|NoFood_SourceAvailable|s10|h70|e50|m50",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.3,
+    "craftsman": 0.2,
+    "survivor": 0.4,
+    "hedonist": 0.75,
+    "instinctive": 0.5,
+    "industrious": 0.3
+  },
+  "traitIntent": "Comfort-leaning profile under critical hunger with no immediate food (only food sources available). Tests that the comfort-lean preference does not interfere with food acquisition when the only available food route is active gathering.",
   "scenario": "NoFood_SourceAvailable",
   "state": {
-    "satiety": 15,
-    "health": 65,
+    "satiety": 10,
+    "health": 70,
     "energy": 50,
-    "morale": 45
+    "morale": 50
   },
   "desiredOutcome": {
     "desiredTopCategory": "FoodAcquisition",
     "forbiddenTopCategories": [
-      "Fun",
-      "Preparation"
-    ]
-  },
-  "priority": 3,
-  "label": "holdout/boundary/no-food-source/balanced/s15"
-},
-{
-  "sampleKey": "trait:13fcd090|FoodAvailableNow|s20|h70|e55|m50",
-  "setType": "Holdout",
-  "traitProfile": {
-    "planner": 0.2,
-    "craftsman": 0.2,
-    "survivor": 0.6,
-    "hedonist": 0.5,
-    "instinctive": 0.95,
-    "industrious": 0.4
-  },
-  "traitIntent": "High Instinctive at moderate hunger (satiety=20). Immediate food bias should still win; this holdout tests that the instinctive food-preference generalizes beyond s15.",
-  "scenario": "FoodAvailableNow",
-  "state": {
-    "satiety": 20,
-    "health": 70,
-    "energy": 55,
-    "morale": 50
-  },
-  "desiredOutcome": {
-    "desiredTopCategory": "FoodConsumption",
-    "forbiddenTopCategories": [
-      "Preparation",
+      "Comfort",
+      "Rest",
       "Fun"
     ]
   },
   "priority": 3,
-  "label": "holdout/boundary/food-now/high-instinct/s20"
+  "label": "holdout/survival-critical/no-food-source/comfort-leaning"
 },
 {
   "sampleKey": "trait:ef00d494|FoodAvailableNow|s70|h90|e80|m70",
@@ -1461,8 +1469,8 @@
     "morale": 60
   },
   "desiredOutcome": {
+    "desiredTopCategory": "Fun",
     "acceptableTopCategories": [
-      "Fun",
       "Comfort"
     ],
     "forbiddenTopCategories": [
