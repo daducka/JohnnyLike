@@ -1,13 +1,21 @@
 [
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // Bucket 1: Starving + immediate food available
   // Expectation: actor always chooses FoodConsumption.
   // These are the highest-priority survival-critical states.
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
 
   {
-    "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-    "actor": "Johnny",
+    "sampleKey": "trait:c891a823|FoodAvailableNow|s10|h70|e50|m50",
+    "traitProfile": {
+      "planner": 0.05,
+      "craftsman": 0.20,
+      "survivor": 0.20,
+      "hedonist": 0.40,
+      "instinctive": 0.35,
+      "industrious": 0.30
+    },
+    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
     "scenario": "FoodAvailableNow",
     "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
     "desiredOutcome": {
@@ -19,8 +27,16 @@
     "label": "starving+food_available/Johnny"
   },
   {
-    "sampleKey": "Frank|FoodAvailableNow|s10|h70|e50|m50",
-    "actor": "Frank",
+    "sampleKey": "trait:022d3cbc|FoodAvailableNow|s10|h70|e50|m50",
+    "traitProfile": {
+      "planner": 0.45,
+      "craftsman": 0.35,
+      "survivor": 0.45,
+      "hedonist": 0.10,
+      "instinctive": 0.00,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Planner and Survivor, low Hedonist and Instinctive — methodical, analytical",
     "scenario": "FoodAvailableNow",
     "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
     "desiredOutcome": {
@@ -32,8 +48,16 @@
     "label": "starving+food_available/Frank"
   },
   {
-    "sampleKey": "Sawyer|FoodAvailableNow|s10|h70|e50|m50",
-    "actor": "Sawyer",
+    "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+    "traitProfile": {
+      "planner": 0.00,
+      "craftsman": 0.00,
+      "survivor": 0.10,
+      "hedonist": 0.40,
+      "instinctive": 0.45,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
     "scenario": "FoodAvailableNow",
     "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
     "desiredOutcome": {
@@ -45,8 +69,16 @@
     "label": "starving+food_available/Sawyer"
   },
   {
-    "sampleKey": "Ashley|FoodAvailableNow|s10|h70|e50|m50",
-    "actor": "Ashley",
+    "sampleKey": "trait:761cf5dc|FoodAvailableNow|s10|h70|e50|m50",
+    "traitProfile": {
+      "planner": 0.20,
+      "craftsman": 0.40,
+      "survivor": 0.20,
+      "hedonist": 0.15,
+      "instinctive": 0.10,
+      "industrious": 0.35
+    },
+    "traitIntent": "High Craftsman and Industrious, low Instinctive — skilled builder",
     "scenario": "FoodAvailableNow",
     "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
     "desiredOutcome": {
@@ -58,8 +90,16 @@
     "label": "starving+food_available/Ashley"
   },
   {
-    "sampleKey": "Johnny|FoodAvailable_WithComfort|s10|h70|e50|m50",
-    "actor": "Johnny",
+    "sampleKey": "trait:c891a823|FoodAvailable_WithComfort|s10|h70|e50|m50",
+    "traitProfile": {
+      "planner": 0.05,
+      "craftsman": 0.20,
+      "survivor": 0.20,
+      "hedonist": 0.40,
+      "instinctive": 0.35,
+      "industrious": 0.30
+    },
+    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
     "desiredOutcome": {
@@ -71,8 +111,16 @@
     "label": "starving+food+comfort/Johnny"
   },
   {
-    "sampleKey": "Sawyer|FoodAvailable_WithComfort|s10|h70|e50|m50",
-    "actor": "Sawyer",
+    "sampleKey": "trait:69fb4857|FoodAvailable_WithComfort|s10|h70|e50|m50",
+    "traitProfile": {
+      "planner": 0.00,
+      "craftsman": 0.00,
+      "survivor": 0.10,
+      "hedonist": 0.40,
+      "instinctive": 0.45,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
     "desiredOutcome": {
@@ -84,14 +132,22 @@
     "label": "starving+food+comfort/Sawyer"
   },
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // Bucket 2: Starving + no food pile but food source available
   // Expectation: actor chooses FoodAcquisition (go get food).
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
 
   {
-    "sampleKey": "Johnny|NoFood_SourceAvailable|s10|h70|e50|m50",
-    "actor": "Johnny",
+    "sampleKey": "trait:c891a823|NoFood_SourceAvailable|s10|h70|e50|m50",
+    "traitProfile": {
+      "planner": 0.05,
+      "craftsman": 0.20,
+      "survivor": 0.20,
+      "hedonist": 0.40,
+      "instinctive": 0.35,
+      "industrious": 0.30
+    },
+    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
     "scenario": "NoFood_SourceAvailable",
     "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
     "desiredOutcome": {
@@ -103,8 +159,16 @@
     "label": "starving+source_only/Johnny"
   },
   {
-    "sampleKey": "Frank|NoFood_SourceAvailable|s10|h70|e50|m50",
-    "actor": "Frank",
+    "sampleKey": "trait:022d3cbc|NoFood_SourceAvailable|s10|h70|e50|m50",
+    "traitProfile": {
+      "planner": 0.45,
+      "craftsman": 0.35,
+      "survivor": 0.45,
+      "hedonist": 0.10,
+      "instinctive": 0.00,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Planner and Survivor, low Hedonist and Instinctive — methodical, analytical",
     "scenario": "NoFood_SourceAvailable",
     "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
     "desiredOutcome": {
@@ -116,8 +180,16 @@
     "label": "starving+source_only/Frank"
   },
   {
-    "sampleKey": "Sawyer|NoFood_SourceAvailable|s10|h70|e50|m50",
-    "actor": "Sawyer",
+    "sampleKey": "trait:69fb4857|NoFood_SourceAvailable|s10|h70|e50|m50",
+    "traitProfile": {
+      "planner": 0.00,
+      "craftsman": 0.00,
+      "survivor": 0.10,
+      "hedonist": 0.40,
+      "instinctive": 0.45,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
     "scenario": "NoFood_SourceAvailable",
     "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
     "desiredOutcome": {
@@ -129,8 +201,16 @@
     "label": "starving+source_only/Sawyer"
   },
   {
-    "sampleKey": "Oscar|NoFood_SourceAvailable|s10|h70|e50|m50",
-    "actor": "Oscar",
+    "sampleKey": "trait:a9e6c339|NoFood_SourceAvailable|s10|h70|e50|m50",
+    "traitProfile": {
+      "planner": 0.55,
+      "craftsman": 0.20,
+      "survivor": 0.30,
+      "hedonist": 0.05,
+      "instinctive": 0.00,
+      "industrious": 0.00
+    },
+    "traitIntent": "High Planner, moderate Survivor and Craftsman, near-zero Instinctive and Industrious — cerebral strategist",
     "scenario": "NoFood_SourceAvailable",
     "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
     "desiredOutcome": {
@@ -142,15 +222,23 @@
     "label": "starving+source_only/Oscar"
   },
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // Bucket 3: Low health + low satiety + bed available
   // Tension between Rest/Safety (injury) and FoodConsumption.
   // Acceptable to choose either; forbidden to choose flavour actions.
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
 
   {
-    "sampleKey": "Johnny|FoodAvailable_WithComfort|s15|h15|e50|m30",
-    "actor": "Johnny",
+    "sampleKey": "trait:c891a823|FoodAvailable_WithComfort|s15|h15|e50|m30",
+    "traitProfile": {
+      "planner": 0.05,
+      "craftsman": 0.20,
+      "survivor": 0.20,
+      "hedonist": 0.40,
+      "instinctive": 0.35,
+      "industrious": 0.30
+    },
+    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 15, "health": 15, "energy": 50, "morale": 30 },
     "desiredOutcome": {
@@ -163,8 +251,16 @@
     "label": "injured+hungry+bed/Johnny"
   },
   {
-    "sampleKey": "Frank|FoodAvailable_WithComfort|s15|h15|e50|m30",
-    "actor": "Frank",
+    "sampleKey": "trait:022d3cbc|FoodAvailable_WithComfort|s15|h15|e50|m30",
+    "traitProfile": {
+      "planner": 0.45,
+      "craftsman": 0.35,
+      "survivor": 0.45,
+      "hedonist": 0.10,
+      "instinctive": 0.00,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Planner and Survivor, low Hedonist and Instinctive — methodical, analytical",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 15, "health": 15, "energy": 50, "morale": 30 },
     "desiredOutcome": {
@@ -177,8 +273,16 @@
     "label": "injured+hungry+bed/Frank"
   },
   {
-    "sampleKey": "Sawyer|FoodAvailable_WithComfort|s15|h15|e50|m30",
-    "actor": "Sawyer",
+    "sampleKey": "trait:69fb4857|FoodAvailable_WithComfort|s15|h15|e50|m30",
+    "traitProfile": {
+      "planner": 0.00,
+      "craftsman": 0.00,
+      "survivor": 0.10,
+      "hedonist": 0.40,
+      "instinctive": 0.45,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 15, "health": 15, "energy": 50, "morale": 30 },
     "desiredOutcome": {
@@ -191,15 +295,23 @@
     "label": "injured+hungry+bed/Sawyer"
   },
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // Bucket 4: Low morale but otherwise safe
   // Sub-case A: still hungry → survival beats mood
   // Sub-case B: well-fed + stable → comfort/mood actions are fine
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
 
   {
-    "sampleKey": "Johnny|FoodAvailableNow|s15|h70|e70|m10",
-    "actor": "Johnny",
+    "sampleKey": "trait:c891a823|FoodAvailableNow|s15|h70|e70|m10",
+    "traitProfile": {
+      "planner": 0.05,
+      "craftsman": 0.20,
+      "survivor": 0.20,
+      "hedonist": 0.40,
+      "instinctive": 0.35,
+      "industrious": 0.30
+    },
+    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
     "scenario": "FoodAvailableNow",
     "state": { "satiety": 15, "health": 70, "energy": 70, "morale": 10 },
     "desiredOutcome": {
@@ -211,8 +323,16 @@
     "label": "low_morale+hungry/Johnny"
   },
   {
-    "sampleKey": "Johnny|FoodAvailable_WithComfort|s70|h70|e70|m10",
-    "actor": "Johnny",
+    "sampleKey": "trait:c891a823|FoodAvailable_WithComfort|s70|h70|e70|m10",
+    "traitProfile": {
+      "planner": 0.05,
+      "craftsman": 0.20,
+      "survivor": 0.20,
+      "hedonist": 0.40,
+      "instinctive": 0.35,
+      "industrious": 0.30
+    },
+    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 10 },
     "desiredOutcome": {
@@ -224,8 +344,16 @@
     "label": "low_morale+stable/Johnny"
   },
   {
-    "sampleKey": "Sawyer|FoodAvailable_WithComfort|s70|h70|e70|m10",
-    "actor": "Sawyer",
+    "sampleKey": "trait:69fb4857|FoodAvailable_WithComfort|s70|h70|e70|m10",
+    "traitProfile": {
+      "planner": 0.00,
+      "craftsman": 0.00,
+      "survivor": 0.10,
+      "hedonist": 0.40,
+      "instinctive": 0.45,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 10 },
     "desiredOutcome": {
@@ -238,8 +366,16 @@
     "label": "low_morale+stable/Sawyer"
   },
   {
-    "sampleKey": "Frank|FoodAvailable_WithComfort|s70|h70|e70|m10",
-    "actor": "Frank",
+    "sampleKey": "trait:022d3cbc|FoodAvailable_WithComfort|s70|h70|e70|m10",
+    "traitProfile": {
+      "planner": 0.45,
+      "craftsman": 0.35,
+      "survivor": 0.45,
+      "hedonist": 0.10,
+      "instinctive": 0.00,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Planner and Survivor, low Hedonist and Instinctive — methodical, analytical",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 10 },
     "desiredOutcome": {
@@ -251,13 +387,21 @@
     "label": "low_morale+stable/Frank"
   },
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // Bucket 5: Recipe temptation / Preparation pressure
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
 
   {
-    "sampleKey": "Johnny|HighRecipeOpportunity|s10|h70|e70|m50",
-    "actor": "Johnny",
+    "sampleKey": "trait:c891a823|HighRecipeOpportunity|s10|h70|e70|m50",
+    "traitProfile": {
+      "planner": 0.05,
+      "craftsman": 0.20,
+      "survivor": 0.20,
+      "hedonist": 0.40,
+      "instinctive": 0.35,
+      "industrious": 0.30
+    },
+    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
     "scenario": "HighRecipeOpportunity",
     "state": { "satiety": 10, "health": 70, "energy": 70, "morale": 50 },
     "desiredOutcome": {
@@ -270,8 +414,16 @@
     "label": "hungry+high_recipe_opportunity/Johnny"
   },
   {
-    "sampleKey": "Oscar|HighRecipeOpportunity|s10|h70|e70|m50",
-    "actor": "Oscar",
+    "sampleKey": "trait:a9e6c339|HighRecipeOpportunity|s10|h70|e70|m50",
+    "traitProfile": {
+      "planner": 0.55,
+      "craftsman": 0.20,
+      "survivor": 0.30,
+      "hedonist": 0.05,
+      "instinctive": 0.00,
+      "industrious": 0.00
+    },
+    "traitIntent": "High Planner, moderate Survivor and Craftsman, near-zero Instinctive and Industrious — cerebral strategist",
     "scenario": "HighRecipeOpportunity",
     "state": { "satiety": 10, "health": 70, "energy": 70, "morale": 50 },
     "desiredOutcome": {
@@ -284,8 +436,16 @@
     "label": "hungry+high_recipe_opportunity/Oscar"
   },
   {
-    "sampleKey": "Frank|HighRecipeOpportunity|s70|h70|e70|m50",
-    "actor": "Frank",
+    "sampleKey": "trait:022d3cbc|HighRecipeOpportunity|s70|h70|e70|m50",
+    "traitProfile": {
+      "planner": 0.45,
+      "craftsman": 0.35,
+      "survivor": 0.45,
+      "hedonist": 0.10,
+      "instinctive": 0.00,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Planner and Survivor, low Hedonist and Instinctive — methodical, analytical",
     "scenario": "HighRecipeOpportunity",
     "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 50 },
     "desiredOutcome": {
@@ -297,8 +457,16 @@
     "label": "well_fed+high_recipe_opportunity/Frank"
   },
   {
-    "sampleKey": "Oscar|HighRecipeOpportunity|s70|h70|e70|m50",
-    "actor": "Oscar",
+    "sampleKey": "trait:a9e6c339|HighRecipeOpportunity|s70|h70|e70|m50",
+    "traitProfile": {
+      "planner": 0.55,
+      "craftsman": 0.20,
+      "survivor": 0.30,
+      "hedonist": 0.05,
+      "instinctive": 0.00,
+      "industrious": 0.00
+    },
+    "traitIntent": "High Planner, moderate Survivor and Craftsman, near-zero Instinctive and Industrious — cerebral strategist",
     "scenario": "HighRecipeOpportunity",
     "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 50 },
     "desiredOutcome": {
@@ -310,13 +478,21 @@
     "label": "well_fed+high_recipe_opportunity/Oscar"
   },
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // Bucket 6: Late-collapse (exhausted + hungry in degraded world)
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
 
   {
-    "sampleKey": "Johnny|LateCollapse|s15|h50|e10|m30",
-    "actor": "Johnny",
+    "sampleKey": "trait:c891a823|LateCollapse|s15|h50|e10|m30",
+    "traitProfile": {
+      "planner": 0.05,
+      "craftsman": 0.20,
+      "survivor": 0.20,
+      "hedonist": 0.40,
+      "instinctive": 0.35,
+      "industrious": 0.30
+    },
+    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
     "scenario": "LateCollapse",
     "state": { "satiety": 15, "health": 50, "energy": 10, "morale": 30 },
     "desiredOutcome": {
@@ -328,8 +504,16 @@
     "label": "late_collapse+exhausted+hungry/Johnny"
   },
   {
-    "sampleKey": "Sawyer|LateCollapse|s15|h50|e10|m30",
-    "actor": "Sawyer",
+    "sampleKey": "trait:69fb4857|LateCollapse|s15|h50|e10|m30",
+    "traitProfile": {
+      "planner": 0.00,
+      "craftsman": 0.00,
+      "survivor": 0.10,
+      "hedonist": 0.40,
+      "instinctive": 0.45,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
     "scenario": "LateCollapse",
     "state": { "satiety": 15, "health": 50, "energy": 10, "morale": 30 },
     "desiredOutcome": {
@@ -341,13 +525,21 @@
     "label": "late_collapse+exhausted+hungry/Sawyer"
   },
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // Bucket 7: Bed-loop risk (borderline hunger + exhausted + bed available)
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
 
   {
-    "sampleKey": "Johnny|FoodAvailable_WithComfort|s25|h70|e10|m50",
-    "actor": "Johnny",
+    "sampleKey": "trait:c891a823|FoodAvailable_WithComfort|s25|h70|e10|m50",
+    "traitProfile": {
+      "planner": 0.05,
+      "craftsman": 0.20,
+      "survivor": 0.20,
+      "hedonist": 0.40,
+      "instinctive": 0.35,
+      "industrious": 0.30
+    },
+    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 25, "health": 70, "energy": 10, "morale": 50 },
     "desiredOutcome": {
@@ -360,8 +552,16 @@
     "label": "borderline_hunger+exhausted+bed/Johnny"
   },
   {
-    "sampleKey": "Sawyer|FoodAvailable_WithComfort|s25|h70|e10|m50",
-    "actor": "Sawyer",
+    "sampleKey": "trait:69fb4857|FoodAvailable_WithComfort|s25|h70|e10|m50",
+    "traitProfile": {
+      "planner": 0.00,
+      "craftsman": 0.00,
+      "survivor": 0.10,
+      "hedonist": 0.40,
+      "instinctive": 0.45,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 25, "health": 70, "energy": 10, "morale": 50 },
     "desiredOutcome": {
@@ -374,14 +574,22 @@
     "label": "borderline_hunger+exhausted+bed/Sawyer"
   },
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // Bucket 8: Stable "flavour" states — archetypes should differ
+  // ═════════════════════════════════════════════════════════════════════
+  // Bucket 8: Stable "flavour" states — trait profiles should differ
   // All actors well-fed, healthy, rested. Flavour / archetype expression.
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
 
   {
-    "sampleKey": "Sawyer|FoodAvailable_WithComfort|s100|h100|e100|m100",
-    "actor": "Sawyer",
+    "sampleKey": "trait:69fb4857|FoodAvailable_WithComfort|s100|h100|e100|m100",
+    "traitProfile": {
+      "planner": 0.00,
+      "craftsman": 0.00,
+      "survivor": 0.10,
+      "hedonist": 0.40,
+      "instinctive": 0.45,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
     "desiredOutcome": {
@@ -394,8 +602,16 @@
     "label": "fully_satisfied_baseline/Sawyer"
   },
   {
-    "sampleKey": "Frank|FoodAvailable_WithComfort|s100|h100|e100|m100",
-    "actor": "Frank",
+    "sampleKey": "trait:022d3cbc|FoodAvailable_WithComfort|s100|h100|e100|m100",
+    "traitProfile": {
+      "planner": 0.45,
+      "craftsman": 0.35,
+      "survivor": 0.45,
+      "hedonist": 0.10,
+      "instinctive": 0.00,
+      "industrious": 0.20
+    },
+    "traitIntent": "High Planner and Survivor, low Hedonist and Instinctive — methodical, analytical",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
     "desiredOutcome": {
@@ -408,8 +624,16 @@
     "label": "fully_satisfied_baseline/Frank"
   },
   {
-    "sampleKey": "Oscar|FoodAvailable_WithComfort|s100|h100|e100|m100",
-    "actor": "Oscar",
+    "sampleKey": "trait:a9e6c339|FoodAvailable_WithComfort|s100|h100|e100|m100",
+    "traitProfile": {
+      "planner": 0.55,
+      "craftsman": 0.20,
+      "survivor": 0.30,
+      "hedonist": 0.05,
+      "instinctive": 0.00,
+      "industrious": 0.00
+    },
+    "traitIntent": "High Planner, moderate Survivor and Craftsman, near-zero Instinctive and Industrious — cerebral strategist",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
     "desiredOutcome": {
@@ -422,8 +646,16 @@
     "label": "fully_satisfied_baseline/Oscar"
   },
   {
-    "sampleKey": "Johnny|FoodAvailable_WithComfort|s100|h100|e100|m100",
-    "actor": "Johnny",
+    "sampleKey": "trait:c891a823|FoodAvailable_WithComfort|s100|h100|e100|m100",
+    "traitProfile": {
+      "planner": 0.05,
+      "craftsman": 0.20,
+      "survivor": 0.20,
+      "hedonist": 0.40,
+      "instinctive": 0.35,
+      "industrious": 0.30
+    },
+    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
     "desiredOutcome": {
@@ -435,8 +667,16 @@
     "label": "fully_satisfied_baseline/Johnny"
   },
   {
-    "sampleKey": "Ashley|FoodAvailable_WithComfort|s100|h100|e100|m100",
-    "actor": "Ashley",
+    "sampleKey": "trait:761cf5dc|FoodAvailable_WithComfort|s100|h100|e100|m100",
+    "traitProfile": {
+      "planner": 0.20,
+      "craftsman": 0.40,
+      "survivor": 0.20,
+      "hedonist": 0.15,
+      "instinctive": 0.10,
+      "industrious": 0.35
+    },
+    "traitIntent": "High Craftsman and Industrious, low Instinctive — skilled builder",
     "scenario": "FoodAvailable_WithComfort",
     "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
     "desiredOutcome": {

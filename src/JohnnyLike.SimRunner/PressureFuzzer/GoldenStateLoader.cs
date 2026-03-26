@@ -28,13 +28,6 @@ public static class GoldenStateLoader
         Converters = { new JsonStringEnumConverter() }
     };
 
-    /// <summary>
-    /// Canonical actor names sourced from <see cref="Archetypes.All"/>.
-    /// Validation uses ordinal (case-sensitive) comparison to catch casing mistakes.
-    /// </summary>
-    private static readonly HashSet<string> _validActors =
-        Archetypes.All.Keys.ToHashSet(StringComparer.Ordinal);
-
     private static readonly HashSet<string> _validScenarios =
         Enum.GetNames<FuzzerScenarioKind>().ToHashSet(StringComparer.Ordinal);
 
@@ -116,13 +109,13 @@ public static class GoldenStateLoader
 
         // ── Required string fields ────────────────────────────────────────
         RequireNonEmpty(entry.SampleKey, At(nameof(entry.SampleKey)));
-        RequireNonEmpty(entry.Actor,     At(nameof(entry.Actor)));
 
-        // ── Actor must be a known archetype ───────────────────────────────
-        if (!_validActors.Contains(entry.Actor))
+        // ── TraitProfile must be present and valid ────────────────────────
+        if (entry.TraitProfile is null)
             throw new GoldenStateValidationException(
-                $"{At(nameof(entry.Actor))}: '{entry.Actor}' is not a known actor archetype. " +
-                $"Valid actors: {string.Join(", ", _validActors.OrderBy(x => x))}");
+                $"{At(nameof(entry.TraitProfile))} is required.");
+
+        ValidateTraitProfile(entry.TraitProfile, At(nameof(entry.TraitProfile)));
 
         RequireNonEmpty(entry.Scenario, At(nameof(entry.Scenario)));
 
@@ -139,7 +132,7 @@ public static class GoldenStateLoader
         if (!string.Equals(entry.SampleKey, expectedKey, StringComparison.Ordinal))
             throw new GoldenStateValidationException(
                 $"{At(nameof(entry.SampleKey))}: SampleKey '{entry.SampleKey}' does not match " +
-                $"the canonical form '{expectedKey}' derived from Actor/Scenario/State. " +
+                $"the canonical form '{expectedKey}' derived from TraitProfile/Scenario/State. " +
                 "Update SampleKey to match or correct the mismatched field.");
 
         // ── Desired outcome ───────────────────────────────────────────────
@@ -155,16 +148,34 @@ public static class GoldenStateLoader
                 $"{At(nameof(entry.Priority))}: must be > 0, got {entry.Priority}.");
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────
+    // ── Public helpers ────────────────────────────────────────────────────
 
     /// <summary>
     /// Builds the canonical SampleKey for an entry.
-    /// Stats are rounded to integers, matching how <c>PressureFuzzerRunner</c> constructs keys.
+    /// Format: <c>trait:{traitHash}|{scenario}|s{satiety}|h{health}|e{energy}|m{morale}</c>
+    /// where <c>traitHash</c> is an 8-character lowercase hex FNV-1a hash of the
+    /// canonical trait-profile string in fixed field order.
     /// </summary>
     public static string BuildExpectedSampleKey(GoldenStateEntry entry) =>
-        $"{entry.Actor}|{entry.Scenario}" +
+        $"trait:{BuildTraitHash(entry.TraitProfile)}|{entry.Scenario}" +
         $"|s{(int)entry.State.Satiety}|h{(int)entry.State.Health}" +
         $"|e{(int)entry.State.Energy}|m{(int)entry.State.Morale}";
+
+    /// <summary>
+    /// Builds the deterministic FNV-1a hash of a <see cref="TraitProfile"/> in fixed field order.
+    /// The canonical string is: <c>planner={P:F2}|craftsman={C:F2}|survivor={S:F2}|hedonist={H:F2}|instinctive={I:F2}|industrious={D:F2}</c>
+    /// </summary>
+    public static string BuildTraitHash(TraitProfile profile)
+    {
+        var canonical =
+            $"planner={profile.Planner:F2}|craftsman={profile.Craftsman:F2}|" +
+            $"survivor={profile.Survivor:F2}|hedonist={profile.Hedonist:F2}|" +
+            $"instinctive={profile.Instinctive:F2}|industrious={profile.Industrious:F2}";
+        uint hash = Fnv1a32(canonical);
+        return hash.ToString("x8");
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────
 
     private static void EnforceUniqueKeys(List<GoldenStateEntry> entries)
     {
@@ -182,6 +193,23 @@ public static class GoldenStateLoader
                 $"Duplicate SampleKey(s) found in golden-states dataset: " +
                 $"{string.Join(", ", dupes.Distinct().Select(k => $"'{k}'"))}. " +
                 "All SampleKeys must be unique.");
+    }
+
+    private static void ValidateTraitProfile(TraitProfile profile, string path)
+    {
+        ValidateTrait(profile.Planner,     $"{path}.Planner");
+        ValidateTrait(profile.Craftsman,   $"{path}.Craftsman");
+        ValidateTrait(profile.Survivor,    $"{path}.Survivor");
+        ValidateTrait(profile.Hedonist,    $"{path}.Hedonist");
+        ValidateTrait(profile.Instinctive, $"{path}.Instinctive");
+        ValidateTrait(profile.Industrious, $"{path}.Industrious");
+    }
+
+    private static void ValidateTrait(double value, string path)
+    {
+        if (value < 0.0 || value > 1.0)
+            throw new GoldenStateValidationException(
+                $"{path}: trait value {value} is out of range [0.0, 1.0].");
     }
 
     private static void ValidateState(GoldenStateValues state, string path)
@@ -259,6 +287,24 @@ public static class GoldenStateLoader
     {
         if (string.IsNullOrWhiteSpace(value))
             throw new GoldenStateValidationException($"{path} is required and must not be empty.");
+    }
+
+    /// <summary>
+    /// Computes a stable 32-bit FNV-1a hash of <paramref name="input"/>.
+    /// Used to build deterministic trait-profile keys in <see cref="BuildTraitHash"/>.
+    /// </summary>
+    internal static uint Fnv1a32(string input)
+    {
+        unchecked
+        {
+            uint hash = 2166136261u;
+            foreach (char c in input)
+            {
+                hash ^= c;
+                hash *= 16777619u;
+            }
+            return hash;
+        }
     }
 }
 

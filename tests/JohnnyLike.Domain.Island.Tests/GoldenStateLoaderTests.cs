@@ -1,5 +1,4 @@
 using JohnnyLike.Domain.Abstractions;
-using JohnnyLike.SimRunner;
 using JohnnyLike.SimRunner.PressureFuzzer;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -32,11 +31,27 @@ public class GoldenStateLoaderTests
     }
 
     [Fact]
-    public void LoadEmbedded_AllEntriesHaveValidActor()
+    public void LoadEmbedded_AllEntriesHaveTraitProfile()
     {
         var entries = GoldenStateLoader.LoadEmbedded();
         foreach (var e in entries)
-            Assert.Contains(e.Actor, Archetypes.All.Keys);
+        {
+            Assert.NotNull(e.TraitProfile);
+            Assert.InRange(e.TraitProfile.Planner,     0.0, 1.0);
+            Assert.InRange(e.TraitProfile.Craftsman,   0.0, 1.0);
+            Assert.InRange(e.TraitProfile.Survivor,    0.0, 1.0);
+            Assert.InRange(e.TraitProfile.Hedonist,    0.0, 1.0);
+            Assert.InRange(e.TraitProfile.Instinctive, 0.0, 1.0);
+            Assert.InRange(e.TraitProfile.Industrious, 0.0, 1.0);
+        }
+    }
+
+    [Fact]
+    public void LoadEmbedded_SampleKeysUseTraitHashFormat()
+    {
+        var entries = GoldenStateLoader.LoadEmbedded();
+        foreach (var e in entries)
+            Assert.StartsWith("trait:", e.SampleKey);
     }
 
     [Fact]
@@ -128,11 +143,13 @@ public class GoldenStateLoaderTests
     [Fact]
     public void LoadFromJson_ValidMinimalEntry_Succeeds()
     {
+        // Trait profile for a balanced generalist (Hedonist+Instinctive dominant).
+        // sampleKey = trait:{hash}|FoodAvailableNow|s10|h70|e50|m50
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
@@ -145,8 +162,14 @@ public class GoldenStateLoaderTests
 
         Assert.Single(entries);
         var e = entries[0];
-        Assert.Equal("Johnny|FoodAvailableNow|s10|h70|e50|m50", e.SampleKey);
-        Assert.Equal("Johnny", e.Actor);
+        Assert.StartsWith("trait:", e.SampleKey);
+        Assert.NotNull(e.TraitProfile);
+        Assert.Equal(0.00, e.TraitProfile.Planner);
+        Assert.Equal(0.00, e.TraitProfile.Craftsman);
+        Assert.Equal(0.10, e.TraitProfile.Survivor);
+        Assert.Equal(0.40, e.TraitProfile.Hedonist);
+        Assert.Equal(0.45, e.TraitProfile.Instinctive);
+        Assert.Equal(0.20, e.TraitProfile.Industrious);
         Assert.Equal("FoodAvailableNow", e.Scenario);
         Assert.Equal(10, e.State.Satiety);
         Assert.Equal(70, e.State.Health);
@@ -155,16 +178,20 @@ public class GoldenStateLoaderTests
         Assert.Equal(QualityType.FoodConsumption, e.DesiredOutcome.DesiredTopCategory);
         Assert.Equal(10, e.Priority);
         Assert.Null(e.Label);
+        Assert.Null(e.TraitIntent);
     }
 
     [Fact]
     public void LoadFromJson_EntryWithAllOptionalFields_Succeeds()
     {
+        // sampleKey for Sawyer traits + NoFood_SourceAvailable/s10/h70/e50/m50:
+        // trait:69fb4857|NoFood_SourceAvailable|s10|h70|e50|m50
         const string json = """
             [
               {
-                "sampleKey": "Sawyer|NoFood_SourceAvailable|s10|h70|e50|m50",
-                "actor": "Sawyer",
+                "sampleKey": "trait:69fb4857|NoFood_SourceAvailable|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
+                "traitIntent": "High Instinctive and Hedonist — impulsive, fun-seeking",
                 "scenario": "NoFood_SourceAvailable",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": {
@@ -187,16 +214,19 @@ public class GoldenStateLoaderTests
         Assert.Equal(new[] { QualityType.Fun, QualityType.Comfort }, e.DesiredOutcome.ForbiddenTopCategories);
         Assert.Equal("Test entry", e.DesiredOutcome.Notes);
         Assert.Equal("test+label", e.Label);
+        Assert.Equal("High Instinctive and Hedonist — impulsive, fun-seeking", e.TraitIntent);
     }
 
     [Fact]
     public void LoadFromJson_EntryWithOnlyAcceptableCategories_Succeeds()
     {
+        // Frank traits: planner=0.45, craftsman=0.35, survivor=0.45, hedonist=0.10, instinctive=0.00, industrious=0.20
+        // hash: 022d3cbc
         const string json = """
             [
               {
-                "sampleKey": "Frank|LateCollapse|s15|h50|e10|m30",
-                "actor": "Frank",
+                "sampleKey": "trait:022d3cbc|LateCollapse|s15|h50|e10|m30",
+                "traitProfile": { "planner": 0.45, "craftsman": 0.35, "survivor": 0.45, "hedonist": 0.10, "instinctive": 0.00, "industrious": 0.20 },
                 "scenario": "LateCollapse",
                 "state": { "satiety": 15, "health": 50, "energy": 10, "morale": 30 },
                 "desiredOutcome": {
@@ -225,8 +255,8 @@ public class GoldenStateLoaderTests
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
@@ -266,7 +296,7 @@ public class GoldenStateLoaderTests
         const string json = """
             [
               {
-                "actor": "Johnny",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
@@ -281,12 +311,12 @@ public class GoldenStateLoaderTests
     }
 
     [Fact]
-    public void LoadFromJson_MissingActor_ThrowsValidationException()
+    public void LoadFromJson_MissingTraitProfile_ThrowsValidationException()
     {
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
@@ -297,7 +327,7 @@ public class GoldenStateLoaderTests
 
         var ex = Assert.Throws<GoldenStateValidationException>(
             () => GoldenStateLoader.LoadFromJson(json));
-        Assert.Contains("Actor", ex.Message);
+        Assert.Contains("TraitProfile", ex.Message);
     }
 
     [Fact]
@@ -306,8 +336,8 @@ public class GoldenStateLoaderTests
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
                 "priority": 10
@@ -326,8 +356,8 @@ public class GoldenStateLoaderTests
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "priority": 10
@@ -350,8 +380,8 @@ public class GoldenStateLoaderTests
         const string json = """
             [
               {
-                "sampleKey": "Johnny|BadScenario|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|BadScenario|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "BadScenario",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
@@ -365,15 +395,16 @@ public class GoldenStateLoaderTests
         Assert.Contains("BadScenario", ex.Message);
     }
 
-    [Fact]
-    public void LoadFromJson_UnknownActor_ThrowsValidationException()
+    [Theory]
+    [InlineData(-0.01)]
+    [InlineData(1.01)]
+    public void LoadFromJson_TraitOutOfRange_ThrowsValidationException(double badValue)
     {
-        // "Jhonny" is a typo — not a known archetype.
-        const string json = """
+        var json = $$"""
             [
               {
-                "sampleKey": "Jhonny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Jhonny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": {{badValue}}, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
@@ -384,28 +415,8 @@ public class GoldenStateLoaderTests
 
         var ex = Assert.Throws<GoldenStateValidationException>(
             () => GoldenStateLoader.LoadFromJson(json));
-        Assert.Contains("Jhonny", ex.Message);
-    }
-
-    [Fact]
-    public void LoadFromJson_ActorWrongCase_ThrowsValidationException()
-    {
-        // Actor names are case-sensitive; "johnny" should not match "Johnny".
-        const string json = """
-            [
-              {
-                "sampleKey": "johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "johnny",
-                "scenario": "FoodAvailableNow",
-                "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
-                "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
-                "priority": 10
-              }
-            ]
-            """;
-
-        Assert.Throws<GoldenStateValidationException>(
-            () => GoldenStateLoader.LoadFromJson(json));
+        Assert.Contains("Planner", ex.Message);
+        Assert.Contains("[0.0, 1.0]", ex.Message);
     }
 
     [Fact]
@@ -414,8 +425,8 @@ public class GoldenStateLoaderTests
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": "NotACategory" },
@@ -436,8 +447,8 @@ public class GoldenStateLoaderTests
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": {
@@ -457,12 +468,12 @@ public class GoldenStateLoaderTests
     [Fact]
     public void LoadFromJson_SampleKeyMismatch_ThrowsValidationException()
     {
-        // SampleKey says s99 but state has satiety=10.
+        // sampleKey says s99 but state has satiety=10.
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s99|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s99|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
@@ -484,16 +495,16 @@ public class GoldenStateLoaderTests
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
                 "priority": 10
               },
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": "Rest" },
@@ -505,7 +516,7 @@ public class GoldenStateLoaderTests
         var ex = Assert.Throws<GoldenStateValidationException>(
             () => GoldenStateLoader.LoadFromJson(json));
         Assert.Contains("Duplicate", ex.Message);
-        Assert.Contains("Johnny|FoodAvailableNow|s10|h70|e50|m50", ex.Message);
+        Assert.Contains("trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50", ex.Message);
     }
 
     [Theory]
@@ -518,8 +529,8 @@ public class GoldenStateLoaderTests
         var json = $$"""
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s{{(int)badValue}}|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s{{(int)badValue}}|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": {{badValue}}, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
@@ -540,8 +551,8 @@ public class GoldenStateLoaderTests
         var json = $$"""
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": "FoodConsumption" },
@@ -561,8 +572,8 @@ public class GoldenStateLoaderTests
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": {},
@@ -598,8 +609,8 @@ public class GoldenStateLoaderTests
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "desiredTopCategory": 9999 },
@@ -618,8 +629,8 @@ public class GoldenStateLoaderTests
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": { "acceptableTopCategories": [ 9999 ] },
@@ -637,8 +648,8 @@ public class GoldenStateLoaderTests
     {
         // Simulates a scenario where an undefined numeric enum value slips in at the C# level.
         var entry = new GoldenStateEntry(
-            SampleKey:     "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-            Actor:         "Johnny",
+            SampleKey:     "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+            TraitProfile:  new TraitProfile(0.00, 0.00, 0.10, 0.40, 0.45, 0.20),
             Scenario:      "FoodAvailableNow",
             State:         new GoldenStateValues(10, 70, 50, 50),
             DesiredOutcome: new GoldenStateDesiredOutcome(
@@ -664,8 +675,8 @@ public class GoldenStateLoaderTests
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": {
@@ -689,8 +700,8 @@ public class GoldenStateLoaderTests
         const string json = """
             [
               {
-                "sampleKey": "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-                "actor": "Johnny",
+                "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+                "traitProfile": { "planner": 0.00, "craftsman": 0.00, "survivor": 0.10, "hedonist": 0.40, "instinctive": 0.45, "industrious": 0.20 },
                 "scenario": "FoodAvailableNow",
                 "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
                 "desiredOutcome": {
@@ -716,8 +727,8 @@ public class GoldenStateLoaderTests
     public void Validate_ValidEntry_DoesNotThrow()
     {
         var entry = new GoldenStateEntry(
-            SampleKey:     "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-            Actor:         "Johnny",
+            SampleKey:     "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+            TraitProfile:  new TraitProfile(0.00, 0.00, 0.10, 0.40, 0.45, 0.20),
             Scenario:      "FoodAvailableNow",
             State:         new GoldenStateValues(10, 70, 50, 50),
             DesiredOutcome: new GoldenStateDesiredOutcome(QualityType.FoodConsumption, null, null),
@@ -731,8 +742,8 @@ public class GoldenStateLoaderTests
     public void Validate_DesiredCategoryAlsoForbidden_ThrowsValidationException()
     {
         var entry = new GoldenStateEntry(
-            SampleKey:     "Johnny|FoodAvailableNow|s10|h70|e50|m50",
-            Actor:         "Johnny",
+            SampleKey:     "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
+            TraitProfile:  new TraitProfile(0.00, 0.00, 0.10, 0.40, 0.45, 0.20),
             Scenario:      "FoodAvailableNow",
             State:         new GoldenStateValues(10, 70, 50, 50),
             DesiredOutcome: new GoldenStateDesiredOutcome(
@@ -751,8 +762,8 @@ public class GoldenStateLoaderTests
     {
         // SampleKey references satiety=99 but State has satiety=10.
         var entry = new GoldenStateEntry(
-            SampleKey:     "Johnny|FoodAvailableNow|s99|h70|e50|m50",
-            Actor:         "Johnny",
+            SampleKey:     "trait:69fb4857|FoodAvailableNow|s99|h70|e50|m50",
+            TraitProfile:  new TraitProfile(0.00, 0.00, 0.10, 0.40, 0.45, 0.20),
             Scenario:      "FoodAvailableNow",
             State:         new GoldenStateValues(10, 70, 50, 50),
             DesiredOutcome: new GoldenStateDesiredOutcome(QualityType.FoodConsumption, null, null),
@@ -764,11 +775,11 @@ public class GoldenStateLoaderTests
     }
 
     [Fact]
-    public void Validate_UnknownActor_ThrowsValidationException()
+    public void Validate_TraitOutOfRange_ThrowsValidationException()
     {
         var entry = new GoldenStateEntry(
-            SampleKey:     "Jhonny|FoodAvailableNow|s10|h70|e50|m50",
-            Actor:         "Jhonny",
+            SampleKey:     "trait:00000000|FoodAvailableNow|s10|h70|e50|m50",
+            TraitProfile:  new TraitProfile(Planner: 1.5, Craftsman: 0.0, Survivor: 0.0, Hedonist: 0.0, Instinctive: 0.0, Industrious: 0.0),
             Scenario:      "FoodAvailableNow",
             State:         new GoldenStateValues(10, 70, 50, 50),
             DesiredOutcome: new GoldenStateDesiredOutcome(QualityType.FoodConsumption, null, null),
@@ -776,6 +787,51 @@ public class GoldenStateLoaderTests
 
         var ex = Assert.Throws<GoldenStateValidationException>(
             () => GoldenStateLoader.Validate(entry));
-        Assert.Contains("Jhonny", ex.Message);
+        Assert.Contains("Planner", ex.Message);
+        Assert.Contains("[0.0, 1.0]", ex.Message);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 8. BuildTraitHash — determinism and canonical form
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void BuildTraitHash_SameProfile_ReturnsSameHash()
+    {
+        var profile = new TraitProfile(0.05, 0.20, 0.20, 0.40, 0.35, 0.30);
+        var hash1 = GoldenStateLoader.BuildTraitHash(profile);
+        var hash2 = GoldenStateLoader.BuildTraitHash(profile);
+        Assert.Equal(hash1, hash2);
+    }
+
+    [Fact]
+    public void BuildTraitHash_DifferentProfiles_ReturnDifferentHashes()
+    {
+        var p1 = new TraitProfile(0.05, 0.20, 0.20, 0.40, 0.35, 0.30);
+        var p2 = new TraitProfile(0.45, 0.35, 0.45, 0.10, 0.00, 0.20);
+        Assert.NotEqual(
+            GoldenStateLoader.BuildTraitHash(p1),
+            GoldenStateLoader.BuildTraitHash(p2));
+    }
+
+    [Fact]
+    public void BuildTraitHash_Returns8CharLowercaseHex()
+    {
+        var profile = new TraitProfile(0.10, 0.20, 0.30, 0.40, 0.50, 0.60);
+        var hash = GoldenStateLoader.BuildTraitHash(profile);
+        Assert.Equal(8, hash.Length);
+        Assert.Matches("^[0-9a-f]{8}$", hash);
+    }
+
+    [Fact]
+    public void BuildTraitHash_KnownProfile_MatchesExpectedHash()
+    {
+        // Sawyer's trait profile (verified against Python reference implementation):
+        // planner=0.00, craftsman=0.00, survivor=0.10, hedonist=0.40, instinctive=0.45, industrious=0.20
+        // Expected hash: 69fb4857
+        var sawyerProfile = new TraitProfile(
+            Planner: 0.00, Craftsman: 0.00, Survivor: 0.10,
+            Hedonist: 0.40, Instinctive: 0.45, Industrious: 0.20);
+        Assert.Equal("69fb4857", GoldenStateLoader.BuildTraitHash(sawyerProfile));
     }
 }

@@ -569,17 +569,22 @@ public static class OptimizerRunner
         GoldenStateEntry entry,
         IslandDomainPack domain)
     {
-        if (!Archetypes.All.TryGetValue(entry.Actor, out var archetypeData))
-            throw new ArgumentException($"Unknown actor archetype '{entry.Actor}'.");
-
         if (!Enum.TryParse<FuzzerScenarioKind>(entry.Scenario, out var scenario))
             throw new ArgumentException($"Unknown scenario kind '{entry.Scenario}'.");
 
-        var actorId = new ActorId(entry.Actor);
+        // Synthesize actor stats from the trait profile so evaluation is trait-driven
+        // and independent of any named actor archetype.
+        var (str, dex, con, @int, wis, cha) = SynthesizeStatsFromTraits(entry.TraitProfile);
+        var actorId = new ActorId("trait-actor");
 
-        // Build actor state from archetype with golden-state stat overrides.
-        var stateData = new Dictionary<string, object>(archetypeData)
+        var stateData = new Dictionary<string, object>
         {
+            ["STR"] = str,
+            ["DEX"] = dex,
+            ["CON"] = con,
+            ["INT"] = @int,
+            ["WIS"] = wis,
+            ["CHA"] = cha,
             ["satiety"] = entry.State.Satiety,
             ["energy"]  = entry.State.Energy,
             ["morale"]  = entry.State.Morale,
@@ -604,6 +609,34 @@ public static class OptimizerRunner
         var contributions = domain.ComputeQualityContributions(actorState, worldState, 0L, sorted);
 
         return ScoreGoldenState(entry, sorted, contributions);
+    }
+
+    /// <summary>
+    /// Synthesizes D&amp;D ability scores (each clamped to [1, 20]) from a <see cref="TraitProfile"/>.
+    /// Uses INT = 10 as a neutral anchor, then derives the remaining five stats from the
+    /// six trait equations so that Planner, Craftsman, Survivor, Hedonist, and Instinctive
+    /// are reproduced exactly; Industrious is approximated.
+    /// </summary>
+    public static (int STR, int DEX, int CON, int INT, int WIS, int CHA)
+        SynthesizeStatsFromTraits(TraitProfile t)
+    {
+        // Trait formulas: Norm(a,b) = (a+b-20)/20 → a+b = 20+20*trait
+        // With INT = 10 as anchor:
+        //   WIS   = 20 + 20*Planner   - INT
+        //   DEX   = 20 + 20*Craftsman - INT
+        //   CON   = 20*(Survivor - Planner) + INT
+        //   CHA   = 20*(Hedonist - Survivor + Planner) + 20 - INT
+        //   STR   = 20*(Instinctive - Hedonist + Survivor - Planner) + INT
+        const int intBase = 10;
+        int Clamp(double v) => (int)Math.Clamp(Math.Round(v), 1.0, 20.0);
+
+        int wis = Clamp(20.0 + 20.0 * t.Planner     - intBase);
+        int dex = Clamp(20.0 + 20.0 * t.Craftsman   - intBase);
+        int con = Clamp(20.0 * (t.Survivor - t.Planner) + intBase);
+        int cha = Clamp(20.0 * (t.Hedonist - t.Survivor + t.Planner) + 20.0 - intBase);
+        int str = Clamp(20.0 * (t.Instinctive - t.Hedonist + t.Survivor - t.Planner) + intBase);
+
+        return (STR: str, DEX: dex, CON: con, INT: intBase, WIS: wis, CHA: cha);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

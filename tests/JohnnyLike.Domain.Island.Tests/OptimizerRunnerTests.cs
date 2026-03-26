@@ -22,25 +22,38 @@ public class OptimizerRunnerTests
     /// <summary>
     /// A minimal single golden state that always expects FoodConsumption,
     /// for use in targeted scoring tests.
+    /// Uses the "balanced generalist" trait profile (Johnny-equivalent) by default.
     /// </summary>
     private static GoldenStateEntry MakeFoodState(
-        string actor = "Johnny",
+        TraitProfile? profile = null,
         string scenario = "FoodAvailableNow",
         double satiety = 10,
         double priority = 5.0,
         QualityType? desired = QualityType.FoodConsumption,
-        IReadOnlyList<QualityType>? forbidden = null) =>
-        new(
-            SampleKey: $"{actor}|{scenario}|s{(int)satiety}|h70|e50|m50",
-            Actor:     actor,
+        IReadOnlyList<QualityType>? forbidden = null)
+    {
+        // Default: Johnny-equivalent profile (planner=0.05, craftsman=0.20, survivor=0.20,
+        // hedonist=0.40, instinctive=0.35, industrious=0.30)
+        var traitProfile = profile ?? new TraitProfile(0.05, 0.20, 0.20, 0.40, 0.35, 0.30);
+        var state = new GoldenStateValues(satiety, 70, 50, 50);
+        var sampleKey = GoldenStateLoader.BuildExpectedSampleKey(new GoldenStateEntry(
+            SampleKey: "",
+            TraitProfile: traitProfile,
+            Scenario: scenario,
+            State: state,
+            DesiredOutcome: new GoldenStateDesiredOutcome(desired, null, null),
+            Priority: priority));
+        return new(
+            SampleKey: sampleKey,
+            TraitProfile: traitProfile,
             Scenario:  scenario,
-            State:     new GoldenStateValues(satiety, 70, 50, 50),
+            State:     state,
             DesiredOutcome: new GoldenStateDesiredOutcome(
                 DesiredTopCategory:        desired,
                 AcceptableTopCategories:   null,
                 ForbiddenTopCategories:    forbidden),
-            Priority: priority,
-            Label: $"test/{actor}");
+            Priority: priority);
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // 1. EvaluateProfile returns results for every golden state
@@ -440,5 +453,72 @@ public class OptimizerRunnerTests
             Assert.Equal(a.StateSatisfied,         b.StateSatisfied);
             Assert.Equal(a.Score,                  b.Score, precision: 4);
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 11. SynthesizeStatsFromTraits — stat synthesis from trait profiles
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void SynthesizeStatsFromTraits_NeutralProfile_AllStatsTen()
+    {
+        // All traits = 0 → all stats should equal the INT anchor (10).
+        var profile = new TraitProfile(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        var stats = OptimizerRunner.SynthesizeStatsFromTraits(profile);
+        Assert.Equal(10, stats.STR);
+        Assert.Equal(10, stats.DEX);
+        Assert.Equal(10, stats.CON);
+        Assert.Equal(10, stats.INT);
+        Assert.Equal(10, stats.WIS);
+        Assert.Equal(10, stats.CHA);
+    }
+
+    [Fact]
+    public void SynthesizeStatsFromTraits_AllStatsInValidRange()
+    {
+        // Test a range of diverse profiles — all synthesized stats must be in [1, 20].
+        var profiles = new[]
+        {
+            new TraitProfile(0.05, 0.20, 0.20, 0.40, 0.35, 0.30), // Johnny-equivalent
+            new TraitProfile(0.45, 0.35, 0.45, 0.10, 0.00, 0.20), // Frank-equivalent
+            new TraitProfile(0.00, 0.00, 0.10, 0.40, 0.45, 0.20), // Sawyer-equivalent
+            new TraitProfile(0.55, 0.20, 0.30, 0.05, 0.00, 0.00), // Oscar-equivalent
+            new TraitProfile(1.00, 1.00, 1.00, 1.00, 1.00, 1.00), // all-max
+            new TraitProfile(0.00, 0.00, 0.00, 0.00, 0.00, 0.00), // all-min
+        };
+
+        foreach (var p in profiles)
+        {
+            var s = OptimizerRunner.SynthesizeStatsFromTraits(p);
+            Assert.InRange(s.STR, 1, 20);
+            Assert.InRange(s.DEX, 1, 20);
+            Assert.InRange(s.CON, 1, 20);
+            Assert.InRange(s.INT, 1, 20);
+            Assert.InRange(s.WIS, 1, 20);
+            Assert.InRange(s.CHA, 1, 20);
+        }
+    }
+
+    [Fact]
+    public void SynthesizeStatsFromTraits_KnownProfile_ReproducesExpectedTraits()
+    {
+        // Verify that re-deriving traits from synthesized stats closely matches
+        // the input trait profile. Planner, Craftsman, Survivor, Hedonist, and
+        // Instinctive should be reproduced exactly (within rounding); Industrious
+        // is intentionally approximate.
+        static double Norm(int a, int b) =>
+            Math.Clamp(((double)(a + b) - 20.0) / 20.0, 0.0, 1.0);
+
+        var input = new TraitProfile(
+            Planner: 0.05, Craftsman: 0.20, Survivor: 0.20,
+            Hedonist: 0.40, Instinctive: 0.35, Industrious: 0.30);
+
+        var s = OptimizerRunner.SynthesizeStatsFromTraits(input);
+
+        Assert.Equal(input.Planner,     Norm(s.INT, s.WIS), precision: 1);
+        Assert.Equal(input.Craftsman,   Norm(s.DEX, s.INT), precision: 1);
+        Assert.Equal(input.Survivor,    Norm(s.CON, s.WIS), precision: 1);
+        Assert.Equal(input.Hedonist,    Norm(s.CHA, s.CON), precision: 1);
+        Assert.Equal(input.Instinctive, Norm(s.STR, s.CHA), precision: 1);
     }
 }

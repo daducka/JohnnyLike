@@ -13,6 +13,37 @@ public sealed record GoldenStateValues(
     double Morale);
 
 /// <summary>
+/// The six derived personality traits that describe an actor's behavioural tendencies.
+/// Each trait is normalised to [0, 1] using Norm(a, b) = Clamp((a + b - 20) / 20, 0, 1)
+/// where <c>a</c> and <c>b</c> are the two contributing D&amp;D ability scores.
+///
+/// <para>
+/// Trait derivations:
+/// <list type="bullet">
+///   <item><see cref="Planner"/>     = Norm(INT, WIS) — prefers preparation and efficiency</item>
+///   <item><see cref="Craftsman"/>   = Norm(DEX, INT) — prefers crafting and mastery</item>
+///   <item><see cref="Survivor"/>    = Norm(CON, WIS) — prefers safety and sustainability</item>
+///   <item><see cref="Hedonist"/>    = Norm(CHA, CON) — prefers comfort and morale</item>
+///   <item><see cref="Instinctive"/> = Norm(STR, CHA) — prefers immediate reward</item>
+///   <item><see cref="Industrious"/> = Norm(STR, DEX) — prefers building and working</item>
+/// </list>
+/// </para>
+/// </summary>
+public sealed record TraitProfile(
+    /// <summary>Norm(INT, WIS) ∈ [0, 1] — prefers preparation and efficiency.</summary>
+    double Planner,
+    /// <summary>Norm(DEX, INT) ∈ [0, 1] — prefers crafting and mastery.</summary>
+    double Craftsman,
+    /// <summary>Norm(CON, WIS) ∈ [0, 1] — prefers safety and sustainability.</summary>
+    double Survivor,
+    /// <summary>Norm(CHA, CON) ∈ [0, 1] — prefers comfort and morale.</summary>
+    double Hedonist,
+    /// <summary>Norm(STR, CHA) ∈ [0, 1] — prefers immediate reward.</summary>
+    double Instinctive,
+    /// <summary>Norm(STR, DEX) ∈ [0, 1] — prefers building and working.</summary>
+    double Industrious);
+
+/// <summary>
 /// Defines the expected decision outcome for a golden state.
 /// Category fields use <see cref="QualityType"/> so downstream tooling receives
 /// parsed, type-safe values rather than raw strings.
@@ -43,25 +74,27 @@ public sealed record GoldenStateDesiredOutcome(
     string? Notes = null);
 
 /// <summary>
-/// A single hand-authored golden state: an (actor, scenario, stats) triple together with
+/// A single hand-authored golden state: a (trait-profile, scenario, stats) triple together with
 /// the desired decision outcome and its relative importance.
 ///
 /// <para>
-/// <see cref="SampleKey"/> follows the same deterministic format used by
-/// <see cref="PressureSample.SampleKey"/>:
-/// <c>{actor}|{scenario}|s{satiety}|h{health}|e{energy}|m{morale}</c>.
-/// This allows golden-state entries to be directly joined with fuzzer output rows.
+/// <see cref="SampleKey"/> uses a deterministic trait-hash format:
+/// <c>trait:{hash}|{scenario}|s{satiety}|h{health}|e{energy}|m{morale}</c>.
+/// The hash is an FNV-1a hash of the canonical trait-profile string in fixed field order.
 /// </para>
 /// </summary>
 public sealed record GoldenStateEntry(
     /// <summary>
-    /// Stable identifier: <c>{actor}|{scenario}|s{satiety}|h{health}|e{energy}|m{morale}</c>.
-    /// Must match the <see cref="PressureSample.SampleKey"/> format exactly so the two
-    /// datasets can be joined on this field.
+    /// Stable identifier: <c>trait:{traitHash}|{scenario}|s{satiety}|h{health}|e{energy}|m{morale}</c>.
+    /// Built deterministically from <see cref="TraitProfile"/> and <see cref="State"/> so the
+    /// key is stable across renames or cast changes.
     /// </summary>
     string SampleKey,
-    /// <summary>Actor archetype name (e.g. "Johnny", "Sawyer"). Case-sensitive.</summary>
-    string Actor,
+    /// <summary>
+    /// The explicit personality trait profile that defines this golden state's behavioural character.
+    /// All six traits must be present and in [0, 1].
+    /// </summary>
+    TraitProfile TraitProfile,
     /// <summary>Scenario kind name. Must be a valid <see cref="FuzzerScenarioKind"/> member.</summary>
     string Scenario,
     /// <summary>The stat values that define this sample point.</summary>
@@ -74,6 +107,12 @@ public sealed record GoldenStateEntry(
     /// should have higher priority than flavour/archetype states).
     /// </summary>
     double Priority,
+    /// <summary>
+    /// Optional human-readable rationale describing the intended trait character of this golden state
+    /// (e.g. "High Hedonist, low Planner — should preserve fun longer before survival pivot").
+    /// Not used by tooling; purely for human readers.
+    /// </summary>
+    string? TraitIntent = null,
     /// <summary>
     /// Optional short human-readable label, matching the style of
     /// <see cref="GoldenStateSpec.Label"/> in the hard-coded set.
