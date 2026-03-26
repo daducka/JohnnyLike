@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island;
 
 namespace JohnnyLike.SimRunner.PressureFuzzer;
 
@@ -43,25 +44,27 @@ public sealed record GoldenStateDesiredOutcome(
     string? Notes = null);
 
 /// <summary>
-/// A single hand-authored golden state: an (actor, scenario, stats) triple together with
+/// A single hand-authored golden state: a (trait-profile, scenario, stats) triple together with
 /// the desired decision outcome and its relative importance.
 ///
 /// <para>
-/// <see cref="SampleKey"/> follows the same deterministic format used by
-/// <see cref="PressureSample.SampleKey"/>:
-/// <c>{actor}|{scenario}|s{satiety}|h{health}|e{energy}|m{morale}</c>.
-/// This allows golden-state entries to be directly joined with fuzzer output rows.
+/// <see cref="SampleKey"/> uses a deterministic trait-hash format:
+/// <c>trait:{hash}|{scenario}|s{satiety}|h{health}|e{energy}|m{morale}</c>.
+/// The hash is an FNV-1a hash of the canonical trait-profile string in fixed field order.
 /// </para>
 /// </summary>
 public sealed record GoldenStateEntry(
     /// <summary>
-    /// Stable identifier: <c>{actor}|{scenario}|s{satiety}|h{health}|e{energy}|m{morale}</c>.
-    /// Must match the <see cref="PressureSample.SampleKey"/> format exactly so the two
-    /// datasets can be joined on this field.
+    /// Stable identifier: <c>trait:{traitHash}|{scenario}|s{satiety}|h{health}|e{energy}|m{morale}</c>.
+    /// Built deterministically from <see cref="TraitProfile"/> and <see cref="State"/> so the
+    /// key is stable across renames or cast changes.
     /// </summary>
     string SampleKey,
-    /// <summary>Actor archetype name (e.g. "Johnny", "Sawyer"). Case-sensitive.</summary>
-    string Actor,
+    /// <summary>
+    /// The explicit personality trait profile that defines this golden state's behavioural character.
+    /// All six traits must be present and in [0, 1].
+    /// </summary>
+    TraitProfile TraitProfile,
     /// <summary>Scenario kind name. Must be a valid <see cref="FuzzerScenarioKind"/> member.</summary>
     string Scenario,
     /// <summary>The stat values that define this sample point.</summary>
@@ -74,6 +77,12 @@ public sealed record GoldenStateEntry(
     /// should have higher priority than flavour/archetype states).
     /// </summary>
     double Priority,
+    /// <summary>
+    /// Optional human-readable rationale describing the intended trait character of this golden state
+    /// (e.g. "High Hedonist, low Planner — should preserve fun longer before survival pivot").
+    /// Not used by tooling; purely for human readers.
+    /// </summary>
+    string? TraitIntent = null,
     /// <summary>
     /// Optional short human-readable label, matching the style of
     /// <see cref="GoldenStateSpec.Label"/> in the hard-coded set.

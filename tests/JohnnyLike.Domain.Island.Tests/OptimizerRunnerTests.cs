@@ -22,25 +22,38 @@ public class OptimizerRunnerTests
     /// <summary>
     /// A minimal single golden state that always expects FoodConsumption,
     /// for use in targeted scoring tests.
+    /// Uses the "balanced generalist" trait profile (Johnny-equivalent) by default.
     /// </summary>
     private static GoldenStateEntry MakeFoodState(
-        string actor = "Johnny",
+        TraitProfile? profile = null,
         string scenario = "FoodAvailableNow",
         double satiety = 10,
         double priority = 5.0,
         QualityType? desired = QualityType.FoodConsumption,
-        IReadOnlyList<QualityType>? forbidden = null) =>
-        new(
-            SampleKey: $"{actor}|{scenario}|s{(int)satiety}|h70|e50|m50",
-            Actor:     actor,
+        IReadOnlyList<QualityType>? forbidden = null)
+    {
+        // Default: Johnny-equivalent profile (planner=0.05, craftsman=0.20, survivor=0.20,
+        // hedonist=0.40, instinctive=0.35, industrious=0.30)
+        var traitProfile = profile ?? new TraitProfile(0.05, 0.20, 0.20, 0.40, 0.35, 0.30);
+        var state = new GoldenStateValues(satiety, 70, 50, 50);
+        var sampleKey = GoldenStateLoader.BuildExpectedSampleKey(new GoldenStateEntry(
+            SampleKey: "",
+            TraitProfile: traitProfile,
+            Scenario: scenario,
+            State: state,
+            DesiredOutcome: new GoldenStateDesiredOutcome(desired, null, null),
+            Priority: priority));
+        return new(
+            SampleKey: sampleKey,
+            TraitProfile: traitProfile,
             Scenario:  scenario,
-            State:     new GoldenStateValues(satiety, 70, 50, 50),
+            State:     state,
             DesiredOutcome: new GoldenStateDesiredOutcome(
                 DesiredTopCategory:        desired,
                 AcceptableTopCategories:   null,
                 ForbiddenTopCategories:    forbidden),
-            Priority: priority,
-            Label: $"test/{actor}");
+            Priority: priority);
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // 1. EvaluateProfile returns results for every golden state
@@ -440,5 +453,61 @@ public class OptimizerRunnerTests
             Assert.Equal(a.StateSatisfied,         b.StateSatisfied);
             Assert.Equal(a.Score,                  b.Score, precision: 4);
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 11. Direct trait injection — EvaluateEntry uses exact TraitProfile
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void EvaluateEntry_DifferentTraitProfiles_ProduceDifferentScores()
+    {
+        // Two golden states with identical physiological state and scenario but very different
+        // trait profiles should be evaluated differently — proving that the TraitProfile is
+        // used directly for personality weights and not approximated via stat synthesis.
+        var domain = new IslandDomainPack();
+
+        // High-Planner, low-Hedonist profile (Frank-like): should value Preparation/Efficiency
+        var plannerProfile = new TraitProfile(
+            Planner: 0.45, Craftsman: 0.35, Survivor: 0.45,
+            Hedonist: 0.10, Instinctive: 0.00, Industrious: 0.20);
+
+        // High-Hedonist, zero-Planner profile (Sawyer-like): should value Fun/Comfort
+        var hedonistProfile = new TraitProfile(
+            Planner: 0.00, Craftsman: 0.00, Survivor: 0.10,
+            Hedonist: 0.40, Instinctive: 0.45, Industrious: 0.20);
+
+        // Fully-satisfied physiological state so need pressures are near-zero and
+        // personality weights dominate the scoring outcome.
+        // At satiety=100, energy=100, health=100, morale=100 all staged hunger/fatigue/misery
+        // pressures resolve to 0.0, ensuring personality is the differentiating signal.
+        var stableState = new GoldenStateValues(Satiety: 100, Health: 100, Energy: 100, Morale: 100);
+        var desiredOutcome = new GoldenStateDesiredOutcome(null, null, null);
+
+        GoldenStateEntry MakeEntry(TraitProfile profile)
+        {
+            var proto = new GoldenStateEntry(
+                SampleKey: "",
+                TraitProfile: profile,
+                Scenario: "FoodAvailable_WithComfort",
+                State: stableState,
+                DesiredOutcome: desiredOutcome,
+                Priority: 5.0);
+            var key = GoldenStateLoader.BuildExpectedSampleKey(proto);
+            return proto with { SampleKey = key };
+        }
+
+        var plannerResult  = OptimizerRunner.EvaluateEntry(MakeEntry(plannerProfile), domain);
+        var hedonistResult = OptimizerRunner.EvaluateEntry(MakeEntry(hedonistProfile), domain);
+
+        // Both evaluations should succeed and produce a top action.
+        Assert.NotNull(plannerResult.ActualTopActionId);
+        Assert.NotNull(hedonistResult.ActualTopActionId);
+
+        // With fully-satisfied needs and contrasting trait profiles, the top quality category
+        // should differ: Planner → Preparation/Efficiency; Hedonist → Fun/Comfort.
+        Assert.NotEqual(
+            plannerResult.ActualTopCategory,
+            hedonistResult.ActualTopCategory);
     }
 }

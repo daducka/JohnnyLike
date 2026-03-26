@@ -564,21 +564,28 @@ public static class OptimizerRunner
     /// Evaluates a single golden state entry against an already-configured domain pack.
     /// Uses a deterministic RNG seeded from the entry's <see cref="GoldenStateEntry.SampleKey"/>
     /// so evaluation is always order-independent.
+    ///
+    /// <para>
+    /// The actor's ability scores (STR/DEX/CON/INT/WIS/CHA) are set to neutral defaults and
+    /// are not used for personality scoring. Instead, <see cref="GoldenStateEntry.TraitProfile"/>
+    /// is injected directly into the quality model, ensuring evaluation reflects the exact
+    /// authored trait vector without any lossy inverse mapping.
+    /// Physiological state (satiety, health, energy, morale) is taken from the golden entry as
+    /// usual and still drives need pressures.
+    /// </para>
     /// </summary>
     public static GoldenStateResult EvaluateEntry(
         GoldenStateEntry entry,
         IslandDomainPack domain)
     {
-        if (!Archetypes.All.TryGetValue(entry.Actor, out var archetypeData))
-            throw new ArgumentException($"Unknown actor archetype '{entry.Actor}'.");
-
         if (!Enum.TryParse<FuzzerScenarioKind>(entry.Scenario, out var scenario))
             throw new ArgumentException($"Unknown scenario kind '{entry.Scenario}'.");
 
-        var actorId = new ActorId(entry.Actor);
+        var actorId = new ActorId("trait-actor");
 
-        // Build actor state from archetype with golden-state stat overrides.
-        var stateData = new Dictionary<string, object>(archetypeData)
+        // Ability scores are irrelevant — the TraitProfile is injected directly into the scoring
+        // model. Only the physiological state (satiety, energy, morale) matters here.
+        var stateData = new Dictionary<string, object>
         {
             ["satiety"] = entry.State.Satiety,
             ["energy"]  = entry.State.Energy,
@@ -593,15 +600,19 @@ public static class OptimizerRunner
         // is identical regardless of golden-state list ordering.
         var rng = new Random(StableSeed(entry.SampleKey));
 
+        // Pass the TraitProfile directly — no stat synthesis, no trait re-derivation.
         var candidates = domain.GenerateCandidates(
             actorId, actorState, worldState, 0L, rng,
-            NullResourceAvailability.Instance);
+            NullResourceAvailability.Instance,
+            entry.TraitProfile);
 
         var sorted = candidates.OrderByDescending(c => c.Score).ToList();
 
-        // Compute typed quality contributions once for all candidates —
-        // no opaque explain dictionary needed.
-        var contributions = domain.ComputeQualityContributions(actorState, worldState, 0L, sorted);
+        // Compute quality contributions using the same explicit trait profile so
+        // contribution weights are consistent with the candidate scoring above.
+        var contributions = domain.ComputeQualityContributions(
+            actorState, worldState, 0L, sorted,
+            entry.TraitProfile);
 
         return ScoreGoldenState(entry, sorted, contributions);
     }
