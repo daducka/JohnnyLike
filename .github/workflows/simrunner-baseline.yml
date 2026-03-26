@@ -1,0 +1,41 @@
+name: SimRunner — Baseline Evaluation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  simrunner-baseline:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore JohnnyLike.sln
+
+    - name: Build (Release)
+      run: dotnet build JohnnyLike.sln --configuration Release --no-restore /warnaserror
+
+    - name: Run tests
+      run: dotnet test JohnnyLike.sln --configuration Release --no-build --verbosity normal
+
+    - name: Run baseline evaluation
+      run: |
+        dotnet run --project src/JohnnyLike.SimRunner --configuration Release --no-build -- \
+          evaluate-golden \
+          --profile default \
+          --output artifacts/baseline
+
+    - name: Upload baseline artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: simrunner-baseline
+        path: artifacts/baseline/
+        retention-days: 30

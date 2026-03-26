@@ -1,0 +1,66 @@
+name: SimRunner — Pressure Fuzzer Comparison
+
+on:
+  workflow_dispatch:
+    inputs:
+      optimized_profile_run_id:
+        description: 'Run ID of the simrunner-optimize workflow to download the optimized profile from (leave blank to run baseline only)'
+        required: false
+        type: string
+
+jobs:
+  simrunner-fuzzer:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore JohnnyLike.sln
+
+    - name: Build (Release)
+      run: dotnet build JohnnyLike.sln --configuration Release --no-restore /warnaserror
+
+    - name: Run tests
+      run: dotnet test JohnnyLike.sln --configuration Release --no-build --verbosity normal
+
+    - name: Download optimized profile artifact
+      if: ${{ inputs.optimized_profile_run_id != '' }}
+      uses: actions/download-artifact@v4
+      with:
+        name: simrunner-optimizer
+        path: artifacts/optimizer
+        run-id: ${{ inputs.optimized_profile_run_id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Resolve optimized profile flag
+      id: profile
+      run: |
+        if [ -f "artifacts/optimizer/optimized-profile.json" ]; then
+          echo "optimized_flag=--optimized-profile artifacts/optimizer/optimized-profile.json" >> "$GITHUB_OUTPUT"
+        else
+          echo "optimized_flag=" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Run fuzzer comparison
+      run: |
+        dotnet run --project src/JohnnyLike.SimRunner --configuration Release --no-build -- \
+          run-fuzzer \
+          --baseline-profile default \
+          ${{ steps.profile.outputs.optimized_flag }} \
+          --output artifacts/fuzzer
+
+    - name: Upload fuzzer artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: simrunner-fuzzer
+        path: artifacts/fuzzer/
+        retention-days: 30
