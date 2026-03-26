@@ -1,690 +1,1510 @@
 [
-  // ═════════════════════════════════════════════════════════════════════
-  // Bucket 1: Starving + immediate food available
-  // Expectation: actor always chooses FoodConsumption.
-  // These are the highest-priority survival-critical states.
-  // ═════════════════════════════════════════════════════════════════════
-
-  {
-    "sampleKey": "trait:c891a823|FoodAvailableNow|s10|h70|e50|m50",
-    "traitProfile": {
-      "planner": 0.05,
-      "craftsman": 0.20,
-      "survivor": 0.20,
-      "hedonist": 0.40,
-      "instinctive": 0.35,
-      "industrious": 0.30
-    },
-    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
-    "scenario": "FoodAvailableNow",
-    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodConsumption",
-      "forbiddenTopCategories": [ "Preparation", "Efficiency", "Fun", "Mastery" ],
-      "notes": "Starving with food in pile — eating is the only sensible choice."
-    },
-    "priority": 10,
-    "label": "starving+food_available/Johnny"
+  // ═══════════════════════════════════════════════════════════════════════
+  // Phase 1 — Trait-Based Golden-State Dataset
+  //
+  // 48 total states:  30 training | 12 holdout | 6 sacred
+  //
+  // Canonical trait profiles used throughout this file:
+  //   Balanced     — planner=0.50 craftsman=0.50 survivor=0.50 hedonist=0.50 instinctive=0.50 industrious=0.50  hash=15cc8081
+  //   HighHedonist — planner=0.10 craftsman=0.20 survivor=0.30 hedonist=0.90 instinctive=0.70 industrious=0.20  hash=74ae3b4d
+  //   HighPlanner  — planner=0.90 craftsman=0.80 survivor=0.60 hedonist=0.20 instinctive=0.30 industrious=0.70  hash=f34d05d4
+  //   HighSurvivor — planner=0.40 craftsman=0.40 survivor=0.90 hedonist=0.10 instinctive=0.80 industrious=0.50  hash=ef00d494
+  //   HighInstinct — planner=0.20 craftsman=0.20 survivor=0.60 hedonist=0.50 instinctive=0.95 industrious=0.40  hash=13fcd090
+  //   ComfortLean  — planner=0.30 craftsman=0.20 survivor=0.40 hedonist=0.75 instinctive=0.50 industrious=0.30  hash=ca4e875a
+  // ═══════════════════════════════════════════════════════════════════════
+{
+  "sampleKey": "trait:ca4e875a|FoodAvailable_WithComfort|s10|h70|e50|m50",
+  "setType": "Sacred",
+  "traitProfile": {
+    "planner": 0.3,
+    "craftsman": 0.2,
+    "survivor": 0.4,
+    "hedonist": 0.75,
+    "instinctive": 0.5,
+    "industrious": 0.3
   },
-  {
-    "sampleKey": "trait:022d3cbc|FoodAvailableNow|s10|h70|e50|m50",
-    "traitProfile": {
-      "planner": 0.45,
-      "craftsman": 0.35,
-      "survivor": 0.45,
-      "hedonist": 0.10,
-      "instinctive": 0.00,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Planner and Survivor, low Hedonist and Instinctive — methodical, analytical",
-    "scenario": "FoodAvailableNow",
-    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodConsumption",
-      "forbiddenTopCategories": [ "Preparation", "Efficiency", "Fun", "Mastery" ],
-      "notes": "Starving with food in pile — archetype does not override survival."
-    },
-    "priority": 10,
-    "label": "starving+food_available/Frank"
+  "traitIntent": "Comfort-leaning profile may prefer comfort under mild distress, but when critically hungry and food is available, comfort/rest must not beat food.",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 10,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
   },
-  {
-    "sampleKey": "trait:69fb4857|FoodAvailableNow|s10|h70|e50|m50",
-    "traitProfile": {
-      "planner": 0.00,
-      "craftsman": 0.00,
-      "survivor": 0.10,
-      "hedonist": 0.40,
-      "instinctive": 0.45,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
-    "scenario": "FoodAvailableNow",
-    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodConsumption",
-      "forbiddenTopCategories": [ "Fun", "Mastery" ],
-      "notes": "Even Sawyer (playful archetype) must eat when starving."
-    },
-    "priority": 10,
-    "label": "starving+food_available/Sawyer"
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Comfort",
+      "Rest",
+      "Fun"
+    ]
   },
-  {
-    "sampleKey": "trait:761cf5dc|FoodAvailableNow|s10|h70|e50|m50",
-    "traitProfile": {
-      "planner": 0.20,
-      "craftsman": 0.40,
-      "survivor": 0.20,
-      "hedonist": 0.15,
-      "instinctive": 0.10,
-      "industrious": 0.35
-    },
-    "traitIntent": "High Craftsman and Industrious, low Instinctive — skilled builder",
-    "scenario": "FoodAvailableNow",
-    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodConsumption",
-      "forbiddenTopCategories": [ "Preparation", "Efficiency", "Fun", "Mastery" ],
-      "notes": "Starving with food available — survival overrides all flavour."
-    },
-    "priority": 10,
-    "label": "starving+food_available/Ashley"
+  "priority": 5,
+  "label": "sacred/food-beats-comfort/comfort-leaning/critical"
+},
+{
+  "sampleKey": "trait:74ae3b4d|FoodAvailableNow|s5|h60|e40|m35",
+  "setType": "Sacred",
+  "traitProfile": {
+    "planner": 0.1,
+    "craftsman": 0.2,
+    "survivor": 0.3,
+    "hedonist": 0.9,
+    "instinctive": 0.7,
+    "industrious": 0.2
   },
-  {
-    "sampleKey": "trait:c891a823|FoodAvailable_WithComfort|s10|h70|e50|m50",
-    "traitProfile": {
-      "planner": 0.05,
-      "craftsman": 0.20,
-      "survivor": 0.20,
-      "hedonist": 0.40,
-      "instinctive": 0.35,
-      "industrious": 0.30
-    },
-    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodConsumption",
-      "forbiddenTopCategories": [ "Rest", "Comfort", "Fun", "Mastery" ],
-      "notes": "Bed and campfire present but starvation trumps comfort."
-    },
-    "priority": 10,
-    "label": "starving+food+comfort/Johnny"
+  "traitIntent": "High Hedonist under extreme starvation (satiety=5). The fun-preference must be fully suppressed by critical hunger. Fun must not win.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 5,
+    "health": 60,
+    "energy": 40,
+    "morale": 35
   },
-  {
-    "sampleKey": "trait:69fb4857|FoodAvailable_WithComfort|s10|h70|e50|m50",
-    "traitProfile": {
-      "planner": 0.00,
-      "craftsman": 0.00,
-      "survivor": 0.10,
-      "hedonist": 0.40,
-      "instinctive": 0.45,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodConsumption",
-      "forbiddenTopCategories": [ "Fun", "Comfort" ],
-      "notes": "Sawyer with bed present — starvation must still win."
-    },
-    "priority": 9,
-    "label": "starving+food+comfort/Sawyer"
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Fun",
+      "Comfort",
+      "Preparation"
+    ]
   },
-
-  // ═════════════════════════════════════════════════════════════════════
-  // Bucket 2: Starving + no food pile but food source available
-  // Expectation: actor chooses FoodAcquisition (go get food).
-  // ═════════════════════════════════════════════════════════════════════
-
-  {
-    "sampleKey": "trait:c891a823|NoFood_SourceAvailable|s10|h70|e50|m50",
-    "traitProfile": {
-      "planner": 0.05,
-      "craftsman": 0.20,
-      "survivor": 0.20,
-      "hedonist": 0.40,
-      "instinctive": 0.35,
-      "industrious": 0.30
-    },
-    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
-    "scenario": "NoFood_SourceAvailable",
-    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodAcquisition",
-      "forbiddenTopCategories": [ "Preparation", "Fun", "Mastery", "Comfort" ],
-      "notes": "No food in pile but sources available — must acquire food."
-    },
-    "priority": 10,
-    "label": "starving+source_only/Johnny"
+  "priority": 5,
+  "label": "sacred/starvation-no-fun/high-hedonist/extreme"
+},
+{
+  "sampleKey": "trait:f34d05d4|NoFood_SourceAvailable|s5|h60|e40|m35",
+  "setType": "Sacred",
+  "traitProfile": {
+    "planner": 0.9,
+    "craftsman": 0.8,
+    "survivor": 0.6,
+    "hedonist": 0.2,
+    "instinctive": 0.3,
+    "industrious": 0.7
   },
-  {
-    "sampleKey": "trait:022d3cbc|NoFood_SourceAvailable|s10|h70|e50|m50",
-    "traitProfile": {
-      "planner": 0.45,
-      "craftsman": 0.35,
-      "survivor": 0.45,
-      "hedonist": 0.10,
-      "instinctive": 0.00,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Planner and Survivor, low Hedonist and Instinctive — methodical, analytical",
-    "scenario": "NoFood_SourceAvailable",
-    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodAcquisition",
-      "forbiddenTopCategories": [ "Preparation", "Efficiency", "Fun", "Mastery" ],
-      "notes": "No food in pile, sources available — Frank must acquire food."
-    },
-    "priority": 10,
-    "label": "starving+source_only/Frank"
+  "traitIntent": "High Planner under extreme starvation, no immediate food. The prep-orientation must be fully suppressed. Preparation must not win \u2014 acquisition must.",
+  "scenario": "NoFood_SourceAvailable",
+  "state": {
+    "satiety": 5,
+    "health": 60,
+    "energy": 40,
+    "morale": 35
   },
-  {
-    "sampleKey": "trait:69fb4857|NoFood_SourceAvailable|s10|h70|e50|m50",
-    "traitProfile": {
-      "planner": 0.00,
-      "craftsman": 0.00,
-      "survivor": 0.10,
-      "hedonist": 0.40,
-      "instinctive": 0.45,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
-    "scenario": "NoFood_SourceAvailable",
-    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodAcquisition",
-      "forbiddenTopCategories": [ "Fun", "Comfort" ],
-      "notes": "Sawyer — starvation with source only; must acquire food."
-    },
-    "priority": 10,
-    "label": "starving+source_only/Sawyer"
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodAcquisition",
+    "forbiddenTopCategories": [
+      "Preparation",
+      "Mastery",
+      "Efficiency"
+    ]
   },
-  {
-    "sampleKey": "trait:a9e6c339|NoFood_SourceAvailable|s10|h70|e50|m50",
-    "traitProfile": {
-      "planner": 0.55,
-      "craftsman": 0.20,
-      "survivor": 0.30,
-      "hedonist": 0.05,
-      "instinctive": 0.00,
-      "industrious": 0.00
-    },
-    "traitIntent": "High Planner, moderate Survivor and Craftsman, near-zero Instinctive and Industrious — cerebral strategist",
-    "scenario": "NoFood_SourceAvailable",
-    "state": { "satiety": 10, "health": 70, "energy": 50, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodAcquisition",
-      "forbiddenTopCategories": [ "Preparation", "Mastery" ],
-      "notes": "Oscar (analytical) — high-Prep archetype must not over-prepare when starving."
-    },
-    "priority": 9,
-    "label": "starving+source_only/Oscar"
+  "priority": 5,
+  "label": "sacred/starvation-no-prep/high-planner/extreme"
+},
+{
+  "sampleKey": "trait:74ae3b4d|FoodAvailable_WithComfort|s65|h90|e80|m65",
+  "setType": "Sacred",
+  "traitProfile": {
+    "planner": 0.1,
+    "craftsman": 0.2,
+    "survivor": 0.3,
+    "hedonist": 0.9,
+    "instinctive": 0.7,
+    "industrious": 0.2
   },
-
-  // ═════════════════════════════════════════════════════════════════════
-  // Bucket 3: Low health + low satiety + bed available
-  // Tension between Rest/Safety (injury) and FoodConsumption.
-  // Acceptable to choose either; forbidden to choose flavour actions.
-  // ═════════════════════════════════════════════════════════════════════
-
-  {
-    "sampleKey": "trait:c891a823|FoodAvailable_WithComfort|s15|h15|e50|m30",
-    "traitProfile": {
-      "planner": 0.05,
-      "craftsman": 0.20,
-      "survivor": 0.20,
-      "hedonist": 0.40,
-      "instinctive": 0.35,
-      "industrious": 0.30
-    },
-    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 15, "health": 15, "energy": 50, "morale": 30 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodConsumption",
-      "acceptableTopCategories": [ "Rest", "Safety" ],
-      "forbiddenTopCategories": [ "Fun", "Mastery", "Preparation", "Efficiency" ],
-      "notes": "Injured and hungry with bed — food or rest are both valid; fun/mastery are not."
-    },
-    "priority": 8,
-    "label": "injured+hungry+bed/Johnny"
+  "traitIntent": "High Hedonist in a safe, well-fed, comfortable state. Fun/Comfort preference must be preserved \u2014 the optimizer must not flatten this into generic utility.",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 65,
+    "health": 90,
+    "energy": 80,
+    "morale": 65
   },
-  {
-    "sampleKey": "trait:022d3cbc|FoodAvailable_WithComfort|s15|h15|e50|m30",
-    "traitProfile": {
-      "planner": 0.45,
-      "craftsman": 0.35,
-      "survivor": 0.45,
-      "hedonist": 0.10,
-      "instinctive": 0.00,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Planner and Survivor, low Hedonist and Instinctive — methodical, analytical",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 15, "health": 15, "energy": 50, "morale": 30 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodConsumption",
-      "acceptableTopCategories": [ "Rest", "Safety" ],
-      "forbiddenTopCategories": [ "Fun", "Mastery", "Preparation", "Efficiency" ],
-      "notes": "Frank injured and hungry — survival focus expected."
-    },
-    "priority": 7,
-    "label": "injured+hungry+bed/Frank"
+  "desiredOutcome": {
+    "desiredTopCategory": "Fun",
+    "acceptableTopCategories": [
+      "Comfort"
+    ],
+    "forbiddenTopCategories": [
+      "FoodConsumption",
+      "FoodAcquisition"
+    ]
   },
-  {
-    "sampleKey": "trait:69fb4857|FoodAvailable_WithComfort|s15|h15|e50|m30",
-    "traitProfile": {
-      "planner": 0.00,
-      "craftsman": 0.00,
-      "survivor": 0.10,
-      "hedonist": 0.40,
-      "instinctive": 0.45,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 15, "health": 15, "energy": 50, "morale": 30 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodConsumption",
-      "acceptableTopCategories": [ "Rest", "Safety" ],
-      "forbiddenTopCategories": [ "Fun", "Comfort" ],
-      "notes": "Sawyer is playful but injury + hunger must suppress leisure."
-    },
-    "priority": 7,
-    "label": "injured+hungry+bed/Sawyer"
+  "priority": 5,
+  "label": "sacred/fun-preserved/high-hedonist/safe"
+},
+{
+  "sampleKey": "trait:f34d05d4|HighRecipeOpportunity|s65|h90|e80|m65",
+  "setType": "Sacred",
+  "traitProfile": {
+    "planner": 0.9,
+    "craftsman": 0.8,
+    "survivor": 0.6,
+    "hedonist": 0.2,
+    "instinctive": 0.3,
+    "industrious": 0.7
   },
-
-  // ═════════════════════════════════════════════════════════════════════
-  // Bucket 4: Low morale but otherwise safe
-  // Sub-case A: still hungry → survival beats mood
-  // Sub-case B: well-fed + stable → comfort/mood actions are fine
-  // ═════════════════════════════════════════════════════════════════════
-
-  {
-    "sampleKey": "trait:c891a823|FoodAvailableNow|s15|h70|e70|m10",
-    "traitProfile": {
-      "planner": 0.05,
-      "craftsman": 0.20,
-      "survivor": 0.20,
-      "hedonist": 0.40,
-      "instinctive": 0.35,
-      "industrious": 0.30
-    },
-    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
-    "scenario": "FoodAvailableNow",
-    "state": { "satiety": 15, "health": 70, "energy": 70, "morale": 10 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodConsumption",
-      "forbiddenTopCategories": [ "Fun", "Mastery" ],
-      "notes": "Low morale but hungry — food need overrides mood recovery."
-    },
-    "priority": 8,
-    "label": "low_morale+hungry/Johnny"
+  "traitIntent": "High Planner in a safe state with abundant crafting opportunity. Preparation/Mastery preference must be preserved \u2014 the optimizer must not collapse this into fun.",
+  "scenario": "HighRecipeOpportunity",
+  "state": {
+    "satiety": 65,
+    "health": 90,
+    "energy": 80,
+    "morale": 65
   },
-  {
-    "sampleKey": "trait:c891a823|FoodAvailable_WithComfort|s70|h70|e70|m10",
-    "traitProfile": {
-      "planner": 0.05,
-      "craftsman": 0.20,
-      "survivor": 0.20,
-      "hedonist": 0.40,
-      "instinctive": 0.35,
-      "industrious": 0.30
-    },
-    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 10 },
-    "desiredOutcome": {
-      "acceptableTopCategories": [ "Comfort", "Rest", "Fun" ],
-      "forbiddenTopCategories": [ "Preparation", "Efficiency" ],
-      "notes": "Well-fed, low morale — comfort or rest should surface; prep should not dominate."
-    },
-    "priority": 5,
-    "label": "low_morale+stable/Johnny"
+  "desiredOutcome": {
+    "desiredTopCategory": "Preparation",
+    "acceptableTopCategories": [
+      "Mastery",
+      "Efficiency"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "FoodAcquisition"
+    ]
   },
-  {
-    "sampleKey": "trait:69fb4857|FoodAvailable_WithComfort|s70|h70|e70|m10",
-    "traitProfile": {
-      "planner": 0.00,
-      "craftsman": 0.00,
-      "survivor": 0.10,
-      "hedonist": 0.40,
-      "instinctive": 0.45,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 10 },
-    "desiredOutcome": {
-      "desiredTopCategory": "Fun",
-      "acceptableTopCategories": [ "Comfort" ],
-      "forbiddenTopCategories": [ "Preparation", "Efficiency" ],
-      "notes": "Sawyer's playful archetype should steer toward Fun when stable."
-    },
-    "priority": 5,
-    "label": "low_morale+stable/Sawyer"
+  "priority": 5,
+  "label": "sacred/prep-preserved/high-planner/safe"
+},
+{
+  "sampleKey": "trait:ef00d494|FoodAvailableNow|s65|h90|e80|m65",
+  "setType": "Sacred",
+  "traitProfile": {
+    "planner": 0.4,
+    "craftsman": 0.4,
+    "survivor": 0.9,
+    "hedonist": 0.1,
+    "instinctive": 0.8,
+    "industrious": 0.5
   },
-  {
-    "sampleKey": "trait:022d3cbc|FoodAvailable_WithComfort|s70|h70|e70|m10",
-    "traitProfile": {
-      "planner": 0.45,
-      "craftsman": 0.35,
-      "survivor": 0.45,
-      "hedonist": 0.10,
-      "instinctive": 0.00,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Planner and Survivor, low Hedonist and Instinctive — methodical, analytical",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 10 },
-    "desiredOutcome": {
-      "acceptableTopCategories": [ "Comfort", "Rest", "Preparation" ],
-      "forbiddenTopCategories": [ "Fun" ],
-      "notes": "Frank is methodical — mood recovery via comfort/rest or preparation is expected."
-    },
-    "priority": 4,
-    "label": "low_morale+stable/Frank"
+  "traitIntent": "High Survivor in a safe state. Must prefer Safety over Fun or Prep \u2014 demonstrating personality differentiation from HighHedonist and HighPlanner in the same scenario/state.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 65,
+    "health": 90,
+    "energy": 80,
+    "morale": 65
   },
-
-  // ═════════════════════════════════════════════════════════════════════
-  // Bucket 5: Recipe temptation / Preparation pressure
-  // ═════════════════════════════════════════════════════════════════════
-
-  {
-    "sampleKey": "trait:c891a823|HighRecipeOpportunity|s10|h70|e70|m50",
-    "traitProfile": {
-      "planner": 0.05,
-      "craftsman": 0.20,
-      "survivor": 0.20,
-      "hedonist": 0.40,
-      "instinctive": 0.35,
-      "industrious": 0.30
-    },
-    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
-    "scenario": "HighRecipeOpportunity",
-    "state": { "satiety": 10, "health": 70, "energy": 70, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodAcquisition",
-      "acceptableTopCategories": [ "FoodConsumption" ],
-      "forbiddenTopCategories": [ "Preparation", "Efficiency" ],
-      "notes": "Hungry with abundant crafting materials — prep temptation must be suppressed."
-    },
-    "priority": 9,
-    "label": "hungry+high_recipe_opportunity/Johnny"
+  "desiredOutcome": {
+    "desiredTopCategory": "Safety",
+    "acceptableTopCategories": [
+      "Preparation"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "FoodConsumption"
+    ]
   },
-  {
-    "sampleKey": "trait:a9e6c339|HighRecipeOpportunity|s10|h70|e70|m50",
-    "traitProfile": {
-      "planner": 0.55,
-      "craftsman": 0.20,
-      "survivor": 0.30,
-      "hedonist": 0.05,
-      "instinctive": 0.00,
-      "industrious": 0.00
-    },
-    "traitIntent": "High Planner, moderate Survivor and Craftsman, near-zero Instinctive and Industrious — cerebral strategist",
-    "scenario": "HighRecipeOpportunity",
-    "state": { "satiety": 10, "health": 70, "energy": 70, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "FoodAcquisition",
-      "acceptableTopCategories": [ "FoodConsumption" ],
-      "forbiddenTopCategories": [ "Preparation", "Efficiency" ],
-      "notes": "Oscar is prep-oriented but must not craft when starving."
-    },
-    "priority": 9,
-    "label": "hungry+high_recipe_opportunity/Oscar"
+  "priority": 5,
+  "label": "sacred/profile-diff-visible/high-survivor/safe"
+},
+{
+  "sampleKey": "trait:15cc8081|FoodAvailableNow|s10|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.5,
+    "craftsman": 0.5,
+    "survivor": 0.5,
+    "hedonist": 0.5,
+    "instinctive": 0.5,
+    "industrious": 0.5
   },
-  {
-    "sampleKey": "trait:022d3cbc|HighRecipeOpportunity|s70|h70|e70|m50",
-    "traitProfile": {
-      "planner": 0.45,
-      "craftsman": 0.35,
-      "survivor": 0.45,
-      "hedonist": 0.10,
-      "instinctive": 0.00,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Planner and Survivor, low Hedonist and Instinctive — methodical, analytical",
-    "scenario": "HighRecipeOpportunity",
-    "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "Preparation",
-      "acceptableTopCategories": [ "Efficiency", "Mastery" ],
-      "notes": "Frank well-fed with high recipe opportunity — crafting/prep should surface."
-    },
-    "priority": 5,
-    "label": "well_fed+high_recipe_opportunity/Frank"
+  "traitIntent": "Balanced profile under critical hunger. Should pivot cleanly to immediate food consumption when food is available.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 10,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
   },
-  {
-    "sampleKey": "trait:a9e6c339|HighRecipeOpportunity|s70|h70|e70|m50",
-    "traitProfile": {
-      "planner": 0.55,
-      "craftsman": 0.20,
-      "survivor": 0.30,
-      "hedonist": 0.05,
-      "instinctive": 0.00,
-      "industrious": 0.00
-    },
-    "traitIntent": "High Planner, moderate Survivor and Craftsman, near-zero Instinctive and Industrious — cerebral strategist",
-    "scenario": "HighRecipeOpportunity",
-    "state": { "satiety": 70, "health": 70, "energy": 70, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "Preparation",
-      "acceptableTopCategories": [ "Efficiency", "Mastery" ],
-      "notes": "Oscar well-fed, analytical — prep/efficiency should dominate."
-    },
-    "priority": 5,
-    "label": "well_fed+high_recipe_opportunity/Oscar"
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "acceptableTopCategories": [
+      "FoodAcquisition"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "Preparation"
+    ]
   },
-
-  // ═════════════════════════════════════════════════════════════════════
-  // Bucket 6: Late-collapse (exhausted + hungry in degraded world)
-  // ═════════════════════════════════════════════════════════════════════
-
-  {
-    "sampleKey": "trait:c891a823|LateCollapse|s15|h50|e10|m30",
-    "traitProfile": {
-      "planner": 0.05,
-      "craftsman": 0.20,
-      "survivor": 0.20,
-      "hedonist": 0.40,
-      "instinctive": 0.35,
-      "industrious": 0.30
-    },
-    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
-    "scenario": "LateCollapse",
-    "state": { "satiety": 15, "health": 50, "energy": 10, "morale": 30 },
-    "desiredOutcome": {
-      "acceptableTopCategories": [ "Rest", "FoodConsumption" ],
-      "forbiddenTopCategories": [ "Fun", "Mastery", "Preparation", "Efficiency" ],
-      "notes": "Exhausted + hungry + degraded world — rest or food; no leisure."
-    },
-    "priority": 7,
-    "label": "late_collapse+exhausted+hungry/Johnny"
+  "priority": 4,
+  "label": "training/survival-critical/food-now/balanced"
+},
+{
+  "sampleKey": "trait:74ae3b4d|FoodAvailableNow|s10|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.1,
+    "craftsman": 0.2,
+    "survivor": 0.3,
+    "hedonist": 0.9,
+    "instinctive": 0.7,
+    "industrious": 0.2
   },
-  {
-    "sampleKey": "trait:69fb4857|LateCollapse|s15|h50|e10|m30",
-    "traitProfile": {
-      "planner": 0.00,
-      "craftsman": 0.00,
-      "survivor": 0.10,
-      "hedonist": 0.40,
-      "instinctive": 0.45,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
-    "scenario": "LateCollapse",
-    "state": { "satiety": 15, "health": 50, "energy": 10, "morale": 30 },
-    "desiredOutcome": {
-      "acceptableTopCategories": [ "Rest", "FoodConsumption" ],
-      "forbiddenTopCategories": [ "Fun", "Comfort" ],
-      "notes": "Sawyer late-collapse — even playful archetype cannot choose fun here."
-    },
-    "priority": 7,
-    "label": "late_collapse+exhausted+hungry/Sawyer"
+  "traitIntent": "High Hedonist profile should preserve fun/comfort longer in safe states, but under critical hunger with food present it must still pivot to food consumption.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 10,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
   },
-
-  // ═════════════════════════════════════════════════════════════════════
-  // Bucket 7: Bed-loop risk (borderline hunger + exhausted + bed available)
-  // ═════════════════════════════════════════════════════════════════════
-
-  {
-    "sampleKey": "trait:c891a823|FoodAvailable_WithComfort|s25|h70|e10|m50",
-    "traitProfile": {
-      "planner": 0.05,
-      "craftsman": 0.20,
-      "survivor": 0.20,
-      "hedonist": 0.40,
-      "instinctive": 0.35,
-      "industrious": 0.30
-    },
-    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 25, "health": 70, "energy": 10, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "Rest",
-      "acceptableTopCategories": [ "FoodConsumption" ],
-      "forbiddenTopCategories": [ "Fun", "Mastery", "Preparation" ],
-      "notes": "Borderline hunger + exhausted with bed — rest should edge out food."
-    },
-    "priority": 7,
-    "label": "borderline_hunger+exhausted+bed/Johnny"
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Fun",
+      "Comfort",
+      "Preparation"
+    ]
   },
-  {
-    "sampleKey": "trait:69fb4857|FoodAvailable_WithComfort|s25|h70|e10|m50",
-    "traitProfile": {
-      "planner": 0.00,
-      "craftsman": 0.00,
-      "survivor": 0.10,
-      "hedonist": 0.40,
-      "instinctive": 0.45,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 25, "health": 70, "energy": 10, "morale": 50 },
-    "desiredOutcome": {
-      "desiredTopCategory": "Rest",
-      "acceptableTopCategories": [ "FoodConsumption", "Comfort" ],
-      "forbiddenTopCategories": [ "Fun" ],
-      "notes": "Sawyer exhausted + borderline hunger — rest expected even for playful archetype."
-    },
-    "priority": 6,
-    "label": "borderline_hunger+exhausted+bed/Sawyer"
+  "priority": 4,
+  "label": "training/survival-critical/food-now/high-hedonist"
+},
+{
+  "sampleKey": "trait:f34d05d4|FoodAvailableNow|s10|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.9,
+    "craftsman": 0.8,
+    "survivor": 0.6,
+    "hedonist": 0.2,
+    "instinctive": 0.3,
+    "industrious": 0.7
   },
-
-  // ═════════════════════════════════════════════════════════════════════
-  // Bucket 8: Stable "flavour" states — trait profiles should differ
-  // All actors well-fed, healthy, rested. Flavour / archetype expression.
-  // ═════════════════════════════════════════════════════════════════════
-
-  {
-    "sampleKey": "trait:69fb4857|FoodAvailable_WithComfort|s100|h100|e100|m100",
-    "traitProfile": {
-      "planner": 0.00,
-      "craftsman": 0.00,
-      "survivor": 0.10,
-      "hedonist": 0.40,
-      "instinctive": 0.45,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Instinctive and Hedonist, near-zero Planner — impulsive, fun-seeking",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
-    "desiredOutcome": {
-      "desiredTopCategory": "Fun",
-      "acceptableTopCategories": [ "Comfort" ],
-      "forbiddenTopCategories": [ "FoodConsumption", "FoodAcquisition" ],
-      "notes": "Sawyer fully satisfied — Fun/Comfort should dominate; food should score low."
-    },
-    "priority": 4,
-    "label": "fully_satisfied_baseline/Sawyer"
+  "traitIntent": "High Planner profile should prefer preparation in stable states, but must stop planning and eat when critically hungry and food is immediately available.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 10,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
   },
-  {
-    "sampleKey": "trait:022d3cbc|FoodAvailable_WithComfort|s100|h100|e100|m100",
-    "traitProfile": {
-      "planner": 0.45,
-      "craftsman": 0.35,
-      "survivor": 0.45,
-      "hedonist": 0.10,
-      "instinctive": 0.00,
-      "industrious": 0.20
-    },
-    "traitIntent": "High Planner and Survivor, low Hedonist and Instinctive — methodical, analytical",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
-    "desiredOutcome": {
-      "desiredTopCategory": "Mastery",
-      "acceptableTopCategories": [ "Preparation", "Efficiency" ],
-      "forbiddenTopCategories": [ "FoodConsumption", "FoodAcquisition" ],
-      "notes": "Frank fully satisfied — analytical archetype should gravitate to Mastery/Prep."
-    },
-    "priority": 4,
-    "label": "fully_satisfied_baseline/Frank"
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Preparation",
+      "Mastery",
+      "Fun"
+    ]
   },
-  {
-    "sampleKey": "trait:a9e6c339|FoodAvailable_WithComfort|s100|h100|e100|m100",
-    "traitProfile": {
-      "planner": 0.55,
-      "craftsman": 0.20,
-      "survivor": 0.30,
-      "hedonist": 0.05,
-      "instinctive": 0.00,
-      "industrious": 0.00
-    },
-    "traitIntent": "High Planner, moderate Survivor and Craftsman, near-zero Instinctive and Industrious — cerebral strategist",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
-    "desiredOutcome": {
-      "desiredTopCategory": "Mastery",
-      "acceptableTopCategories": [ "Preparation", "Efficiency" ],
-      "forbiddenTopCategories": [ "FoodConsumption", "FoodAcquisition" ],
-      "notes": "Oscar fully satisfied — high-INT archetype should favour Mastery/Efficiency."
-    },
-    "priority": 4,
-    "label": "fully_satisfied_baseline/Oscar"
+  "priority": 4,
+  "label": "training/survival-critical/food-now/high-planner"
+},
+{
+  "sampleKey": "trait:13fcd090|FoodAvailableNow|s15|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.2,
+    "craftsman": 0.2,
+    "survivor": 0.6,
+    "hedonist": 0.5,
+    "instinctive": 0.95,
+    "industrious": 0.4
   },
-  {
-    "sampleKey": "trait:c891a823|FoodAvailable_WithComfort|s100|h100|e100|m100",
-    "traitProfile": {
-      "planner": 0.05,
-      "craftsman": 0.20,
-      "survivor": 0.20,
-      "hedonist": 0.40,
-      "instinctive": 0.35,
-      "industrious": 0.30
-    },
-    "traitIntent": "Balanced generalist — moderate Hedonist and Instinctive, low Planner",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
-    "desiredOutcome": {
-      "acceptableTopCategories": [ "Fun", "Mastery", "Comfort" ],
-      "forbiddenTopCategories": [ "FoodConsumption", "FoodAcquisition" ],
-      "notes": "Johnny fully satisfied — broad flavour expected; food should not appear."
-    },
-    "priority": 3,
-    "label": "fully_satisfied_baseline/Johnny"
+  "traitIntent": "High Instinctive profile should strongly prefer immediate relief. When hungry and food is available now, it should bias toward direct food consumption over longer-horizon actions.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 15,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
   },
-  {
-    "sampleKey": "trait:761cf5dc|FoodAvailable_WithComfort|s100|h100|e100|m100",
-    "traitProfile": {
-      "planner": 0.20,
-      "craftsman": 0.40,
-      "survivor": 0.20,
-      "hedonist": 0.15,
-      "instinctive": 0.10,
-      "industrious": 0.35
-    },
-    "traitIntent": "High Craftsman and Industrious, low Instinctive — skilled builder",
-    "scenario": "FoodAvailable_WithComfort",
-    "state": { "satiety": 100, "health": 100, "energy": 100, "morale": 100 },
-    "desiredOutcome": {
-      "acceptableTopCategories": [ "Fun", "Mastery", "Comfort", "Preparation" ],
-      "forbiddenTopCategories": [ "FoodConsumption", "FoodAcquisition" ],
-      "notes": "Ashley fully satisfied — flavour expression; food irrelevant."
-    },
-    "priority": 3,
-    "label": "fully_satisfied_baseline/Ashley"
-  }
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "acceptableTopCategories": [
+      "FoodAcquisition"
+    ],
+    "forbiddenTopCategories": [
+      "Preparation",
+      "Fun"
+    ]
+  },
+  "priority": 4,
+  "label": "training/survival-critical/food-now/high-instinct"
+},
+{
+  "sampleKey": "trait:ca4e875a|FoodAvailableNow|s10|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.3,
+    "craftsman": 0.2,
+    "survivor": 0.4,
+    "hedonist": 0.75,
+    "instinctive": 0.5,
+    "industrious": 0.3
+  },
+  "traitIntent": "Comfort-leaning profile may delay the survival pivot, but at critical hunger (satiety=10) with food available, food must win.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 10,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Comfort",
+      "Rest",
+      "Fun"
+    ]
+  },
+  "priority": 4,
+  "label": "training/survival-critical/food-now/comfort-leaning"
+},
+{
+  "sampleKey": "trait:15cc8081|FoodAvailable_WithComfort|s10|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.5,
+    "craftsman": 0.5,
+    "survivor": 0.5,
+    "hedonist": 0.5,
+    "instinctive": 0.5,
+    "industrious": 0.5
+  },
+  "traitIntent": "Balanced profile with bed and campfire present under critical hunger. Food must win over comfort/rest.",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 10,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Rest",
+      "Comfort",
+      "Fun"
+    ]
+  },
+  "priority": 4,
+  "label": "training/comfort-trap/balanced/critical"
+},
+{
+  "sampleKey": "trait:74ae3b4d|FoodAvailable_WithComfort|s10|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.1,
+    "craftsman": 0.2,
+    "survivor": 0.3,
+    "hedonist": 0.9,
+    "instinctive": 0.7,
+    "industrious": 0.2
+  },
+  "traitIntent": "High Hedonist with bed/campfire present under critical hunger. This is the hardest comfort-trap test for this profile \u2014 fun/comfort must lose to food.",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 10,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Fun",
+      "Comfort",
+      "Rest"
+    ]
+  },
+  "priority": 5,
+  "label": "training/comfort-trap/high-hedonist/critical"
+},
+{
+  "sampleKey": "trait:f34d05d4|FoodAvailable_WithComfort|s10|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.9,
+    "craftsman": 0.8,
+    "survivor": 0.6,
+    "hedonist": 0.2,
+    "instinctive": 0.3,
+    "industrious": 0.7
+  },
+  "traitIntent": "High Planner with comfort affordances present under critical hunger. Preparation and comfort must both lose to food.",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 10,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Preparation",
+      "Rest",
+      "Fun"
+    ]
+  },
+  "priority": 4,
+  "label": "training/comfort-trap/high-planner/critical"
+},
+{
+  "sampleKey": "trait:15cc8081|NoFood_SourceAvailable|s10|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.5,
+    "craftsman": 0.5,
+    "survivor": 0.5,
+    "hedonist": 0.5,
+    "instinctive": 0.5,
+    "industrious": 0.5
+  },
+  "traitIntent": "Balanced profile under critical hunger with no immediate food. Food acquisition should dominate; prep and fun must be suppressed.",
+  "scenario": "NoFood_SourceAvailable",
+  "state": {
+    "satiety": 10,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodAcquisition",
+    "forbiddenTopCategories": [
+      "Fun",
+      "Preparation",
+      "Comfort"
+    ]
+  },
+  "priority": 4,
+  "label": "training/survival-critical/no-food-source/balanced"
+},
+{
+  "sampleKey": "trait:ef00d494|NoFood_SourceAvailable|s10|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.4,
+    "craftsman": 0.4,
+    "survivor": 0.9,
+    "hedonist": 0.1,
+    "instinctive": 0.8,
+    "industrious": 0.5
+  },
+  "traitIntent": "High Survivor profile should respond strongly to urgent scarcity. With no immediate food but food sources available, acquisition should dominate, with Safety as acceptable alternative.",
+  "scenario": "NoFood_SourceAvailable",
+  "state": {
+    "satiety": 10,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodAcquisition",
+    "acceptableTopCategories": [
+      "Safety"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "Preparation"
+    ]
+  },
+  "priority": 4,
+  "label": "training/survival-critical/no-food-source/high-survivor"
+},
+{
+  "sampleKey": "trait:74ae3b4d|NoFood_SourceAvailable|s10|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.1,
+    "craftsman": 0.2,
+    "survivor": 0.3,
+    "hedonist": 0.9,
+    "instinctive": 0.7,
+    "industrious": 0.2
+  },
+  "traitIntent": "High Hedonist under critical hunger with no immediate food. Fun preference must be fully suppressed. Food acquisition wins.",
+  "scenario": "NoFood_SourceAvailable",
+  "state": {
+    "satiety": 10,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodAcquisition",
+    "forbiddenTopCategories": [
+      "Fun",
+      "Comfort",
+      "Preparation"
+    ]
+  },
+  "priority": 4,
+  "label": "training/survival-critical/no-food-source/high-hedonist"
+},
+{
+  "sampleKey": "trait:15cc8081|FoodAvailableNow|s5|h60|e40|m35",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.5,
+    "craftsman": 0.5,
+    "survivor": 0.5,
+    "hedonist": 0.5,
+    "instinctive": 0.5,
+    "industrious": 0.5
+  },
+  "traitIntent": "Balanced profile under extreme starvation (satiety=5) with multiple needs degraded. Food consumption must dominate completely.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 5,
+    "health": 60,
+    "energy": 40,
+    "morale": 35
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Fun",
+      "Preparation",
+      "Comfort"
+    ]
+  },
+  "priority": 4,
+  "label": "training/extreme-starvation/food-now/balanced"
+},
+{
+  "sampleKey": "trait:15cc8081|FoodAvailableNow|s65|h90|e80|m65",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.5,
+    "craftsman": 0.5,
+    "survivor": 0.5,
+    "hedonist": 0.5,
+    "instinctive": 0.5,
+    "industrious": 0.5
+  },
+  "traitIntent": "Balanced profile in a safe, well-fed state. No strong commitment to fun/prep/safety \u2014 behavior should be context-dependent but not exaggerated.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 65,
+    "health": 90,
+    "energy": 80,
+    "morale": 65
+  },
+  "desiredOutcome": {
+    "acceptableTopCategories": [
+      "Fun",
+      "Mastery",
+      "Comfort",
+      "Preparation",
+      "Safety"
+    ],
+    "forbiddenTopCategories": [
+      "FoodConsumption",
+      "FoodAcquisition"
+    ]
+  },
+  "priority": 2,
+  "label": "training/stable-flavor/balanced/safe"
+},
+{
+  "sampleKey": "trait:74ae3b4d|FoodAvailableNow|s65|h90|e80|m65",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.1,
+    "craftsman": 0.2,
+    "survivor": 0.3,
+    "hedonist": 0.9,
+    "instinctive": 0.7,
+    "industrious": 0.2
+  },
+  "traitIntent": "High Hedonist in a safe, well-fed state. Should preserve fun/comfort-oriented personality rather than collapsing into generic utility.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 65,
+    "health": 90,
+    "energy": 80,
+    "morale": 65
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "Fun",
+    "acceptableTopCategories": [
+      "Comfort"
+    ],
+    "forbiddenTopCategories": [
+      "FoodConsumption",
+      "FoodAcquisition"
+    ]
+  },
+  "priority": 2,
+  "label": "training/stable-flavor/high-hedonist/safe"
+},
+{
+  "sampleKey": "trait:f34d05d4|FoodAvailableNow|s65|h90|e80|m65",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.9,
+    "craftsman": 0.8,
+    "survivor": 0.6,
+    "hedonist": 0.2,
+    "instinctive": 0.3,
+    "industrious": 0.7
+  },
+  "traitIntent": "High Planner in a safe, well-fed state. Should preserve future-oriented prep/mastery behavior rather than defaulting to fun or immediate reward.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 65,
+    "health": 90,
+    "energy": 80,
+    "morale": 65
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "Preparation",
+    "acceptableTopCategories": [
+      "Mastery",
+      "Efficiency"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "FoodConsumption"
+    ]
+  },
+  "priority": 2,
+  "label": "training/stable-flavor/high-planner/safe"
+},
+{
+  "sampleKey": "trait:13fcd090|FoodAvailableNow|s65|h90|e80|m65",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.2,
+    "craftsman": 0.2,
+    "survivor": 0.6,
+    "hedonist": 0.5,
+    "instinctive": 0.95,
+    "industrious": 0.4
+  },
+  "traitIntent": "High Instinctive in a safe state. Should favor immediate-reward behavior (Fun/Comfort) rather than future-oriented preparation.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 65,
+    "health": 90,
+    "energy": 80,
+    "morale": 65
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "Fun",
+    "acceptableTopCategories": [
+      "Comfort"
+    ],
+    "forbiddenTopCategories": [
+      "Preparation",
+      "FoodConsumption"
+    ]
+  },
+  "priority": 2,
+  "label": "training/stable-flavor/high-instinct/safe"
+},
+{
+  "sampleKey": "trait:ca4e875a|FoodAvailable_WithComfort|s65|h90|e80|m65",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.3,
+    "craftsman": 0.2,
+    "survivor": 0.4,
+    "hedonist": 0.75,
+    "instinctive": 0.5,
+    "industrious": 0.3
+  },
+  "traitIntent": "Comfort-leaning profile in a safe state with comfort affordances. Should lean toward Comfort/Rest rather than aggressive optimization.",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 65,
+    "health": 90,
+    "energy": 80,
+    "morale": 65
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "Comfort",
+    "acceptableTopCategories": [
+      "Fun",
+      "Rest"
+    ],
+    "forbiddenTopCategories": [
+      "FoodConsumption",
+      "FoodAcquisition"
+    ]
+  },
+  "priority": 2,
+  "label": "training/stable-flavor/comfort-leaning/safe"
+},
+{
+  "sampleKey": "trait:ef00d494|FoodAvailable_WithComfort|s65|h90|e80|m65",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.4,
+    "craftsman": 0.4,
+    "survivor": 0.9,
+    "hedonist": 0.1,
+    "instinctive": 0.8,
+    "industrious": 0.5
+  },
+  "traitIntent": "High Survivor in a safe state with comfort affordances. Should maintain cautious/safety-leaning posture \u2014 different from Hedonist (Fun) or Planner (Prep).",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 65,
+    "health": 90,
+    "energy": 80,
+    "morale": 65
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "Safety",
+    "acceptableTopCategories": [
+      "Preparation"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "FoodConsumption"
+    ]
+  },
+  "priority": 2,
+  "label": "training/stable-flavor/high-survivor/safe"
+},
+{
+  "sampleKey": "trait:15cc8081|FoodAvailableNow|s45|h70|e60|m55",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.5,
+    "craftsman": 0.5,
+    "survivor": 0.5,
+    "hedonist": 0.5,
+    "instinctive": 0.5,
+    "industrious": 0.5
+  },
+  "traitIntent": "Balanced profile at moderate hunger. Should shift toward survival \u2014 food should win, fun should be suppressed.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 45,
+    "health": 70,
+    "energy": 60,
+    "morale": 55
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Fun",
+      "Preparation"
+    ]
+  },
+  "priority": 3,
+  "label": "training/mild-distress/food-now/balanced"
+},
+{
+  "sampleKey": "trait:74ae3b4d|FoodAvailableNow|s40|h70|e60|m55",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.1,
+    "craftsman": 0.2,
+    "survivor": 0.3,
+    "hedonist": 0.9,
+    "instinctive": 0.7,
+    "industrious": 0.2
+  },
+  "traitIntent": "High Hedonist at moderate-low hunger (satiety=40). May delay the survival pivot \u2014 food should be desired but Comfort is still an acceptable fallback (delayed pivot vs Balanced).",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 40,
+    "health": 70,
+    "energy": 60,
+    "morale": 55
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "acceptableTopCategories": [
+      "Comfort"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "Preparation"
+    ]
+  },
+  "priority": 3,
+  "label": "training/mild-distress/food-now/high-hedonist"
+},
+{
+  "sampleKey": "trait:f34d05d4|HighRecipeOpportunity|s45|h70|e70|m55",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.9,
+    "craftsman": 0.8,
+    "survivor": 0.6,
+    "hedonist": 0.2,
+    "instinctive": 0.3,
+    "industrious": 0.7
+  },
+  "traitIntent": "High Planner at mild hunger with rich recipe opportunity. Should continue planning longer than Balanced under mild need \u2014 Preparation is desired, FoodAcquisition is acceptable.",
+  "scenario": "HighRecipeOpportunity",
+  "state": {
+    "satiety": 45,
+    "health": 70,
+    "energy": 70,
+    "morale": 55
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "Preparation",
+    "acceptableTopCategories": [
+      "FoodAcquisition"
+    ],
+    "forbiddenTopCategories": [
+      "Fun"
+    ]
+  },
+  "priority": 3,
+  "label": "training/mild-distress/recipe/high-planner"
+},
+{
+  "sampleKey": "trait:ef00d494|FoodAvailable_WithComfort|s45|h70|e60|m55",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.4,
+    "craftsman": 0.4,
+    "survivor": 0.9,
+    "hedonist": 0.1,
+    "instinctive": 0.8,
+    "industrious": 0.5
+  },
+  "traitIntent": "High Survivor responds to distress earlier than Balanced. At satiety=45 with comfort available, should already favor food/safety over comfort.",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 45,
+    "health": 70,
+    "energy": 60,
+    "morale": 55
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "acceptableTopCategories": [
+      "Safety"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "Comfort"
+    ]
+  },
+  "priority": 3,
+  "label": "training/mild-distress/comfort-avail/high-survivor"
+},
+{
+  "sampleKey": "trait:13fcd090|FoodAvailable_WithComfort|s40|h70|e60|m55",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.2,
+    "craftsman": 0.2,
+    "survivor": 0.6,
+    "hedonist": 0.5,
+    "instinctive": 0.95,
+    "industrious": 0.4
+  },
+  "traitIntent": "High Instinctive at mild hunger should prefer direct/immediate relief over abstract comfort. Food (direct relief) should win over comfort (deferred).",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 40,
+    "health": 70,
+    "energy": 60,
+    "morale": 55
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "acceptableTopCategories": [
+      "Comfort"
+    ],
+    "forbiddenTopCategories": [
+      "Preparation",
+      "Fun"
+    ]
+  },
+  "priority": 3,
+  "label": "training/mild-distress/comfort-avail/high-instinct"
+},
+{
+  "sampleKey": "trait:ca4e875a|FoodAvailable_WithComfort|s45|h70|e50|m55",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.3,
+    "craftsman": 0.2,
+    "survivor": 0.4,
+    "hedonist": 0.75,
+    "instinctive": 0.5,
+    "industrious": 0.3
+  },
+  "traitIntent": "Comfort-leaning profile at mild hunger with comfort present. Personality should still show \u2014 Comfort or Rest is acceptable \u2014 but food is also acceptable. Not all profiles converge.",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 45,
+    "health": 70,
+    "energy": 50,
+    "morale": 55
+  },
+  "desiredOutcome": {
+    "acceptableTopCategories": [
+      "FoodConsumption",
+      "Comfort",
+      "Rest"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "Preparation"
+    ]
+  },
+  "priority": 2,
+  "label": "training/mild-distress/comfort-avail/comfort-leaning"
+},
+{
+  "sampleKey": "trait:15cc8081|FoodAvailableNow|s20|h75|e55|m55",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.5,
+    "craftsman": 0.5,
+    "survivor": 0.5,
+    "hedonist": 0.5,
+    "instinctive": 0.5,
+    "industrious": 0.5
+  },
+  "traitIntent": "Balanced at approaching-critical hunger (satiety=20). Food pressure should strongly dominate; preparation still minimally acceptable.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 20,
+    "health": 75,
+    "energy": 55,
+    "morale": 55
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "acceptableTopCategories": [
+      "Preparation"
+    ],
+    "forbiddenTopCategories": [
+      "Fun"
+    ]
+  },
+  "priority": 3,
+  "label": "training/boundary/food-now/balanced/s20"
+},
+{
+  "sampleKey": "trait:ef00d494|NoFood_SourceAvailable|s15|h65|e50|m45",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.4,
+    "craftsman": 0.4,
+    "survivor": 0.9,
+    "hedonist": 0.1,
+    "instinctive": 0.8,
+    "industrious": 0.5
+  },
+  "traitIntent": "High Survivor near-critical boundary (satiety=15, health=65). Responds earlier than Balanced \u2014 FoodAcquisition should dominate; Safety acceptable.",
+  "scenario": "NoFood_SourceAvailable",
+  "state": {
+    "satiety": 15,
+    "health": 65,
+    "energy": 50,
+    "morale": 45
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodAcquisition",
+    "acceptableTopCategories": [
+      "Safety"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "Preparation"
+    ]
+  },
+  "priority": 3,
+  "label": "training/boundary/no-food-source/high-survivor/s15"
+},
+{
+  "sampleKey": "trait:f34d05d4|FoodAvailableNow|s45|h75|e65|m60",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.9,
+    "craftsman": 0.8,
+    "survivor": 0.6,
+    "hedonist": 0.2,
+    "instinctive": 0.3,
+    "industrious": 0.7
+  },
+  "traitIntent": "High Planner at moderate hunger (satiety=45). Prep orientation may still persist somewhat, but food pressure is now strongly competitive.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 45,
+    "health": 75,
+    "energy": 65,
+    "morale": 60
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "acceptableTopCategories": [
+      "Preparation"
+    ],
+    "forbiddenTopCategories": [
+      "Fun"
+    ]
+  },
+  "priority": 3,
+  "label": "training/boundary/food-now/high-planner/s45"
+},
+{
+  "sampleKey": "trait:13fcd090|NoFood_SourceAvailable|s10|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.2,
+    "craftsman": 0.2,
+    "survivor": 0.6,
+    "hedonist": 0.5,
+    "instinctive": 0.95,
+    "industrious": 0.4
+  },
+  "traitIntent": "High Instinctive under critical hunger with no immediate food. Should bias toward direct action \u2014 FoodAcquisition (immediate effort) over Preparation.",
+  "scenario": "NoFood_SourceAvailable",
+  "state": {
+    "satiety": 10,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodAcquisition",
+    "forbiddenTopCategories": [
+      "Preparation",
+      "Fun"
+    ]
+  },
+  "priority": 4,
+  "label": "training/boundary/no-food-source/high-instinct/s10"
+},
+{
+  "sampleKey": "trait:ca4e875a|FoodAvailableNow|s15|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.3,
+    "craftsman": 0.2,
+    "survivor": 0.4,
+    "hedonist": 0.75,
+    "instinctive": 0.5,
+    "industrious": 0.3
+  },
+  "traitIntent": "Comfort-leaning at near-critical hunger (satiety=15). Survival override should now kick in \u2014 FoodConsumption wins over Comfort.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 15,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Comfort",
+      "Rest",
+      "Fun"
+    ]
+  },
+  "priority": 3,
+  "label": "training/boundary/food-now/comfort-leaning/s15"
+},
+{
+  "sampleKey": "trait:f34d05d4|NoFood_SourceAvailable|s10|h70|e50|m50",
+  "setType": "Training",
+  "traitProfile": {
+    "planner": 0.9,
+    "craftsman": 0.8,
+    "survivor": 0.6,
+    "hedonist": 0.2,
+    "instinctive": 0.3,
+    "industrious": 0.7
+  },
+  "traitIntent": "High Planner under critical hunger with no immediate food. Must acquire food \u2014 preparation trap must not engage when there is nothing to eat.",
+  "scenario": "NoFood_SourceAvailable",
+  "state": {
+    "satiety": 10,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodAcquisition",
+    "forbiddenTopCategories": [
+      "Preparation",
+      "Mastery",
+      "Fun"
+    ]
+  },
+  "priority": 4,
+  "label": "training/boundary/no-food-source/high-planner/s10"
+},
+{
+  "sampleKey": "trait:15cc8081|FoodAvailableNow|s15|h70|e50|m50",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.5,
+    "craftsman": 0.5,
+    "survivor": 0.5,
+    "hedonist": 0.5,
+    "instinctive": 0.5,
+    "industrious": 0.5
+  },
+  "traitIntent": "Holdout variant of training Balanced/s10. At satiety=15, behavior should remain food-first \u2014 testing smooth generalization near the threshold.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 15,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Fun",
+      "Preparation"
+    ]
+  },
+  "priority": 3,
+  "label": "holdout/boundary/food-now/balanced/s15"
+},
+{
+  "sampleKey": "trait:74ae3b4d|FoodAvailableNow|s15|h70|e50|m50",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.1,
+    "craftsman": 0.2,
+    "survivor": 0.3,
+    "hedonist": 0.9,
+    "instinctive": 0.7,
+    "industrious": 0.2
+  },
+  "traitIntent": "Holdout variant of training HighHedonist/s10. At satiety=15, food must still beat fun \u2014 ensuring the survival override generalizes properly.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 15,
+    "health": 70,
+    "energy": 50,
+    "morale": 50
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Fun",
+      "Comfort"
+    ]
+  },
+  "priority": 3,
+  "label": "holdout/boundary/food-now/high-hedonist/s15"
+},
+{
+  "sampleKey": "trait:f34d05d4|FoodAvailableNow|s20|h75|e55|m55",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.9,
+    "craftsman": 0.8,
+    "survivor": 0.6,
+    "hedonist": 0.2,
+    "instinctive": 0.3,
+    "industrious": 0.7
+  },
+  "traitIntent": "Holdout boundary case for High Planner. At moderate hunger, prep orientation may still persist somewhat, but food should be strongly competitive and prep must not dominate.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 20,
+    "health": 75,
+    "energy": 55,
+    "morale": 55
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "acceptableTopCategories": [
+      "Preparation"
+    ],
+    "forbiddenTopCategories": [
+      "Fun"
+    ]
+  },
+  "priority": 3,
+  "label": "holdout/boundary/food-now/high-planner/s20"
+},
+{
+  "sampleKey": "trait:74ae3b4d|FoodAvailableNow|s20|h75|e55|m55",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.1,
+    "craftsman": 0.2,
+    "survivor": 0.3,
+    "hedonist": 0.9,
+    "instinctive": 0.7,
+    "industrious": 0.2
+  },
+  "traitIntent": "Holdout boundary case for High Hedonist. At moderate hunger, some fun persistence is reflected (Comfort acceptable) but food should be strongly competitive.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 20,
+    "health": 75,
+    "energy": 55,
+    "morale": 55
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "acceptableTopCategories": [
+      "Comfort"
+    ],
+    "forbiddenTopCategories": [
+      "Fun"
+    ]
+  },
+  "priority": 3,
+  "label": "holdout/boundary/food-now/high-hedonist/s20"
+},
+{
+  "sampleKey": "trait:15cc8081|FoodAvailable_WithComfort|s15|h60|e35|m40",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.5,
+    "craftsman": 0.5,
+    "survivor": 0.5,
+    "hedonist": 0.5,
+    "instinctive": 0.5,
+    "industrious": 0.5
+  },
+  "traitIntent": "Holdout boundary case near critical hunger with reduced health and energy. Balanced profile should still prioritize food over comfort, even under moderate fatigue.",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 15,
+    "health": 60,
+    "energy": 35,
+    "morale": 40
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "acceptableTopCategories": [
+      "Rest"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "Preparation"
+    ]
+  },
+  "priority": 3,
+  "label": "holdout/boundary/comfort-avail/balanced/s15-reduced"
+},
+{
+  "sampleKey": "trait:15cc8081|NoFood_SourceAvailable|s15|h65|e50|m45",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.5,
+    "craftsman": 0.5,
+    "survivor": 0.5,
+    "hedonist": 0.5,
+    "instinctive": 0.5,
+    "industrious": 0.5
+  },
+  "traitIntent": "Holdout variant of training Balanced/NoFood/s10. At satiety=15, food acquisition should still dominate \u2014 testing smooth generalization near the threshold.",
+  "scenario": "NoFood_SourceAvailable",
+  "state": {
+    "satiety": 15,
+    "health": 65,
+    "energy": 50,
+    "morale": 45
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodAcquisition",
+    "forbiddenTopCategories": [
+      "Fun",
+      "Preparation"
+    ]
+  },
+  "priority": 3,
+  "label": "holdout/boundary/no-food-source/balanced/s15"
+},
+{
+  "sampleKey": "trait:13fcd090|FoodAvailableNow|s20|h70|e55|m50",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.2,
+    "craftsman": 0.2,
+    "survivor": 0.6,
+    "hedonist": 0.5,
+    "instinctive": 0.95,
+    "industrious": 0.4
+  },
+  "traitIntent": "High Instinctive at moderate hunger (satiety=20). Immediate food bias should still win; this holdout tests that the instinctive food-preference generalizes beyond s15.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 20,
+    "health": 70,
+    "energy": 55,
+    "morale": 50
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "forbiddenTopCategories": [
+      "Preparation",
+      "Fun"
+    ]
+  },
+  "priority": 3,
+  "label": "holdout/boundary/food-now/high-instinct/s20"
+},
+{
+  "sampleKey": "trait:ef00d494|FoodAvailableNow|s70|h90|e80|m70",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.4,
+    "craftsman": 0.4,
+    "survivor": 0.9,
+    "hedonist": 0.1,
+    "instinctive": 0.8,
+    "industrious": 0.5
+  },
+  "traitIntent": "Holdout safe-state variant for High Survivor (s70 vs s65 in sacred S6). Safety preference should generalize across nearby stat coordinates.",
+  "scenario": "FoodAvailableNow",
+  "state": {
+    "satiety": 70,
+    "health": 90,
+    "energy": 80,
+    "morale": 70
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "Safety",
+    "acceptableTopCategories": [
+      "Preparation"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "FoodConsumption"
+    ]
+  },
+  "priority": 2,
+  "label": "holdout/stable-flavor/high-survivor/s70"
+},
+{
+  "sampleKey": "trait:ca4e875a|FoodAvailable_WithComfort|s55|h80|e65|m60",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.3,
+    "craftsman": 0.2,
+    "survivor": 0.4,
+    "hedonist": 0.75,
+    "instinctive": 0.5,
+    "industrious": 0.3
+  },
+  "traitIntent": "Comfort-leaning at comfortable satiety (s55) with comfort affordances. Should lean toward Comfort/Fun; not a survival state.",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 55,
+    "health": 80,
+    "energy": 65,
+    "morale": 60
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "Comfort",
+    "acceptableTopCategories": [
+      "Fun",
+      "Rest"
+    ],
+    "forbiddenTopCategories": [
+      "FoodConsumption"
+    ]
+  },
+  "priority": 2,
+  "label": "holdout/stable-flavor/comfort-leaning/s55"
+},
+{
+  "sampleKey": "trait:f34d05d4|FoodAvailable_WithComfort|s65|h90|e80|m65",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.9,
+    "craftsman": 0.8,
+    "survivor": 0.6,
+    "hedonist": 0.2,
+    "instinctive": 0.3,
+    "industrious": 0.7
+  },
+  "traitIntent": "High Planner in a safe state with comfort affordances. Prep/Mastery preference should persist \u2014 distinct from Hedonist in the same scenario/state.",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 65,
+    "health": 90,
+    "energy": 80,
+    "morale": 65
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "Preparation",
+    "acceptableTopCategories": [
+      "Mastery",
+      "Efficiency"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "FoodConsumption"
+    ]
+  },
+  "priority": 2,
+  "label": "holdout/stable-flavor/high-planner/comfort-avail"
+},
+{
+  "sampleKey": "trait:13fcd090|FoodAvailable_WithComfort|s55|h80|e65|m60",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.2,
+    "craftsman": 0.2,
+    "survivor": 0.6,
+    "hedonist": 0.5,
+    "instinctive": 0.95,
+    "industrious": 0.4
+  },
+  "traitIntent": "High Instinctive in a comfortable state. Should prefer immediate reward (Fun/Comfort) over future-oriented Preparation \u2014 distinct from HighPlanner in the same state.",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 55,
+    "health": 80,
+    "energy": 65,
+    "morale": 60
+  },
+  "desiredOutcome": {
+    "acceptableTopCategories": [
+      "Fun",
+      "Comfort"
+    ],
+    "forbiddenTopCategories": [
+      "Preparation",
+      "FoodConsumption"
+    ]
+  },
+  "priority": 2,
+  "label": "holdout/stable-flavor/high-instinct/comfort-avail"
+},
+{
+  "sampleKey": "trait:ef00d494|FoodAvailable_WithComfort|s15|h60|e50|m40",
+  "setType": "Holdout",
+  "traitProfile": {
+    "planner": 0.4,
+    "craftsman": 0.4,
+    "survivor": 0.9,
+    "hedonist": 0.1,
+    "instinctive": 0.8,
+    "industrious": 0.5
+  },
+  "traitIntent": "High Survivor near-critical hunger (satiety=15) with comfort affordances. Should choose food or safety \u2014 comfort and fun must not win.",
+  "scenario": "FoodAvailable_WithComfort",
+  "state": {
+    "satiety": 15,
+    "health": 60,
+    "energy": 50,
+    "morale": 40
+  },
+  "desiredOutcome": {
+    "desiredTopCategory": "FoodConsumption",
+    "acceptableTopCategories": [
+      "Safety",
+      "FoodAcquisition"
+    ],
+    "forbiddenTopCategories": [
+      "Fun",
+      "Comfort",
+      "Preparation"
+    ]
+  },
+  "priority": 3,
+  "label": "holdout/boundary/comfort-avail/high-survivor/s15"
+}
 ]

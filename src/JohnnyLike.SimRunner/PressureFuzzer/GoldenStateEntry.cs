@@ -4,6 +4,29 @@ using JohnnyLike.Domain.Island;
 namespace JohnnyLike.SimRunner.PressureFuzzer;
 
 /// <summary>
+/// Identifies which partition of the golden-state dataset an entry belongs to.
+/// </summary>
+public enum GoldenSetType
+{
+    /// <summary>
+    /// Regular training entries used for score optimization.
+    /// The majority of the dataset; optimizer may tune freely against these.
+    /// </summary>
+    Training,
+    /// <summary>
+    /// Hold-out entries excluded from the optimization loop.
+    /// Used to measure generalization: the optimizer must not over-fit to Training states.
+    /// </summary>
+    Holdout,
+    /// <summary>
+    /// Must-not-break regression entries.
+    /// These cover known pathologies (comfort traps, prep traps, fun-while-starving).
+    /// A regression against any Sacred entry is a hard failure.
+    /// </summary>
+    Sacred,
+}
+
+/// <summary>
 /// The four numeric stats captured for a golden-state sample point.
 /// Values are on a 0–100 scale matching <see cref="ActorStatSnapshot"/>.
 /// </summary>
@@ -88,4 +111,12 @@ public sealed record GoldenStateEntry(
     /// <see cref="GoldenStateSpec.Label"/> in the hard-coded set.
     /// Used as a display name in reports and debug output.
     /// </summary>
-    string? Label = null);
+    string? Label = null,
+    /// <summary>
+    /// The dataset partition this entry belongs to.
+    /// <see cref="GoldenSetType.Training"/> entries feed the optimizer;
+    /// <see cref="GoldenSetType.Holdout"/> entries measure generalization;
+    /// <see cref="GoldenSetType.Sacred"/> entries are must-not-break regressions.
+    /// Null means unclassified (treated as Training by tools that need a partition).
+    /// </summary>
+    GoldenSetType? SetType = null);

@@ -132,9 +132,69 @@ public class GoldenStateLoaderTests
     public void LoadEmbedded_CoversMinimumStateCount()
     {
         var entries = GoldenStateLoader.LoadEmbedded();
-        // The issue asks for 20–40 curated states.
-        Assert.True(entries.Count >= 20,
-            $"Expected at least 20 golden states, but found {entries.Count}.");
+        // Phase 1 dataset targets 48 curated states (30 training / 12 holdout / 6 sacred).
+        Assert.True(entries.Count >= 48,
+            $"Expected at least 48 golden states, but found {entries.Count}.");
+    }
+
+    [Fact]
+    public void LoadEmbedded_HasExpectedSetTypeDistribution()
+    {
+        var entries = GoldenStateLoader.LoadEmbedded();
+
+        // All entries must have a non-null SetType in the Phase 1 dataset.
+        Assert.All(entries, e => Assert.NotNull(e.SetType));
+
+        int training = entries.Count(e => e.SetType == GoldenSetType.Training);
+        int holdout  = entries.Count(e => e.SetType == GoldenSetType.Holdout);
+        int sacred   = entries.Count(e => e.SetType == GoldenSetType.Sacred);
+
+        Assert.True(training >= 30,
+            $"Expected at least 30 Training entries, but found {training}.");
+        Assert.True(holdout >= 12,
+            $"Expected at least 12 Holdout entries, but found {holdout}.");
+        Assert.True(sacred >= 6,
+            $"Expected at least 6 Sacred entries, but found {sacred}.");
+    }
+
+    [Fact]
+    public void LoadEmbedded_SacredEntriesHaveHighestPriority()
+    {
+        var entries = GoldenStateLoader.LoadEmbedded();
+        var sacredEntries = entries.Where(e => e.SetType == GoldenSetType.Sacred).ToList();
+
+        Assert.NotEmpty(sacredEntries);
+        // All sacred entries must have priority >= 5.
+        Assert.All(sacredEntries, e =>
+            Assert.True(e.Priority >= 5,
+                $"Sacred entry '{e.SampleKey}' has priority {e.Priority} — expected >= 5."));
+    }
+
+    [Fact]
+    public void LoadEmbedded_CoversAllSixCanonicalTraitProfiles()
+    {
+        var entries = GoldenStateLoader.LoadEmbedded();
+
+        // Each canonical profile is identified by its known FNV-1a hash.
+        var expectedHashes = new[]
+        {
+            "15cc8081", // Balanced
+            "74ae3b4d", // HighHedonist
+            "f34d05d4", // HighPlanner
+            "ef00d494", // HighSurvivor
+            "13fcd090", // HighInstinct
+            "ca4e875a", // ComfortLean
+        };
+
+        var presentHashes = entries
+            .Select(e => GoldenStateLoader.BuildTraitHash(e.TraitProfile))
+            .ToHashSet();
+
+        foreach (var hash in expectedHashes)
+        {
+            Assert.True(presentHashes.Contains(hash),
+                $"Canonical trait profile with hash '{hash}' is not represented in the embedded dataset.");
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
