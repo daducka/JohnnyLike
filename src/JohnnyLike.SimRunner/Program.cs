@@ -19,6 +19,27 @@ if (args.Length > 0 && args[0] == "optimizer")
     return;
 }
 
+// ── evaluate-golden subcommand ─────────────────────────────────────────────
+if (args.Length > 0 && args[0] == "evaluate-golden")
+{
+    RunEvaluateGolden(args[1..]);
+    return;
+}
+
+// ── optimize-golden subcommand ─────────────────────────────────────────────
+if (args.Length > 0 && args[0] == "optimize-golden")
+{
+    RunOptimizeGolden(args[1..]);
+    return;
+}
+
+// ── run-fuzzer subcommand ──────────────────────────────────────────────────
+if (args.Length > 0 && args[0] == "run-fuzzer")
+{
+    RunFuzzerComparison(args[1..]);
+    return;
+}
+
 if (args.Length == 0)
 {
     Console.WriteLine("JohnnyLike SimRunner");
@@ -870,4 +891,409 @@ void RunOptimizer(string[] optimizerArgs)
     File.WriteAllText(outputPath, JsonSerializer.Serialize(result, jsonOpts));
     Console.WriteLine();
     Console.WriteLine($"✓ Results written to {outputPath}");
+}
+
+// ─── evaluate-golden subcommand ──────────────────────────────────────────────
+
+void RunEvaluateGolden(string[] evalArgs)
+{
+    var profileArg = "default";
+    var outputDir  = "artifacts/baseline";
+
+    for (int i = 0; i < evalArgs.Length; i++)
+    {
+        switch (evalArgs[i])
+        {
+            case "--profile": profileArg = evalArgs[++i]; break;
+            case "--output":  outputDir  = evalArgs[++i]; break;
+        }
+    }
+
+    var profile = profileArg.Equals("default", StringComparison.OrdinalIgnoreCase)
+        ? DecisionTuningProfile.Default
+        : DecisionTuningProfile.LoadFromFile(profileArg);
+
+    var goldenStates = GoldenStateLoader.LoadEmbedded();
+
+    Console.WriteLine("=== EVALUATE GOLDEN ===");
+    Console.WriteLine($"Profile:      {profile.ProfileName} [{profile.ComputeHash()}]");
+    Console.WriteLine($"Golden states:{goldenStates.Count}");
+    Console.WriteLine($"Output:       {outputDir}");
+    Console.WriteLine();
+
+    Console.Write("Evaluating...");
+    var results = OptimizerRunner.EvaluateProfile(profile, goldenStates);
+    Console.WriteLine(" done.");
+
+    Directory.CreateDirectory(outputDir);
+    var jsonOpts = new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    // ── Partition results by set type ────────────────────────────────────────
+    var setTypeByKey = goldenStates.ToDictionary(gs => gs.SampleKey, gs => gs.SetType ?? GoldenSetType.Training);
+
+    static object BuildSplitMetrics(
+        IEnumerable<(GoldenStateResult result, GoldenSetType setType)> group,
+        GoldenSetType target)
+    {
+        var subset = group.Where(x => x.setType == target).Select(x => x.result).ToList();
+        var regressions = target == GoldenSetType.Sacred
+            ? subset.Where(r => !r.StateSatisfied || r.ForbiddenCategoryTriggered)
+                    .Select(r => new { sampleKey = r.SampleKey, label = r.Label, actualTopCategory = r.ActualTopCategory, desiredTopCategory = r.DesiredTopCategory, violatedForbidden = r.ForbiddenCategoryTriggered })
+                    .ToList<object>()
+            : null;
+
+        return target == GoldenSetType.Sacred
+            ? (object)new
+            {
+                exact_pass_count   = subset.Count(r => r.DesiredTopCategoryMet),
+                satisfied_pass_count = subset.Count(r => r.StateSatisfied),
+                forbidden_count    = subset.Count(r => r.ForbiddenCategoryTriggered),
+                regressions        = regressions!
+            }
+            : new
+            {
+                exact_pass_count   = subset.Count(r => r.DesiredTopCategoryMet),
+                satisfied_pass_count = subset.Count(r => r.StateSatisfied),
+                forbidden_count    = subset.Count(r => r.ForbiddenCategoryTriggered)
+            };
+    }
+
+    var paired = results.Select(r => (result: r, setType: setTypeByKey.GetValueOrDefault(r.SampleKey, GoldenSetType.Training))).ToList();
+
+    var evalSummary = new
+    {
+        profileName  = profile.ProfileName,
+        profileHash  = profile.ComputeHash(),
+        totalStates  = goldenStates.Count,
+        completedAt  = DateTime.UtcNow.ToString("o"),
+        training     = BuildSplitMetrics(paired, GoldenSetType.Training),
+        holdout      = BuildSplitMetrics(paired, GoldenSetType.Holdout),
+        sacred       = BuildSplitMetrics(paired, GoldenSetType.Sacred)
+    };
+
+    File.WriteAllText(
+        Path.Combine(outputDir, "eval-summary.json"),
+        JsonSerializer.Serialize(evalSummary, jsonOpts));
+    Console.WriteLine($"✓ eval-summary.json");
+
+    // ── eval-results.json ────────────────────────────────────────────────────
+    var evalResults = paired.Select(p => new
+    {
+        sampleKey          = p.result.SampleKey,
+        label              = p.result.Label,
+        setType            = p.setType.ToString(),
+        desiredTopCategory = p.result.DesiredTopCategory,
+        actualTopCategory  = p.result.ActualTopCategory,
+        actualTopCategories = p.result.ActualTopCategories,
+        desiredRank        = p.result.BestDesiredCategoryRank,
+        deltaFromTop       = p.result.DesiredCategoryVsWinnerDelta,
+        isExactMatch       = p.result.DesiredTopCategoryMet,
+        isSatisfied        = p.result.StateSatisfied,
+        violatedForbidden  = p.result.ForbiddenCategoryTriggered,
+        score              = p.result.Score
+    }).ToList();
+
+    File.WriteAllText(
+        Path.Combine(outputDir, "eval-results.json"),
+        JsonSerializer.Serialize(evalResults, jsonOpts));
+    Console.WriteLine($"✓ eval-results.json");
+
+    // ── failures.json ────────────────────────────────────────────────────────
+    var failures = paired
+        .Where(p => !p.result.StateSatisfied || p.result.ForbiddenCategoryTriggered)
+        .Select(p => new
+        {
+            sampleKey          = p.result.SampleKey,
+            label              = p.result.Label,
+            setType            = p.setType.ToString(),
+            desiredTopCategory = p.result.DesiredTopCategory,
+            actualTopCategory  = p.result.ActualTopCategory,
+            topCompetingCategories = p.result.ActualTopCategories,
+            desiredRank        = p.result.BestDesiredCategoryRank,
+            deltaFromTop       = p.result.DesiredCategoryVsWinnerDelta,
+            isExactMatch       = p.result.DesiredTopCategoryMet,
+            isSatisfied        = p.result.StateSatisfied,
+            violatedForbidden  = p.result.ForbiddenCategoryTriggered,
+            score              = p.result.Score
+        }).ToList();
+
+    File.WriteAllText(
+        Path.Combine(outputDir, "failures.json"),
+        JsonSerializer.Serialize(failures, jsonOpts));
+    Console.WriteLine($"✓ failures.json  ({failures.Count} failed states)");
+
+    Console.WriteLine();
+    Console.WriteLine($"✓ All artifacts written to {outputDir}");
+}
+
+// ─── optimize-golden subcommand ──────────────────────────────────────────────
+
+void RunOptimizeGolden(string[] optArgs)
+{
+    var inputProfileArg = "default";
+    var outputDir       = "artifacts/optimizer";
+    var maxIterations   = 20;
+
+    for (int i = 0; i < optArgs.Length; i++)
+    {
+        switch (optArgs[i])
+        {
+            case "--input-profile":  inputProfileArg = optArgs[++i]; break;
+            case "--output":         outputDir        = optArgs[++i]; break;
+            case "--max-iterations": maxIterations    = int.Parse(optArgs[++i]); break;
+        }
+    }
+
+    var baseProfile = inputProfileArg.Equals("default", StringComparison.OrdinalIgnoreCase)
+        ? DecisionTuningProfile.Default
+        : DecisionTuningProfile.LoadFromFile(inputProfileArg);
+
+    var goldenStates = GoldenStateLoader.LoadEmbedded();
+
+    Console.WriteLine("=== OPTIMIZE GOLDEN ===");
+    Console.WriteLine($"Base profile:   {baseProfile.ProfileName} [{baseProfile.ComputeHash()}]");
+    Console.WriteLine($"Golden states:  {goldenStates.Count}");
+    Console.WriteLine($"Max iterations: {maxIterations}");
+    Console.WriteLine($"Output:         {outputDir}");
+    Console.WriteLine();
+
+    Console.Write("Running optimizer...");
+    var result = OptimizerRunner.Run(new OptimizerOptions(
+        BaseProfile:   baseProfile,
+        GoldenStates:  goldenStates,
+        MaxIterations: maxIterations));
+    Console.WriteLine(" done.");
+
+    Directory.CreateDirectory(outputDir);
+    var jsonOpts = new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    // ── optimizer-result.json ────────────────────────────────────────────────
+    File.WriteAllText(
+        Path.Combine(outputDir, "optimizer-result.json"),
+        JsonSerializer.Serialize(result, jsonOpts));
+    Console.WriteLine($"✓ optimizer-result.json");
+
+    // ── optimized-profile.json ───────────────────────────────────────────────
+    File.WriteAllText(
+        Path.Combine(outputDir, "optimized-profile.json"),
+        result.BestProfileJson);
+    Console.WriteLine($"✓ optimized-profile.json");
+
+    // ── optimizer-diff.json ──────────────────────────────────────────────────
+    var diff = new
+    {
+        baseProfileName  = result.BaseProfileName,
+        baseProfileHash  = result.BaseProfileHash,
+        bestProfileName  = result.BestProfileName,
+        bestProfileHash  = result.BestProfileHash,
+        iterationsPerformed = result.IterationsPerformed,
+        changes          = result.ProfileDiff.Select(d => new
+        {
+            parameter     = d.ParameterName,
+            baselineValue = d.BaselineValue,
+            optimizedValue = d.CandidateValue,
+            delta         = d.Delta
+        }).ToList()
+    };
+    File.WriteAllText(
+        Path.Combine(outputDir, "optimizer-diff.json"),
+        JsonSerializer.Serialize(diff, jsonOpts));
+    Console.WriteLine($"✓ optimizer-diff.json");
+
+    // ── optimizer-comparison.json ────────────────────────────────────────────
+    var setTypeByKey = goldenStates.ToDictionary(gs => gs.SampleKey, gs => gs.SetType ?? GoldenSetType.Training);
+
+    static (int exactPass, int satisfied, int forbidden) SplitMetrics(
+        IEnumerable<GoldenStateResult> results,
+        IReadOnlyDictionary<string, GoldenSetType> setTypeByKey,
+        GoldenSetType target)
+    {
+        var subset = results.Where(r => setTypeByKey.GetValueOrDefault(r.SampleKey, GoldenSetType.Training) == target).ToList();
+        return (
+            subset.Count(r => r.DesiredTopCategoryMet),
+            subset.Count(r => r.StateSatisfied),
+            subset.Count(r => r.ForbiddenCategoryTriggered));
+    }
+
+    var (bTrainExact, bTrainSatisfied, bTrainForbidden) = SplitMetrics(result.BaseResults, setTypeByKey, GoldenSetType.Training);
+    var (bHoldExact, bHoldSatisfied, bHoldForbidden)    = SplitMetrics(result.BaseResults, setTypeByKey, GoldenSetType.Holdout);
+    var (bSacredExact, bSacredSatisfied, bSacredForbidden) = SplitMetrics(result.BaseResults, setTypeByKey, GoldenSetType.Sacred);
+
+    var (oTrainExact, oTrainSatisfied, oTrainForbidden) = SplitMetrics(result.BestResults, setTypeByKey, GoldenSetType.Training);
+    var (oHoldExact, oHoldSatisfied, oHoldForbidden)    = SplitMetrics(result.BestResults, setTypeByKey, GoldenSetType.Holdout);
+    var (oSacredExact, oSacredSatisfied, oSacredForbidden) = SplitMetrics(result.BestResults, setTypeByKey, GoldenSetType.Sacred);
+
+    var sacredRegressions = result.BestResults
+        .Where(r => setTypeByKey.GetValueOrDefault(r.SampleKey, GoldenSetType.Training) == GoldenSetType.Sacred
+                    && (!r.StateSatisfied || r.ForbiddenCategoryTriggered))
+        .Select(r => new { sampleKey = r.SampleKey, label = r.Label, actualTopCategory = r.ActualTopCategory, desiredTopCategory = r.DesiredTopCategory })
+        .ToList();
+
+    var comparison = new
+    {
+        completedAt = result.CompletedAt,
+        baseline = new
+        {
+            profileName  = result.BaseProfileName,
+            profileHash  = result.BaseProfileHash,
+            training     = new { exact_pass_count = bTrainExact, satisfied_pass_count = bTrainSatisfied, forbidden_count = bTrainForbidden },
+            holdout      = new { exact_pass_count = bHoldExact, satisfied_pass_count = bHoldSatisfied, forbidden_count = bHoldForbidden },
+            sacred       = new { exact_pass_count = bSacredExact, satisfied_pass_count = bSacredSatisfied, forbidden_count = bSacredForbidden }
+        },
+        optimized = new
+        {
+            profileName  = result.BestProfileName,
+            profileHash  = result.BestProfileHash,
+            training     = new { exact_pass_count = oTrainExact, satisfied_pass_count = oTrainSatisfied, forbidden_count = oTrainForbidden },
+            holdout      = new { exact_pass_count = oHoldExact, satisfied_pass_count = oHoldSatisfied, forbidden_count = oHoldForbidden },
+            sacred       = new { exact_pass_count = oSacredExact, satisfied_pass_count = oSacredSatisfied, forbidden_count = oSacredForbidden }
+        },
+        improvement = new
+        {
+            score_delta                 = Math.Round(result.ScoreImprovement, 4),
+            training_exact_pass_delta   = oTrainExact - bTrainExact,
+            training_satisfied_delta    = oTrainSatisfied - bTrainSatisfied,
+            holdout_exact_pass_delta    = oHoldExact - bHoldExact,
+            holdout_satisfied_delta     = oHoldSatisfied - bHoldSatisfied,
+            sacred_exact_pass_delta     = oSacredExact - bSacredExact,
+            sacred_satisfied_delta      = oSacredSatisfied - bSacredSatisfied,
+            sacred_regression_flag      = sacredRegressions.Count > 0,
+            sacred_regressions          = sacredRegressions
+        }
+    };
+
+    File.WriteAllText(
+        Path.Combine(outputDir, "optimizer-comparison.json"),
+        JsonSerializer.Serialize(comparison, jsonOpts));
+    Console.WriteLine($"✓ optimizer-comparison.json  (sacred_regression_flag={comparison.improvement.sacred_regression_flag})");
+
+    Console.WriteLine();
+    Console.WriteLine($"  Base  score: {result.BaseScore:F2}  ({result.BaseDesiredPassCount}/{goldenStates.Count} exact, {result.BaseSatisfiedCount}/{goldenStates.Count} satisfied)");
+    Console.WriteLine($"  Best  score: {result.BestScore:F2}  ({result.BestDesiredPassCount}/{goldenStates.Count} exact, {result.BestSatisfiedCount}/{goldenStates.Count} satisfied)");
+    Console.WriteLine($"  Improvement: {result.ScoreImprovement:+0.##;-0.##;0} over {result.IterationsPerformed} iteration(s)");
+    Console.WriteLine();
+    Console.WriteLine($"✓ All artifacts written to {outputDir}");
+}
+
+// ─── run-fuzzer subcommand ────────────────────────────────────────────────────
+
+void RunFuzzerComparison(string[] fuzzerArgs)
+{
+    var baselineProfileArg  = "default";
+    var optimizedProfileArg = (string?)null;
+    var outputDir           = "artifacts/fuzzer";
+
+    for (int i = 0; i < fuzzerArgs.Length; i++)
+    {
+        switch (fuzzerArgs[i])
+        {
+            case "--baseline-profile":  baselineProfileArg  = fuzzerArgs[++i]; break;
+            case "--optimized-profile": optimizedProfileArg = fuzzerArgs[++i]; break;
+            case "--output":            outputDir           = fuzzerArgs[++i]; break;
+        }
+    }
+
+    var baselineProfile = baselineProfileArg.Equals("default", StringComparison.OrdinalIgnoreCase)
+        ? DecisionTuningProfile.Default
+        : DecisionTuningProfile.LoadFromFile(baselineProfileArg);
+
+    var optimizedProfile = optimizedProfileArg != null
+        ? DecisionTuningProfile.LoadFromFile(optimizedProfileArg)
+        : (DecisionTuningProfile?)null;
+
+    Console.WriteLine("=== RUN FUZZER (COMPARISON) ===");
+    Console.WriteLine($"Baseline profile:  {baselineProfile.ProfileName} [{baselineProfile.ComputeHash()}]");
+    Console.WriteLine($"Optimized profile: {(optimizedProfile != null ? $"{optimizedProfile.ProfileName} [{optimizedProfile.ComputeHash()}]" : "none")}");
+    Console.WriteLine($"Output:            {outputDir}");
+    Console.WriteLine();
+
+    Directory.CreateDirectory(outputDir);
+    var jsonOpts = new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    // ── Baseline run ─────────────────────────────────────────────────────────
+    Console.Write("Running baseline fuzzer...");
+    var baselineOptions = new PressureFuzzerOptions(TuningProfile: baselineProfile, CoarseGrid: true);
+    var baselineSamples = PressureFuzzerRunner.Run(baselineOptions);
+    Console.WriteLine($" {baselineSamples.Count} samples.");
+
+    var baselineProfileMeta = new ProfileMetadata(
+        baselineProfile.ProfileName,
+        baselineProfile.Description,
+        baselineProfile.ComputeHash());
+
+    var baselineSummaryPath = Path.Combine(outputDir, "baseline-summary.json");
+    PressureFuzzerRunner.WriteSummaryJson(baselineSamples, baselineSummaryPath, baselineProfileMeta);
+    Console.WriteLine($"✓ baseline-summary.json");
+
+    PressureFuzzerRunner.WriteJson(baselineSamples, Path.Combine(outputDir, "baseline-results.json"));
+    Console.WriteLine($"✓ baseline-results.json");
+
+    // ── Optimized run (if profile provided) ──────────────────────────────────
+    List<PressureSample>? optimizedSamples = null;
+    if (optimizedProfile != null)
+    {
+        Console.Write("Running optimized fuzzer...");
+        var optimizedOptions = new PressureFuzzerOptions(TuningProfile: optimizedProfile, CoarseGrid: true);
+        optimizedSamples = PressureFuzzerRunner.Run(optimizedOptions);
+        Console.WriteLine($" {optimizedSamples.Count} samples.");
+
+        var optimizedProfileMeta = new ProfileMetadata(
+            optimizedProfile.ProfileName,
+            optimizedProfile.Description,
+            optimizedProfile.ComputeHash());
+
+        var optimizedSummaryPath = Path.Combine(outputDir, "optimized-summary.json");
+        PressureFuzzerRunner.WriteSummaryJson(optimizedSamples, optimizedSummaryPath, optimizedProfileMeta);
+        Console.WriteLine($"✓ optimized-summary.json");
+
+        PressureFuzzerRunner.WriteJson(optimizedSamples, Path.Combine(outputDir, "optimized-results.json"));
+        Console.WriteLine($"✓ optimized-results.json");
+    }
+
+    // ── comparison-summary.json ───────────────────────────────────────────────
+    static object BuildFuzzerStarvationMetrics(List<PressureSample> samples)
+    {
+        // "Starvation" = samples where satiety is at or below 30 (FoodPressureThreshold)
+        var starvationSamples = samples.Where(s => s.State.Satiety <= 30.0).ToList();
+        var total = starvationSamples.Count;
+
+        double toPercentage(int count) => total > 0 ? Math.Round(count * 100.0 / total, 1) : 0.0;
+
+        var foodConsumptionLost = starvationSamples.Count(s => s.Flags.DirectFoodActionPresentButLost || s.Flags.FoodAvailableButNotChosen);
+        var comfortDominated    = starvationSamples.Count(s => s.Flags.ComfortBeatFood);
+        var prepDominated       = starvationSamples.Count(s => s.Flags.PrepDominatesFood);
+
+        return new
+        {
+            starvation_sample_count             = total,
+            food_consumption_lost_count         = foodConsumptionLost,
+            food_consumption_lost_pct           = toPercentage(foodConsumptionLost),
+            comfort_dominated_count             = comfortDominated,
+            comfort_dominated_pct               = toPercentage(comfortDominated),
+            prep_dominated_count                = prepDominated,
+            prep_dominated_pct                  = toPercentage(prepDominated)
+        };
+    }
+
+    var baselineMetrics   = BuildFuzzerStarvationMetrics(baselineSamples);
+    var optimizedMetrics  = optimizedSamples != null
+        ? BuildFuzzerStarvationMetrics(optimizedSamples)
+        : (object?)null;
+
+    var comparison = new
+    {
+        completedAt              = DateTime.UtcNow.ToString("o"),
+        total_baseline_samples   = baselineSamples.Count,
+        total_optimized_samples  = optimizedSamples?.Count,
+        baseline                 = baselineMetrics,
+        optimized                = optimizedMetrics
+    };
+
+    File.WriteAllText(
+        Path.Combine(outputDir, "comparison-summary.json"),
+        JsonSerializer.Serialize(comparison, jsonOpts));
+    Console.WriteLine($"✓ comparison-summary.json");
+
+    Console.WriteLine();
+    Console.WriteLine($"✓ All artifacts written to {outputDir}");
 }

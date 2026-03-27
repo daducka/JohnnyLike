@@ -1,0 +1,41 @@
+name: SimRunner — Optimize Golden
+
+on:
+  workflow_dispatch:
+
+jobs:
+  simrunner-optimize:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore JohnnyLike.sln
+
+    - name: Build (Release)
+      run: dotnet build JohnnyLike.sln --configuration Release --no-restore /warnaserror
+
+    - name: Run tests
+      run: dotnet test JohnnyLike.sln --configuration Release --no-build --verbosity normal
+
+    - name: Run optimizer
+      run: |
+        dotnet run --project src/JohnnyLike.SimRunner --configuration Release --no-build -- \
+          optimize-golden \
+          --input-profile default \
+          --output artifacts/optimizer
+
+    - name: Upload optimizer artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: simrunner-optimizer
+        path: artifacts/optimizer/
+        retention-days: 30
