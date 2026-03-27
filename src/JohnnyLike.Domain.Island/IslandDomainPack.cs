@@ -444,6 +444,30 @@ public class IslandDomainPack : IDomainPack
         return intrinsicScore + qualitySum;
     }
 
+    /// <summary>
+    /// Computes a smooth suppression multiplier for Comfort and Rest based on actor satiety.
+    /// Returns 1.0 when satiety is at or above <see cref="MoodTuning.HungerSuppressionStartSatiety"/>,
+    /// dropping non-linearly to <see cref="MoodTuning.ComfortRestSuppressionMin"/> as satiety
+    /// reaches <see cref="MoodTuning.HungerSuppressionFullSatiety"/>.
+    /// The curve shape is controlled by <see cref="MoodTuning.HungerSuppressionExponent"/>:
+    /// values &gt; 1 cause a slower initial drop and a sharper final descent near critical hunger.
+    /// </summary>
+    private static double ComputeHungerSuppression(double satiety, MoodTuning mood)
+    {
+        if (satiety >= mood.HungerSuppressionStartSatiety)
+            return 1.0;
+
+        if (satiety <= mood.HungerSuppressionFullSatiety)
+            return mood.ComfortRestSuppressionMin;
+
+        var t = (satiety - mood.HungerSuppressionFullSatiety)
+              / (mood.HungerSuppressionStartSatiety - mood.HungerSuppressionFullSatiety);
+
+        var curved = Math.Pow(t, mood.HungerSuppressionExponent);
+
+        return mood.ComfortRestSuppressionMin + (1.0 - mood.ComfortRestSuppressionMin) * curved;
+    }
+
     private static QualityModel BuildQualityModel(
         IslandActorState actor,
         long currentTick = 0L,
@@ -580,6 +604,15 @@ public class IslandDomainPack : IDomainPack
         // They suppress longer-horizon tendencies so survival instinct takes over.
         // Low health suppresses Fun, Mastery, and Preparation — badly hurt actors
         // should stop doing frivolous things and focus on rest/safety.
+        //
+        // Critical-hunger suppression: under severe hunger, Comfort and Rest lose
+        // competitive weight so FoodConsumption/FoodAcquisition dominate naturally.
+        // Applied to both needAdd (need-driven pressure) and moodMultiplier (personality),
+        // ensuring the full category contribution is suppressed, not just its personality part.
+        var hungerSuppression = ComputeHungerSuppression(actor.Satiety, mood);
+        needAdd[QualityType.Comfort] *= hungerSuppression;
+        needAdd[QualityType.Rest]    *= hungerSuppression;
+
         var moodMultiplier = new Dictionary<QualityType, double>
         {
             [QualityType.Preparation]     = Math.Min(
@@ -598,10 +631,11 @@ public class IslandDomainPack : IDomainPack
                                                 Math.Max(mood.InjuryFunSuppressionFloor,
                                                          1.0 - injuryFactor * (1.0 - mood.InjuryFunSuppressionFloor)),
             [QualityType.Efficiency]      = 1.0,
-            [QualityType.Comfort]         = 1.0,
+            [QualityType.Comfort]         = hungerSuppression,
             [QualityType.Safety]          = 1.0,
             [QualityType.FoodConsumption] = 1.0,
-            [QualityType.FoodAcquisition] = 1.0
+            [QualityType.FoodAcquisition] = 1.0,
+            [QualityType.Rest]            = hungerSuppression
         };
 
         return new QualityModel(needAdd, personalityBase, moodMultiplier);
@@ -1110,6 +1144,19 @@ public class IslandDomainPack : IDomainPack
                                                  1.0 - injuryFactor * (1.0 - mood.InjuryPreparationSuppressionFloor)), 4)
         };
 
+        // Hunger suppression breakdown for Comfort/Rest — mirrors ComputeHungerSuppression in BuildQualityModel.
+        var hungerSuppression = ComputeHungerSuppression(actor.Satiety, mood);
+        var hungerSuppressionBreakdown = new Dictionary<string, object>
+        {
+            ["satiety"]             = Math.Round(actor.Satiety, 4),
+            ["startThreshold"]      = mood.HungerSuppressionStartSatiety,
+            ["fullThreshold"]       = mood.HungerSuppressionFullSatiety,
+            ["suppressionMin"]      = mood.ComfortRestSuppressionMin,
+            ["exponent"]            = mood.HungerSuppressionExponent,
+            ["suppressionFactor"]   = Math.Round(hungerSuppression, 4),
+            ["affectedCategories"]  = new[] { "Comfort", "Rest" }
+        };
+
         // Personality influence breakdown — uses same helpers as BuildQualityModel to avoid formula drift.
         var traits = DerivePersonalityTraits(actor);
         var qualityPersonalityBreakdown = BuildQualityPersonalityBreakdown(traits, _profile.Personality);
@@ -1221,6 +1268,7 @@ public class IslandDomainPack : IDomainPack
             ["actorStats"]                  = actorStats,
             ["pressures"]                   = pressures,
             ["prepTimePressureBreakdown"]   = prepTimePressureBreakdown,
+            ["hungerSuppressionBreakdown"]  = hungerSuppressionBreakdown,
             ["decisionPragmatismBreakdown"] = decisionPragmatismBreakdown,
             ["healthInfluence"]             = healthInfluence,
             ["personalityInfluence"]        = personalityInfluence,
