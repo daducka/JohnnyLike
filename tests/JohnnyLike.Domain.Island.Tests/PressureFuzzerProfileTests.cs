@@ -247,7 +247,14 @@ public class PressureFuzzerProfileTests
             ProfileName = "EmptyRunProfile",
             Description = "Used when no samples are produced"
         };
-        var meta     = new ProfileMetadata(profile.ProfileName, profile.Description, profile.ComputeHash());
+        var meta     = new ProfileMetadata(
+            profile.ProfileName,
+            profile.Description,
+            profile.ComputeHash(),
+            profile.Mood.HungerSuppressionStartSatiety,
+            profile.Mood.HungerSuppressionFullSatiety,
+            profile.Mood.ComfortRestSuppressionMin,
+            profile.Mood.HungerSuppressionExponent);
         var tmpPath  = Path.GetTempFileName();
         try
         {

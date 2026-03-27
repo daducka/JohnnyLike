@@ -106,7 +106,15 @@ public record ProfileMetadata(
     /// Deterministic 8-character hex hash of all tuning values.
     /// Two profiles with identical parameters share the same hash.
     /// </summary>
-    string ProfileHash);
+    string ProfileHash,
+    /// <summary>Satiety at or above which Comfort/Rest hunger suppression is inactive (factor = 1.0).</summary>
+    double HungerSuppressionStartSatiety,
+    /// <summary>Satiety at or below which full Comfort/Rest suppression applies (factor = ComfortRestSuppressionMin).</summary>
+    double HungerSuppressionFullSatiety,
+    /// <summary>Minimum suppression multiplier applied to Comfort and Rest at full hunger suppression.</summary>
+    double ComfortRestSuppressionMin,
+    /// <summary>Exponent controlling the curve shape of the suppression ramp.</summary>
+    double HungerSuppressionExponent);
 
 public record PressureSample(
     /// <summary>
@@ -225,7 +233,11 @@ public static class PressureFuzzerRunner
         var profileMeta = new ProfileMetadata(
             profile.ProfileName,
             profile.Description,
-            profile.ComputeHash());
+            profile.ComputeHash(),
+            profile.Mood.HungerSuppressionStartSatiety,
+            profile.Mood.HungerSuppressionFullSatiety,
+            profile.Mood.ComfortRestSuppressionMin,
+            profile.Mood.HungerSuppressionExponent);
 
         foreach (var actorName in actorNames)
         {
@@ -542,7 +554,14 @@ public static class PressureFuzzerRunner
         {
             profileName        = profile.ProfileName,
             profileDescription = profile.ProfileDescription,
-            profileHash        = profile.ProfileHash
+            profileHash        = profile.ProfileHash,
+            hungerSuppression  = new
+            {
+                startSatiety  = profile.HungerSuppressionStartSatiety,
+                fullSatiety   = profile.HungerSuppressionFullSatiety,
+                minFactor     = profile.ComfortRestSuppressionMin,
+                exponent      = profile.HungerSuppressionExponent
+            }
         };
 
         var summary = new

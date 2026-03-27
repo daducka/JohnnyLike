@@ -1,5 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island;
+using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Supply;
 
 namespace JohnnyLike.Domain.Island.Tests;
 
@@ -95,6 +97,10 @@ public class DecisionTuningProfileTests
         Assert.Equal(0.15, m.InjuryFunSuppressionFloor);
         Assert.Equal(0.30, m.InjuryMasterySuppressionFloor);
         Assert.Equal(0.40, m.InjuryPreparationSuppressionFloor);
+        Assert.Equal(25.0, m.HungerSuppressionStartSatiety);
+        Assert.Equal(10.0, m.HungerSuppressionFullSatiety);
+        Assert.Equal(0.3,  m.ComfortRestSuppressionMin);
+        Assert.Equal(2.0,  m.HungerSuppressionExponent);
     }
 
     [Fact]
@@ -514,6 +520,315 @@ public class DecisionTuningProfileTests
         {
             Assert.Equal(candA[i].Action.Id, candB[i].Action.Id);
             Assert.Equal(candA[i].Score, candB[i].Score, precision: 9);
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // 10. Hunger suppression for Comfort/Rest
+    // ═════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void HungerSuppression_AboveStartThreshold_MoodMultiplierIsOne()
+    {
+        // Satiety=30 > HungerSuppressionStartSatiety(25) → no suppression; Comfort/Rest moodMultiplier = 1.0
+        var (domain, actorId, actor, world) = CreateSetup(satiety: 30.0, energy: 50.0, morale: 50.0);
+        var resources   = new EmptyResourceAvailability();
+        var candidates  = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        var qmd = (Dictionary<string, object>)explanation["qualityModelDecomposition"];
+
+        if (qmd.ContainsKey("Comfort"))
+        {
+            var comfort = (Dictionary<string, object>)qmd["Comfort"];
+            Assert.Equal(1.0, (double)comfort["moodMultiplier"], precision: 4);
+        }
+        if (qmd.ContainsKey("Rest"))
+        {
+            var rest = (Dictionary<string, object>)qmd["Rest"];
+            Assert.Equal(1.0, (double)rest["moodMultiplier"], precision: 4);
+        }
+    }
+
+    [Fact]
+    public void HungerSuppression_AtFullThreshold_MoodMultiplierIsMin()
+    {
+        // Satiety=10 == HungerSuppressionFullSatiety(10) → full suppression; moodMultiplier = ComfortRestSuppressionMin(0.3)
+        var (domain, actorId, actor, world) = CreateSetup(satiety: 10.0, energy: 50.0, morale: 50.0);
+        var resources   = new EmptyResourceAvailability();
+        var candidates  = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        var qmd = (Dictionary<string, object>)explanation["qualityModelDecomposition"];
+
+        if (qmd.ContainsKey("Comfort"))
+        {
+            var comfort = (Dictionary<string, object>)qmd["Comfort"];
+            Assert.Equal(0.3, (double)comfort["moodMultiplier"], precision: 4);
+        }
+        if (qmd.ContainsKey("Rest"))
+        {
+            var rest = (Dictionary<string, object>)qmd["Rest"];
+            Assert.Equal(0.3, (double)rest["moodMultiplier"], precision: 4);
+        }
+    }
+
+    [Fact]
+    public void HungerSuppression_BelowFullThreshold_MoodMultiplierIsMin()
+    {
+        // Satiety=5 < HungerSuppressionFullSatiety(10) → full suppression floor applied
+        var (domain, actorId, actor, world) = CreateSetup(satiety: 5.0, energy: 50.0, morale: 50.0);
+        var resources   = new EmptyResourceAvailability();
+        var candidates  = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        var qmd = (Dictionary<string, object>)explanation["qualityModelDecomposition"];
+
+        if (qmd.ContainsKey("Comfort"))
+        {
+            var comfort = (Dictionary<string, object>)qmd["Comfort"];
+            Assert.Equal(0.3, (double)comfort["moodMultiplier"], precision: 4);
+        }
+        if (qmd.ContainsKey("Rest"))
+        {
+            var rest = (Dictionary<string, object>)qmd["Rest"];
+            Assert.Equal(0.3, (double)rest["moodMultiplier"], precision: 4);
+        }
+    }
+
+    [Fact]
+    public void HungerSuppression_MidRange_MoodMultiplierIsBetweenMinAndOne()
+    {
+        // Satiety=17.5 is midway between FullSatiety(10) and StartSatiety(25) → t=0.5, curved=0.25 (exp=2)
+        // factor = 0.3 + (1.0 - 0.3) * 0.25 = 0.3 + 0.175 = 0.475
+        var (domain, actorId, actor, world) = CreateSetup(satiety: 17.5, energy: 50.0, morale: 50.0);
+        var resources   = new EmptyResourceAvailability();
+        var candidates  = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        var qmd = (Dictionary<string, object>)explanation["qualityModelDecomposition"];
+
+        if (qmd.ContainsKey("Comfort"))
+        {
+            var comfort = (Dictionary<string, object>)qmd["Comfort"];
+            var moodMult = (double)comfort["moodMultiplier"];
+            Assert.InRange(moodMult, 0.3, 1.0);
+            Assert.Equal(0.475, moodMult, precision: 4);
+        }
+    }
+
+    [Fact]
+    public void HungerSuppression_CriticalHunger_ComfortScoreLowerThanNormal()
+    {
+        // Critical hunger (satiety=5) should produce lower Comfort effective weight than normal satiety (satiety=80)
+        var (domainCritical, actorIdC, actorC, worldC) = CreateSetup(satiety: 5.0,  energy: 50.0, morale: 0.0);
+        var (domainNormal,   actorIdN, actorN, worldN) = CreateSetup(satiety: 80.0, energy: 50.0, morale: 0.0);
+
+        var resources = new EmptyResourceAvailability();
+        var candC = domainCritical.GenerateCandidates(actorIdC, actorC, worldC, 0L, new Random(1), resources);
+        var candN = domainNormal  .GenerateCandidates(actorIdN, actorN, worldN, 0L, new Random(1), resources);
+
+        var explainC = domainCritical.ExplainCandidateScoring(actorIdC, actorC, worldC, 0L, candC)!;
+        var explainN = domainNormal  .ExplainCandidateScoring(actorIdN, actorN, worldN, 0L, candN)!;
+
+        var qmdC = (Dictionary<string, object>)explainC["qualityModelDecomposition"];
+        var qmdN = (Dictionary<string, object>)explainN["qualityModelDecomposition"];
+
+        if (qmdC.ContainsKey("Comfort") && qmdN.ContainsKey("Comfort"))
+        {
+            var comfortWeightCritical = (double)((Dictionary<string, object>)qmdC["Comfort"])["effectiveWeight"];
+            var comfortWeightNormal   = (double)((Dictionary<string, object>)qmdN["Comfort"])["effectiveWeight"];
+            Assert.True(comfortWeightCritical < comfortWeightNormal,
+                $"Critical hunger Comfort weight ({comfortWeightCritical}) should be less than normal ({comfortWeightNormal})");
+        }
+    }
+
+    [Fact]
+    public void HungerSuppression_ExplainScoring_ContainsSuppressionBreakdown()
+    {
+        // ExplainCandidateScoring should include hungerSuppressionBreakdown key
+        var (domain, actorId, actor, world) = CreateSetup(satiety: 12.0);
+        var resources   = new EmptyResourceAvailability();
+        var candidates  = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        Assert.True(explanation.ContainsKey("hungerSuppressionBreakdown"),
+            "ExplainCandidateScoring should include hungerSuppressionBreakdown");
+
+        var breakdown = (Dictionary<string, object>)explanation["hungerSuppressionBreakdown"];
+        Assert.True(breakdown.ContainsKey("suppressionFactor"), "Breakdown should contain suppressionFactor");
+        Assert.True(breakdown.ContainsKey("satiety"),           "Breakdown should contain satiety");
+
+        var factor = (double)breakdown["suppressionFactor"];
+        Assert.InRange(factor, 0.3, 1.0);
+    }
+
+    [Fact]
+    public void HungerSuppression_CustomMin_AffectsComfortRestAtCriticalHunger()
+    {
+        // Custom profile with ComfortRestSuppressionMin=0.1 should produce lower Comfort weight than default (0.3)
+        var customProfile = new DecisionTuningProfile
+        {
+            Mood = new MoodTuning { ComfortRestSuppressionMin = 0.1 }
+        };
+
+        var (domainDefault, actorIdD, actorD, worldD) = CreateSetup(satiety: 5.0, morale: 0.0);
+        var (domainCustom,  actorIdC, actorC, worldC) = CreateSetup(satiety: 5.0, morale: 0.0, profile: customProfile);
+
+        var resources = new EmptyResourceAvailability();
+        var candD = domainDefault.GenerateCandidates(actorIdD, actorD, worldD, 0L, new Random(1), resources);
+        var candC = domainCustom .GenerateCandidates(actorIdC, actorC, worldC, 0L, new Random(1), resources);
+
+        var explainD = domainDefault.ExplainCandidateScoring(actorIdD, actorD, worldD, 0L, candD)!;
+        var explainC = domainCustom .ExplainCandidateScoring(actorIdC, actorC, worldC, 0L, candC)!;
+
+        var qmdD = (Dictionary<string, object>)explainD["qualityModelDecomposition"];
+        var qmdC = (Dictionary<string, object>)explainC["qualityModelDecomposition"];
+
+        if (qmdD.ContainsKey("Comfort") && qmdC.ContainsKey("Comfort"))
+        {
+            var moodDefault = (double)((Dictionary<string, object>)qmdD["Comfort"])["moodMultiplier"];
+            var moodCustom  = (double)((Dictionary<string, object>)qmdC["Comfort"])["moodMultiplier"];
+            Assert.True(moodCustom < moodDefault,
+                $"Custom ComfortRestSuppressionMin=0.1 should give lower moodMultiplier ({moodCustom}) than default 0.3 ({moodDefault})");
+            Assert.Equal(0.1, moodCustom, precision: 4);
+        }
+    }
+
+    [Fact]
+    public void Default_ToDebugString_ContainsHungerSuppressionValues()
+    {
+        var s = DecisionTuningProfile.Default.ToDebugString();
+        Assert.Contains("HungerSuppressionStartSatiety", s);
+        Assert.Contains("HungerSuppressionFullSatiety",  s);
+        Assert.Contains("ComfortRestSuppressionMin",     s);
+        Assert.Contains("HungerSuppressionExponent",     s);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // 11. Regression: food beats comfort under critical hunger
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Regression test for the comfort-trap failure mode.
+    /// Actor has critical hunger (satiety=10), food available in the supply pile,
+    /// and a bed present for rest/comfort candidates.
+    /// FoodConsumption action should be the top-scoring candidate.
+    /// </summary>
+    [Fact]
+    public void CriticalHunger_WithFoodAndBedAvailable_FoodConsumptionCandidateWins()
+    {
+        var domain  = new IslandDomainPack();
+        var actorId = new ActorId("Tester");
+        var actor   = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            // Critical hunger; comfortable energy and morale (so misery pressure would normally push comfort)
+            ["satiety"] = 10.0,
+            ["energy"]  = 80.0,
+            ["morale"]  = 0.0   // max misery pressure → highest possible comfort need without suppression
+        });
+        actor.DecisionPragmatism = 1.0; // deterministic
+        var world = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, world);
+
+        // Add food to the shared supply pile so bash_and_eat_coconut / eat actions are available.
+        world.SharedSupplyPile!.AddSupply(5, () => new CoconutSupply());
+
+        // Add a bed to the world so sleep_in_bed and rest candidates compete.
+        world.AddWorldItem(new PalmFrondBedItem("test_bed"), "beach");
+
+        var resources  = new EmptyResourceAvailability();
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), resources);
+
+        // Identify the top-scoring candidate's dominant quality.
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+        var contribs    = domain.ComputeQualityContributions(actor, world, 0L, candidates);
+
+        // Top candidate (highest Score) should have FoodConsumption as its dominant contribution.
+        var topCandidate = candidates.OrderByDescending(c => c.Score).First();
+        var topContribs  = contribs[candidates.IndexOf(topCandidate)];
+
+        Assert.NotEmpty(topContribs);
+        var dominantQuality = topContribs[0].Quality; // contribs are sorted descending by contribution
+        Assert.Equal(QualityType.FoodConsumption, dominantQuality);
+
+        // Also verify the effective weight of FoodConsumption exceeds Comfort under critical hunger.
+        var qmd = (Dictionary<string, object>)explanation["qualityModelDecomposition"];
+        var foodWeight = qmd.ContainsKey("FoodConsumption")
+            ? (double)((Dictionary<string, object>)qmd["FoodConsumption"])["effectiveWeight"]
+            : 0.0;
+        var comfortWeight = qmd.ContainsKey("Comfort")
+            ? (double)((Dictionary<string, object>)qmd["Comfort"])["effectiveWeight"]
+            : 0.0;
+
+        Assert.True(foodWeight > comfortWeight,
+            $"FoodConsumption effective weight ({foodWeight}) should exceed Comfort ({comfortWeight}) at critical hunger (satiety=10)");
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // 12. Threshold guard: invalid threshold ordering
+    // ═════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void HungerSuppression_InvertedThresholds_ReturnsSuppressedValue()
+    {
+        // Invalid config: start <= full (inverted). Should not divide by zero or return > 1.0.
+        // Any satiety value below the start threshold should get the min suppression.
+        var customProfile = new DecisionTuningProfile
+        {
+            Mood = new MoodTuning
+            {
+                HungerSuppressionStartSatiety = 10.0,  // start == full (degenerate)
+                HungerSuppressionFullSatiety  = 10.0,
+                ComfortRestSuppressionMin     = 0.3
+            }
+        };
+
+        var (domain, actorId, actor, world) = CreateSetup(satiety: 5.0, profile: customProfile);
+        var resources   = new EmptyResourceAvailability();
+        var candidates  = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        // Should not throw and should clamp to ComfortRestSuppressionMin
+        var qmd = (Dictionary<string, object>)explanation["qualityModelDecomposition"];
+        if (qmd.ContainsKey("Comfort"))
+        {
+            var factor = (double)((Dictionary<string, object>)qmd["Comfort"])["moodMultiplier"];
+            Assert.InRange(factor, 0.0, 1.0); // must not produce invalid values
+        }
+    }
+
+    [Fact]
+    public void HungerSuppression_StartLessThanFull_NeverProducesInvalidValues()
+    {
+        // Invalid config: start(5) < full(20) (fully inverted).
+        // With inverted thresholds, the first two guards cover all satiety values:
+        //   satiety >= start(5) → guard 1 returns 1.0 (no suppression)
+        //   satiety <= full(20) → guard 2 returns min (full suppression)
+        // No satiety value can slip through to the range division, so no NaN/infinity.
+        var customProfile = new DecisionTuningProfile
+        {
+            Mood = new MoodTuning
+            {
+                HungerSuppressionStartSatiety = 5.0,   // start < full (inverted)
+                HungerSuppressionFullSatiety  = 20.0,
+                ComfortRestSuppressionMin     = 0.3
+            }
+        };
+
+        // satiety=3 < start(5): guard 1 fails; satiety=3 <= full(20): guard 2 fires → min(0.3)
+        var (domain, actorId, actor, world) = CreateSetup(satiety: 3.0, profile: customProfile);
+        var resources   = new EmptyResourceAvailability();
+        var candidates  = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        var qmd = (Dictionary<string, object>)explanation["qualityModelDecomposition"];
+        if (qmd.ContainsKey("Comfort"))
+        {
+            var factor = (double)((Dictionary<string, object>)qmd["Comfort"])["moodMultiplier"];
+            // Must be a valid value — no NaN/infinity. Guard 2 fires: returns min (0.3).
+            Assert.InRange(factor, 0.0, 1.0);
+            Assert.Equal(0.3, factor, precision: 4);
         }
     }
 }

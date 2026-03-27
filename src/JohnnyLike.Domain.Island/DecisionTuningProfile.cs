@@ -78,7 +78,11 @@ public sealed class DecisionTuningProfile
             KV("FunCriticalEnergyThreshold",  Mood.FunCriticalEnergyThreshold),
             KV("InjuryFunSuppressionFloor",         Mood.InjuryFunSuppressionFloor),
             KV("InjuryMasterySuppressionFloor",     Mood.InjuryMasterySuppressionFloor),
-            KV("InjuryPreparationSuppressionFloor", Mood.InjuryPreparationSuppressionFloor));
+            KV("InjuryPreparationSuppressionFloor", Mood.InjuryPreparationSuppressionFloor),
+            KV("HungerSuppressionStartSatiety", Mood.HungerSuppressionStartSatiety),
+            KV("HungerSuppressionFullSatiety",  Mood.HungerSuppressionFullSatiety),
+            KV("ComfortRestSuppressionMin",     Mood.ComfortRestSuppressionMin),
+            KV("HungerSuppressionExponent",     Mood.HungerSuppressionExponent));
 
         AppendSection(sb, "Personality",
             KV("PreparationScale",    Personality.PreparationScale),
@@ -312,6 +316,28 @@ public sealed class MoodTuning
     /// <summary>Minimum multiplier for Preparation personality at 0 HP (suppressed to 40%).
     /// Expected range: [0.0, 0.8]</summary>
     public double InjuryPreparationSuppressionFloor { get; init; } = 0.40;
+
+    // ── Critical-hunger Comfort/Rest suppression ───────────────────────────────
+    // As satiety drops below HungerSuppressionStartSatiety, a smooth suppression
+    // curve de-prioritises Comfort and Rest so FoodConsumption/FoodAcquisition
+    // dominate naturally without fully disabling personality differentiation.
+
+    /// <summary>Satiety at or above which Comfort/Rest suppression is inactive (factor = 1.0).
+    /// Expected range: [15.0, 50.0]</summary>
+    public double HungerSuppressionStartSatiety { get; init; } = 25.0;
+
+    /// <summary>Satiety at or below which full suppression is applied (factor = ComfortRestSuppressionMin).
+    /// Expected range: [0.0, 20.0]</summary>
+    public double HungerSuppressionFullSatiety { get; init; } = 10.0;
+
+    /// <summary>Minimum suppression multiplier applied to Comfort and Rest at full hunger suppression.
+    /// Expected range: [0.0, 0.7]</summary>
+    public double ComfortRestSuppressionMin { get; init; } = 0.3;
+
+    /// <summary>Exponent controlling the curve shape of the suppression ramp.
+    /// Values &gt; 1.0 cause a slower initial drop and sharper near-critical suppression.
+    /// Expected range: [0.5, 5.0]</summary>
+    public double HungerSuppressionExponent { get; init; } = 2.0;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
