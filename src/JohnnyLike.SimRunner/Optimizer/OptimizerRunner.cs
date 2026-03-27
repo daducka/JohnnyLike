@@ -66,6 +66,10 @@ file static class ObjectiveWeights
 /// </summary>
 public static class OptimizerRunner
 {
+    // ── Action ID constants ────────────────────────────────────────────────────
+    /// <summary>Action ID for the think_about_supplies candidate, used for targeted analysis.</summary>
+    private const string ThinkAboutSuppliesActionId = "think_about_supplies";
+
     // ── Default tunable parameter set ─────────────────────────────────────────
     // A constrained, interpretable subset of need/mood parameters as recommended in
     // the issue guidance. This avoids optimising every knob at once.
@@ -618,6 +622,142 @@ public static class OptimizerRunner
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Evaluates a single golden state entry and returns both the standard
+    /// <see cref="GoldenStateResult"/> and a <see cref="GoldenStateDetailedData"/> containing
+    /// per-candidate ranking, quality-model decomposition, and think-about-supplies analysis.
+    /// Uses the same deterministic evaluation path as <see cref="EvaluateEntry"/>.
+    /// </summary>
+    /// <param name="entry">The golden state to evaluate.</param>
+    /// <param name="domain">Already-configured domain pack to evaluate against.</param>
+    /// <param name="topCandidateCount">Number of top candidates to include in the breakdown (default 5).</param>
+    public static (GoldenStateResult Result, GoldenStateDetailedData Details) EvaluateEntryDetailed(
+        GoldenStateEntry entry,
+        IslandDomainPack domain,
+        int topCandidateCount = 5)
+    {
+        if (!Enum.TryParse<FuzzerScenarioKind>(entry.Scenario, out var scenario))
+            throw new ArgumentException($"Unknown scenario kind '{entry.Scenario}'.");
+
+        var actorId = new ActorId("trait-actor");
+
+        var stateData = new Dictionary<string, object>
+        {
+            ["satiety"] = entry.State.Satiety,
+            ["energy"]  = entry.State.Energy,
+            ["morale"]  = entry.State.Morale,
+        };
+        var actorState = (IslandActorState)domain.CreateActorState(actorId, stateData);
+        actorState.Health = entry.State.Health;
+
+        var worldState = PressureFuzzerScenarios.Build(scenario, actorId);
+        var rng        = new Random(StableSeed(entry.SampleKey));
+
+        var candidates = domain.GenerateCandidates(
+            actorId, actorState, worldState, 0L, rng,
+            NullResourceAvailability.Instance,
+            entry.TraitProfile);
+
+        var sorted = candidates.OrderByDescending(c => c.Score).ToList();
+
+        var contributions = domain.ComputeQualityContributions(
+            actorState, worldState, 0L, sorted,
+            entry.TraitProfile);
+
+        var result  = ScoreGoldenState(entry, sorted, contributions);
+        var details = BuildDetailedData(sorted, contributions, actorState, worldState, entry.TraitProfile, domain, topCandidateCount);
+
+        return (result, details);
+    }
+
+    /// <summary>
+    /// Builds the <see cref="GoldenStateDetailedData"/> from already-computed candidates
+    /// and their contributions, plus the quality-model decomposition.
+    /// </summary>
+    private static GoldenStateDetailedData BuildDetailedData(
+        List<ActionCandidate> sorted,
+        IReadOnlyList<IReadOnlyList<(QualityType Quality, double Contribution)>> contributions,
+        IslandActorState actorState,
+        IslandWorldState worldState,
+        TraitProfile explicitTraits,
+        IslandDomainPack domain,
+        int topCandidateCount)
+    {
+        // ── Top candidates ──────────────────────────────────────────────────
+        var topCandidates = new List<CandidateRankEntry>();
+        for (int i = 0; i < Math.Min(topCandidateCount, sorted.Count); i++)
+        {
+            var c           = sorted[i];
+            var contribs    = contributions[i];
+            var qualEntries = new Dictionary<string, CandidateQualityEntry>();
+
+            foreach (var (q, contribution) in contribs)
+            {
+                c.Qualities.TryGetValue(q, out var qValue);
+                var effWeight = contribution > 0 && qValue > 0 ? Math.Round(contribution / qValue, 4) : 0.0;
+                qualEntries[q.ToString()] = new CandidateQualityEntry(
+                    QualityValue:    Math.Round(qValue,       4),
+                    EffectiveWeight: effWeight,
+                    Contribution:    Math.Round(contribution, 4));
+            }
+
+            var dominantCategories = contribs
+                .Select(x => x.Quality.ToString())
+                .ToList();
+
+            topCandidates.Add(new CandidateRankEntry(
+                ActionId:           c.Action.Id.Value,
+                Rank:               i + 1,
+                Score:              Math.Round(c.Score,          4),
+                IntrinsicScore:     Math.Round(c.IntrinsicScore, 4),
+                DominantCategories: dominantCategories,
+                QualityContributions: qualEntries));
+        }
+
+        // ── Quality model decomposition ─────────────────────────────────────
+        var rawDecomp  = domain.ComputeQualityModelDecomposition(actorState, worldState, 0L, explicitTraits);
+        var decomp     = rawDecomp.ToDictionary(
+            kvp => kvp.Key.ToString(),
+            kvp => new QualityModelComponentEntry(
+                NeedAdd:         Math.Round(kvp.Value.NeedAdd,         4),
+                PersonalityBase: Math.Round(kvp.Value.PersonalityBase, 4),
+                MoodMultiplier:  Math.Round(kvp.Value.MoodMultiplier,  4),
+                EffectiveWeight: Math.Round(kvp.Value.EffectiveWeight, 4)));
+
+        // ── think_about_supplies analysis ───────────────────────────────────
+        ThinkAboutSuppliesAnalysis? thinkAnalysis = null;
+
+        int thinkRank = sorted.FindIndex(c => c.Action.Id.Value == ThinkAboutSuppliesActionId);
+        if (thinkRank >= 0)
+        {
+            var thinkCandidate    = sorted[thinkRank];
+            var thinkContribs     = contributions[thinkRank];
+            var thinkQualEntries  = new Dictionary<string, CandidateQualityEntry>();
+            foreach (var (q, contribution) in thinkContribs)
+            {
+                thinkCandidate.Qualities.TryGetValue(q, out var qValue);
+                var effWeight = contribution > 0 && qValue > 0 ? Math.Round(contribution / qValue, 4) : 0.0;
+                thinkQualEntries[q.ToString()] = new CandidateQualityEntry(
+                    QualityValue:    Math.Round(qValue,       4),
+                    EffectiveWeight: effWeight,
+                    Contribution:    Math.Round(contribution, 4));
+            }
+
+            thinkAnalysis = new ThinkAboutSuppliesAnalysis(
+                Present:   true,
+                Score:     Math.Round(thinkCandidate.Score, 4),
+                Rank:      thinkRank + 1,
+                Qualities: thinkQualEntries);
+        }
+        else
+        {
+            thinkAnalysis = new ThinkAboutSuppliesAnalysis(
+                Present: false, Score: 0, Rank: 0, Qualities: null);
+        }
+
+        return new GoldenStateDetailedData(topCandidates, decomp, thinkAnalysis);
+    }
 
     private static GoldenStateResult ScoreGoldenState(
         GoldenStateEntry entry,

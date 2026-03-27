@@ -1365,6 +1365,47 @@ public class IslandDomainPack : IDomainPack
     }
 
     /// <summary>
+    /// Returns per-quality decomposition data from the quality model for the given actor state.
+    /// Each entry exposes the three independent contributions that make up the effective weight:
+    /// <list type="bullet">
+    /// <item><description><c>NeedAdd</c> – urgency from current deficits (satiety, energy, morale, health)</description></item>
+    /// <item><description><c>PersonalityBase</c> – stable tendency derived from trait profile</description></item>
+    /// <item><description><c>MoodMultiplier</c> – multiplicative modulation from affect state</description></item>
+    /// <item><description><c>EffectiveWeight</c> – final combined weight = NeedAdd + PersonalityBase * MoodMultiplier</description></item>
+    /// </list>
+    /// Only qualities with at least one non-zero component are included.
+    /// When <paramref name="explicitTraits"/> is supplied (golden-state evaluation path),
+    /// personality is derived from those values instead of the actor's ability scores.
+    /// </summary>
+    public IReadOnlyDictionary<QualityType, (double NeedAdd, double PersonalityBase, double MoodMultiplier, double EffectiveWeight)>
+        ComputeQualityModelDecomposition(
+            ActorState actorState,
+            WorldState? worldState,
+            long currentTick,
+            TraitProfile? explicitTraits = null)
+    {
+        var model = BuildQualityModel(
+            (IslandActorState)actorState,
+            currentTick,
+            worldState as IslandWorldState,
+            _profile,
+            explicitTraits);
+
+        var result = new Dictionary<QualityType, (double, double, double, double)>();
+        foreach (var q in Enum.GetValues<QualityType>())
+        {
+            model.NeedAdd.TryGetValue(q, out var needAdd);
+            model.PersonalityBase.TryGetValue(q, out var personalityBase);
+            model.MoodMultiplier.TryGetValue(q, out var moodMultiplier);
+            var effectiveWeight = model.EffectiveWeight(q);
+            if (needAdd == 0.0 && personalityBase == 0.0 && moodMultiplier == 0.0)
+                continue;
+            result[q] = (needAdd, personalityBase, moodMultiplier, effectiveWeight);
+        }
+        return result;
+    }
+
+    /// <summary>
     /// Builds periodic snapshot trace events for the island domain.
     /// Emits one <c>PeriodicWorldSnapshot</c>, one <c>PeriodicSupplySnapshot</c> per supply
     /// pile, one <c>PeriodicWorldItemSnapshot</c> per world item, and per-actor
