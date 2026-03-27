@@ -661,7 +661,11 @@ void RunPressureFuzzer(string[] fuzzerArgs)
     var profileMeta = new ProfileMetadata(
         effectiveProfile.ProfileName,
         effectiveProfile.Description,
-        effectiveProfile.ComputeHash());
+        effectiveProfile.ComputeHash(),
+        effectiveProfile.Mood.HungerSuppressionStartSatiety,
+        effectiveProfile.Mood.HungerSuppressionFullSatiety,
+        effectiveProfile.Mood.ComfortRestSuppressionMin,
+        effectiveProfile.Mood.HungerSuppressionExponent);
     PressureFuzzerRunner.WriteSummaryJson(samples, summaryPath, profileMeta);
     Console.WriteLine($"✓ Summary written to {summaryPath}");
 
@@ -1219,7 +1223,11 @@ void RunFuzzerComparison(string[] fuzzerArgs)
     var baselineProfileMeta = new ProfileMetadata(
         baselineProfile.ProfileName,
         baselineProfile.Description,
-        baselineProfile.ComputeHash());
+        baselineProfile.ComputeHash(),
+        baselineProfile.Mood.HungerSuppressionStartSatiety,
+        baselineProfile.Mood.HungerSuppressionFullSatiety,
+        baselineProfile.Mood.ComfortRestSuppressionMin,
+        baselineProfile.Mood.HungerSuppressionExponent);
 
     var baselineSummaryPath = Path.Combine(outputDir, "baseline-summary.json");
     PressureFuzzerRunner.WriteSummaryJson(baselineSamples, baselineSummaryPath, baselineProfileMeta);
@@ -1240,7 +1248,11 @@ void RunFuzzerComparison(string[] fuzzerArgs)
         var optimizedProfileMeta = new ProfileMetadata(
             optimizedProfile.ProfileName,
             optimizedProfile.Description,
-            optimizedProfile.ComputeHash());
+            optimizedProfile.ComputeHash(),
+            optimizedProfile.Mood.HungerSuppressionStartSatiety,
+            optimizedProfile.Mood.HungerSuppressionFullSatiety,
+            optimizedProfile.Mood.ComfortRestSuppressionMin,
+            optimizedProfile.Mood.HungerSuppressionExponent);
 
         var optimizedSummaryPath = Path.Combine(outputDir, "optimized-summary.json");
         PressureFuzzerRunner.WriteSummaryJson(optimizedSamples, optimizedSummaryPath, optimizedProfileMeta);

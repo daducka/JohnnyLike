@@ -451,6 +451,13 @@ public class IslandDomainPack : IDomainPack
     /// reaches <see cref="MoodTuning.HungerSuppressionFullSatiety"/>.
     /// The curve shape is controlled by <see cref="MoodTuning.HungerSuppressionExponent"/>:
     /// values &gt; 1 cause a slower initial drop and a sharper final descent near critical hunger.
+    /// <para>
+    /// Defensive: if the thresholds are configured with
+    /// <see cref="MoodTuning.HungerSuppressionStartSatiety"/> &lt;=
+    /// <see cref="MoodTuning.HungerSuppressionFullSatiety"/>, the function returns
+    /// <see cref="MoodTuning.ComfortRestSuppressionMin"/> immediately to avoid division by zero
+    /// and prevent nonsense output from an invalid configuration.
+    /// </para>
     /// </summary>
     private static double ComputeHungerSuppression(double satiety, MoodTuning mood)
     {
@@ -460,8 +467,12 @@ public class IslandDomainPack : IDomainPack
         if (satiety <= mood.HungerSuppressionFullSatiety)
             return mood.ComfortRestSuppressionMin;
 
-        var t = (satiety - mood.HungerSuppressionFullSatiety)
-              / (mood.HungerSuppressionStartSatiety - mood.HungerSuppressionFullSatiety);
+        // Guard: if thresholds are equal or inverted (invalid config), clamp to min.
+        var range = mood.HungerSuppressionStartSatiety - mood.HungerSuppressionFullSatiety;
+        if (range <= 0.0)
+            return mood.ComfortRestSuppressionMin;
+
+        var t = (satiety - mood.HungerSuppressionFullSatiety) / range;
 
         var curved = Math.Pow(t, mood.HungerSuppressionExponent);
 
