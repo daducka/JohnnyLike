@@ -39,3 +39,20 @@ jobs:
         name: simrunner-optimizer
         path: artifacts/optimizer/
         retention-days: 30
+
+    - name: Annotate run ID for evaluate workflow
+      run: |
+        echo "::notice title=▶ Next step — Evaluate Optimized Profile::To evaluate this optimized profile, trigger the 'SimRunner — Evaluate Optimized Profile' workflow and set 'optimized_profile_run_id' to: ${{ github.run_id }}"
+        {
+          echo "## ✅ Optimizer completed — run ID: \`${{ github.run_id }}\`"
+          echo ""
+          echo "To evaluate the optimized profile produced by this run:"
+          echo ""
+          echo "1. Go to **Actions → SimRunner — Evaluate Optimized Profile**"
+          echo "2. Click **Run workflow**"
+          echo "3. Set the **\"Run ID of the simrunner-optimize workflow\"** input to:"
+          echo ""
+          echo "   \`\`\`"
+          echo "   ${{ github.run_id }}"
+          echo "   \`\`\`"
+        } >> "$GITHUB_STEP_SUMMARY"
