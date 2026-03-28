@@ -54,3 +54,53 @@ jobs:
         name: simrunner-fuzzer
         path: artifacts/fuzzer/
         retention-days: 30
+
+    - name: Summarize fuzzer results
+      run: |
+        COMPARISON=artifacts/fuzzer/comparison-summary.json
+        TRAIT_BREAKDOWN=artifacts/fuzzer/trait-profile-breakdown.json
+
+        TOTAL_BASE=$(jq -r '.total_baseline_samples' "$COMPARISON")
+        TOTAL_OPT=$(jq -r '.total_optimized_samples // "N/A"' "$COMPARISON")
+
+        BASE_STARV=$(jq -r '.baseline.starvation_sample_count' "$COMPARISON")
+        BASE_FOOD_LOST=$(jq -r '.baseline.food_consumption_lost_count' "$COMPARISON")
+        BASE_FOOD_LOST_PCT=$(jq -r '.baseline.food_consumption_lost_pct' "$COMPARISON")
+        BASE_COMFORT=$(jq -r '.baseline.comfort_dominated_count' "$COMPARISON")
+        BASE_COMFORT_PCT=$(jq -r '.baseline.comfort_dominated_pct' "$COMPARISON")
+        BASE_PREP=$(jq -r '.baseline.prep_dominated_count' "$COMPARISON")
+        BASE_PREP_PCT=$(jq -r '.baseline.prep_dominated_pct' "$COMPARISON")
+
+        OPT_STARV=$(jq -r '.optimized.starvation_sample_count // "N/A"' "$COMPARISON")
+        OPT_FOOD_LOST=$(jq -r '.optimized.food_consumption_lost_count // "N/A"' "$COMPARISON")
+        OPT_FOOD_LOST_PCT=$(jq -r '.optimized.food_consumption_lost_pct // "N/A"' "$COMPARISON")
+        OPT_COMFORT=$(jq -r '.optimized.comfort_dominated_count // "N/A"' "$COMPARISON")
+        OPT_COMFORT_PCT=$(jq -r '.optimized.comfort_dominated_pct // "N/A"' "$COMPARISON")
+        OPT_PREP=$(jq -r '.optimized.prep_dominated_count // "N/A"' "$COMPARISON")
+        OPT_PREP_PCT=$(jq -r '.optimized.prep_dominated_pct // "N/A"' "$COMPARISON")
+
+        # Trait profile breakdown — top 3 worst actors by food-lost% (baseline)
+        TOP_FOOD_LOST_ACTORS=$(jq -r '
+          .baseline
+          | sort_by(-.food_consumption_lost_pct)[:3]
+          | map("  - \(.actor): \(.starvation_sample_count) starving, food lost=\(.food_consumption_lost_count) (\(.food_consumption_lost_pct)%), prep dom=\(.prep_dominated_count) (\(.prep_dominated_pct)%)")
+          | join("\n")
+        ' "$TRAIT_BREAKDOWN")
+
+        {
+          echo "## 🔬 Fuzzer Comparison Results"
+          echo ""
+          echo "| Metric | Baseline | Optimized |"
+          echo "|--------|----------|-----------|"
+          echo "| Total samples | $TOTAL_BASE | $TOTAL_OPT |"
+          echo "| Starvation samples | $BASE_STARV | $OPT_STARV |"
+          echo "| Food consumption lost | $BASE_FOOD_LOST ($BASE_FOOD_LOST_PCT%) | $OPT_FOOD_LOST ($OPT_FOOD_LOST_PCT%) |"
+          echo "| Comfort dominated | $BASE_COMFORT ($BASE_COMFORT_PCT%) | $OPT_COMFORT ($OPT_COMFORT_PCT%) |"
+          echo "| Prep dominated | $BASE_PREP ($BASE_PREP_PCT%) | $OPT_PREP ($OPT_PREP_PCT%) |"
+          echo ""
+          echo "### 🧑 Trait Profile Breakdown (Baseline — Top 3 by food-lost%)"
+          echo "$TOP_FOOD_LOST_ACTORS"
+          echo ""
+          echo "> See \`trait-profile-breakdown.json\` for full per-archetype breakdown."
+        } >> "$GITHUB_STEP_SUMMARY"
+

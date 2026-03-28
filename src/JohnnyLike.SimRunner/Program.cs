@@ -964,15 +964,29 @@ void RunEvaluateGolden(string[] evalArgs)
 
     var paired = results.Select(r => (result: r, setType: setTypeByKey.GetValueOrDefault(r.SampleKey, GoldenSetType.Training))).ToList();
 
+    // ── Active tuning parameters ─────────────────────────────────────────────
+    var activeTuningParams = new
+    {
+        hungerSuppressionStartSatiety  = profile.Mood.HungerSuppressionStartSatiety,
+        hungerSuppressionFullSatiety   = profile.Mood.HungerSuppressionFullSatiety,
+        comfortRestSuppressionMin      = profile.Mood.ComfortRestSuppressionMin,
+        hungerSuppressionExponent      = profile.Mood.HungerSuppressionExponent,
+        fatiguePressureRestScale       = profile.Need.FatiguePressureRestScale,
+        miseryPressureComfortScale     = profile.Need.MiseryPressureComfortScale,
+        foodConsumptionShareHigh       = profile.Need.FoodConsumptionShareHigh,
+        hungerModerateRange            = profile.Need.HungerModerateRange
+    };
+
     var evalSummary = new
     {
-        profileName  = profile.ProfileName,
-        profileHash  = profile.ComputeHash(),
-        totalStates  = goldenStates.Count,
-        completedAt  = DateTime.UtcNow.ToString("o"),
-        training     = BuildSplitMetrics(paired, GoldenSetType.Training),
-        holdout      = BuildSplitMetrics(paired, GoldenSetType.Holdout),
-        sacred       = BuildSplitMetrics(paired, GoldenSetType.Sacred)
+        profileName    = profile.ProfileName,
+        profileHash    = profile.ComputeHash(),
+        totalStates    = goldenStates.Count,
+        completedAt    = DateTime.UtcNow.ToString("o"),
+        activeTuningParameters = activeTuningParams,
+        training       = BuildSplitMetrics(paired, GoldenSetType.Training),
+        holdout        = BuildSplitMetrics(paired, GoldenSetType.Holdout),
+        sacred         = BuildSplitMetrics(paired, GoldenSetType.Sacred)
     };
 
     File.WriteAllText(
@@ -994,7 +1008,8 @@ void RunEvaluateGolden(string[] evalArgs)
         isExactMatch       = p.result.DesiredTopCategoryMet,
         isSatisfied        = p.result.StateSatisfied,
         violatedForbidden  = p.result.ForbiddenCategoryTriggered,
-        score              = p.result.Score
+        score              = p.result.Score,
+        winningActionId    = p.result.ActualTopActionId
     }).ToList();
 
     File.WriteAllText(
@@ -1003,23 +1018,40 @@ void RunEvaluateGolden(string[] evalArgs)
     Console.WriteLine($"✓ eval-results.json");
 
     // ── failures.json ────────────────────────────────────────────────────────
-    var failures = paired
-        .Where(p => !p.result.StateSatisfied || p.result.ForbiddenCategoryTriggered)
-        .Select(p => new
+    // Re-evaluate failed states with full candidate breakdown for diagnostic depth.
+    var failureDomain  = new IslandDomainPack(profile);
+    var goldenByKey    = goldenStates.ToDictionary(gs => gs.SampleKey);
+    var failedPaired   = paired.Where(p => !p.result.StateSatisfied || p.result.ForbiddenCategoryTriggered).ToList();
+
+    var failures = failedPaired.Select(p =>
+    {
+        goldenByKey.TryGetValue(p.result.SampleKey, out var gs);
+        GoldenStateDetailedData? details = null;
+        if (gs != null)
         {
-            sampleKey          = p.result.SampleKey,
-            label              = p.result.Label,
-            setType            = p.setType.ToString(),
-            desiredTopCategory = p.result.DesiredTopCategory,
-            actualTopCategory  = p.result.ActualTopCategory,
-            topCompetingCategories = p.result.ActualTopCategories,
-            desiredRank        = p.result.BestDesiredCategoryRank,
-            deltaFromTop       = p.result.DesiredCategoryVsWinnerDelta,
-            isExactMatch       = p.result.DesiredTopCategoryMet,
-            isSatisfied        = p.result.StateSatisfied,
-            violatedForbidden  = p.result.ForbiddenCategoryTriggered,
-            score              = p.result.Score
-        }).ToList();
+            var (_, d) = OptimizerRunner.EvaluateEntryDetailed(gs, failureDomain);
+            details = d;
+        }
+        return new
+        {
+            sampleKey               = p.result.SampleKey,
+            label                   = p.result.Label,
+            setType                 = p.setType.ToString(),
+            desiredTopCategory      = p.result.DesiredTopCategory,
+            actualTopCategory       = p.result.ActualTopCategory,
+            topCompetingCategories  = p.result.ActualTopCategories,
+            winningActionId         = p.result.ActualTopActionId,
+            desiredRank             = p.result.BestDesiredCategoryRank,
+            deltaFromTop            = p.result.DesiredCategoryVsWinnerDelta,
+            isExactMatch            = p.result.DesiredTopCategoryMet,
+            isSatisfied             = p.result.StateSatisfied,
+            violatedForbidden       = p.result.ForbiddenCategoryTriggered,
+            score                   = p.result.Score,
+            topCandidates           = details?.TopCandidates,
+            qualityModelDecomposition = details?.QualityModelDecomposition,
+            thinkAboutSuppliesAnalysis = details?.ThinkAboutSupplies
+        };
+    }).ToList();
 
     File.WriteAllText(
         Path.Combine(outputDir, "failures.json"),
@@ -1133,6 +1165,22 @@ void RunOptimizeGolden(string[] optArgs)
         .Select(r => new { sampleKey = r.SampleKey, label = r.Label, actualTopCategory = r.ActualTopCategory, desiredTopCategory = r.DesiredTopCategory })
         .ToList();
 
+    // ── Build baseline/optimized tuning parameter snapshots ─────────────────
+    // Capture the key structural parameters so diffs are self-contained.
+    var bestProfileObj = DecisionTuningProfile.FromJson(result.BestProfileJson);
+
+    static object BuildTuningSnapshot(DecisionTuningProfile p) => new
+    {
+        hungerSuppressionStartSatiety  = p.Mood.HungerSuppressionStartSatiety,
+        hungerSuppressionFullSatiety   = p.Mood.HungerSuppressionFullSatiety,
+        comfortRestSuppressionMin      = p.Mood.ComfortRestSuppressionMin,
+        hungerSuppressionExponent      = p.Mood.HungerSuppressionExponent,
+        fatiguePressureRestScale       = p.Need.FatiguePressureRestScale,
+        miseryPressureComfortScale     = p.Need.MiseryPressureComfortScale,
+        foodConsumptionShareHigh       = p.Need.FoodConsumptionShareHigh,
+        hungerModerateRange            = p.Need.HungerModerateRange
+    };
+
     var comparison = new
     {
         completedAt = result.CompletedAt,
@@ -1140,6 +1188,7 @@ void RunOptimizeGolden(string[] optArgs)
         {
             profileName  = result.BaseProfileName,
             profileHash  = result.BaseProfileHash,
+            activeTuningParameters = BuildTuningSnapshot(baseProfile),
             training     = new { exact_pass_count = bTrainExact, satisfied_pass_count = bTrainSatisfied, forbidden_count = bTrainForbidden },
             holdout      = new { exact_pass_count = bHoldExact, satisfied_pass_count = bHoldSatisfied, forbidden_count = bHoldForbidden },
             sacred       = new { exact_pass_count = bSacredExact, satisfied_pass_count = bSacredSatisfied, forbidden_count = bSacredForbidden }
@@ -1148,6 +1197,7 @@ void RunOptimizeGolden(string[] optArgs)
         {
             profileName  = result.BestProfileName,
             profileHash  = result.BestProfileHash,
+            activeTuningParameters = BuildTuningSnapshot(bestProfileObj),
             training     = new { exact_pass_count = oTrainExact, satisfied_pass_count = oTrainSatisfied, forbidden_count = oTrainForbidden },
             holdout      = new { exact_pass_count = oHoldExact, satisfied_pass_count = oHoldSatisfied, forbidden_count = oHoldForbidden },
             sacred       = new { exact_pass_count = oSacredExact, satisfied_pass_count = oSacredSatisfied, forbidden_count = oSacredForbidden }
@@ -1170,6 +1220,173 @@ void RunOptimizeGolden(string[] optArgs)
         Path.Combine(outputDir, "optimizer-comparison.json"),
         JsonSerializer.Serialize(comparison, jsonOpts));
     Console.WriteLine($"✓ optimizer-comparison.json  (sacred_regression_flag={comparison.improvement.sacred_regression_flag})");
+
+    // ── forbidden-regression-diff.json ───────────────────────────────────────
+    // Compares baseline vs optimized forbidden violations to quickly identify regressions.
+    var baseResultByKey = result.BaseResults.ToDictionary(r => r.SampleKey);
+    var bestResultByKey = result.BestResults.ToDictionary(r => r.SampleKey);
+    var goldenEntryByKey = goldenStates.ToDictionary(gs => gs.SampleKey);
+
+    var allKeys = result.BaseResults.Select(r => r.SampleKey).ToList();
+
+    var newlyForbidden  = new List<object>();
+    var resolvedForbidden = new List<object>();
+    var unchangedForbidden = new List<object>();
+
+    foreach (var key in allKeys)
+    {
+        if (!baseResultByKey.TryGetValue(key, out var bRes) ||
+            !bestResultByKey.TryGetValue(key, out var oRes))
+            continue;
+
+        setTypeByKey.TryGetValue(key, out var setType);
+        goldenEntryByKey.TryGetValue(key, out var ge);
+
+        var entry = new
+        {
+            sampleKey                  = key,
+            label                      = bRes.Label,
+            setType                    = setType.ToString(),
+            desiredTopCategory         = bRes.DesiredTopCategory,
+            baselineActualTopCategory  = bRes.ActualTopCategory,
+            optimizedActualTopCategory = oRes.ActualTopCategory,
+            baselineForbidden          = bRes.ForbiddenCategoryTriggered,
+            optimizedForbidden         = oRes.ForbiddenCategoryTriggered,
+            baselineScore              = bRes.Score,
+            optimizedScore             = oRes.Score,
+            winningActionIdBaseline    = bRes.ActualTopActionId,
+            winningActionIdOptimized   = oRes.ActualTopActionId
+        };
+
+        if (!bRes.ForbiddenCategoryTriggered && oRes.ForbiddenCategoryTriggered)
+            newlyForbidden.Add(entry);
+        else if (bRes.ForbiddenCategoryTriggered && !oRes.ForbiddenCategoryTriggered)
+            resolvedForbidden.Add(entry);
+        else if (bRes.ForbiddenCategoryTriggered && oRes.ForbiddenCategoryTriggered)
+            unchangedForbidden.Add(entry);
+    }
+
+    var forbiddenDiff = new
+    {
+        completedAt        = result.CompletedAt,
+        newlyIntroducedCount = newlyForbidden.Count,
+        resolvedCount      = resolvedForbidden.Count,
+        unchangedCount     = unchangedForbidden.Count,
+        newlyIntroduced    = newlyForbidden,
+        resolved           = resolvedForbidden,
+        unchanged          = unchangedForbidden
+    };
+    File.WriteAllText(
+        Path.Combine(outputDir, "forbidden-regression-diff.json"),
+        JsonSerializer.Serialize(forbiddenDiff, jsonOpts));
+    Console.WriteLine($"✓ forbidden-regression-diff.json  ({newlyForbidden.Count} new, {resolvedForbidden.Count} resolved, {unchangedForbidden.Count} unchanged)");
+
+    // ── state-delta-report.json ──────────────────────────────────────────────
+    // Per-state comparison of baseline vs optimized outcomes.
+    var stateDelta = allKeys.Select(key =>
+    {
+        baseResultByKey.TryGetValue(key, out var bR);
+        bestResultByKey.TryGetValue(key, out var oR);
+        setTypeByKey.TryGetValue(key, out var st);
+        return new
+        {
+            sampleKey                  = key,
+            label                      = bR?.Label,
+            setType                    = st.ToString(),
+            baselineActualTopCategory  = bR?.ActualTopCategory,
+            optimizedActualTopCategory = oR?.ActualTopCategory,
+            baselineDesiredRank        = bR?.BestDesiredCategoryRank,
+            optimizedDesiredRank       = oR?.BestDesiredCategoryRank,
+            baselineDeltaFromTop       = bR?.DesiredCategoryVsWinnerDelta,
+            optimizedDeltaFromTop      = oR?.DesiredCategoryVsWinnerDelta,
+            baselineSatisfied          = bR?.StateSatisfied,
+            optimizedSatisfied         = oR?.StateSatisfied,
+            baselineForbidden          = bR?.ForbiddenCategoryTriggered,
+            optimizedForbidden         = oR?.ForbiddenCategoryTriggered,
+            scoreDelta                 = Math.Round((oR?.Score ?? 0) - (bR?.Score ?? 0), 4),
+            categoryWinnerChanged      = bR?.ActualTopCategory != oR?.ActualTopCategory
+        };
+    }).ToList();
+
+    File.WriteAllText(
+        Path.Combine(outputDir, "state-delta-report.json"),
+        JsonSerializer.Serialize(stateDelta, jsonOpts));
+    Console.WriteLine($"✓ state-delta-report.json  ({stateDelta.Count} states)");
+
+    // ── top-worsened-improved.json ────────────────────────────────────────────
+    // Top 10 improved and worsened states by score delta.
+    var deltaItems = stateDelta
+        .Select(s => new
+        {
+            sampleKey           = s.sampleKey,
+            label               = s.label,
+            scoreDelta          = s.scoreDelta,
+            forbiddenChanged    = s.baselineForbidden != s.optimizedForbidden,
+            newlyForbidden      = !(s.baselineForbidden ?? false) && (s.optimizedForbidden ?? false),
+            categoryWinnerChanged = s.categoryWinnerChanged,
+            baselineTopCategory = s.baselineActualTopCategory,
+            optimizedTopCategory = s.optimizedActualTopCategory
+        })
+        .ToList();
+
+    var topImproved = deltaItems.OrderByDescending(s => s.scoreDelta).Take(10).ToList();
+    var topWorsened = deltaItems.OrderBy(s => s.scoreDelta).Take(10).ToList();
+
+    var topWorsenedImproved = new
+    {
+        completedAt  = result.CompletedAt,
+        topImproved,
+        topWorsened
+    };
+    File.WriteAllText(
+        Path.Combine(outputDir, "top-worsened-improved.json"),
+        JsonSerializer.Serialize(topWorsenedImproved, jsonOpts));
+    Console.WriteLine($"✓ top-worsened-improved.json");
+
+    // ── failures.json ─────────────────────────────────────────────────────────
+    // Enhanced: includes top 5 candidates + quality-model decomposition + think_about_supplies.
+    // Includes both baseline and optimized failures for comparison.
+    var optimizerFailureDomain = new IslandDomainPack(bestProfileObj);
+    var optimizerBaseFailureDomain = new IslandDomainPack(baseProfile);
+
+    var optimizerFailures = result.BestResults
+        .Where(r => !r.StateSatisfied || r.ForbiddenCategoryTriggered)
+        .Select(r =>
+        {
+            goldenEntryByKey.TryGetValue(r.SampleKey, out var ge);
+            GoldenStateDetailedData? details = null;
+            if (ge != null)
+            {
+                var (_, d) = OptimizerRunner.EvaluateEntryDetailed(ge, optimizerFailureDomain);
+                details = d;
+            }
+            setTypeByKey.TryGetValue(r.SampleKey, out var st);
+            return new
+            {
+                sampleKey                  = r.SampleKey,
+                label                      = r.Label,
+                setType                    = st.ToString(),
+                desiredTopCategory         = r.DesiredTopCategory,
+                actualTopCategory          = r.ActualTopCategory,
+                topCompetingCategories     = r.ActualTopCategories,
+                winningActionId            = r.ActualTopActionId,
+                desiredRank                = r.BestDesiredCategoryRank,
+                deltaFromTop               = r.DesiredCategoryVsWinnerDelta,
+                isExactMatch               = r.DesiredTopCategoryMet,
+                isSatisfied                = r.StateSatisfied,
+                violatedForbidden          = r.ForbiddenCategoryTriggered,
+                score                      = r.Score,
+                topCandidates              = details?.TopCandidates,
+                qualityModelDecomposition  = details?.QualityModelDecomposition,
+                thinkAboutSuppliesAnalysis = details?.ThinkAboutSupplies
+            };
+        })
+        .ToList();
+
+    File.WriteAllText(
+        Path.Combine(outputDir, "failures.json"),
+        JsonSerializer.Serialize(optimizerFailures, jsonOpts));
+    Console.WriteLine($"✓ failures.json  ({optimizerFailures.Count} failed states)");
 
     Console.WriteLine();
     Console.WriteLine($"  Base  score: {result.BaseScore:F2}  ({result.BaseDesiredPassCount}/{goldenStates.Count} exact, {result.BaseSatisfiedCount}/{goldenStates.Count} satisfied)");
@@ -1305,6 +1522,59 @@ void RunFuzzerComparison(string[] fuzzerArgs)
         Path.Combine(outputDir, "comparison-summary.json"),
         JsonSerializer.Serialize(comparison, jsonOpts));
     Console.WriteLine($"✓ comparison-summary.json");
+
+    // ── trait-profile-breakdown.json ─────────────────────────────────────────
+    // Groups fuzzer samples by actor archetype (canonical trait profile proxy) and
+    // shows starvation / dominance pathology counts per profile.
+    static object BuildTraitProfileBreakdown(List<PressureSample> samples)
+    {
+        return samples
+            .GroupBy(s => s.Actor)
+            .OrderBy(g => g.Key)
+            .Select(g =>
+            {
+                var total      = g.Count();
+                var starvation = g.Where(s => s.State.Satiety <= PressureFuzzerRunner.FoodPressureThreshold).ToList();
+                var starvCount = starvation.Count;
+
+                double pct(int count) => total > 0 ? Math.Round(count * 100.0 / total, 1) : 0.0;
+                double sPct(int count) => starvCount > 0 ? Math.Round(count * 100.0 / starvCount, 1) : 0.0;
+
+                var foodLost    = starvation.Count(s => s.Flags.DirectFoodActionPresentButLost || s.Flags.FoodAvailableButNotChosen);
+                var comfortDom  = starvation.Count(s => s.Flags.ComfortBeatFood);
+                var prepDom     = starvation.Count(s => s.Flags.PrepDominatesFood);
+                var restDom     = g.Count(s => s.TopCandidates.Count > 0 && s.TopCandidates[0].ActionCategory == "Rest");
+
+                return (object)new
+                {
+                    actor                         = g.Key,
+                    total_sample_count            = total,
+                    starvation_sample_count       = starvCount,
+                    starvation_pct                = pct(starvCount),
+                    food_consumption_lost_count   = foodLost,
+                    food_consumption_lost_pct     = sPct(foodLost),
+                    comfort_dominated_count       = comfortDom,
+                    comfort_dominated_pct         = sPct(comfortDom),
+                    prep_dominated_count          = prepDom,
+                    prep_dominated_pct            = sPct(prepDom),
+                    rest_dominated_count          = restDom,
+                    rest_dominated_pct            = pct(restDom)
+                };
+            })
+            .ToList();
+    }
+
+    var traitProfileBreakdown = new
+    {
+        completedAt = DateTime.UtcNow.ToString("o"),
+        baseline    = BuildTraitProfileBreakdown(baselineSamples),
+        optimized   = optimizedSamples != null ? BuildTraitProfileBreakdown(optimizedSamples) : null
+    };
+
+    File.WriteAllText(
+        Path.Combine(outputDir, "trait-profile-breakdown.json"),
+        JsonSerializer.Serialize(traitProfileBreakdown, jsonOpts));
+    Console.WriteLine($"✓ trait-profile-breakdown.json");
 
     Console.WriteLine();
     Console.WriteLine($"✓ All artifacts written to {outputDir}");

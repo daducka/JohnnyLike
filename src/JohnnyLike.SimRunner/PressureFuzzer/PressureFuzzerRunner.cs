@@ -187,7 +187,7 @@ public static class PressureFuzzerRunner
     // ── Thresholds for derived flags ─────────────────────────────────────────
     private const double CriticalSatietyThreshold = 20.0;
     private const double CriticalHealthThreshold  = 20.0;
-    private const double FoodPressureThreshold    = 30.0;
+    internal const double FoodPressureThreshold   = 30.0;
 
     // ── State classification thresholds ──────────────────────────────────────
     private const double TerminalHealthThreshold = 0.0;
