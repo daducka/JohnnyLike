@@ -101,6 +101,10 @@ public class DecisionTuningProfileTests
         Assert.Equal(10.0, m.HungerSuppressionFullSatiety);
         Assert.Equal(0.3,  m.ComfortRestSuppressionMin);
         Assert.Equal(2.0,  m.HungerSuppressionExponent);
+        Assert.Equal(70.0, m.SafeStateRestDampeningEnergyThreshold);
+        Assert.Equal(75.0, m.SafeStateRestDampeningHealthThreshold);
+        Assert.Equal(55.0, m.SafeStateRestDampeningSatietyThreshold);
+        Assert.Equal(0.45, m.SafeStateRestDampeningMultiplier);
     }
 
     [Fact]
@@ -705,6 +709,16 @@ public class DecisionTuningProfileTests
         Assert.Contains("HungerSuppressionExponent",     s);
     }
 
+    [Fact]
+    public void Default_ToDebugString_ContainsSafeStateRestDampeningValues()
+    {
+        var s = DecisionTuningProfile.Default.ToDebugString();
+        Assert.Contains("SafeStateRestDampeningEnergyThreshold",  s);
+        Assert.Contains("SafeStateRestDampeningHealthThreshold",  s);
+        Assert.Contains("SafeStateRestDampeningSatietyThreshold", s);
+        Assert.Contains("SafeStateRestDampeningMultiplier",       s);
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     // 11. Regression: food beats comfort under critical hunger
     // ═════════════════════════════════════════════════════════════════════════
@@ -830,5 +844,177 @@ public class DecisionTuningProfileTests
             Assert.InRange(factor, 0.0, 1.0);
             Assert.Equal(0.3, factor, precision: 4);
         }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // 13. Safe-state Rest dampening
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Regression test for the safe-state HighInstinct Fun failure mode.
+    /// In the safe state (satiety=65, health=90, energy=80, morale=65), with the HighInstinct
+    /// trait profile (high Instinctive/Hedonist → strong Fun personality weight), the quality
+    /// model should give Fun a higher effective weight than Rest once the safe-state Rest
+    /// dampening is active. This allows personality-driven Fun actions to compete fairly.
+    /// </summary>
+    [Fact]
+    public void SafeState_HighInstinct_FunOutranksRest()
+    {
+        // HighInstinct profile: planner=0.20, craftsman=0.20, survivor=0.60,
+        //                       hedonist=0.50, instinctive=0.95, industrious=0.40
+        // (matches the "13fcd090" canonical trait hash used in golden-states.json)
+        var highInstinctTraits = new TraitProfile(
+            Planner:     0.20,
+            Craftsman:   0.20,
+            Survivor:    0.60,
+            Hedonist:    0.50,
+            Instinctive: 0.95,
+            Industrious: 0.40);
+
+        var domain  = new IslandDomainPack();
+        var actorId = new ActorId("Tester");
+        var actor   = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            ["satiety"] = 65.0,
+            ["energy"]  = 80.0,
+            ["morale"]  = 65.0
+        });
+        actor.Health = 90.0;
+        actor.DecisionPragmatism = 1.0; // deterministic
+        var world = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, world);
+
+        var resources  = new EmptyResourceAvailability();
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), resources, highInstinctTraits);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        // The quality model decomposition tells us the effective weight for each quality.
+        // After safe-state Rest dampening, Fun effective weight should exceed Rest effective weight.
+        var qmd = (Dictionary<string, object>)explanation["qualityModelDecomposition"];
+
+        var restEW = qmd.ContainsKey("Rest")
+            ? (double)((Dictionary<string, object>)qmd["Rest"])["effectiveWeight"]
+            : 0.0;
+        var funEW = qmd.ContainsKey("Fun")
+            ? (double)((Dictionary<string, object>)qmd["Fun"])["effectiveWeight"]
+            : 0.0;
+
+        Assert.True(funEW > restEW,
+            $"Fun effective weight ({funEW:F4}) should exceed Rest effective weight ({restEW:F4}) " +
+            "for HighInstinct in a safe state (satiety=65, health=90, energy=80, morale=65) after safe-state Rest dampening.");
+
+        // Also verify that sleep_under_tree score was reduced compared to a no-dampening profile.
+        // With dampening disabled (multiplier=1.0), sleep_under_tree should score higher.
+        var noDampeningProfile = new DecisionTuningProfile
+        {
+            Mood = new MoodTuning { SafeStateRestDampeningMultiplier = 1.0 }
+        };
+        var domainNoDampen = new IslandDomainPack(noDampeningProfile);
+        var actorNoDampen  = (IslandActorState)domainNoDampen.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            ["satiety"] = 65.0, ["energy"] = 80.0, ["morale"] = 65.0
+        });
+        actorNoDampen.Health = 90.0;
+        actorNoDampen.DecisionPragmatism = 1.0;
+        var worldNoDampen = (IslandWorldState)domainNoDampen.CreateInitialWorldState();
+        domainNoDampen.InitializeActorItems(actorId, worldNoDampen);
+        var candNoDampen = domainNoDampen.GenerateCandidates(actorId, actorNoDampen, worldNoDampen, 0L, new Random(42), resources, highInstinctTraits);
+
+        var sleepUnderTreeDamped   = candidates   .FirstOrDefault(c => c.Action.Id.Value == "sleep_under_tree")?.Score ?? 0.0;
+        var sleepUnderTreeNoDampen = candNoDampen .FirstOrDefault(c => c.Action.Id.Value == "sleep_under_tree")?.Score ?? 0.0;
+
+        Assert.True(sleepUnderTreeDamped < sleepUnderTreeNoDampen,
+            $"sleep_under_tree score with dampening ({sleepUnderTreeDamped:F4}) should be lower " +
+            $"than without dampening ({sleepUnderTreeNoDampen:F4}).");
+    }
+
+    /// <summary>
+    /// Safe-state Rest dampening: ExplainCandidateScoring should include
+    /// a safeStateRestDampeningBreakdown key with the expected fields.
+    /// </summary>
+    [Fact]
+    public void SafeState_ExplainScoring_ContainsSafeStateBreakdown()
+    {
+        var (domain, actorId, actor, world) = CreateSetup(satiety: 65.0, energy: 80.0, morale: 65.0, health: 90.0);
+        var resources   = new EmptyResourceAvailability();
+        var candidates  = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        Assert.True(explanation.ContainsKey("safeStateRestDampeningBreakdown"),
+            "ExplainCandidateScoring should include safeStateRestDampeningBreakdown");
+
+        var breakdown = (Dictionary<string, object>)explanation["safeStateRestDampeningBreakdown"];
+        Assert.True(breakdown.ContainsKey("safeState"),    "Breakdown should contain safeState");
+        Assert.True(breakdown.ContainsKey("multiplier"),   "Breakdown should contain multiplier");
+        Assert.True(breakdown.ContainsKey("energy"),       "Breakdown should contain energy");
+        Assert.True(breakdown.ContainsKey("health"),       "Breakdown should contain health");
+        Assert.True(breakdown.ContainsKey("satiety"),      "Breakdown should contain satiety");
+
+        // In the safe state, dampening should be active (safeState=true, multiplier<1)
+        Assert.True((bool)breakdown["safeState"],
+            "safeState should be true for satiety=65, health=90, energy=80");
+        var multiplier = (double)breakdown["multiplier"];
+        Assert.True(multiplier < 1.0,
+            $"Safe-state multiplier ({multiplier}) should be less than 1.0 when safeState=true");
+    }
+
+    /// <summary>
+    /// Boundary test: when energy is below the safe-state threshold,
+    /// the dampening should NOT activate (multiplier = 1.0).
+    /// </summary>
+    [Fact]
+    public void SafeState_EnergyBelowThreshold_DampeningDoesNotApply()
+    {
+        // energy=50 is below the default threshold of 70 → dampening should not activate
+        var (domain, actorId, actor, world) = CreateSetup(satiety: 65.0, energy: 50.0, morale: 65.0, health: 90.0);
+        var resources   = new EmptyResourceAvailability();
+        var candidates  = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+
+        var breakdown = (Dictionary<string, object>)explanation["safeStateRestDampeningBreakdown"];
+        Assert.False((bool)breakdown["safeState"],
+            "safeState should be false when energy (50) is below SafeStateRestDampeningEnergyThreshold (70)");
+        Assert.Equal(1.0, (double)breakdown["multiplier"], precision: 4);
+    }
+
+    /// <summary>
+    /// Regression: critical hunger with food available should still favor FoodConsumption
+    /// even after safe-state Rest dampening is introduced.
+    /// </summary>
+    [Fact]
+    public void SafeState_CriticalHunger_StillFavorsFoodConsumption()
+    {
+        // satiety=10 is critical hunger — safe-state dampening should NOT activate
+        // (satiety below SafeStateRestDampeningSatietyThreshold=55), so starvation fix holds.
+        var domain  = new IslandDomainPack();
+        var actorId = new ActorId("Tester");
+        var actor   = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        {
+            ["satiety"] = 10.0,
+            ["energy"]  = 80.0,
+            ["morale"]  = 0.0
+        });
+        actor.DecisionPragmatism = 1.0;
+        var world = (IslandWorldState)domain.CreateInitialWorldState();
+        domain.InitializeActorItems(actorId, world);
+        world.SharedSupplyPile!.AddSupply(5, () => new CoconutSupply());
+        world.AddWorldItem(new PalmFrondBedItem("test_bed"), "beach");
+
+        var resources  = new EmptyResourceAvailability();
+        var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), resources);
+        var contribs   = domain.ComputeQualityContributions(actor, world, 0L, candidates);
+
+        var topCandidate = candidates.OrderByDescending(c => c.Score).First();
+        var topContribs  = contribs[candidates.IndexOf(topCandidate)];
+
+        Assert.NotEmpty(topContribs);
+        Assert.Equal(QualityType.FoodConsumption, topContribs[0].Quality);
+
+        // Also confirm safe-state breakdown shows dampening is inactive
+        var explanation = domain.ExplainCandidateScoring(actorId, actor, world, 0L, candidates)!;
+        var dampBreakdown = (Dictionary<string, object>)explanation["safeStateRestDampeningBreakdown"];
+        Assert.False((bool)dampBreakdown["safeState"],
+            "safeState should be false under critical hunger (satiety=10 < threshold=55)");
+        Assert.Equal(1.0, (double)dampBreakdown["multiplier"], precision: 4);
     }
 }

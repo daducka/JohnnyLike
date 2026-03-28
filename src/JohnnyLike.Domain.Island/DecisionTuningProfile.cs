@@ -82,7 +82,11 @@ public sealed class DecisionTuningProfile
             KV("HungerSuppressionStartSatiety", Mood.HungerSuppressionStartSatiety),
             KV("HungerSuppressionFullSatiety",  Mood.HungerSuppressionFullSatiety),
             KV("ComfortRestSuppressionMin",     Mood.ComfortRestSuppressionMin),
-            KV("HungerSuppressionExponent",     Mood.HungerSuppressionExponent));
+            KV("HungerSuppressionExponent",     Mood.HungerSuppressionExponent),
+            KV("SafeStateRestDampeningEnergyThreshold",  Mood.SafeStateRestDampeningEnergyThreshold),
+            KV("SafeStateRestDampeningHealthThreshold",  Mood.SafeStateRestDampeningHealthThreshold),
+            KV("SafeStateRestDampeningSatietyThreshold", Mood.SafeStateRestDampeningSatietyThreshold),
+            KV("SafeStateRestDampeningMultiplier",       Mood.SafeStateRestDampeningMultiplier));
 
         AppendSection(sb, "Personality",
             KV("PreparationScale",    Personality.PreparationScale),
@@ -338,6 +342,33 @@ public sealed class MoodTuning
     /// Values &gt; 1.0 cause a slower initial drop and sharper near-critical suppression.
     /// Expected range: [0.5, 5.0]</summary>
     public double HungerSuppressionExponent { get; init; } = 2.0;
+
+    // ── Safe-state Rest dampening ──────────────────────────────────────────────
+    // When the actor is already in a comfortable non-distress state (energy, health,
+    // and satiety all above their respective thresholds), Rest need-pressure is
+    // reduced by SafeStateRestDampeningMultiplier so personality-driven Fun/Comfort
+    // behaviour can surface naturally.
+    //
+    // This is intentionally separate from the critical-hunger suppression above:
+    //   - Hunger suppression addresses the "emergency / starving" region.
+    //   - Safe-state dampening addresses the "already healthy / energised" region.
+
+    /// <summary>Energy at or above which the safe-state Rest dampening is eligible to activate.
+    /// Expected range: [50.0, 90.0]</summary>
+    public double SafeStateRestDampeningEnergyThreshold { get; init; } = 70.0;
+
+    /// <summary>Health at or above which the safe-state Rest dampening is eligible to activate.
+    /// Expected range: [50.0, 100.0]</summary>
+    public double SafeStateRestDampeningHealthThreshold { get; init; } = 75.0;
+
+    /// <summary>Satiety at or above which the safe-state Rest dampening is eligible to activate.
+    /// Expected range: [30.0, 80.0]</summary>
+    public double SafeStateRestDampeningSatietyThreshold { get; init; } = 55.0;
+
+    /// <summary>Multiplier applied to needAdd[Rest] when the actor is in a safe state.
+    /// Values below 1.0 reduce Rest pressure; 1.0 disables the dampening.
+    /// Expected range: [0.1, 1.0]</summary>
+    public double SafeStateRestDampeningMultiplier { get; init; } = 0.45;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

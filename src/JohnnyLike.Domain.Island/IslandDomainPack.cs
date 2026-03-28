@@ -479,6 +479,22 @@ public class IslandDomainPack : IDomainPack
         return mood.ComfortRestSuppressionMin + (1.0 - mood.ComfortRestSuppressionMin) * curved;
     }
 
+    /// <summary>
+    /// Returns the safe-state Rest dampening multiplier to apply to <c>needAdd[Rest]</c>
+    /// when the actor is already in a comfortable, non-distress state.
+    /// Returns <see cref="MoodTuning.SafeStateRestDampeningMultiplier"/> when all three
+    /// thresholds are met; returns 1.0 (no dampening) otherwise.
+    /// </summary>
+    private static double ComputeSafeStateRestDampening(IslandActorState actor, MoodTuning mood)
+    {
+        var safeState =
+            actor.Energy  >= mood.SafeStateRestDampeningEnergyThreshold  &&
+            actor.Health  >= mood.SafeStateRestDampeningHealthThreshold  &&
+            actor.Satiety >= mood.SafeStateRestDampeningSatietyThreshold;
+
+        return safeState ? mood.SafeStateRestDampeningMultiplier : 1.0;
+    }
+
     private static QualityModel BuildQualityModel(
         IslandActorState actor,
         long currentTick = 0L,
@@ -623,6 +639,13 @@ public class IslandDomainPack : IDomainPack
         var hungerSuppression = ComputeHungerSuppression(actor.Satiety, mood);
         needAdd[QualityType.Comfort] *= hungerSuppression;
         needAdd[QualityType.Rest]    *= hungerSuppression;
+
+        // Safe-state Rest dampening: when the actor is already healthy, fed, and energised,
+        // reduce Rest need-pressure so personality-driven Fun/Comfort behaviour can surface.
+        // This is intentionally separate from hunger suppression (which handles the emergency
+        // region); this fix handles the "already comfortable" region instead.
+        var safeStateRestDampening = ComputeSafeStateRestDampening(actor, mood);
+        needAdd[QualityType.Rest] *= safeStateRestDampening;
 
         var moodMultiplier = new Dictionary<QualityType, double>
         {
@@ -1168,6 +1191,25 @@ public class IslandDomainPack : IDomainPack
             ["affectedCategories"]  = new[] { "Comfort", "Rest" }
         };
 
+        // Safe-state Rest dampening breakdown — mirrors ComputeSafeStateRestDampening in BuildQualityModel.
+        var safeStateRestDampening = ComputeSafeStateRestDampening(actor, mood);
+        var safeState =
+            actor.Energy  >= mood.SafeStateRestDampeningEnergyThreshold  &&
+            actor.Health  >= mood.SafeStateRestDampeningHealthThreshold  &&
+            actor.Satiety >= mood.SafeStateRestDampeningSatietyThreshold;
+        var safeStateRestDampeningBreakdown = new Dictionary<string, object>
+        {
+            ["energy"]             = Math.Round(actor.Energy,  4),
+            ["health"]             = Math.Round(actor.Health,  4),
+            ["satiety"]            = Math.Round(actor.Satiety, 4),
+            ["energyThreshold"]    = mood.SafeStateRestDampeningEnergyThreshold,
+            ["healthThreshold"]    = mood.SafeStateRestDampeningHealthThreshold,
+            ["satietyThreshold"]   = mood.SafeStateRestDampeningSatietyThreshold,
+            ["safeState"]          = safeState,
+            ["multiplier"]         = Math.Round(safeStateRestDampening, 4),
+            ["affectedCategories"] = new[] { "Rest" }
+        };
+
         // Personality influence breakdown — uses same helpers as BuildQualityModel to avoid formula drift.
         var traits = DerivePersonalityTraits(actor);
         var qualityPersonalityBreakdown = BuildQualityPersonalityBreakdown(traits, _profile.Personality);
@@ -1276,16 +1318,17 @@ public class IslandDomainPack : IDomainPack
 
         return new Dictionary<string, object>
         {
-            ["actorStats"]                  = actorStats,
-            ["pressures"]                   = pressures,
-            ["prepTimePressureBreakdown"]   = prepTimePressureBreakdown,
-            ["hungerSuppressionBreakdown"]  = hungerSuppressionBreakdown,
-            ["decisionPragmatismBreakdown"] = decisionPragmatismBreakdown,
-            ["healthInfluence"]             = healthInfluence,
-            ["personalityInfluence"]        = personalityInfluence,
-            ["effectiveWeights"]            = effectiveWeights,
-            ["qualityModelDecomposition"]   = qualityModelDecomposition,
-            ["candidateBreakdowns"]         = candidateBreakdowns
+            ["actorStats"]                      = actorStats,
+            ["pressures"]                       = pressures,
+            ["prepTimePressureBreakdown"]        = prepTimePressureBreakdown,
+            ["hungerSuppressionBreakdown"]       = hungerSuppressionBreakdown,
+            ["safeStateRestDampeningBreakdown"]  = safeStateRestDampeningBreakdown,
+            ["decisionPragmatismBreakdown"]      = decisionPragmatismBreakdown,
+            ["healthInfluence"]                  = healthInfluence,
+            ["personalityInfluence"]             = personalityInfluence,
+            ["effectiveWeights"]                 = effectiveWeights,
+            ["qualityModelDecomposition"]        = qualityModelDecomposition,
+            ["candidateBreakdowns"]              = candidateBreakdowns
         };
     }
 
