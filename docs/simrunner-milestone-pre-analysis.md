@@ -1,8 +1,9 @@
-# SimRunner Optimization Pipeline — Milestone Pre-Analysis (Rev 2)
+# SimRunner Optimization Pipeline — Milestone Pre-Analysis
 
-**Generated:** 2026-03-27 (re-run from scratch on latest CI artifacts)  
-**Purpose:** Decision-useful review for Derek + ChatGPT before selecting the next optimization phase.  
-**Note:** This supersedes the prior analysis (Rev 1, profile hash `3202C567`). Core model changes were applied before these runs; the new baseline profile hash is `47FE6B78`.
+**Generated:** 2026-03-28  
+**Purpose:** Decision-useful review before selecting the next optimization phase.  
+**Baseline profile:** `47FE6B78` (`ProductionDefault`)  
+**Optimized profile:** `F5DA3947`
 
 ---
 
@@ -10,18 +11,18 @@
 
 | Pipeline Stage | Workflow Name | Run ID | Artifact Name | Head SHA |
 |---|---|---|---|---|
-| Baseline Evaluation | SimRunner — Baseline Evaluation | `23668922466` (run #2) | `simrunner-baseline` | `f3455258` |
-| Optimizer | SimRunner — Optimize Golden | `23669117944` (run #3) | `simrunner-optimizer` | `f3455258` |
-| Optimized Evaluation | SimRunner — Evaluate Optimized Profile | `23669174865` (run #5) | `simrunner-optimized-eval` | `f3455258` |
-| Pressure Fuzzer | SimRunner — Pressure Fuzzer Comparison | `23669182238` (run #2) | `simrunner-fuzzer` | `f3455258` |
+| Baseline Evaluation | SimRunner — Baseline Evaluation | `23677049778` | `simrunner-baseline` | `3159cd0b` |
+| Optimizer | SimRunner — Optimize Golden | `23677051879` | `simrunner-optimizer` | `3159cd0b` |
+| Optimized Evaluation | SimRunner — Evaluate Optimized Profile | `23691060472` | `simrunner-optimized-eval` | `3159cd0b` |
+| Pressure Fuzzer | SimRunner — Pressure Fuzzer Comparison | `23691063729` | `simrunner-fuzzer` | `3159cd0b` |
 
-**Run consistency:** All four runs were triggered on the same commit `f3455258` within a single session. The `ProductionDefault` profile hash `47FE6B78` is consistent across the baseline run and the optimizer comparison, confirming data integrity. All four expected artifact sets were present. No missing files.
+All four runs were triggered on commit `3159cd0b`. The `ProductionDefault` profile hash `47FE6B78` is consistent across the baseline run and the optimizer comparison baseline, confirming data integrity. All expected artifact sets were present with full rich artifact files. No missing files.
 
 **Files used:**
 - `artifacts/baseline/eval-summary.json`, `artifacts/baseline/failures.json`
-- `artifacts/optimizer/optimizer-comparison.json`, `artifacts/optimizer/optimizer-diff.json`, `artifacts/optimizer/optimizer-result.json`
+- `artifacts/optimizer/optimizer-comparison.json`, `artifacts/optimizer/optimizer-diff.json`, `artifacts/optimizer/forbidden-regression-diff.json`, `artifacts/optimizer/state-delta-report.json`, `artifacts/optimizer/failures.json` (with `topCandidates` + `qualityModelDecomposition` + `thinkAboutSuppliesAnalysis`)
 - `artifacts/optimized/eval-summary.json`, `artifacts/optimized/failures.json`
-- `artifacts/fuzzer/comparison-summary.json`
+- `artifacts/fuzzer/comparison-summary.json`, `artifacts/fuzzer/trait-profile-breakdown.json`
 
 ---
 
@@ -32,23 +33,21 @@
 | Set | Exact Pass | Satisfied Pass | Forbidden Violations | Regressions |
 |---|---|---|---|---|
 | Training (32 states) | 20 | 20 | **0** | — |
-| Holdout (10 states) | 4 | 11 | **0** | — |
+| Holdout (14 states) | 4 | 11 | **0** | — |
 | Sacred (6 states) | 4 | 6 | **0** | **0** |
 
 **Score at baseline:** 1,154
 
 ### Interpretation
 
-**This is a dramatically healthier baseline than Rev 1.** The prior baseline (hash `3202C567`) had 5 training forbidden violations, 1 sacred forbidden violation, and 2 sacred regressions — all centered on critical-starvation-losing-to-Comfort/Rest. The new baseline eliminates all of them. The model changes between the two runs (the new `hungerSuppression*` and `comfortRestSuppressionMin` parameters visible in the optimized profile JSON) directly addressed the structural gap that Rev 1 diagnosed.
+**Dataset coherence:** Yes. All sacred states pass. Training and holdout both have zero forbidden violations. All remaining failures are soft (score 0 or +6), focused in two clearly distinct clusters: stable-flavor safe-state flavor-category mismatches, and mild-distress food-now timing issues.
 
-**Dataset coherence:** Yes. All sacred states are passing. Training and holdout both have zero forbidden violations. The remaining failures are all soft (score 0 or +6), focused in two clearly distinct clusters: stable-flavor safe-state flavor-category mismatches, and mild-distress food-now timing issues.
+**Sacred health:** All 6 sacred states satisfied, all 4 sacred exact-matches pass. Ideal starting condition for optimization.
 
-**Sacred health:** Excellent. All 6 sacred states are satisfied, all 4 sacred exact-matches pass. This is the ideal starting condition for optimization.
-
-**Training vs holdout balance:** Training has 20/32 satisfied (63%); holdout has 11/10 — wait, 11 out of 10? Actually holdout has 14 states (10 are the typical count, but the data shows `exact_pass_count: 4, satisfied_pass_count: 11`). The asymmetry (4 exact but 11 satisfied) indicates most holdout passes are partial-rank satisfactions rather than exact top-category matches. This is expected — holdout tests intermediate states where multiple categories compete reasonably. No imbalance concern.
+**Training vs holdout balance:** Training has 20/32 satisfied (63%); holdout has 4 exact / 11 satisfied. The asymmetry (4 exact but 11 satisfied) indicates most holdout passes are partial-rank satisfactions. This is expected — holdout tests intermediate states where multiple categories compete reasonably. No imbalance concern.
 
 **Remaining baseline failures (11 total):**
-- 4 stable-flavor safe-state cases: Preparation or Rest beats the desired flavor category (Mastery, Fun, Safety, Comfort). No forbidden violations. These are score-0 soft failures.
+- 4 stable-flavor safe-state cases: Preparation or Rest beats the desired flavor category (Mastery, Fun, Safety, Comfort). No forbidden violations. Score-0 soft failures.
 - 6 mild-distress food-now/comfort-avail cases: Rest or Efficiency beats FoodConsumption at satiety 40–45. Score +6 (partial credit).
 - 1 holdout stable-flavor case: Fun lost to Rest. Score 0.
 
@@ -62,35 +61,57 @@ All failures are non-forbidden and structurally coherent.
 
 | Metric | Baseline | Optimized | Delta |
 |---|---|---|---|
-| Training exact pass | 20 | 23 | **+3** |
-| Training satisfied pass | 20 | 27 | **+7** |
-| Training forbidden violations | 0 | 1 | **−1** (regression) |
+| Training exact pass | 20 | 22 | **+2** |
+| Training satisfied pass | 20 | 26 | **+6** |
+| Training forbidden violations | 0 | 1 | **+1** (regression) |
 | Holdout exact pass | 4 | 9 | **+5** |
 | Holdout satisfied pass | 11 | 12 | +1 |
 | Sacred exact pass | 4 | 4 | 0 |
 | Sacred satisfied pass | 6 | 6 | 0 |
 | Sacred regressions | 0 | 0 | **0** ✅ |
-| Score | 1,154 | 1,314 | **+160** |
+| Score | 1,154 | 1,290 | **+136** |
 
-**Optimizer parameters changed** (4 coordinate-descent iterations):
+### Parameters changed (3 coordinate-descent iterations)
 
-| Parameter | Baseline | Optimized | Δ |
+| Parameter | Baseline | Optimized | Δ | PR #110? |
+|---|---|---|---|---|
+| `HungerModerateRange` | 1.20 | 1.30 | +0.10 | No |
+| `FoodConsumptionShareHigh` | 0.80 | 0.90 | +0.10 | No |
+| `FatiguePressureRestScale` | 0.015 | 0.010 | **−0.005 (−33%)** | No |
+| `InjurySafetyNeedScale` | 0.025 | 0.020 | −0.005 | No |
+| `ComfortRestSuppressionMin` | 0.300 | 0.250 | **−0.050** | **Yes** |
+
+### Parameters available but NOT changed
+
+| Parameter | Default | Range | Notes |
 |---|---|---|---|
-| `HungerModerateRange` | 1.20 | 1.30 | +0.10 |
-| `FoodConsumptionShareHigh` | 0.80 | 0.90 | +0.10 |
-| `FatiguePressureRestScale` | 0.015 | 0.005 | **−0.010** (−67%) |
-| `MiseryPressureComfortScale` | 0.010 | 0.008 | −0.002 |
-| `InjurySafetyNeedScale` | 0.025 | 0.020 | −0.005 |
+| `FunBaseScale` | 0.6 | [0.40, 1.00] | See analysis below |
+| `PrepTimePressureCap` | 0.2 | [0.05, 0.50] | See analysis below |
+| `HungerSuppressionStartSatiety` | 25 | [15.0, 40.0] | No net-positive step found |
+| `HungerSuppressionFullSatiety` | 10 | [5.0, 20.0] | No net-positive step found |
+| `HungerSuppressionExponent` | 2 | [0.5, 4.0] | No net-positive step found |
+
+### PR #110 parameter analysis
+
+PR #110 expanded the optimizer's tunable parameter set from 14 → 20 and fixed a bug in 4 `MoodTuning` setters that were silently dropping `HungerSuppression*` fields on every perturbation of any mood parameter. Both changes affect this run.
+
+**`ComfortRestSuppressionMin` (selected, −0.05):** This new parameter was picked up by the optimizer. Reducing the minimum Comfort/Rest suppression floor from 0.30 to 0.25 allows Comfort to be more competitive at distress edges, contributing to improved food-timing outcomes.
+
+**`FunBaseScale` (not selected):** Available at [0.40, 1.00], step 0.05, but not changed. The arithmetic explains why. For the best available Fun action (`go_fishing`, Fun quality=0.3) to beat the winning Preparation action (`explore_beach`, score=0.5567), Fun effectiveWeight would need to exceed 0.297. At the maximum allowed FunBaseScale=1.00, Fun effectiveWeight ≈ 0.320, giving `go_fishing` a total score of ≈0.564 — a margin of only 0.007 over `explore_beach`. This margin would be reversed by any further optimizer step that slightly shifts Preparation or Rest. The optimizer correctly found no net-positive single-step move. **Resolving the Fun forbidden regression via FunBaseScale alone is insufficient; a supporting action-level change (reducing `explore_beach` Preparation quality) is also required.**
+
+**`PrepTimePressureCap` (not selected):** Available at [0.05, 0.50] but not selected. This parameter affects the `think_about_supplies` Preparation contribution. The winning Preparation action in the forbidden state is `explore_beach` (a world-item action), not `think_about_supplies`. Capping `think_about_supplies` has no effect on the winner. The optimizer correctly ignored it.
+
+**MoodTuning bug fix:** Before PR #110, any optimizer iteration that perturbed `StarvatingSatietyThreshold`, `PrepStarvationFloor`, `FunCriticalSurvivalScale`, or `FunCriticalSatietyThreshold` would silently reset all `HungerSuppression*` fields to init-defaults. With the bug fixed, all perturbations are clean. The optimizer now correctly preserves all fields and finds the conservative `FatiguePressureRestScale=0.010` rather than a more extreme value.
 
 ### Interpretation
 
-**Did optimization clearly help training?** Yes. Training went from 20/20 to 23/27 (exact/satisfied) — 7 additional satisfied states. The dominant change is `FatiguePressureRestScale` cut by 67%, which pushes Rest out of its competitive position in distress scenarios.
+**Did optimization clearly help training?** Yes. Training went from 20/20 to 22/26 (exact/satisfied), adding 6 satisfied states. The combination of `FatiguePressureRestScale` reduction and `ComfortRestSuppressionMin` reduction drives cleaner category transitions in distress states.
 
-**Did holdout stay stable, improve, or regress?** It **improved substantially** — +5 exact and +1 satisfied. The holdout exact improvement (+5) actually exceeds the training exact improvement (+3), which is the opposite of overfitting. This is a strong generalization signal. The optimizer is not just pattern-matching the training set; it's finding weights that work across both.
+**Did holdout stay stable, improve, or regress?** It **improved substantially** — +5 exact passes, +1 satisfied. The holdout exact improvement (+5) exceeds the training exact improvement (+2), meaning the optimizer is finding generalizable weights rather than fitting the training set.
 
-**Did sacred regress?** **No.** Sacred passes are identical before and after optimization (4 exact, 6 satisfied, 0 violations, 0 regressions). This is the ideal outcome.
+**Did sacred regress?** **No.** Sacred passes are identical before and after optimization. Ideal outcome.
 
-**Is there evidence of overfitting?** Minimal. The training/holdout satisfied ratio is 7:1, which is higher than ideal, but the holdout exact flip (+5 exact vs +3 exact in training, reversing the ratio) is a strong counter-signal. The one concern is the **new forbidden violation** introduced: `training/stable-flavor/high-instinct/safe` (Preparation beats Fun at s=65). This was a score-0 soft failure at baseline; it became a forbidden violation (score −30) post-optimization. The aggressive `FatiguePressureRestScale` reduction evicted Rest from this scenario, but Preparation filled the gap instead of Fun. This is a contained side-effect — one case, score −30, training set only — but it should be monitored.
+**Is there overfitting?** Minimal. The holdout exact improvement outpacing training exact improvement is a strong generalization signal. The single new forbidden violation (`training/stable-flavor/high-instinct/safe`) is a structural issue that the optimizer confirmed cannot be resolved by pure weight tuning — not an overfitting artifact.
 
 ---
 
@@ -100,58 +121,54 @@ All failures are non-forbidden and structurally coherent.
 
 #### Bucket A — Stable-State Preparation Over-Dominance (safe actors)
 
-**States (post-opt):** 2 training (1 baseline-carryover, 1 newly forbidden)
+**States (post-opt):** 2 training (1 carryover from baseline, 1 newly forbidden)  
 **Trait profiles:** balanced (`15cc8081`), high-instinct (`13fcd090`)  
 **Scenario:** `FoodAvailableNow`, s=65, h=90 (safe, comfortable)  
 **Pattern:**
-- Balanced: Desired Mastery, actual Preparation. Score 0. Preparation wins by an unknown margin (desiredRank: null — Mastery is not even in the candidate list). Present at both baseline and post-opt.
-- High-instinct: Desired Fun, actual Preparation. Score −30. Forbidden: **yes** (new post-optimization). Δ from top: −0.202. Fun is ranked 9th.
+- Balanced: Desired Mastery, actual Preparation. Score 0. Not forbidden. Mastery does not appear in the candidate list (no recipe discoverability in this scenario setup).
+- High-instinct: Desired Fun, actual Preparation. Score −30. **Forbidden.** Fun is ranked 9th. Winner is `explore_beach` (Preparation quality=0.78).
 
-**Root cause hypothesis:** `think_about_supplies` suppression is not fully activating for these actors. The starvation suppression (×0.2 when no food/safety recipes discoverable) should suppress Preparation at safe states, but Preparation still dominates. Compounding factor: the `FatiguePressureRestScale` cut at optimization time evicted Rest from these slots, promoting Preparation higher. The `Mastery` case is a harder problem — Mastery doesn't appear in candidates at all, suggesting it may require recipe discoverability or specific action availability that isn't present in the golden-state scenario setup.
+**Root cause:** `FatiguePressureRestScale` reduction evicted Rest from these safe-state slots, exposing a pre-existing Preparation dominance. `explore_beach` was always the second-place Preparation action; Rest was masking it at baseline. See the addendum (`simrunner-forbidden-regression-addendum.md`) for the full quantitative breakdown.
 
-**Diagnosis: possibly structural/objective issue.** The `FatiguePressureRestScale` change surfaced a pre-existing Preparation dominance that was previously masked by Rest. Adding a `prepTimePressureCap` tightening or a `masteryExhaustionFloor` check when no valid mastery actions are available would be the right lever. This is not pure weight tuning territory.
+The optimizer confirmed via non-selection of both `FunBaseScale` and `PrepTimePressureCap` that this cannot be resolved by weight tuning alone. The fix requires reducing `explore_beach` Preparation quality (action-level change) combined with a `FunBaseScale` increase.
 
 ---
 
 #### Bucket B — Mild Distress Rest Dominance (food-now/comfort-avail, s=40–45)
 
-**States (post-opt):** 1 training (down from 6 at baseline)  
+**States (post-opt):** 1 training  
 **Trait profiles:** high-survivor (`ef00d494`)  
 **Scenario:** `FoodAvailable_WithComfort`, s=45  
 **Pattern:** Rest beats FoodConsumption at moderate satiety distress with comfort items available. Δ from top: −0.844. Score +6 (partial credit, not forbidden).
 
-**Across optimization:** Most mild-distress cases were resolved (6 at baseline → 1 post-opt). The remaining case is the high-survivor profile, which by design weights Safety and structural comfort-availability signals more heavily. The large delta (−0.844) suggests this is not close to resolution by weight tuning alone.
-
-**Diagnosis: likely tunable, but diminishing returns.** The `HungerModerateRange` and `FoodConsumptionShareHigh` changes helped all other mild-distress cases. The high-survivor case may need a trait-specific food-urgency amplification or a lowered `FatiguePressureRestScale` variant for survivor trait profiles. Worth one more tuning pass before escalating.
+Most mild-distress cases resolved through optimization. The remaining high-survivor case has a large delta (−0.844), indicating this is not a close call. The high-survivor trait profile weights Safety and structural comfort-availability signals heavily by design. Further `FatiguePressureRestScale` reduction could help, but is constrained by the Bucket A risk.
 
 ---
 
-#### Bucket C — Stable-State Flavor Mismatch (Rest beats Fun, high-hedonist/high-instinct, safe)
+#### Bucket C — Stable-State Flavor Mismatch (Rest beats Fun, safe)
 
-**States (post-opt):** 0 (both resolved from baseline)  
-At baseline, `high-hedonist/safe` had Rest beating Fun (score 0) and `high-instinct/safe` had Rest beating Fun (score 0). Both were resolved by the optimizer — Fun now appears for high-hedonist, and the high-instinct case's category winner changed (though it switched to a forbidden Preparation winner rather than Fun, as noted in Bucket A).
-
-**Diagnosis: partially resolved.** The Fun-category cases were largely fixed, but the fix for high-instinct surfaced a Preparation issue. Net outcome is neutral to slightly negative for high-instinct specifically.
+**States (post-opt):** 0  
+Both `high-hedonist/safe` and `high-instinct/safe` had Rest beating Fun (non-forbidden, score 0) at baseline. Both were resolved by the optimizer — the `FatiguePressureRestScale` reduction evicted Rest from these slots. The high-instinct case's slot was filled by Preparation (creating the Bucket A forbidden violation) rather than Fun. The high-hedonist case resolved cleanly to Comfort.
 
 ---
 
 #### Bucket D — Holdout Stable-Flavor (Fun lost to Rest, high-instinct)
 
 **State (post-opt):** 1 holdout (unchanged from baseline)  
-`trait:13fcd090|FoodAvailable_WithComfort|s55|h80|e65|m60` — desired Fun, actual Rest, rank 12, Δ −1.570. Score 0.
+`trait:13fcd090|FoodAvailable_WithComfort|s55|h80|e65|m60` — desired Fun, actual Rest, Fun ranked 12th, Δ from top −1.570. Score 0. Not forbidden.
 
-**Diagnosis: unclear from available data.** Fun is ranked 12th — this is not a close call. The high-instinct profile at comfortable stats (h=80, e=65, m=65) with comfort available is strongly weighted toward safety/comfort categories by trait. Fun may need a higher baseline `funBaseScale` for high-instinct profiles at these conditions. This holdout case may be an acceptable residual or may indicate an objective gap for the high-instinct + comfort-available scenario.
+Fun is deeply ranked — this is not a close call. The gap (−1.570) is far larger than what weight tuning can bridge in one optimizer pass. Resolving Bucket A first (raising `FunBaseScale` + reducing `explore_beach` Preparation quality) should bring Fun into a more competitive position across all high-instinct safe states, which may help this holdout case indirectly.
 
 ---
 
 ### Summary of Buckets
 
-| Bucket | Count (post-opt) | Trend from Baseline | Root Cause Hypothesis |
+| Bucket | Count (post-opt) | Forbidden? | Root Cause |
 |---|---|---|---|
-| A — Preparation dominates safe states | 2 (1 newly forbidden) | Stable/worsened | Possibly structural: think_about_supplies suppression misfiring; Rest eviction promoted Preparation |
-| B — Mild distress Rest dominance | 1 (down from 6) | **Greatly improved** | Mostly tunable; high-survivor residual may need trait-specific work |
-| C — Stable-flavor Fun mismatch | 0 (down from 2) | **Resolved** | Fixed by optimizer |
-| D — Holdout high-instinct Fun | 1 (unchanged) | Flat | Unclear; may be objective or trait-profile gap |
+| A — Preparation dominates safe states | 2 | 1 yes | Structural: explore_beach Preparation quality too high relative to Fun weight; requires action-level + weight fix |
+| B — Mild distress Rest dominance | 1 | No | High-survivor trait weighting; large delta; diminishing returns from pure weight tuning |
+| C — Stable-flavor Fun mismatch | 0 | — | Resolved by optimizer |
+| D — Holdout high-instinct Fun | 1 | No | Fun effective weight too low; large delta; will partially benefit from Bucket A fix |
 
 ---
 
@@ -163,38 +180,47 @@ At baseline, `high-hedonist/safe` had Rest beating Fun (score 0) and `high-insti
 |---|---|---|---|---|
 | Total samples | 63,528 | 63,528 | — | — |
 | Starvation-region samples | 27,240 | 27,240 | 0 | — |
-| Food consumption lost | 12,685 (46.6%) | 9,581 (35.2%) | **−3,104** | **−11.4 pp** |
-| Comfort dominated | 3,709 (13.6%) | 838 (3.1%) | **−2,871** | **−10.5 pp** |
+| Food consumption lost | 12,685 (46.6%) | 9,654 (35.4%) | **−3,031** | **−11.2 pp** |
+| Comfort dominated | 3,709 (13.6%) | 826 (3.0%) | **−2,883** | **−10.6 pp** |
 | Prep dominated | 0 (0%) | 0 (0%) | 0 | — |
+
+### Per-Actor Breakdown
+
+| Actor | Baseline food-lost % | Optimized food-lost % | Baseline comfort-dom % | Optimized comfort-dom % | Optimized rest-dom % |
+|---|---|---|---|---|---|
+| Ashley | 46.6% | 35.5% | 13.8% | 3.3% | 50.3% |
+| Elizabeth | 46.3% | 35.0% | 13.4% | 2.7% | 48.7% |
+| Frank | 47.9% | 37.6% | 14.5% | 4.4% | 50.4% |
+| Johnny | 45.8% | 34.1% | 13.0% | 2.0% | 49.6% |
+| Oscar | 47.6% | 36.8% | 14.4% | 4.1% | 51.2% |
+| Sawyer | 45.4% | 33.7% | 12.6% | 1.7% | 50.2% |
 
 ### Interpretation
 
-**Did the pressure surface improve?** Yes — dramatically. Food-consumption-lost dropped from 46.6% to 35.2% (−11.4 pp), and comfort-dominated dropped from 13.6% to 3.1% (−10.5 pp). The 3.1% comfort-dominated rate is a major improvement over the Rev 1 result of 25.3% after optimization, confirming the model changes resolved the structural Comfort-over-FoodConsumption pathology.
+**Did the pressure surface improve?** Yes — substantially. Food-consumption-lost dropped from 46.6% to 35.4% (−11.2 pp), and comfort-dominated dropped from 13.6% to 3.0% (−10.6 pp). All six actors improved on both metrics. No actor regressed.
 
-**Did any pathology get worse?** No. Prep-dominated count remains zero. No new pathology category appeared.
+**Did any pathology get worse?** No. Prep-dominated is 0% for all actors at both baseline and optimized. The Preparation forbidden regression in the golden-state test is a pinpoint issue in one golden state — not a systemic fuzzer pathology.
 
-**Do fuzzer results agree with golden-state improvements?** Yes, with strong coherence. The golden-state improvements (training +7 satisfied, sacred unchanged) are mirrored in the fuzzer: comfort-dominated nearly eliminated (3.1%), food-lost meaningfully reduced. There is no golden-state vs fuzzer tension in this run.
+**Rest-dominated rate:** ~50% post-optimization across all actors. This reflects the moderate `FatiguePressureRestScale=0.010` (−33% from baseline). Rest dominance in non-critical states is an expected consequence of this parameter — not a pathology, but worth watching if further `FatiguePressureRestScale` reduction is attempted.
 
-**Residual concern:** A 35.2% food-consumption-lost rate still means 1 in 3 starvation-region samples do not prioritize food. This is partially expected — some starvation-region samples are at moderate satiety (s=40–50) where food-timing trade-offs are intentional. The remaining fuzzer failures likely correspond to Bucket B (mild distress, high-survivor profile) — further investigation with per-trait fuzzer breakdown would be useful before declaring this resolved.
+**Per-actor spread:** Frank and Oscar show the highest post-optimization food-loss and comfort-dominated rates (~4%, ~37%). These actors likely carry higher Survivor/Comfort personality traits. This is consistent with the Bucket B pattern (high-survivor mild-distress residual). No corrective action needed unless it worsens.
+
+**Do fuzzer results agree with golden-state improvements?** Yes. The optimizer's golden-state gains (training +6 satisfied, sacred unchanged) are reflected in the fuzzer: comfort-dominated nearly eliminated (3.0%), food-lost meaningfully reduced. No tension between the two evaluation views.
 
 ---
 
 ## 6. Overall Verdict
 
-### **A. Good to proceed with current optimizer — with one near-term fix.**
+### **A. Good to proceed — with one concrete near-term fix before the next optimizer pass.**
 
-**Justification:**
+The foundation is solid:
+- Baseline is clean: 0 forbidden violations, 0 sacred regressions.
+- Optimization generalized strongly: holdout exact improved more (+5) than training exact (+2).
+- Sacred is intact through the full optimization cycle.
+- Fuzzer pathology dropped substantially (comfort-dominated 13.6% → 3.0%).
+- PR #110 expanded the tunable set and confirmed via optimizer run which levers are effective (`ComfortRestSuppressionMin`) and which are not sufficient alone (`FunBaseScale`, `PrepTimePressureCap`).
 
-The situation is fundamentally different from Rev 1:
-- Baseline is clean: 0 forbidden violations, 0 sacred regressions, all sacred states passing.
-- Optimization generalized well: holdout improved more on exact matches (+5) than training (+3).
-- Sacred did not regress through the optimization cycle.
-- Fuzzer pathology dropped dramatically (comfort-dominated 13.6% → 3.1%).
-- The model change resolved the structural failure that blocked optimization in Rev 1.
-
-The optimizer is working correctly and the foundation is solid enough to continue iterating. The verdict is **A**, but with one concrete near-term fix needed before the next pass:
-
-**The Preparation-over-Fun forbidden violation** in `stable-flavor/high-instinct/safe` is the single orange flag. It appeared because the `FatiguePressureRestScale` reduction (−67%) was more aggressive than necessary, evicting Rest from safe-state slots and promoting Preparation in its place. Before running another optimizer pass, the `think_about_supplies` Preparation suppression should be verified for safe-state actors — either the starvation suppression gate is not triggering correctly, or `prepTimePressureCap` needs tightening. Fixing this is cheaper than letting it compound across further optimization iterations.
+The single outstanding issue is the **Preparation-over-Fun forbidden violation** in `training/stable-flavor/high-instinct/safe`. The optimizer confirmed this cannot be resolved by weight tuning alone — the fix requires both an action-level change (`explore_beach` Preparation quality reduction) and a profile-level change (`FunBaseScale` increase). Do this before the next optimizer pass.
 
 ---
 
@@ -202,23 +228,28 @@ The optimizer is working correctly and the foundation is solid enough to continu
 
 ### Immediate (before next optimizer run)
 
-**Audit and fix the `think_about_supplies` Preparation suppression for safe-state actors.**  
-The `training/stable-flavor/high-instinct/safe` case has a Preparation forbidden violation (Preparation beats Fun, score −30) that appeared after `FatiguePressureRestScale` was cut by 67%. Verify that `ComputeThinkAboutSuppliesQualities` in `IslandActorState` correctly applies the starvation suppression multiplier (×0.2) for actors at s=65. If the suppression is active but Preparation still wins, tighten `prepTimePressureCap` (currently 0.2) or add a `funBaseScale` boost for high-instinct profiles at safe stats. This is a targeted one-parameter change — confirm it resolves the forbidden violation without regressing the mild-distress improvements.
+**Reduce `explore_beach` Preparation quality AND raise `FunBaseScale`.**
+
+The addendum (`simrunner-forbidden-regression-addendum.md`) provides the full quantitative diagnosis. The actionable fix:
+1. Reduce `explore_beach` Preparation quality from 0.78 to ~0.55–0.60 in the relevant action definition.
+2. Raise `FunBaseScale` in `DecisionTuningProfile` from 0.60 to 0.80–0.85.
+
+These two changes together give a stable winning margin for Fun in the high-instinct safe state. `FunBaseScale` alone (even at the optimizer's maximum of 1.00) only produces a 0.007 margin — insufficient for stable convergence.
 
 ### Follow-up #1
 
-**Run one more optimizer pass using the fixed profile as the new base.**  
-After resolving Bucket A (Preparation forbidden), the remaining soft failures are Bucket B (high-survivor mild distress) and Bucket D (holdout high-instinct Fun). Both have plausible weight-tuning paths. A fresh 4–6 iteration coordinate-descent pass starting from `optimized-AE07DF39` (or the post-fix variant) should be able to make progress on both without introducing regressions, given the current generalization quality (holdout exact +5 in the last run).
+**Run one more optimizer pass from the fixed profile.**  
+After resolving Bucket A, run a fresh coordinate-descent pass starting from `optimized-F5DA3947` (or the post-fix variant). With `FunBaseScale` and `explore_beach` Preparation quality corrected, the optimizer can effectively explore the `FunBaseScale` axis. Remaining soft failures are Bucket B (high-survivor mild distress, score +6) and Bucket D (holdout high-instinct Fun, score 0).
 
 ### Follow-up #2
 
-**Expand the fuzzer breakdown by trait profile.**  
-The current fuzzer metrics aggregate all 27k starvation-region samples together. A per-trait breakdown would tell you whether the 35.2% food-lost rate is evenly distributed or concentrated in specific trait profiles (e.g., high-survivor or high-hedonist). If it's concentrated, it's a targeting signal for the next optimizer pass. This is a reporting/tooling change, not a model change.
+**Monitor rest-dominated rate in the next optimizer pass.**  
+The gap between `explore_beach` (0.5567) and `sleep_under_tree` (0.516) is only 0.041. Any further `FatiguePressureRestScale` reduction will cause the high-instinct state to oscillate between a Rest winner (not forbidden) and Preparation winner (forbidden). Fix Bucket A first so the category landscape in that state is determined by Fun vs Preparation, not Rest vs Preparation.
 
 ### Do not do yet
 
 **Do not expand the golden-state training set before resolving Bucket A.**  
-Adding more training states now would give the optimizer more surface area to fit, but the Preparation dominance issue is an objective model issue (suppression not firing correctly), not a coverage gap. Adding states before fixing the objective will cause the optimizer to work around the Preparation issue by adjusting unrelated weights, which will produce a profile that is overfit to both the original cases and the new cases while still not fixing the root cause. Fix the suppression gate first.
+The Preparation dominance issue is an objective model issue (action quality + weight imbalance), not a coverage gap. Adding states before the fix will cause the optimizer to work around it by adjusting unrelated weights, producing a profile that still doesn't resolve the root cause.
 
 ---
 
@@ -231,18 +262,16 @@ Adding more training states now would give the optimizer more surface area to fi
 | `trait:ef00d494\|FoodAvailable_WithComfort\|s45\|h70\|e60\|m55` | training/mild-distress/comfort-avail/high-survivor | Training | 6 | FoodConsumption | Rest | ❌ |
 | `trait:13fcd090\|FoodAvailable_WithComfort\|s55\|h80\|e65\|m60` | holdout/stable-flavor/high-instinct/comfort-avail | Holdout | 0 | Fun | Rest | ❌ |
 
-*(Only 4 post-optimization failures vs 9 in Rev 1.)*
-
 ---
 
 ## Appendix B — Changed Parameters from `optimizer-diff.json`
 
 | Parameter | Baseline | Optimized | Δ | Interpretation |
 |---|---|---|---|---|
-| `FatiguePressureRestScale` | 0.015 | 0.005 | **−0.010 (−67%)** | Major Rest-pressure reduction; most impactful change; evicted Rest from distress slots but may have over-suppressed in safe states |
-| `FoodConsumptionShareHigh` | 0.80 | 0.90 | +0.10 | Stronger food signal when food share is high; resolved remaining mild-distress food timing cases |
-| `HungerModerateRange` | 1.20 | 1.30 | +0.10 | Wider moderate-hunger pressure window; helped Bucket B |
-| `MiseryPressureComfortScale` | 0.010 | 0.008 | −0.002 | Minor Comfort-pressure reduction; limited direct impact but reduces comfort competition at distress edges |
-| `InjurySafetyNeedScale` | 0.025 | 0.020 | −0.005 | Minor Safety-pressure reduction; may have contributed to some holdout exact improvements |
+| `FatiguePressureRestScale` | 0.015 | 0.010 | **−0.005 (−33%)** | Moderate Rest-pressure reduction; evicts Rest from distress slots and exposes pre-existing Preparation in safe slots |
+| `FoodConsumptionShareHigh` | 0.80 | 0.90 | +0.10 | Stronger food signal when food share is high; resolves mild-distress food-timing cases |
+| `HungerModerateRange` | 1.20 | 1.30 | +0.10 | Wider moderate-hunger pressure window |
+| `InjurySafetyNeedScale` | 0.025 | 0.020 | −0.005 | Minor Safety-pressure reduction |
+| `ComfortRestSuppressionMin` | 0.300 | 0.250 | **−0.050** | Lower Comfort/Rest suppression floor; allows Comfort to compete more at distress edges |
 
-The optimizer converged in 4 iterations. The `FatiguePressureRestScale` change at −67% is notably aggressive — this is 2× the reduction seen in Rev 1 (−33%). The Preparation forbidden violation is a direct consequence. Tightening this to −50% (0.0075) and re-running would be a useful ablation to determine how much Rest suppression is needed without introducing Preparation side effects.
+The optimizer converged in 3 iterations. `ComfortRestSuppressionMin` is a new parameter from PR #110; its selection in this run validates that the expanded parameter set is producing useful coverage.

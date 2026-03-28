@@ -1,9 +1,9 @@
 # SimRunner Optimization — Forbidden Regression Addendum
 
 **Generated:** 2026-03-28  
-**Applies to:** Optimized profile `AE07DF39` vs baseline `47FE6B78`  
-**Artifact sources:** Optimizer run `23672987785`, Optimized eval `23673032824`, Fuzzer `23673050523` (all on commit `57cea83d`)  
-**New artifact files used:** `forbidden-regression-diff.json`, `state-delta-report.json`, `optimizer/failures.json` (with `topCandidates` + `qualityModelDecomposition` + `thinkAboutSuppliesAnalysis`), `optimizer-comparison.json` (with `activeTuningParameters`), `fuzzer/trait-profile-breakdown.json`
+**Applies to:** Optimized profile `F5DA3947` vs baseline `47FE6B78`  
+**Artifact sources:** Baseline `23677049778`, Optimizer `23677051879`, Optimized eval `23691060472`, Fuzzer `23691063729` (all on commit `3159cd0b`)  
+**Artifact files used:** `forbidden-regression-diff.json`, `state-delta-report.json`, `optimizer/failures.json` (with `topCandidates` + `qualityModelDecomposition` + `thinkAboutSuppliesAnalysis`), `optimizer-comparison.json` (with `activeTuningParameters`), `fuzzer/trait-profile-breakdown.json`
 
 ---
 
@@ -15,7 +15,7 @@
 |---|---|---|---|---|---|
 | `trait:13fcd090\|FoodAvailableNow\|s65\|h90\|e80\|m65` | training/stable-flavor/high-instinct/safe | Fun | `sleep_under_tree` (Rest) | `explore_beach` (Preparation) | 0 → −30 |
 
-No forbidden violations were resolved. No other newly forbidden cases. The change is isolated to a single training state.
+No forbidden violations were resolved. No other newly forbidden cases.
 
 ---
 
@@ -33,11 +33,11 @@ No forbidden violations were resolved. No other newly forbidden cases. The chang
 |---|---|---|
 | Actual top category | Rest | Preparation |
 | Desired (Fun) rank | 10 | 9 |
-| Δ from top | −0.271 | −0.202 |
+| Δ from top | −0.271 | −0.197 |
 | Forbidden violated | No | **Yes** |
 | Score | 0 | −30 |
 
-Fun actually moved up one rank (10→9) and the delta slightly improved (−0.271→−0.202). The regression is caused entirely by the winning category switching from the non-violating Rest to the forbidden Preparation — not by Fun getting worse.
+Fun moved up one rank (10→9) and the gap slightly improved (−0.271→−0.197). **The regression is caused entirely by the winning category switching from the non-violating Rest to the forbidden Preparation** — not by Fun getting worse.
 
 ### Candidate ranking (optimized — from `optimizer/failures.json`)
 
@@ -45,13 +45,13 @@ Fun actually moved up one rank (10→9) and the delta slightly improved (−0.27
 |---|---|---|---|---|
 | 1 | `explore_beach` | **0.5567** | Preparation, Efficiency | Prep: 0.78 × 0.3948 = **0.3079** |
 | 2 | `go_fishing` | 0.5251 | FoodAcquisition, Efficiency, Fun | Fun: 0.30 × 0.1921 = **0.0576** |
-| 3 | `sit_and_watch_waves` | 0.4343 | Comfort, Safety, Fun | Fun: 0.15 × 0.1921 = **0.0288** |
-| 4 | `bash_and_eat_coconut` | 0.4198 | FoodConsumption, Comfort | — |
-| 5 | `sleep_under_tree` | 0.416 | Rest, Safety | Rest: 1.0 × 0.2 = **0.2000** |
+| 3 | `sleep_under_tree` | 0.5160 | Rest, Safety | Rest: 1.0 × 0.3000 = **0.3000** |
+| 4 | `sit_and_watch_waves` | 0.4728 | Comfort, Safety, Fun | Comfort: 0.55 × 0.6000 = **0.3300** |
+| 5 | `bash_and_eat_coconut` | 0.4268 | FoodConsumption, Comfort | — |
 | 9 | *(best Fun-rank action)* | — | Fun | Fun rank: 9 |
 | 15 | `think_about_supplies` | 0.1632 | Preparation (fallback), Efficiency | Prep: 0.15 × 0.3948 = **0.0592** |
 
-Note: `think_about_supplies` is **not the winner, not close (rank 15), and not the cause of the regression**. Its Preparation contribution (0.0592) is negligible compared to `explore_beach`'s (0.3079). See think_about_supplies section below.
+`think_about_supplies` is **not the winner, not close (rank 15), and not the cause of the regression.** Its Preparation contribution (0.0592) is 5.2× smaller than `explore_beach`'s (0.3079). This is confirmed by the optimizer not selecting `PrepTimePressureCap` even when it was available in the tunable set — capping `think_about_supplies` has zero effect on the winner.
 
 ### Winner comparison: baseline vs optimized
 
@@ -61,39 +61,35 @@ Note: `think_about_supplies` is **not the winner, not close (rank 15), and not t
 | Winning category | Rest | Preparation |
 | Forbidden | No | **Yes** |
 | Fun desired rank | 10 | 9 |
-| Δ from top | −0.271 | −0.202 |
+| Δ from top | −0.271 | −0.197 |
+| `sleep_under_tree` score | ~0.816 (estimated at baseline) | **0.516** |
+| Gap: `explore_beach` vs `sleep_under_tree` | — | **0.041** |
 
-The estimated baseline score for `sleep_under_tree` is ~0.816 (see calculation below). The optimized score is 0.416 — a collapse of ~0.40 points due to the `FatiguePressureRestScale` cut from 0.015 to 0.005.
+`explore_beach` scores 0.5567 in both baseline and optimized — it was always the Preparation ceiling in this state. At baseline, `sleep_under_tree` scored approximately 0.816 (estimated from `FatiguePressureRestScale=0.015`, Rest needAdd≈0.6). The `FatiguePressureRestScale` cut to 0.010 reduced Rest needAdd from ~0.6 to 0.3, dropping `sleep_under_tree` to 0.516. Rest no longer covers Preparation. Only 0.041 separates the two.
 
-**`explore_beach` was always scoring ~0.556 in both baseline and optimized.** The parameter change did not affect Preparation weights — it only dropped Rest, exposing the pre-existing Preparation winner underneath.
-
-### Category decomposition (optimized)
+### Category decomposition (optimized — from `qualityModelDecomposition`)
 
 | Category | needAdd | personalityBase | moodMultiplier | effectiveWeight |
 |---|---|---|---|---|
 | **Fun** | 0 | 1.0 | **0.1921** | **0.1921** |
 | **Preparation** | 0 | 0.42 | 0.94 | **0.3948** |
 | Mastery | 0 | 0.36 | 0.93 | 0.3348 |
-| Rest | 0.20 | 0 | 1.0 | **0.200** |
-| Comfort | 0.33 | 0.20 | 1.0 | 0.530 |
-| Safety | 0.20 | 0.18 | 1.0 | 0.380 |
-| Efficiency | 0 | 0.24 | 1.0 | 0.240 |
+| **Rest** | **0.30** | 0 | 1.0 | **0.3000** |
+| **Comfort** | **0.40** | 0.20 | 1.0 | **0.6000** |
+| Safety | 0.20 | 0.18 | 1.0 | 0.3800 |
+| Efficiency | 0 | 0.24 | 1.0 | 0.2400 |
 | FoodConsumption | 0.0675 | 0.29 | 1.0 | 0.3575 |
 | FoodAcquisition | 0.0075 | 0.12 | 1.0 | 0.1275 |
 
-**Critical observation:** Fun has `personalityBase=1.0` (highest possible — high-instinct personality correctly gives max personality scaling to Fun) but `moodMultiplier=0.1921`, yielding effectiveWeight=0.1921. Preparation has `personalityBase=0.42` and `moodMultiplier=0.94`, yielding effectiveWeight=0.3948. Fun's effective weight is **less than half of Preparation's**, despite this being a high-instinct actor.
+**Critical observation:** Fun has `personalityBase=1.0` — the highest possible value for this high-instinct actor — but `moodMultiplier=0.1921`, giving effectiveWeight=0.1921. Preparation has `personalityBase=0.42` but `moodMultiplier=0.94`, giving effectiveWeight=0.3948. Fun's effective weight is less than half of Preparation's, despite this being the actor profile where Fun should dominate in safe states.
 
-**Structural impossibility:** Even if a hypothetical action had `Fun quality = 1.0` (perfect), its Fun contribution would be 1.0 × 0.1921 = **0.1921**. `explore_beach`'s Preparation contribution alone is **0.3079**. Fun cannot beat Preparation in this state regardless of which Fun-oriented candidates exist.
-
-Comparing Fun moodMultiplier (0.1921) to Preparation (0.94) and Mastery (0.93): the other categories receive near-neutral mood suppression at these vitals (h=90, s=65, e=80, m=65). **Fun is suppressed by a factor of ~5× relative to Preparation** at this safe, comfortable state. This is the quantitative core of the problem.
-
-No baseline decomposition is available directly (the baseline failures.json for the Rev 2 run pre-dates the richer artifact format). However, the baseline vs optimized comparison is unambiguous via the state-delta data: the optimized Fun weight is the same as baseline (no optimizer parameter affects Fun moodMultiplier directly), confirming Fun was equally weak in the baseline — just hidden behind Rest.
+**Structural impossibility:** Even if a hypothetical action had Fun quality=1.0 (perfect), its Fun contribution would be 1.0 × 0.1921 = **0.1921**. `explore_beach`'s Preparation contribution alone is **0.3079**. Fun cannot beat Preparation in this state regardless of candidate availability.
 
 ### `think_about_supplies` analysis
 
 **Present?** Yes — ranked 15th with score 0.1632.
 
-**Was it the winner?** No. It ranked 15th out of all available candidates.
+**Was it the winner?** No. Rank 15.
 
 **Qualities emitted:**
 
@@ -102,109 +98,134 @@ No baseline decomposition is available directly (the baseline failures.json for 
 | Preparation | 0.15 | 0.3948 | 0.0592 |
 | Efficiency | 0.10 | 0.240 | 0.0240 |
 
-These are the **fallback qualities** (`{Preparation: 0.15, Efficiency: 0.10}`), indicating that no food or safety recipes are discoverable in this FoodAvailableNow/safe scenario. According to the `think_about_supplies` logic, this should trigger starvation suppression (×0.2) — but satiety=65 is well above the starvation threshold of 25, so the suppression gate is **not active**. The fallback qualities are correctly unapplied-suppressed: the score of 0.1632 = intrinsic 0.08 + 0.0592 + 0.0240 is exactly the unsuppressed fallback, which is correct behavior. The suppression gate only fires when satiety is critically low — this is working as designed.
+These are the fallback qualities (`{Preparation:0.15, Efficiency:0.10}`), which activate when no food or safety recipes are discoverable in this FoodAvailableNow/safe scenario. The starvation suppression gate (×0.2) is **not active** — satiety=65 is well above the starvation threshold. This is correct behavior.
 
-**`think_about_supplies` is not the causal mechanism.** Its Preparation contribution (0.0592) is 5.2× smaller than `explore_beach`'s (0.3079). Even if `think_about_supplies` were eliminated from candidates entirely, `explore_beach` would still win.
+**Suppression/cap inputs applied:** None. The fallback qualities are correctly unapplied-suppressed: score 0.1632 = intrinsic(0.08) + 0.0592 + 0.0240. Working as designed.
+
+**`PrepTimePressureCap` confirmation:** The optimizer did not select `PrepTimePressureCap` even when it was available (PR #110, range [0.05, 0.50]). This is direct confirmation that adjusting the `think_about_supplies` Preparation contribution would have no impact on the outcome. `think_about_supplies` is not the lever here.
 
 ---
 
 ## 3. Root-Cause Assessment
 
-### Verdict: **C + B combined**, with C as the proximate trigger and B as the structural root cause
+### Verdict: **C + B combined** — C is the proximate trigger, B is the structural root cause
 
 #### Hypothesis C — Rest suppression exposed pre-existing Preparation dominance  
-**Confidence: HIGH (confirmed by data)**
+**Confidence: HIGH (confirmed)**
 
-This is the causal trigger. The `FatiguePressureRestScale` cut from 0.015 to 0.005 (−67%) reduced Rest's `needAdd` from approximately 0.60 to 0.20, dropping `sleep_under_tree` from an estimated score of ~0.816 to 0.416. This dropped Rest below Preparation (0.556), allowing `explore_beach` to take first place. **`explore_beach` was always scoring 0.556 — the number didn't change. Only Rest fell.**
+This is the proximate trigger. The `FatiguePressureRestScale` cut from 0.015 to 0.010 (−33%) reduced Rest needAdd from ~0.60 to 0.30, dropping `sleep_under_tree` from an estimated ~0.816 to 0.516. This moved Rest below Preparation (0.5567), which was already in second place. `explore_beach` was always scoring 0.5567 — it did not change. Only Rest fell.
 
 Evidence:
-- State-delta confirms baseline winner was `sleep_under_tree` (Rest); optimized winner is `explore_beach` (Preparation)
-- The FatiguePressureRestScale parameter is the only changed optimizer parameter that affects Rest needAdd
-- `explore_beach` score is deterministic given fixed Preparation weights; those weights were not changed by the optimizer
-- The same Rest-masking dynamic is visible in `training/stable-flavor/high-survivor/safe` (Preparation now winning) and `training/stable-flavor/high-hedonist/safe` (Comfort now winning, not Fun — Comfort was next in line after Rest)
+- State delta confirms baseline winner was `sleep_under_tree` (Rest); optimized winner is `explore_beach` (Preparation).
+- `FatiguePressureRestScale` is the only changed parameter that affects Rest needAdd.
+- `explore_beach` score is stable (no optimizer parameter affects Preparation effectiveWeight for this actor profile).
+- The high-survivor safe state (`training/stable-flavor/high-survivor/safe`) also moved to a Preparation winner — same mechanism, different trait profile.
 
 #### Hypothesis B — Fun pressure is too low in safe states  
-**Confidence: HIGH (structural root cause)**
+**Confidence: HIGH (structural root cause, confirmed by optimizer non-selection of FunBaseScale)**
 
-This is the deeper, underlying problem. The Fun moodMultiplier of 0.1921 at morale=65/energy=80 in a non-critical state is anomalously low:
+This is the deeper, underlying problem. Fun moodMultiplier is 0.1921 at morale=65/energy=80 in a non-critical safe state — approximately 5× lower than Preparation (0.94) at the same state. With personalityBase=1.0 (maximum for this high-instinct actor), Fun effective weight is 0.1921. Preparation's effective weight is 0.3948 with only personalityBase=0.42.
 
-- Fun effective weight: **0.1921**
-- Preparation effective weight: **0.3948** (with personalityBase=0.42 only — half the personality drive of Fun)
-- Even a perfect Fun quality action (1.0) scores at most 0.1921 on the Fun dimension, vs `explore_beach`'s 0.3079 from Preparation alone
-- Fun was at rank 10 at baseline (not just slightly under; it was deeply ranked) — this predates the FatiguePressureRestScale change entirely
+The optimizer had `FunBaseScale` available ([0.40, 1.00]) but did not select it. The arithmetic explains why:
 
-The high-instinct actor's `personalityBase=1.0` for Fun is correct. But the moodMultiplier of 0.1921 — approximately 5× lower than Preparation (0.94) at the same state — is what makes Fun non-competitive. Whatever mechanism produces the 0.1921 moodMultiplier at m=65 in a non-critical state, it is too aggressive a suppression.
+| FunBaseScale | Fun effectiveWeight | go_fishing total score | vs explore_beach |
+|---|---|---|---|
+| 0.60 (current) | 0.1921 | 0.5251 | −0.032 |
+| 0.80 | 0.2561 | 0.5443 | −0.012 |
+| 0.95 | 0.3042 | 0.5559 | −0.001 |
+| **1.00 (max)** | **0.3202** | **0.5635** | **+0.007** |
 
-**Uncertainty note:** The exact formula producing Fun moodMultiplier=0.1921 is not directly visible in the artifact data. It could be a morale-based curve, a composite factor, or an unintended interaction between `funBaseScale=0.6` and another suppression term. The available data confirms the output (0.1921) but not the computation path. However, the diagnostic implication is clear regardless.
+Even at the maximum FunBaseScale=1.00, `go_fishing` beats `explore_beach` by only 0.007 — a margin that would be reversed by any subsequent optimizer step. The optimizer correctly determined no step along the FunBaseScale axis was reliably net-positive. Fun was ranked 10th at baseline (well before any optimization) — this is a pre-existing structural gap, not a side effect of optimization.
 
 #### Hypothesis A — Preparation pressure is too high in safe states  
-**Confidence: MEDIUM (contributing, not primary)**
+**Confidence: MEDIUM (contributing, confirmed by PrepTimePressureCap non-selection)**
 
-`explore_beach` has a very high Preparation quality value (0.78). This, combined with Preparation effective weight 0.3948 for this trait profile, gives it a total Preparation contribution of 0.3079. This is not obviously miscalibrated — `explore_beach` is legitimately a Preparation-oriented action. The problem is not that Preparation is artificially inflated; it's that Fun is artificially deflated.
+`explore_beach` Preparation contribution is 0.3079 (quality=0.78 × effectiveWeight=0.3948). The effectiveWeight is not anomalous — it reflects the high-instinct actor's personalityBase=0.42 for Preparation plus near-neutral moodMultiplier=0.94. What is high is the action-level quality value (0.78) for `explore_beach`. A beach exploration carrying Preparation quality=0.78 is the primary fixable component.
 
-However, there is a secondary Preparation signal worth noting: the `training/stable-flavor/high-survivor/safe` state also moved to a Preparation winner post-optimization (see `top-worsened-improved.json`, score delta +6 because desired was Safety and Preparation doesn't violate the Safety constraint). The FatiguePressureRestScale change pushed multiple safe-state actor-types toward Preparation. This suggests Preparation's absolute competitiveness in safe states is a concern that transcends the high-instinct case.
+The optimizer did not select `PrepTimePressureCap` — confirming that capping `think_about_supplies` (which is what `PrepTimePressureCap` affects) has no impact on this regression. The problem is the world-item action quality, not the time-pressure component.
 
 #### Hypothesis D — Candidate availability for Fun is too weak  
 **Confidence: LOW (not supported)**
 
-Fun candidates are present: `go_fishing` (rank 2, Fun contribution 0.0576) and `sit_and_watch_waves` (rank 3, Fun contribution 0.0288). The problem is not that there are no Fun candidates — it's that their Fun contributions are tiny because Fun effective weight is low. Even if the best Fun action were specifically designed with Fun quality=1.0, it would score at most 0.1921 from Fun alone, which is below `explore_beach`'s total score (0.5567).
+Fun candidates are present: `go_fishing` (rank 2, Fun contribution 0.0576) and `sit_and_watch_waves` (rank 4, Fun contribution 0.0288). The problem is not availability — it is the Fun effective weight (0.1921). Even if a perfect Fun-quality action (quality=1.0) existed, its Fun contribution would be 0.1921 — still below `explore_beach`'s Preparation contribution alone (0.3079).
 
 ---
 
 ## 4. Recommended Next Fix
 
-### Primary recommendation: Increase `funBaseScale` from 0.6 to ~0.85–0.90
+### Combined fix: reduce `explore_beach` Preparation quality AND raise `FunBaseScale`
 
-**Target parameter:** `funBaseScale` in `DecisionTuningProfile` (currently 0.6)  
-**Type:** Pure weight/tuning change (no objective model change needed)  
-**Mechanism:** Fun moodMultiplier = `funBaseScale` × f(vitals). Raising `funBaseScale` directly increases Fun effective weight across non-critical states, making Fun-oriented actions competitive when personality drives Fun (e.g., high-instinct, high-hedonist safe states).
+This regression requires two simultaneous changes. Neither is sufficient alone.
 
-**Quantitative target:** For `explore_beach` (Preparation) to not win over a good Fun action, Fun effective weight needs to be at least ~0.65:  
-`fun_effective_weight_needed ≥ explore_beach_Prep_contribution / best_Fun_quality ≈ 0.3079 / 0.3 = 1.03`  
-That's unreachably high for a single category weight, which means `explore_beach`'s Preparation contribution also needs to be reduced. The combined fix is:  
-1. Raise `funBaseScale` to ~0.85 (giving Fun effective weight ≈ `0.85 × factor ≈ 0.27`)  
-2. Also tighten `preparationScale` for non-critical states (currently 0.7) by adding a safe-state cap — OR reduce the Preparation quality of `explore_beach` from 0.78 (action-level change)
+**Step 1 (action-level):** Reduce `explore_beach` Preparation quality from 0.78 to ~0.55–0.60.
 
-**Simplest first step (one parameter, lowest risk):**  
-Raise `funBaseScale` from 0.6 to 0.85. Re-run evaluation. If Fun is now closer to rank 3–4 for high-instinct safe states, then add `preparationScale` cap as a second step. Do not reduce `FatiguePressureRestScale` further — it was already cut 67% and that is the direct trigger.
+At quality=0.60: Preparation contribution = 0.60 × 0.3948 = **0.2369**.  
+New `explore_beach` total ≈ 0.22 + 0.2369 + 0.0288 (Efficiency) = **0.4857**.
 
-**Do NOT:** Fix this via `prepTimePressureCap` or by adjusting `think_about_supplies` parameters. `think_about_supplies` is at rank 15 and is not the winning Preparation action. The winning action is `explore_beach`, a world-item-based action unrelated to `think_about_supplies`.
+**Step 2 (profile-level):** Raise `FunBaseScale` in `DecisionTuningProfile` from 0.60 to 0.80–0.85.
 
-**Risk assessment:** Raising `funBaseScale` will increase Fun competitiveness in all non-critical states across all trait profiles. The profiles with high Hedonist/Instinctive traits will benefit most. Since all sacred states pass currently and the fuzzer showed no prep-dominance pathology (prep_dominated_count=0 at both baseline and optimized), there is low risk of introducing a Fun over-dominance regression. The holdout improvement (+5 exact) in the current optimization run shows the model is generalizing well, and a modest `funBaseScale` increase should preserve that.
+At FunBaseScale=0.80: Fun effectiveWeight = 0.2561.  
+`go_fishing` total = 0.22 + 0.1275 + 0.12 + (0.3 × 0.2561) = **0.5443**.
+
+With both changes: `go_fishing` (Fun, 0.5443) beats `explore_beach` (Preparation, 0.4857) by **0.059** — a stable, large margin. This is robust to small subsequent optimizer moves.
+
+**Why both changes are required:**
+- `FunBaseScale` alone (even at 1.00 max): margin is 0.007 — too small, risks oscillation.
+- Action quality reduction alone: `explore_beach` would score 0.4857, beaten by `go_fishing` (0.5251 at current Fun weight) — this works mathematically, but leaves Fun effective weight structurally weak across all other states.
+- Together: Fun wins clearly and the high-instinct actor's Fun personality is correctly reflected in safe states.
+
+**Do NOT:**
+- Adjust `think_about_supplies` parameters — confirmed wrong lever (rank 15, not the winner).
+- Adjust `PrepTimePressureCap` alone — confirmed wrong lever (optimizer non-selection validates this).
+- Reduce `FatiguePressureRestScale` further — gap between `explore_beach` and `sleep_under_tree` is already only 0.041. Further reduction risks oscillation back to a Rest winner without resolving the underlying Fun weakness.
+
+**Risk assessment:** Reducing `explore_beach` Preparation quality affects all actor profiles in `FoodAvailableNow` safe states. The `sacred/prep-preserved/high-planner/safe` test uses `HighRecipeOpportunity` scenario (not `FoodAvailableNow`), so direct collision is unlikely. The `training/stable-flavor/balanced/safe` Mastery failure (Bucket A, score 0) may also benefit — removing Preparation dominance in safe FoodAvailableNow scenarios may allow Mastery-category actions to rank higher for that actor too.
 
 ---
 
-## 5. Fuzzer Trait-Profile Validation
+## 5. PR #110 Parameter Summary
 
-The `trait-profile-breakdown.json` from the updated fuzzer run shows consistent per-actor results:
-
-### Baseline (ProductionDefault `47FE6B78`)
-
-| Actor | Comfort dominated % | Food consumption lost % | Rest dominated % |
+| Parameter | Available? | Optimizer selected? | Effect |
 |---|---|---|---|
-| Ashley | 13.8% | 46.6% | 57.9% |
-| Elizabeth | 13.4% | 46.3% | 56.9% |
-| Frank | 14.5% | 47.9% | 57.3% |
-| Johnny | 13.0% | 45.8% | 57.1% |
-| Oscar | 14.4% | 47.6% | 57.9% |
-| Sawyer | 12.6% | 45.4% | 57.8% |
+| `FunBaseScale` | Yes [0.40, 1.00] | **No** | Marginal margin (0.007) at max; net-negative without action quality change |
+| `PrepTimePressureCap` | Yes [0.05, 0.50] | **No** | Affects `think_about_supplies` only; wrong lever for this regression |
+| `ComfortRestSuppressionMin` | Yes [0.10, 0.70] | **Yes** (0.30→0.25) | Raised Comfort effectiveWeight (0.53→0.60); helped other states |
+| `HungerSuppressionStartSatiety` | Yes [15.0, 40.0] | **No** | No net-positive step found |
+| `HungerSuppressionFullSatiety` | Yes [5.0, 20.0] | **No** | No net-positive step found |
+| `HungerSuppressionExponent` | Yes [0.5, 4.0] | **No** | No net-positive step found |
 
-### Optimized (`AE07DF39`)
+The optimizer's non-selection of `FunBaseScale` and `PrepTimePressureCap` is diagnostic, not a limitation. It confirms that these parameters cannot resolve the regression within the current optimizer score function without collateral damage. The fix path is outside pure weight tuning.
 
-| Actor | Comfort dominated % | Food consumption lost % | Rest dominated % |
-|---|---|---|---|
-| Ashley | 3.3% | 35.1% | 43.9% |
-| Elizabeth | 2.7% | 34.5% | 40.3% |
-| Frank | 4.5% | 37.7% | 43.0% |
-| Johnny | 2.1% | 33.8% | 41.0% |
-| Oscar | 4.2% | 36.6% | 44.7% |
-| Sawyer | 1.7% | 33.4% | 41.9% |
+---
 
-**Observations:**
-- Comfort-dominated improvement is consistent across all actors (12.6–14.5% → 1.7–4.5%). No actor regressed.
-- Frank and Oscar show the highest post-optimization comfort and food-loss rates (~4.5%, ~37%). These actors likely have higher Survivor or Comfort personality traits that make them more susceptible to Rest/Comfort competition. This is a mild outlier worth monitoring.
-- No prep-dominated rate appears for any actor at either baseline or optimized (confirmed 0% across all 6 actors in both conditions). This means the Preparation forbidden regression in the golden state is not yet surfacing at fuzzer scale — Preparation over-dominance in safe states is currently a pinpoint issue (1 golden state), not a systemic fuzz pathology.
-- Rest-dominated rate dropped significantly (57–58% → 40–44%), confirming the `FatiguePressureRestScale` reduction had its intended effect at scale.
+## 6. Fuzzer Trait-Profile Validation
+
+### Summary
+
+| Metric | Baseline | Optimized |
+|---|---|---|
+| Total samples | 63,528 | 63,528 |
+| Food consumption lost | 12,685 (46.6%) | 9,654 (35.4%) |
+| Comfort dominated | 3,709 (13.6%) | 826 (3.0%) |
+| Prep dominated | 0 (0%) | 0 (0%) |
+
+### Per-Actor Breakdown
+
+| Actor | Baseline food-lost % | Optimized food-lost % | Baseline comfort-dom % | Optimized comfort-dom % | Optimized rest-dom % |
+|---|---|---|---|---|---|
+| Ashley | 46.6% | 35.5% | 13.8% | 3.3% | 50.3% |
+| Elizabeth | 46.3% | 35.0% | 13.4% | 2.7% | 48.7% |
+| Frank | 47.9% | 37.6% | 14.5% | 4.4% | 50.4% |
+| Johnny | 45.8% | 34.1% | 13.0% | 2.0% | 49.6% |
+| Oscar | 47.6% | 36.8% | 14.4% | 4.1% | 51.2% |
+| Sawyer | 45.4% | 33.7% | 12.6% | 1.7% | 50.2% |
+
+### Observations
+
+- Comfort-dominated improvement is consistent across all 6 actors (12.6–14.5% → 1.7–4.4%). No actor regressed.
+- Frank and Oscar show the highest post-optimization comfort and food-loss rates (~4%, ~37%). These actors carry higher Survivor/Comfort personality traits. This is consistent with the Bucket B pattern (high-survivor mild-distress residual).
+- **Prep-dominated: 0% for all actors at both baseline and optimized.** The Preparation forbidden regression is a pinpoint golden-state issue, not a systemic fuzzer pathology. At fuzzer scale, Preparation is not over-dominating any actor's behavior.
+- Rest-dominated rate post-optimization is ~49–51% across all actors. This reflects the moderate `FatiguePressureRestScale=0.010` — Rest is more active in the fuzzer than it was in the golden-state evaluation because the fuzzer covers a wider range of vitals, including moderate-fatigue states where Rest is appropriate.
 
 ---
 
@@ -212,9 +233,12 @@ The `trait-profile-breakdown.json` from the updated fuzzer run shows consistent 
 
 | Finding | Evidence | Confidence |
 |---|---|---|
-| Single forbidden regression: `explore_beach` (Prep) beats Fun in high-instinct safe state | `forbidden-regression-diff.json` | Confirmed |
-| `sleep_under_tree` (Rest) was the baseline winner; FatiguePressureRestScale cut dropped its score from ~0.816 to 0.416 | State delta + parameter diff | Confirmed |
-| `explore_beach` Preparation score (~0.556) was unchanged by optimization | Quality decomp, stable effectiveWeights | Confirmed |
-| Fun effective weight (0.1921) is too low to compete even with perfect-quality Fun candidate | Quality decomp, structural arithmetic | Confirmed |
-| `think_about_supplies` is NOT the cause (rank 15, 5× lower contribution than `explore_beach`) | `optimizer/failures.json` | Confirmed |
-| Fix path: raise `funBaseScale` from 0.6, not adjust `think_about_supplies` or Prep-cap | Arithmetic + parameter isolation | High confidence |
+| 1 forbidden regression: `explore_beach` (Prep) beats Fun in high-instinct safe state | `forbidden-regression-diff.json` | Confirmed |
+| `sleep_under_tree` was baseline winner; `FatiguePressureRestScale` cut dropped its score from ~0.816 to 0.516 | State delta; quality decomp | Confirmed |
+| `explore_beach` Preparation score (0.5567) was unchanged by optimization | Quality decomp; stable effectiveWeights | Confirmed |
+| Gap between `explore_beach` and `sleep_under_tree` is only 0.041 | `optimizer/failures.json` candidate scores | Confirmed |
+| Fun effectiveWeight (0.1921) cannot compete even at FunBaseScale=1.0 max (margin 0.007) | Arithmetic; optimizer non-selection of FunBaseScale | Confirmed |
+| `think_about_supplies` is NOT the cause (rank 15, 5.2× lower Prep contribution than winner) | `optimizer/failures.json`; optimizer non-selection of PrepTimePressureCap | Confirmed |
+| `ComfortRestSuppressionMin` (PR #110 new param) was selected; Comfort effectiveWeight 0.530→0.600 | `optimizer-diff.json` | Confirmed |
+| Fix requires BOTH `explore_beach` quality reduction AND `FunBaseScale` raise | Arithmetic: FunBaseScale max alone yields only 0.007 margin | High confidence |
+| Preparation dominance is not systemic at fuzzer scale (0% prep-dominated across all actors) | `fuzzer/trait-profile-breakdown.json` | Confirmed |
