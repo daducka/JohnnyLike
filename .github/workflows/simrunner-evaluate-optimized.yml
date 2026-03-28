@@ -70,3 +70,80 @@ jobs:
         name: simrunner-optimized-eval
         path: artifacts/optimized/
         retention-days: 30
+
+    - name: Summarize evaluation results
+      run: |
+        SUMMARY=artifacts/optimized/eval-summary.json
+        FAILURES=artifacts/optimized/failures.json
+
+        PROFILE_NAME=$(jq -r '.profileName' "$SUMMARY")
+        PROFILE_HASH=$(jq -r '.profileHash' "$SUMMARY")
+        TOTAL=$(jq -r '.totalStates' "$SUMMARY")
+        TRAIN_EXACT=$(jq -r '.training.exact_pass_count' "$SUMMARY")
+        TRAIN_SAT=$(jq -r '.training.satisfied_pass_count' "$SUMMARY")
+        TRAIN_FORB=$(jq -r '.training.forbidden_count' "$SUMMARY")
+        HOLD_EXACT=$(jq -r '.holdout.exact_pass_count' "$SUMMARY")
+        HOLD_SAT=$(jq -r '.holdout.satisfied_pass_count' "$SUMMARY")
+        HOLD_FORB=$(jq -r '.holdout.forbidden_count' "$SUMMARY")
+        SACRED_EXACT=$(jq -r '.sacred.exact_pass_count' "$SUMMARY")
+        SACRED_SAT=$(jq -r '.sacred.satisfied_pass_count' "$SUMMARY")
+        SACRED_FORB=$(jq -r '.sacred.forbidden_count' "$SUMMARY")
+
+        HUNGER_START=$(jq -r '.activeTuningParameters.hungerSuppressionStartSatiety' "$SUMMARY")
+        HUNGER_FULL=$(jq -r '.activeTuningParameters.hungerSuppressionFullSatiety' "$SUMMARY")
+        COMFORT_MIN=$(jq -r '.activeTuningParameters.comfortRestSuppressionMin' "$SUMMARY")
+        HUNGER_EXP=$(jq -r '.activeTuningParameters.hungerSuppressionExponent' "$SUMMARY")
+        FATIGUE=$(jq -r '.activeTuningParameters.fatiguePressureRestScale' "$SUMMARY")
+        MISERY=$(jq -r '.activeTuningParameters.miseryPressureComfortScale' "$SUMMARY")
+        FOOD_SHARE=$(jq -r '.activeTuningParameters.foodConsumptionShareHigh' "$SUMMARY")
+        HUNGER_MOD=$(jq -r '.activeTuningParameters.hungerModerateRange' "$SUMMARY")
+
+        FAILURE_COUNT=$(jq 'length' "$FAILURES")
+        FORBIDDEN_FAILURES=$(jq '[.[] | select(.violatedForbidden == true)] | length' "$FAILURES")
+        THINK_WINS=$(jq '[.[] | select(.thinkAboutSuppliesAnalysis.rank == 1)] | length' "$FAILURES")
+
+        SACRED_REGRESSIONS=$(jq -r '.sacred.regressions // [] | map("  - \(.label // .sampleKey): desired=\(.desiredTopCategory) actual=\(.actualTopCategory)\(if .violatedForbidden then " ⚠ FORBIDDEN" else "" end)") | join("\n")' "$SUMMARY")
+
+        # Flag sacred forbidden violations as errors
+        if [ "$SACRED_FORB" -gt "0" ] 2>/dev/null; then
+          echo "::error title=⛔ Sacred forbidden violation(s)::$SACRED_FORB sacred state(s) have forbidden top category"
+        fi
+
+        {
+          echo "## 📊 Optimized Profile Evaluation: \`$PROFILE_NAME\` [\`$PROFILE_HASH\`]"
+          echo ""
+          echo "| Set | Exact pass | Satisfied | Forbidden |"
+          echo "|-----|-----------|-----------|-----------|"
+          echo "| Training | $TRAIN_EXACT | $TRAIN_SAT | $TRAIN_FORB |"
+          echo "| Holdout  | $HOLD_EXACT  | $HOLD_SAT  | $HOLD_FORB  |"
+          echo "| Sacred   | $SACRED_EXACT | $SACRED_SAT | $SACRED_FORB |"
+          echo ""
+          echo "**Total states:** $TOTAL · **Total failures:** $FAILURE_COUNT · **Forbidden failures:** $FORBIDDEN_FAILURES"
+          echo ""
+          if [ -n "$SACRED_REGRESSIONS" ] && [ "$SACRED_REGRESSIONS" != "[]" ]; then
+            echo "### ⛔ Sacred Regressions"
+            echo "$SACRED_REGRESSIONS"
+            echo ""
+          fi
+          echo "### 🧠 think_about_supplies Dominance in Failures"
+          echo "- States where \`think_about_supplies\` won in failures: **$THINK_WINS**"
+          echo ""
+          echo "### ⚙️ Active Tuning Parameters"
+          echo "| Parameter | Value |"
+          echo "|-----------|-------|"
+          echo "| hungerSuppressionStartSatiety | \`$HUNGER_START\` |"
+          echo "| hungerSuppressionFullSatiety | \`$HUNGER_FULL\` |"
+          echo "| comfortRestSuppressionMin | \`$COMFORT_MIN\` |"
+          echo "| hungerSuppressionExponent | \`$HUNGER_EXP\` |"
+          echo "| fatiguePressureRestScale | \`$FATIGUE\` |"
+          echo "| miseryPressureComfortScale | \`$MISERY\` |"
+          echo "| foodConsumptionShareHigh | \`$FOOD_SHARE\` |"
+          echo "| hungerModerateRange | \`$HUNGER_MOD\` |"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        # Fail the workflow if sacred forbidden violations are present
+        if [ "$SACRED_FORB" -gt "0" ] 2>/dev/null; then
+          echo "::error::Sacred forbidden violation(s) detected — failing workflow."
+          exit 1
+        fi
+

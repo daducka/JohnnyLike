@@ -40,11 +40,103 @@ jobs:
         path: artifacts/optimizer/
         retention-days: 30
 
-    - name: Annotate run ID for evaluate workflow
+    - name: Summarize optimizer results
       run: |
-        echo "::notice title=▶ Next step — Evaluate Optimized Profile::To evaluate this optimized profile, trigger the 'SimRunner — Evaluate Optimized Profile' workflow and set 'optimized_profile_run_id' to: ${{ github.run_id }}"
+        COMPARISON=artifacts/optimizer/optimizer-comparison.json
+        FORBIDDEN=artifacts/optimizer/forbidden-regression-diff.json
+        WORSENED=artifacts/optimizer/top-worsened-improved.json
+        FAILURES=artifacts/optimizer/failures.json
+
+        # ── Core metrics from optimizer-comparison.json ──────────────────────
+        BASE_HASH=$(jq -r '.baseline.profileHash' "$COMPARISON")
+        BEST_HASH=$(jq -r '.optimized.profileHash' "$COMPARISON")
+        SCORE_DELTA=$(jq -r '.improvement.score_delta' "$COMPARISON")
+        TRAIN_EXACT_DELTA=$(jq -r '.improvement.training_exact_pass_delta' "$COMPARISON")
+        TRAIN_SAT_DELTA=$(jq -r '.improvement.training_satisfied_delta' "$COMPARISON")
+        SACRED_FLAG=$(jq -r '.improvement.sacred_regression_flag' "$COMPARISON")
+
+        FORBIDDEN_NEW=$(jq -r '.newlyIntroducedCount' "$FORBIDDEN")
+        FORBIDDEN_RESOLVED=$(jq -r '.resolvedCount' "$FORBIDDEN")
+        FORBIDDEN_UNCHANGED=$(jq -r '.unchangedCount' "$FORBIDDEN")
+
+        FAILURE_COUNT=$(jq 'length' "$FAILURES")
+
+        # ── Active tuning parameters ─────────────────────────────────────────
+        BASE_HUNGER_START=$(jq -r '.baseline.activeTuningParameters.hungerSuppressionStartSatiety' "$COMPARISON")
+        OPT_HUNGER_START=$(jq -r '.optimized.activeTuningParameters.hungerSuppressionStartSatiety' "$COMPARISON")
+        BASE_FOOD_SHARE=$(jq -r '.baseline.activeTuningParameters.foodConsumptionShareHigh' "$COMPARISON")
+        OPT_FOOD_SHARE=$(jq -r '.optimized.activeTuningParameters.foodConsumptionShareHigh' "$COMPARISON")
+        BASE_FATIGUE=$(jq -r '.baseline.activeTuningParameters.fatiguePressureRestScale' "$COMPARISON")
+        OPT_FATIGUE=$(jq -r '.optimized.activeTuningParameters.fatiguePressureRestScale' "$COMPARISON")
+        BASE_MISERY=$(jq -r '.baseline.activeTuningParameters.miseryPressureComfortScale' "$COMPARISON")
+        OPT_MISERY=$(jq -r '.optimized.activeTuningParameters.miseryPressureComfortScale' "$COMPARISON")
+
+        # ── Sacred regressions ───────────────────────────────────────────────
+        SACRED_REGRESSIONS=$(jq -r '.improvement.sacred_regressions | map("  - \(.label // .sampleKey): \(.desiredTopCategory) → \(.actualTopCategory)") | join("\n")' "$COMPARISON")
+
+        # ── Top worsened states ──────────────────────────────────────────────
+        TOP_WORSENED=$(jq -r '.topWorsened[:5] | map("  - \(.label // .sampleKey): Δ\(.scoreDelta)\(if .newlyForbidden then " ⚠ NEWLY FORBIDDEN" else "" end)") | join("\n")' "$WORSENED")
+
+        # ── Top improved states ──────────────────────────────────────────────
+        TOP_IMPROVED=$(jq -r '.topImproved[:5] | map("  - \(.label // .sampleKey): Δ\(.scoreDelta)") | join("\n")' "$WORSENED")
+
+        # ── Think-about-supplies in failures ────────────────────────────────
+        THINK_WINS=$(jq '[.[] | select(.thinkAboutSuppliesAnalysis.rank == 1)] | length' "$FAILURES")
+
+        # ── Set workflow status annotation ────────────────────────────────────
+        if [ "$SACRED_FLAG" = "true" ]; then
+          echo "::error title=⛔ Sacred regression detected::$SACRED_REGRESSIONS"
+        fi
+        if [ "$FORBIDDEN_NEW" -gt "0" ] 2>/dev/null; then
+          echo "::warning title=⚠ $FORBIDDEN_NEW newly forbidden state(s)::Run forbidden-regression-diff.json for details"
+        fi
+
         {
-          echo "## ✅ Optimizer completed — run ID: \`${{ github.run_id }}\`"
+          echo "## 🔧 Optimizer Results"
+          echo ""
+          echo "| Metric | Value |"
+          echo "|--------|-------|"
+          echo "| Score delta | \`+$SCORE_DELTA\` |"
+          echo "| Training exact pass Δ | \`$TRAIN_EXACT_DELTA\` |"
+          echo "| Training satisfied Δ | \`$TRAIN_SAT_DELTA\` |"
+          echo "| Sacred regression | \`$SACRED_FLAG\` |"
+          echo "| Remaining failures | \`$FAILURE_COUNT\` |"
+          echo ""
+          echo "### 🚨 Forbidden Regression Diff"
+          echo "| Category | Count |"
+          echo "|----------|-------|"
+          echo "| Newly introduced | \`$FORBIDDEN_NEW\` |"
+          echo "| Resolved | \`$FORBIDDEN_RESOLVED\` |"
+          echo "| Unchanged | \`$FORBIDDEN_UNCHANGED\` |"
+          if [ "$SACRED_FLAG" = "true" ]; then
+            echo ""
+            echo "**Sacred regressions:**"
+            echo "$SACRED_REGRESSIONS"
+          fi
+          echo ""
+          echo "### 📈 Top Improved States"
+          echo "$TOP_IMPROVED"
+          echo ""
+          echo "### 📉 Top Worsened States"
+          echo "$TOP_WORSENED"
+          echo ""
+          echo "### 🧠 think_about_supplies Dominance"
+          echo "- States where \`think_about_supplies\` won in failures: **$THINK_WINS**"
+          echo ""
+          echo "### ⚙️ Key Parameter Changes"
+          echo "| Parameter | Baseline | Optimized |"
+          echo "|-----------|----------|-----------|"
+          echo "| hungerSuppressionStartSatiety | \`$BASE_HUNGER_START\` | \`$OPT_HUNGER_START\` |"
+          echo "| foodConsumptionShareHigh | \`$BASE_FOOD_SHARE\` | \`$OPT_FOOD_SHARE\` |"
+          echo "| fatiguePressureRestScale | \`$BASE_FATIGUE\` | \`$OPT_FATIGUE\` |"
+          echo "| miseryPressureComfortScale | \`$BASE_MISERY\` | \`$OPT_MISERY\` |"
+          echo ""
+          echo "### 🏷️ Profile Hashes"
+          echo "- Baseline: \`$BASE_HASH\`"
+          echo "- Optimized: \`$BEST_HASH\`"
+          echo ""
+          echo "---"
+          echo "## ▶ Next step — Evaluate Optimized Profile"
           echo ""
           echo "To evaluate the optimized profile produced by this run:"
           echo ""
@@ -52,7 +144,14 @@ jobs:
           echo "2. Click **Run workflow**"
           echo "3. Set the **\"Run ID of the simrunner-optimize workflow\"** input to:"
           echo ""
-          echo "   \`\`\`"
+          echo '   ```'
           echo "   ${{ github.run_id }}"
-          echo "   \`\`\`"
+          echo '   ```'
         } >> "$GITHUB_STEP_SUMMARY"
+
+        # Fail the workflow if a sacred regression was detected
+        if [ "$SACRED_FLAG" = "true" ]; then
+          echo "::error::Sacred regression detected — failing workflow."
+          exit 1
+        fi
+
