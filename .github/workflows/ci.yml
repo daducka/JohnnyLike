@@ -27,6 +27,124 @@ jobs:
     - name: Test
       run: dotnet test JohnnyLike.sln --configuration Release --no-build --verbosity normal
   
+  sim-evaluation-check:
+    runs-on: ubuntu-latest
+    needs: ci-tests
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore JohnnyLike.sln
+
+    - name: Build (Release)
+      run: dotnet build JohnnyLike.sln --configuration Release --no-restore /warnaserror
+
+    - name: Run baseline evaluation
+      run: |
+        dotnet run --project src/JohnnyLike.SimRunner --configuration Release --no-build -- \
+          evaluate-golden \
+          --profile default \
+          --output artifacts/sim-evaluation-check
+
+    - name: Upload evaluation artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: sim-evaluation-check
+        path: artifacts/sim-evaluation-check/
+        retention-days: 14
+
+    - name: Enforce baseline regression gate
+      run: |
+        SUMMARY=artifacts/sim-evaluation-check/eval-summary.json
+        FAILURES=artifacts/sim-evaluation-check/failures.json
+        BASELINE=simrunner/baseline-metrics.json
+
+        TRAIN_SAT=$(jq -r '.training.satisfied_pass_count' "$SUMMARY")
+        TRAIN_FORB=$(jq -r '.training.forbidden_count' "$SUMMARY")
+        HOLD_SAT=$(jq -r '.holdout.satisfied_pass_count' "$SUMMARY")
+        SACRED_FORB=$(jq -r '.sacred.forbidden_count' "$SUMMARY")
+
+        BASELINE_TRAIN_FORB=$(jq -r '.trainingForbidden' "$BASELINE")
+        BASELINE_SACRED_FORB=$(jq -r '.sacredForbidden' "$BASELINE")
+        BASELINE_TRAIN_SAT=$(jq -r '.trainingSatisfiedMin' "$BASELINE")
+        BASELINE_HOLD_SAT=$(jq -r '.holdoutSatisfiedMin' "$BASELINE")
+
+        PROFILE_NAME=$(jq -r '.profileName' "$SUMMARY")
+        PROFILE_HASH=$(jq -r '.profileHash' "$SUMMARY")
+        TOTAL=$(jq -r '.totalStates' "$SUMMARY")
+        TRAIN_EXACT=$(jq -r '.training.exact_pass_count' "$SUMMARY")
+        HOLD_EXACT=$(jq -r '.holdout.exact_pass_count' "$SUMMARY")
+        HOLD_FORB=$(jq -r '.holdout.forbidden_count' "$SUMMARY")
+        SACRED_SAT=$(jq -r '.sacred.satisfied_pass_count' "$SUMMARY")
+        SACRED_EXACT=$(jq -r '.sacred.exact_pass_count' "$SUMMARY")
+
+        FAILURE_COUNT=$(jq 'length' "$FAILURES")
+        FORBIDDEN_FAILURES=$(jq '[.[] | select(.violatedForbidden == true)] | length' "$FAILURES")
+
+        FAILED=0
+
+        # ── Hard gates ────────────────────────────────────────────────────────
+        if [ "$TRAIN_FORB" -gt "$BASELINE_TRAIN_FORB" ]; then
+          echo "::error title=⛔ Training forbidden regression::trainingForbidden=$TRAIN_FORB > baseline $BASELINE_TRAIN_FORB"
+          FAILED=1
+        fi
+
+        if [ "$SACRED_FORB" -gt "$BASELINE_SACRED_FORB" ]; then
+          echo "::error title=⛔ Sacred forbidden regression::sacredForbidden=$SACRED_FORB > baseline $BASELINE_SACRED_FORB"
+          FAILED=1
+        fi
+
+        if [ "$TRAIN_SAT" -lt "$BASELINE_TRAIN_SAT" ]; then
+          echo "::error title=⛔ Training satisfied regression::trainingSatisfied=$TRAIN_SAT < baseline $BASELINE_TRAIN_SAT"
+          FAILED=1
+        fi
+
+        if [ "$HOLD_SAT" -lt "$BASELINE_HOLD_SAT" ]; then
+          echo "::error title=⛔ Holdout satisfied regression::holdoutSatisfied=$HOLD_SAT < baseline $BASELINE_HOLD_SAT"
+          FAILED=1
+        fi
+
+        # ── Top failing scenarios ─────────────────────────────────────────────
+        TOP_FAILURES=$(jq -r '.[:5] | map("  - \(.label // .sampleKey): desired=\(.desiredTopCategory) actual=\(.actualTopCategory)\(if .violatedForbidden then " ⚠ FORBIDDEN" else "" end)") | join("\n")' "$FAILURES")
+
+        # ── Step summary ─────────────────────────────────────────────────────
+        {
+          echo "## 🔒 Sim Evaluation Baseline Gate: \`$PROFILE_NAME\` [\`$PROFILE_HASH\`]"
+          echo ""
+          echo "| Set | Exact pass | Satisfied | Forbidden | Baseline min |"
+          echo "|-----|-----------|-----------|-----------|-------------|"
+          echo "| Training | $TRAIN_EXACT | $TRAIN_SAT | $TRAIN_FORB | sat≥$BASELINE_TRAIN_SAT, forb≤$BASELINE_TRAIN_FORB |"
+          echo "| Holdout  | $HOLD_EXACT  | $HOLD_SAT  | $HOLD_FORB  | sat≥$BASELINE_HOLD_SAT |"
+          echo "| Sacred   | $SACRED_EXACT | $SACRED_SAT | $SACRED_FORB | forb≤$BASELINE_SACRED_FORB |"
+          echo ""
+          echo "**Total states:** $TOTAL · **Total failures:** $FAILURE_COUNT · **Forbidden failures:** $FORBIDDEN_FAILURES"
+          if [ "$FAILED" -eq "1" ]; then
+            echo ""
+            echo "### ❌ Gate FAILED — baseline regression detected"
+          else
+            echo ""
+            echo "### ✅ Gate PASSED — no regressions"
+          fi
+          if [ -n "$TOP_FAILURES" ]; then
+            echo ""
+            echo "### 📉 Top Failing Scenarios"
+            echo "$TOP_FAILURES"
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        if [ "$FAILED" -eq "1" ]; then
+          echo "Baseline regression gate failed — see annotations above."
+          exit 1
+        fi
+
   fuzz-smoke:
     runs-on: ubuntu-latest
     needs: ci-tests
@@ -47,4 +165,3 @@ jobs:
     
     - name: Run smoke fuzz tests
       run: dotnet run --project src/JohnnyLike.SimRunner --configuration Release --no-build -- --fuzz --runs 10 --seed 123 --profile smoke
-

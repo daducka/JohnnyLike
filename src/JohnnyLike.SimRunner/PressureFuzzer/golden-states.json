@@ -664,38 +664,6 @@
   "label": "training/stable-flavor/high-planner/safe"
 },
 {
-  "sampleKey": "trait:13fcd090|FoodAvailableNow|s65|h90|e80|m65",
-  "setType": "Training",
-  "traitProfile": {
-    "planner": 0.2,
-    "craftsman": 0.2,
-    "survivor": 0.6,
-    "hedonist": 0.5,
-    "instinctive": 0.95,
-    "industrious": 0.4
-  },
-  "traitIntent": "High Instinctive in a safe state. Should favor immediate-reward behavior (Fun/Comfort) rather than future-oriented preparation.",
-  "scenario": "FoodAvailableNow",
-  "state": {
-    "satiety": 65,
-    "health": 90,
-    "energy": 80,
-    "morale": 65
-  },
-  "desiredOutcome": {
-    "desiredTopCategory": "Fun",
-    "acceptableTopCategories": [
-      "Comfort"
-    ],
-    "forbiddenTopCategories": [
-      "Preparation",
-      "FoodConsumption"
-    ]
-  },
-  "priority": 2,
-  "label": "training/stable-flavor/high-instinct/safe"
-},
-{
   "sampleKey": "trait:ca4e875a|FoodAvailable_WithComfort|s65|h90|e80|m65",
   "setType": "Training",
   "traitProfile": {

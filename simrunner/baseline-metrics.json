@@ -1,0 +1,6 @@
+{
+  "trainingForbidden": 0,
+  "sacredForbidden": 0,
+  "trainingSatisfiedMin": 26,
+  "holdoutSatisfiedMin": 12
+}

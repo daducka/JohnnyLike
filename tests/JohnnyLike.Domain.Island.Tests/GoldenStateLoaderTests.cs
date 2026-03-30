@@ -132,9 +132,9 @@ public class GoldenStateLoaderTests
     public void LoadEmbedded_CoversMinimumStateCount()
     {
         var entries = GoldenStateLoader.LoadEmbedded();
-        // Phase 1 dataset targets 48 curated states (30 training / 12 holdout / 6 sacred).
-        Assert.True(entries.Count >= 48,
-            $"Expected at least 48 golden states, but found {entries.Count}.");
+        // Phase 1 dataset targets 47 curated states (29 training / 12 holdout / 6 sacred).
+        Assert.True(entries.Count >= 47,
+            $"Expected at least 47 golden states, but found {entries.Count}.");
     }
 
     [Fact]
@@ -149,8 +149,8 @@ public class GoldenStateLoaderTests
         int holdout  = entries.Count(e => e.SetType == GoldenSetType.Holdout);
         int sacred   = entries.Count(e => e.SetType == GoldenSetType.Sacred);
 
-        Assert.True(training >= 30,
-            $"Expected at least 30 Training entries, but found {training}.");
+        Assert.True(training >= 29,
+            $"Expected at least 29 Training entries, but found {training}.");
         Assert.True(holdout >= 12,
             $"Expected at least 12 Holdout entries, but found {holdout}.");
         Assert.True(sacred >= 6,

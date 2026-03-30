@@ -61,21 +61,21 @@ public class DecisionTuningProfileTests
     public void Default_NeedTuning_HasProductionValues()
     {
         var n = DecisionTuningProfile.Default.Need;
-        Assert.Equal(0.015, n.FatiguePressureRestScale);
+        Assert.Equal(0.01,  n.FatiguePressureRestScale);
         Assert.Equal(0.01,  n.MiseryPressureComfortScale);
-        Assert.Equal(0.025, n.InjurySafetyNeedScale);
+        Assert.Equal(0.02,  n.InjurySafetyNeedScale);
         Assert.Equal(0.010, n.InjuryRestNeedScale);
         Assert.Equal(0.005, n.InjuryComfortNeedScale);
         Assert.Equal(70.0,  n.SatietyRampMild);
         Assert.Equal(50.0,  n.SatietyRampModerate);
         Assert.Equal(30.0,  n.SatietyRampStrong);
         Assert.Equal(0.3,   n.HungerMildMax);
-        Assert.Equal(1.2,   n.HungerModerateRange);
+        Assert.Equal(1.3,   n.HungerModerateRange);
         Assert.Equal(0.5,   n.HungerStrongRange);
         Assert.Equal(5.0,   n.FoodAvailabilityNormCap);
         Assert.Equal(0.2,   n.ImmediateFoodSignificanceThreshold);
         Assert.Equal(0.2,   n.AcquirableFoodSignificanceThreshold);
-        Assert.Equal(0.80,  n.FoodConsumptionShareHigh);
+        Assert.Equal(0.90,  n.FoodConsumptionShareHigh);
         Assert.Equal(0.20,  n.FoodConsumptionShareLow);
         Assert.Equal(0.50,  n.FoodShareNeutral);
         Assert.Equal(0.20,  n.PrepTimePressureCap);
@@ -99,7 +99,7 @@ public class DecisionTuningProfileTests
         Assert.Equal(0.40, m.InjuryPreparationSuppressionFloor);
         Assert.Equal(25.0, m.HungerSuppressionStartSatiety);
         Assert.Equal(10.0, m.HungerSuppressionFullSatiety);
-        Assert.Equal(0.3,  m.ComfortRestSuppressionMin);
+        Assert.Equal(0.25, m.ComfortRestSuppressionMin);
         Assert.Equal(2.0,  m.HungerSuppressionExponent);
     }
 
@@ -175,7 +175,7 @@ public class DecisionTuningProfileTests
     public void DefaultProfile_NeedAdd_Rest_MatchesExpectedFormula()
     {
         // Energy=50 → fatiguePressure=50; Health=100 → injuryPressure=0
-        // Rest needAdd = 50 * 0.015 + 0 * 0.010 = 0.75
+        // Rest needAdd = 50 * 0.01 + 0 * 0.010 = 0.5
         var (domain, actorId, actor, world) = CreateSetup(energy: 50.0, health: 100.0);
         var resources  = new EmptyResourceAvailability();
         var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
@@ -183,13 +183,13 @@ public class DecisionTuningProfileTests
 
         var qmd  = (Dictionary<string, object>)explanation["qualityModelDecomposition"];
         var rest = (Dictionary<string, object>)qmd["Rest"];
-        Assert.Equal(0.75, (double)rest["needAdd"], precision: 6);
+        Assert.Equal(0.5, (double)rest["needAdd"], precision: 6);
     }
 
     [Fact]
     public void DefaultProfile_NeedAdd_Safety_MatchesExpectedFormula()
     {
-        // Health=60 → injuryPressure=40; Safety needAdd = 40 * 0.025 = 1.0
+        // Health=60 → injuryPressure=40; Safety needAdd = 40 * 0.02 = 0.8
         var (domain, actorId, actor, world) = CreateSetup(health: 60.0);
         var resources  = new EmptyResourceAvailability();
         var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
@@ -197,7 +197,7 @@ public class DecisionTuningProfileTests
 
         var qmd    = (Dictionary<string, object>)explanation["qualityModelDecomposition"];
         var safety = (Dictionary<string, object>)qmd["Safety"];
-        Assert.Equal(1.0, (double)safety["needAdd"], precision: 6);
+        Assert.Equal(0.8, (double)safety["needAdd"], precision: 6);
     }
 
     [Fact]
@@ -450,8 +450,8 @@ public class DecisionTuningProfileTests
     {
         var s = DecisionTuningProfile.Default.ToDebugString();
         // Spot-check a few key values appear in the output
-        Assert.Contains("0.015",  s); // FatiguePressureRestScale
-        Assert.Contains("0.025",  s); // InjurySafetyNeedScale
+        Assert.Contains("0.01",   s); // FatiguePressureRestScale
+        Assert.Contains("0.02",   s); // InjurySafetyNeedScale
         Assert.Contains("0.7",    s); // PreparationScale
         Assert.Contains("0.8",    s); // PragmatismBase
         Assert.Contains("TopN=3", s); // ThinkAboutSupplies.TopN
@@ -553,7 +553,7 @@ public class DecisionTuningProfileTests
     [Fact]
     public void HungerSuppression_AtFullThreshold_MoodMultiplierIsMin()
     {
-        // Satiety=10 == HungerSuppressionFullSatiety(10) → full suppression; moodMultiplier = ComfortRestSuppressionMin(0.3)
+        // Satiety=10 == HungerSuppressionFullSatiety(10) → full suppression; moodMultiplier = ComfortRestSuppressionMin(0.25)
         var (domain, actorId, actor, world) = CreateSetup(satiety: 10.0, energy: 50.0, morale: 50.0);
         var resources   = new EmptyResourceAvailability();
         var candidates  = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
@@ -564,12 +564,12 @@ public class DecisionTuningProfileTests
         if (qmd.ContainsKey("Comfort"))
         {
             var comfort = (Dictionary<string, object>)qmd["Comfort"];
-            Assert.Equal(0.3, (double)comfort["moodMultiplier"], precision: 4);
+            Assert.Equal(0.25, (double)comfort["moodMultiplier"], precision: 4);
         }
         if (qmd.ContainsKey("Rest"))
         {
             var rest = (Dictionary<string, object>)qmd["Rest"];
-            Assert.Equal(0.3, (double)rest["moodMultiplier"], precision: 4);
+            Assert.Equal(0.25, (double)rest["moodMultiplier"], precision: 4);
         }
     }
 
@@ -587,12 +587,12 @@ public class DecisionTuningProfileTests
         if (qmd.ContainsKey("Comfort"))
         {
             var comfort = (Dictionary<string, object>)qmd["Comfort"];
-            Assert.Equal(0.3, (double)comfort["moodMultiplier"], precision: 4);
+            Assert.Equal(0.25, (double)comfort["moodMultiplier"], precision: 4);
         }
         if (qmd.ContainsKey("Rest"))
         {
             var rest = (Dictionary<string, object>)qmd["Rest"];
-            Assert.Equal(0.3, (double)rest["moodMultiplier"], precision: 4);
+            Assert.Equal(0.25, (double)rest["moodMultiplier"], precision: 4);
         }
     }
 
@@ -600,7 +600,7 @@ public class DecisionTuningProfileTests
     public void HungerSuppression_MidRange_MoodMultiplierIsBetweenMinAndOne()
     {
         // Satiety=17.5 is midway between FullSatiety(10) and StartSatiety(25) → t=0.5, curved=0.25 (exp=2)
-        // factor = 0.3 + (1.0 - 0.3) * 0.25 = 0.3 + 0.175 = 0.475
+        // factor = 0.25 + (1.0 - 0.25) * 0.25 = 0.25 + 0.1875 = 0.4375
         var (domain, actorId, actor, world) = CreateSetup(satiety: 17.5, energy: 50.0, morale: 50.0);
         var resources   = new EmptyResourceAvailability();
         var candidates  = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(1), resources);
@@ -612,8 +612,8 @@ public class DecisionTuningProfileTests
         {
             var comfort = (Dictionary<string, object>)qmd["Comfort"];
             var moodMult = (double)comfort["moodMultiplier"];
-            Assert.InRange(moodMult, 0.3, 1.0);
-            Assert.Equal(0.475, moodMult, precision: 4);
+            Assert.InRange(moodMult, 0.25, 1.0);
+            Assert.Equal(0.4375, moodMult, precision: 4);
         }
     }
 
@@ -660,7 +660,7 @@ public class DecisionTuningProfileTests
         Assert.True(breakdown.ContainsKey("satiety"),           "Breakdown should contain satiety");
 
         var factor = (double)breakdown["suppressionFactor"];
-        Assert.InRange(factor, 0.3, 1.0);
+        Assert.InRange(factor, 0.25, 1.0);
     }
 
     [Fact]
