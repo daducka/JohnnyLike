@@ -775,9 +775,12 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                         // Death
                         aliveness.State = AlivenessState.Dead;
                         effectCtx.World.Tracer.Beat(
-                            $"[Aliveness] {actorName} died",
+                            $"[Aliveness] {actorName} has died",
                             actorId: actorName, priority: 90);
-                        effectCtx.SetOutcomeNarration($"{actorName} goes still. The island falls silent.");
+                        effectCtx.SetOutcomeNarration(
+                            $"{actorName}'s eyes go glassy. Their chest stops moving. " +
+                            $"The only sound left is the wind and the waves — indifferent, endless. " +
+                            $"{actorName} is gone.");
 
                         // Spawn a corpse item at the actor's last known location.
                         var corpseId = $"corpse_{actorName.ToLowerInvariant()}";
@@ -806,12 +809,29 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("whimper"),
                 ActionKind.Emote,
                 EmptyActionParameters.Instance,
-                Duration.Seconds(6.0),
+                Duration.Minutes(1.0),
                 NarrationDescription: "whimper weakly"
             ),
             0.1,
-            Reason: "Whimper (downed)",
-            Qualities: new Dictionary<QualityType, double>(),
+            Reason: "Whimper (collapsed)",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                var roll = effectCtx.Rng.NextDouble();
+                var name = effectCtx.ActorId.Value;
+                if (roll >= 0.7)
+                    effectCtx.SetOutcomeNarration(
+                        $"{name} manages a raw, anguished cry — barely audible over the waves.");
+                else if (roll >= 0.4)
+                    effectCtx.SetOutcomeNarration(
+                        $"{name} whimpers softly, lips moving without words.");
+                else
+                    effectCtx.SetOutcomeNarration(
+                        $"{name} lets out a hollow moan, each breath shallow and rattling.");
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Safety] = 0.5
+            },
             ActorRequirement: CandidateRequirements.DownedOnly
         ));
 
@@ -821,12 +841,30 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 new ActionId("stare_blankly"),
                 ActionKind.Emote,
                 EmptyActionParameters.Instance,
-                Duration.Seconds(8.0),
+                Duration.Minutes(8.0),
                 NarrationDescription: "stare blankly at the sky"
             ),
             0.1,
-            Reason: "Stare blankly (downed)",
-            Qualities: new Dictionary<QualityType, double>(),
+            Reason: "Stare blankly (collapsed)",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                var roll = effectCtx.Rng.NextDouble();
+                var name = effectCtx.ActorId.Value;
+                if (roll >= 0.7)
+                    effectCtx.SetOutcomeNarration(
+                        $"{name} stares up at the clouds, eyes tracking a bird drifting overhead — " +
+                        $"a small, distant sign of life.");
+                else if (roll >= 0.4)
+                    effectCtx.SetOutcomeNarration(
+                        $"{name} stares blankly at the sky, expression unreadable, mind somewhere far away.");
+                else
+                    effectCtx.SetOutcomeNarration(
+                        $"{name}'s gaze is fixed on nothing. The sky reflects in eyes that barely seem to see it.");
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Safety] = 0.5
+            },
             ActorRequirement: CandidateRequirements.DownedOnly
         ));
 
@@ -840,8 +878,28 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 NarrationDescription: "crawl weakly along the ground"
             ),
             0.1,
-            Reason: "Crawl weakly (downed)",
-            Qualities: new Dictionary<QualityType, double>(),
+            Reason: "Crawl weakly (collapsed)",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                var roll = effectCtx.Rng.NextDouble();
+                var name = effectCtx.ActorId.Value;
+                if (roll >= 0.7)
+                    effectCtx.SetOutcomeNarration(
+                        $"{name} drags themselves a few inches forward, teeth gritted, " +
+                        $"fingers digging into the dirt — refusing to give up.");
+                else if (roll >= 0.4)
+                    effectCtx.SetOutcomeNarration(
+                        $"{name} tries to crawl but their arms buckle. " +
+                        $"They collapse back to the ground, panting.");
+                else
+                    effectCtx.SetOutcomeNarration(
+                        $"{name} twitches and writhes weakly, limbs barely responding, " +
+                        $"unable to move more than a trembling inch.");
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Safety] = 0.5
+            },
             ActorRequirement: CandidateRequirements.DownedOnly
         ));
     }

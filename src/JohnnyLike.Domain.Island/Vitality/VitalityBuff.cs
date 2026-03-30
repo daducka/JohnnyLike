@@ -187,7 +187,7 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
                 aliveness.DeathSaveSuccesses = 0;
                 aliveness.DeathSaveFailures  = 0;
                 worldState.Tracer.Beat(
-                    $"[Aliveness] {actor.Id.Value} entered DOWNED state",
+                    $"[Aliveness] {actor.Id.Value} has collapsed and is fighting to stay conscious",
                     actorId: actor.Id.Value,
                     priority: 70);
             }
