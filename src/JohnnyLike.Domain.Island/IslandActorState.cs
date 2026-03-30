@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Island.Metabolism;
 using JohnnyLike.Domain.Island.Recipes;
 using JohnnyLike.Domain.Island.Telemetry;
@@ -265,6 +266,12 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
             RecipeCandidateBuilder.AddCandidate(recipe, ctx, output);
         }
+
+        // Downed-state candidates (limited actions while fighting for survival)
+        AddDownedCandidates(ctx, output);
+
+        // Dead-state placeholder (actor lies still; allows future corpse-interaction candidates)
+        AddDeadCandidates(ctx, output);
     }
 
     private void AddBuildSandCastleCandidate(IslandContext ctx, List<ActionCandidate> output)
@@ -699,6 +706,162 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 [QualityType.Safety] = -0.5
             },
             ActorRequirement: CandidateRequirements.PlayfulOnly
+        ));
+    }
+
+    // ── Death save constants ───────────────────────────────────────────────────
+    /// <summary>Random roll value at or above which a death save is a success.</summary>
+    public const double DeathSaveSuccessThreshold = 0.6;
+    /// <summary>Random roll value at or below which a death save is a failure.</summary>
+    public const double DeathSaveFailureThreshold = 0.4;
+    /// <summary>Number of saves/failures required to resolve the downed state.</summary>
+    public const int DeathSaveResolutionCount = 3;
+    /// <summary>Health the actor revives with after 3 successful death saves.</summary>
+    public const double ReviveHealth = 10.0;
+
+    private void AddDownedCandidates(IslandContext ctx, List<ActionCandidate> output)
+    {
+        var actorName = Id.Value;
+
+        // ── death_save (highest priority — rolls a death save) ─────────────────
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("death_save"),
+                ActionKind.Wait,
+                EmptyActionParameters.Instance,
+                Duration.Minutes(1.0),
+                NarrationDescription: "struggle to hold on"
+            ),
+            0.9,
+            Reason: "Death save (downed)",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                var island    = effectCtx.Actor;
+                var aliveness = island.TryGetBuff<AlivenessBuff>();
+                if (aliveness == null || aliveness.State != AlivenessState.Downed)
+                    return;
+
+                var roll = effectCtx.Rng.NextDouble();
+
+                if (roll >= DeathSaveSuccessThreshold)
+                {
+                    aliveness.DeathSaveSuccesses++;
+                    effectCtx.World.Tracer.Beat(
+                        $"[DeathSave] {actorName} rolled success ({aliveness.DeathSaveSuccesses}/{DeathSaveResolutionCount})",
+                        actorId: actorName, priority: 60);
+
+                    if (aliveness.DeathSaveSuccesses >= DeathSaveResolutionCount)
+                    {
+                        // Revive!
+                        aliveness.State              = AlivenessState.Alive;
+                        aliveness.DeathSaveSuccesses = 0;
+                        aliveness.DeathSaveFailures  = 0;
+                        island.Health = ReviveHealth;
+                        effectCtx.World.Tracer.Beat(
+                            $"[Aliveness] {actorName} stabilized and regained consciousness",
+                            actorId: actorName, priority: 80);
+                        effectCtx.SetOutcomeNarration($"{actorName} gasps and drags themselves back from the brink.");
+                    }
+                }
+                else if (roll <= DeathSaveFailureThreshold)
+                {
+                    aliveness.DeathSaveFailures++;
+                    effectCtx.World.Tracer.Beat(
+                        $"[DeathSave] {actorName} rolled failure ({aliveness.DeathSaveFailures}/{DeathSaveResolutionCount})",
+                        actorId: actorName, priority: 60);
+
+                    if (aliveness.DeathSaveFailures >= DeathSaveResolutionCount)
+                    {
+                        // Death
+                        aliveness.State = AlivenessState.Dead;
+                        effectCtx.World.Tracer.Beat(
+                            $"[Aliveness] {actorName} died",
+                            actorId: actorName, priority: 90);
+                        effectCtx.SetOutcomeNarration($"{actorName} goes still. The island falls silent.");
+
+                        // Spawn a corpse item at the actor's last known location.
+                        var corpseId = $"corpse_{actorName.ToLowerInvariant()}";
+                        var corpse = new CorpseItem(corpseId) { ActorName = actorName };
+                        var roomId  = island.CurrentRoomId;
+                        effectCtx.World.AddWorldItem(corpse, roomId);
+                        effectCtx.World.Tracer.Beat(
+                            $"[Aliveness] The remains of {actorName} now lie at {roomId}",
+                            actorId: actorName, priority: 70);
+                    }
+                }
+                else
+                {
+                    effectCtx.World.Tracer.Beat(
+                        $"[DeathSave] {actorName} is barely holding on (no change)",
+                        actorId: actorName, priority: 50);
+                }
+            }),
+            Qualities: new Dictionary<QualityType, double>(),
+            ActorRequirement: CandidateRequirements.DownedOnly
+        ));
+
+        // ── whimper ────────────────────────────────────────────────────────────
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("whimper"),
+                ActionKind.Emote,
+                EmptyActionParameters.Instance,
+                Duration.Seconds(6.0),
+                NarrationDescription: "whimper weakly"
+            ),
+            0.1,
+            Reason: "Whimper (downed)",
+            Qualities: new Dictionary<QualityType, double>(),
+            ActorRequirement: CandidateRequirements.DownedOnly
+        ));
+
+        // ── stare_blankly ──────────────────────────────────────────────────────
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("stare_blankly"),
+                ActionKind.Emote,
+                EmptyActionParameters.Instance,
+                Duration.Seconds(8.0),
+                NarrationDescription: "stare blankly at the sky"
+            ),
+            0.1,
+            Reason: "Stare blankly (downed)",
+            Qualities: new Dictionary<QualityType, double>(),
+            ActorRequirement: CandidateRequirements.DownedOnly
+        ));
+
+        // ── crawl_weakly ───────────────────────────────────────────────────────
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("crawl_weakly"),
+                ActionKind.Emote,
+                EmptyActionParameters.Instance,
+                Duration.Seconds(10.0),
+                NarrationDescription: "crawl weakly along the ground"
+            ),
+            0.1,
+            Reason: "Crawl weakly (downed)",
+            Qualities: new Dictionary<QualityType, double>(),
+            ActorRequirement: CandidateRequirements.DownedOnly
+        ));
+    }
+
+    private void AddDeadCandidates(IslandContext ctx, List<ActionCandidate> output)
+    {
+        // A minimal placeholder action so the engine can gracefully handle dead actors.
+        // Dead actors "choose" this action indefinitely, effectively stopping all activity.
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("lie_still"),
+                ActionKind.Wait,
+                EmptyActionParameters.Instance,
+                Duration.Minutes(60.0),
+                NarrationDescription: "lie still"
+            ),
+            0.0,
+            Reason: "Lie still (dead)",
+            Qualities: new Dictionary<QualityType, double>(),
+            ActorRequirement: CandidateRequirements.DeadOnly
         ));
     }
 }

@@ -19,6 +19,24 @@ public static class CandidateRequirements
                  island.HasBuffWhere<AlivenessBuff>(b => b.State == AlivenessState.Alive);
 
     /// <summary>
+    /// Requires the actor to have an <see cref="AlivenessBuff"/> with
+    /// <see cref="AlivenessState.Downed"/>.
+    /// Actions that downed actors can perform while fighting for survival should use this.
+    /// </summary>
+    public static Func<ActorState, bool> DownedOnly { get; } =
+        actor => actor is IslandActorState island &&
+                 island.HasBuffWhere<AlivenessBuff>(b => b.State == AlivenessState.Downed);
+
+    /// <summary>
+    /// Requires the actor to have an <see cref="AlivenessBuff"/> with
+    /// <see cref="AlivenessState.Dead"/>.
+    /// Reserved for future corpse-interaction candidates.
+    /// </summary>
+    public static Func<ActorState, bool> DeadOnly { get; } =
+        actor => actor is IslandActorState island &&
+                 island.HasBuffWhere<AlivenessBuff>(b => b.State == AlivenessState.Dead);
+
+    /// <summary>
     /// Requires the actor to be alive and in reasonably good condition to engage in
     /// playful or recreational comfort actions. Passes when:
     /// Satiety &gt; 25, Morale &gt; 35, Health &gt; 50, Energy &gt; 30.

@@ -13,7 +13,8 @@ public enum AlivenessState
 }
 
 /// <summary>
-/// Permanent actor buff that tracks aliveness state.
+/// Permanent actor buff that tracks aliveness state, including death-save progress
+/// while the actor is in the <see cref="AlivenessState.Downed"/> state.
 /// Assigned to every actor at creation with <see cref="AlivenessState.Alive"/>.
 /// Used by candidate requirements to gate actions on actor condition.
 /// </summary>
@@ -22,6 +23,15 @@ public class AlivenessBuff : ActiveBuff
     /// <summary>Current aliveness state of the actor.</summary>
     public AlivenessState State { get; set; } = AlivenessState.Alive;
 
+    /// <summary>Number of successful death saves accumulated while Downed. Resets when state changes.</summary>
+    public int DeathSaveSuccesses { get; set; } = 0;
+
+    /// <summary>Number of failed death saves accumulated while Downed. Resets when state changes.</summary>
+    public int DeathSaveFailures { get; set; } = 0;
+
     /// <inheritdoc/>
-    public override string Describe(long currentTick) => $"{Name}(state={State})";
+    public override string Describe(long currentTick) =>
+        State == AlivenessState.Downed
+            ? $"{Name}(state={State}, saves={DeathSaveSuccesses}/3, fails={DeathSaveFailures}/3)"
+            : $"{Name}(state={State})";
 }
