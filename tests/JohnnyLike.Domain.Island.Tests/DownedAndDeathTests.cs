@@ -286,7 +286,7 @@ public class DownedAndDeathTests
             Outcome      = new ActionOutcome(deathSave.Action.Id, ActionOutcomeType.Success, Duration.FromTicks(100L), null),
             Actor        = actor,
             World        = world,
-            Rng          = new FixedValueRng(0.9),   // >= 0.6 → success
+            Rng          = new FixedD20Rng(12),   // roll 12, DC 10, modifier 0 → Success
             Reservations = new EmptyResourceAvailability()
         };
 
@@ -314,7 +314,7 @@ public class DownedAndDeathTests
             Outcome      = new ActionOutcome(deathSave.Action.Id, ActionOutcomeType.Success, Duration.FromTicks(100L), null),
             Actor        = actor,
             World        = world,
-            Rng          = new FixedValueRng(0.2),   // <= 0.4 → failure
+            Rng          = new FixedD20Rng(5),   // roll 5, DC 10, modifier 0 → Failure (+1 failure)
             Reservations = new EmptyResourceAvailability()
         };
 
@@ -342,7 +342,7 @@ public class DownedAndDeathTests
             Outcome      = new ActionOutcome(deathSave.Action.Id, ActionOutcomeType.Success, Duration.FromTicks(100L), null),
             Actor        = actor,
             World        = world,
-            Rng          = new FixedValueRng(0.5),   // between 0.4 and 0.6 → no change
+            Rng          = new FixedD20Rng(9),   // roll 9, DC 10, modifier 0 → PartialSuccess (no change)
             Reservations = new EmptyResourceAvailability()
         };
 
@@ -371,7 +371,7 @@ public class DownedAndDeathTests
             Outcome      = new ActionOutcome(deathSave.Action.Id, ActionOutcomeType.Success, Duration.FromTicks(100L), null),
             Actor        = actor,
             World        = world,
-            Rng          = new FixedValueRng(0.9),   // success
+            Rng          = new FixedD20Rng(12),   // roll 12, DC 10, modifier 0 → Success → 3rd success revives
             Reservations = new EmptyResourceAvailability()
         };
 
@@ -552,4 +552,18 @@ internal sealed class FixedValueRng : IRngStream
     public double NextDouble() => _value;
     public int    Next(int min, int max) => min;
     public int    Next(int max) => 0;
+}
+
+/// <summary>
+/// An <see cref="IRngStream"/> that returns a fixed d20 result from <see cref="Next(int, int)"/>,
+/// suitable for tests that drive skill-check resolution through <c>SkillCheckResolver</c>.
+/// </summary>
+internal sealed class FixedD20Rng : IRngStream
+{
+    private readonly int _roll;
+    public FixedD20Rng(int roll) => _roll = roll;
+
+    public double NextDouble() => 0.5;
+    public int    Next(int min, int max) => _roll;
+    public int    Next(int max) => _roll % max;
 }

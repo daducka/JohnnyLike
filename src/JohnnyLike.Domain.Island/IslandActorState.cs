@@ -17,7 +17,8 @@ public enum SkillType
     Survival,
     Perception,
     Performance,
-    Athletics
+    Athletics,
+    Constitution
 }
 
 public class IslandActorState : ActorState, IIslandActionCandidate
@@ -29,11 +30,12 @@ public class IslandActorState : ActorState, IIslandActionCandidate
     public int WIS { get; set; } = 10;
     public int CHA { get; set; } = 10;
 
-    public int FishingSkill => DndMath.AbilityModifier(DEX) + DndMath.AbilityModifier(WIS);
-    public int SurvivalSkill => DndMath.AbilityModifier(WIS) + DndMath.AbilityModifier(STR);
-    public int PerceptionSkill => DndMath.AbilityModifier(WIS);
-    public int PerformanceSkill => DndMath.AbilityModifier(CHA);
-    public int AthleticsSkill => DndMath.AbilityModifier(STR);
+    public int FishingSkill      => DndMath.AbilityModifier(DEX) + DndMath.AbilityModifier(WIS);
+    public int SurvivalSkill     => DndMath.AbilityModifier(WIS) + DndMath.AbilityModifier(STR);
+    public int PerceptionSkill   => DndMath.AbilityModifier(WIS);
+    public int PerformanceSkill  => DndMath.AbilityModifier(CHA);
+    public int AthleticsSkill    => DndMath.AbilityModifier(STR);
+    public int ConstitutionSkill => DndMath.AbilityModifier(CON);
 
     private double _satiety = 100.0;
     private double _energy = 100.0;
@@ -78,11 +80,12 @@ public class IslandActorState : ActorState, IIslandActionCandidate
     {
         var baseModifier = skillType switch
         {
-            SkillType.Fishing => FishingSkill,
-            SkillType.Survival => SurvivalSkill,
-            SkillType.Perception => PerceptionSkill,
-            SkillType.Performance => PerformanceSkill,
-            SkillType.Athletics => AthleticsSkill,
+            SkillType.Fishing      => FishingSkill,
+            SkillType.Survival     => SurvivalSkill,
+            SkillType.Perception   => PerceptionSkill,
+            SkillType.Performance  => PerformanceSkill,
+            SkillType.Athletics    => AthleticsSkill,
+            SkillType.Constitution => ConstitutionSkill,
             _ => 0
         };
 
@@ -741,9 +744,32 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 if (aliveness == null || aliveness.State != AlivenessState.Downed)
                     return;
 
-                var roll = effectCtx.Rng.NextDouble();
+                // DnD-style death saving throw: DC 10 Constitution check.
+                // nat-1 → critical failure (2 failures); nat-20 → instant stabilize; ≥DC → success; <DC → failure.
+                var conModifier = island.GetSkillModifier(SkillType.Constitution);
+                var conAdvantage = island.GetAdvantage(SkillType.Constitution);
+                var saveRequest = new SkillCheckRequest(10, conModifier, conAdvantage, "Constitution");
+                var saveResult  = SkillCheckResolver.Resolve(effectCtx.Rng, saveRequest);
+                var saveTier    = saveResult.OutcomeTier;
 
-                if (roll >= DeathSaveSuccessThreshold)
+                effectCtx.World.Tracer.Beat(
+                    $"[DeathSave] {actorName} constitution check: rolled {saveResult.Total} (DC 10, {saveTier})",
+                    actorId: actorName, priority: 50);
+
+                if (saveTier == RollOutcomeTier.CriticalSuccess)
+                {
+                    // Nat-20 or margin ≥ 5: instant stabilize
+                    aliveness.State              = AlivenessState.Alive;
+                    aliveness.DeathSaveSuccesses = 0;
+                    aliveness.DeathSaveFailures  = 0;
+                    island.Health = ReviveHealth;
+                    effectCtx.World.Tracer.Beat(
+                        $"[Aliveness] {actorName} stabilized and regained consciousness",
+                        actorId: actorName, priority: 80);
+                    effectCtx.SetOutcomeNarration(
+                        $"{actorName} gasps — eyes wide, chest heaving. Something in them refuses to let go.");
+                }
+                else if (saveTier == RollOutcomeTier.Success)
                 {
                     aliveness.DeathSaveSuccesses++;
                     effectCtx.World.Tracer.Beat(
@@ -752,7 +778,6 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
                     if (aliveness.DeathSaveSuccesses >= DeathSaveResolutionCount)
                     {
-                        // Revive!
                         aliveness.State              = AlivenessState.Alive;
                         aliveness.DeathSaveSuccesses = 0;
                         aliveness.DeathSaveFailures  = 0;
@@ -763,7 +788,14 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                         effectCtx.SetOutcomeNarration($"{actorName} gasps and drags themselves back from the brink.");
                     }
                 }
-                else if (roll <= DeathSaveFailureThreshold)
+                else if (saveTier == RollOutcomeTier.PartialSuccess)
+                {
+                    // Barely failing — no change, just hanging on
+                    effectCtx.World.Tracer.Beat(
+                        $"[DeathSave] {actorName} is barely holding on (no change)",
+                        actorId: actorName, priority: 50);
+                }
+                else if (saveTier == RollOutcomeTier.Failure)
                 {
                     aliveness.DeathSaveFailures++;
                     effectCtx.World.Tracer.Beat(
@@ -772,7 +804,6 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
                     if (aliveness.DeathSaveFailures >= DeathSaveResolutionCount)
                     {
-                        // Death
                         aliveness.State = AlivenessState.Dead;
                         effectCtx.World.Tracer.Beat(
                             $"[Aliveness] {actorName} has died",
@@ -782,7 +813,6 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             $"The only sound left is the wind and the waves — indifferent, endless. " +
                             $"{actorName} is gone.");
 
-                        // Spawn a corpse item at the actor's last known location.
                         var corpseId = $"corpse_{actorName.ToLowerInvariant()}";
                         var corpse = new CorpseItem(corpseId) { ActorName = actorName };
                         var roomId  = island.CurrentRoomId;
@@ -792,11 +822,32 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                             actorId: actorName, priority: 70);
                     }
                 }
-                else
+                else // CriticalFailure (nat-1) — counts as 2 failures in DnD
                 {
+                    aliveness.DeathSaveFailures += 2;
                     effectCtx.World.Tracer.Beat(
-                        $"[DeathSave] {actorName} is barely holding on (no change)",
-                        actorId: actorName, priority: 50);
+                        $"[DeathSave] {actorName} critically failed ({aliveness.DeathSaveFailures}/{DeathSaveResolutionCount})",
+                        actorId: actorName, priority: 65);
+
+                    if (aliveness.DeathSaveFailures >= DeathSaveResolutionCount)
+                    {
+                        aliveness.State = AlivenessState.Dead;
+                        effectCtx.World.Tracer.Beat(
+                            $"[Aliveness] {actorName} has died",
+                            actorId: actorName, priority: 90);
+                        effectCtx.SetOutcomeNarration(
+                            $"{actorName}'s eyes go glassy. Their chest stops moving. " +
+                            $"The only sound left is the wind and the waves — indifferent, endless. " +
+                            $"{actorName} is gone.");
+
+                        var corpseId = $"corpse_{actorName.ToLowerInvariant()}";
+                        var corpse = new CorpseItem(corpseId) { ActorName = actorName };
+                        var roomId  = island.CurrentRoomId;
+                        effectCtx.World.AddWorldItem(corpse, roomId);
+                        effectCtx.World.Tracer.Beat(
+                            $"[Aliveness] The remains of {actorName} now lie at {roomId}",
+                            actorId: actorName, priority: 70);
+                    }
                 }
             }),
             Qualities: new Dictionary<QualityType, double>(),
@@ -816,17 +867,28 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Reason: "Whimper (collapsed)",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                var roll = effectCtx.Rng.NextDouble();
                 var name = effectCtx.ActorId.Value;
-                if (roll >= 0.7)
-                    effectCtx.SetOutcomeNarration(
-                        $"{name} manages a raw, anguished cry — barely audible over the waves.");
-                else if (roll >= 0.4)
-                    effectCtx.SetOutcomeNarration(
-                        $"{name} whimpers softly, lips moving without words.");
-                else
-                    effectCtx.SetOutcomeNarration(
-                        $"{name} lets out a hollow moan, each breath shallow and rattling.");
+                var actor = effectCtx.Actor;
+                var modifier = actor.GetSkillModifier(SkillType.Performance);
+                var advantage = actor.GetAdvantage(SkillType.Performance);
+                var result = SkillCheckResolver.Resolve(
+                    effectCtx.Rng, new SkillCheckRequest(10, modifier, advantage, "Performance"));
+                switch (result.OutcomeTier)
+                {
+                    case RollOutcomeTier.CriticalSuccess:
+                    case RollOutcomeTier.Success:
+                        effectCtx.SetOutcomeNarration(
+                            $"{name} manages a raw, anguished cry — barely audible over the waves.");
+                        break;
+                    case RollOutcomeTier.PartialSuccess:
+                        effectCtx.SetOutcomeNarration(
+                            $"{name} whimpers softly, lips moving without words.");
+                        break;
+                    default:
+                        effectCtx.SetOutcomeNarration(
+                            $"{name} lets out a hollow moan, each breath shallow and rattling.");
+                        break;
+                }
             }),
             Qualities: new Dictionary<QualityType, double>
             {
@@ -848,18 +910,28 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Reason: "Stare blankly (collapsed)",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                var roll = effectCtx.Rng.NextDouble();
                 var name = effectCtx.ActorId.Value;
-                if (roll >= 0.7)
-                    effectCtx.SetOutcomeNarration(
-                        $"{name} stares up at the clouds, eyes tracking a bird drifting overhead — " +
-                        $"a small, distant sign of life.");
-                else if (roll >= 0.4)
-                    effectCtx.SetOutcomeNarration(
-                        $"{name} stares blankly at the sky, expression unreadable, mind somewhere far away.");
-                else
-                    effectCtx.SetOutcomeNarration(
-                        $"{name}'s gaze is fixed on nothing. The sky reflects in eyes that barely seem to see it.");
+                var actor = effectCtx.Actor;
+                var modifier = actor.GetSkillModifier(SkillType.Perception);
+                var advantage = actor.GetAdvantage(SkillType.Perception);
+                var result = SkillCheckResolver.Resolve(
+                    effectCtx.Rng, new SkillCheckRequest(12, modifier, advantage, "Perception"));
+                switch (result.OutcomeTier)
+                {
+                    case RollOutcomeTier.CriticalSuccess:
+                        effectCtx.SetOutcomeNarration(
+                            $"{name} stares up at the clouds, eyes tracking a bird drifting overhead — " +
+                            $"a small, distant sign of life.");
+                        break;
+                    case RollOutcomeTier.Success:
+                        effectCtx.SetOutcomeNarration(
+                            $"{name} stares blankly at the sky, expression unreadable, mind somewhere far away.");
+                        break;
+                    default:
+                        effectCtx.SetOutcomeNarration(
+                            $"{name}'s gaze is fixed on nothing. The sky reflects in eyes that barely seem to see it.");
+                        break;
+                }
             }),
             Qualities: new Dictionary<QualityType, double>
             {
@@ -881,20 +953,35 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Reason: "Crawl weakly (collapsed)",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                var roll = effectCtx.Rng.NextDouble();
                 var name = effectCtx.ActorId.Value;
-                if (roll >= 0.7)
-                    effectCtx.SetOutcomeNarration(
-                        $"{name} drags themselves a few inches forward, teeth gritted, " +
-                        $"fingers digging into the dirt — refusing to give up.");
-                else if (roll >= 0.4)
-                    effectCtx.SetOutcomeNarration(
-                        $"{name} tries to crawl but their arms buckle. " +
-                        $"They collapse back to the ground, panting.");
-                else
-                    effectCtx.SetOutcomeNarration(
-                        $"{name} twitches and writhes weakly, limbs barely responding, " +
-                        $"unable to move more than a trembling inch.");
+                var actor = effectCtx.Actor;
+                var modifier = actor.GetSkillModifier(SkillType.Athletics);
+                var advantage = actor.GetAdvantage(SkillType.Athletics);
+                var result = SkillCheckResolver.Resolve(
+                    effectCtx.Rng, new SkillCheckRequest(12, modifier, advantage, "Athletics"));
+                switch (result.OutcomeTier)
+                {
+                    case RollOutcomeTier.CriticalSuccess:
+                        effectCtx.SetOutcomeNarration(
+                            $"{name} drags themselves a few inches forward, teeth gritted, " +
+                            $"fingers digging into the dirt — refusing to give up.");
+                        break;
+                    case RollOutcomeTier.Success:
+                        effectCtx.SetOutcomeNarration(
+                            $"{name} manages to shift their weight and inch forward, " +
+                            $"panting, before the effort becomes too much.");
+                        break;
+                    case RollOutcomeTier.PartialSuccess:
+                        effectCtx.SetOutcomeNarration(
+                            $"{name} tries to crawl but their arms buckle. " +
+                            $"They collapse back to the ground, panting.");
+                        break;
+                    default:
+                        effectCtx.SetOutcomeNarration(
+                            $"{name} twitches and writhes weakly, limbs barely responding, " +
+                            $"unable to move more than a trembling inch.");
+                        break;
+                }
             }),
             Qualities: new Dictionary<QualityType, double>
             {
