@@ -172,7 +172,7 @@ public sealed class NeedTuning
 
     /// <summary>Scales fatigue pressure (100 − Energy) into Rest need urgency. Max +1.5 at Energy=0.
     /// Expected range: [0.005, 0.05]</summary>
-    public double FatiguePressureRestScale { get; init; } = 0.015;
+    public double FatiguePressureRestScale { get; init; } = 0.01;
 
     /// <summary>Scales misery pressure (100 − Morale) into Comfort need urgency. Max +1.0 at Morale=0.
     /// Expected range: [0.002, 0.03]</summary>
@@ -180,7 +180,7 @@ public sealed class NeedTuning
 
     /// <summary>Safety need urgency per point of injuryPressure. Max +2.5 at 0 HP.
     /// Expected range: [0.005, 0.10]</summary>
-    public double InjurySafetyNeedScale { get; init; } = 0.025;
+    public double InjurySafetyNeedScale { get; init; } = 0.02;
 
     /// <summary>Rest need urgency per point of injuryPressure (stacks with fatigue). Max +1.0 at 0 HP.
     /// Expected range: [0.002, 0.04]</summary>
@@ -212,7 +212,7 @@ public sealed class NeedTuning
 
     /// <summary>Additional hunger urgency added across the moderate band (Satiety 30–50).
     /// Expected range: [0.3, 3.0]</summary>
-    public double HungerModerateRange { get; init; } = 1.2;
+    public double HungerModerateRange { get; init; } = 1.3;
 
     /// <summary>Additional hunger urgency added across the strong band (Satiety 0–30).
     /// Expected range: [0.1, 2.0]</summary>
@@ -234,7 +234,7 @@ public sealed class NeedTuning
 
     /// <summary>FoodConsumption share of hunger when immediate food is plentiful.
     /// Expected range: [0.5, 1.0]</summary>
-    public double FoodConsumptionShareHigh { get; init; } = 0.80;
+    public double FoodConsumptionShareHigh { get; init; } = 0.90;
 
     /// <summary>FoodConsumption share of hunger when no immediate food but acquirable food exists.
     /// Expected range: [0.0, 0.5]</summary>
@@ -332,7 +332,7 @@ public sealed class MoodTuning
 
     /// <summary>Minimum suppression multiplier applied to Comfort and Rest at full hunger suppression.
     /// Expected range: [0.0, 0.7]</summary>
-    public double ComfortRestSuppressionMin { get; init; } = 0.3;
+    public double ComfortRestSuppressionMin { get; init; } = 0.25;
 
     /// <summary>Exponent controlling the curve shape of the suppression ramp.
     /// Values &gt; 1.0 cause a slower initial drop and sharper near-critical suppression.
