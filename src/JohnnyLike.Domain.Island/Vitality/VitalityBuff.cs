@@ -183,13 +183,7 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
             // When health first hits zero, transition to Downed state.
             if (newHealth <= 0.0 && aliveness != null && aliveness.State == AlivenessState.Alive)
             {
-                aliveness.State = AlivenessState.Downed;
-                aliveness.DeathSaveSuccesses = 0;
-                aliveness.DeathSaveFailures  = 0;
-                worldState.Tracer.Beat(
-                    $"[Aliveness] {actor.Id.Value} has collapsed and is fighting to stay conscious",
-                    actorId: actor.Id.Value,
-                    priority: 70);
+                MortalityWorkflow.Collapse(aliveness, actor.Id.Value, worldState.Tracer);
             }
         }
 

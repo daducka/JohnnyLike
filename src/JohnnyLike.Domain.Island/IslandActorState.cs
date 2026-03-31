@@ -759,14 +759,8 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 if (saveTier == RollOutcomeTier.CriticalSuccess)
                 {
                     // Nat-20 or margin ≥ 5: instant stabilize
-                    aliveness.State              = AlivenessState.Alive;
-                    aliveness.DeathSaveSuccesses = 0;
-                    aliveness.DeathSaveFailures  = 0;
-                    island.Health = ReviveHealth;
-                    effectCtx.World.Tracer.Beat(
-                        $"[Aliveness] {actorName} stabilized and regained consciousness",
-                        actorId: actorName, priority: 80);
-                    effectCtx.SetOutcomeNarration(
+                    MortalityWorkflow.Revive(
+                        aliveness, island, ReviveHealth, actorName, effectCtx,
                         $"{actorName} gasps — eyes wide, chest heaving. Something in them refuses to let go.");
                 }
                 else if (saveTier == RollOutcomeTier.Success)
@@ -778,14 +772,9 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
                     if (aliveness.DeathSaveSuccesses >= DeathSaveResolutionCount)
                     {
-                        aliveness.State              = AlivenessState.Alive;
-                        aliveness.DeathSaveSuccesses = 0;
-                        aliveness.DeathSaveFailures  = 0;
-                        island.Health = ReviveHealth;
-                        effectCtx.World.Tracer.Beat(
-                            $"[Aliveness] {actorName} stabilized and regained consciousness",
-                            actorId: actorName, priority: 80);
-                        effectCtx.SetOutcomeNarration($"{actorName} gasps and drags themselves back from the brink.");
+                        MortalityWorkflow.Revive(
+                            aliveness, island, ReviveHealth, actorName, effectCtx,
+                            $"{actorName} gasps and drags themselves back from the brink.");
                     }
                 }
                 else if (saveTier == RollOutcomeTier.PartialSuccess)
@@ -804,22 +793,11 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
                     if (aliveness.DeathSaveFailures >= DeathSaveResolutionCount)
                     {
-                        aliveness.State = AlivenessState.Dead;
-                        effectCtx.World.Tracer.Beat(
-                            $"[Aliveness] {actorName} has died",
-                            actorId: actorName, priority: 90);
-                        effectCtx.SetOutcomeNarration(
+                        MortalityWorkflow.Die(
+                            aliveness, island, actorName, effectCtx,
                             $"{actorName}'s eyes go glassy. Their chest stops moving. " +
                             $"The only sound left is the wind and the waves — indifferent, endless. " +
                             $"{actorName} is gone.");
-
-                        var corpseId = $"corpse_{actorName.ToLowerInvariant()}";
-                        var corpse = new CorpseItem(corpseId) { ActorName = actorName };
-                        var roomId  = island.CurrentRoomId;
-                        effectCtx.World.AddWorldItem(corpse, roomId);
-                        effectCtx.World.Tracer.Beat(
-                            $"[Aliveness] The remains of {actorName} now lie at {roomId}",
-                            actorId: actorName, priority: 70);
                     }
                 }
                 else // CriticalFailure (nat-1) — counts as 2 failures in DnD
@@ -831,22 +809,11 @@ public class IslandActorState : ActorState, IIslandActionCandidate
 
                     if (aliveness.DeathSaveFailures >= DeathSaveResolutionCount)
                     {
-                        aliveness.State = AlivenessState.Dead;
-                        effectCtx.World.Tracer.Beat(
-                            $"[Aliveness] {actorName} has died",
-                            actorId: actorName, priority: 90);
-                        effectCtx.SetOutcomeNarration(
+                        MortalityWorkflow.Die(
+                            aliveness, island, actorName, effectCtx,
                             $"{actorName}'s eyes go glassy. Their chest stops moving. " +
                             $"The only sound left is the wind and the waves — indifferent, endless. " +
                             $"{actorName} is gone.");
-
-                        var corpseId = $"corpse_{actorName.ToLowerInvariant()}";
-                        var corpse = new CorpseItem(corpseId) { ActorName = actorName };
-                        var roomId  = island.CurrentRoomId;
-                        effectCtx.World.AddWorldItem(corpse, roomId);
-                        effectCtx.World.Tracer.Beat(
-                            $"[Aliveness] The remains of {actorName} now lie at {roomId}",
-                            actorId: actorName, priority: 70);
                     }
                 }
             }),
