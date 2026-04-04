@@ -414,6 +414,8 @@ public class IslandActionEffectsTests
         var actorState = (IslandActorState)domain.CreateActorState(actorId,
             new Dictionary<string, object> { ["energy"] = 30.0 });
         var worldState = new IslandWorldState();
+        // sleep_under_tree is now provided by CoconutTreeItem
+        worldState.WorldItems.Add(new CoconutTreeItem("palm_tree"));
 
         // Generate candidates to get the sleep action with its PreAction handler.
         var candidates = domain.GenerateCandidates(actorId, actorState, worldState, 0L, new Random(42), new EmptyResourceAvailability());

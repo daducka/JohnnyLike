@@ -247,6 +247,8 @@ public class PalmFrondBlanketMaintenanceCandidateProviderTests
         var ctx = new IslandContext(actorId, actor, world, 0L, new RandomRngStream(new Random(42)), new Random(42), new EmptyResourceAvailability());
         var candidates = new List<ActionCandidate>();
         blanket.AddCandidates(ctx, candidates);
+        // sleep_under_tree now comes from CoconutTreeItem, not the actor
+        world.GetItem<CoconutTreeItem>("palm_tree")!.AddCandidates(ctx, candidates);
         actor.AddCandidates(ctx, candidates);
 
         var blanketSleepScore = candidates.First(c => c.Action.Id.Value == "sleep_in_blanket").IntrinsicScore;

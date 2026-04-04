@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Recipes;
 using System.Text.Json;
 
 namespace JohnnyLike.Domain.Island.Supply;
@@ -125,7 +126,8 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
     }
 
     /// <summary>
-    /// Provides action candidates from all supply items that implement ISupplyActionCandidate.
+    /// Provides action candidates from all supply items that implement ISupplyActionCandidate,
+    /// and the <c>think_about_supplies</c> environment affordance.
     /// </summary>
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
@@ -137,6 +139,114 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
             if (supply is ISupplyActionCandidate candidate)
                 candidate.AddCandidates(ctx, this, output);
         }
+
+        AddThinkAboutSuppliesCandidate(ctx, output);
+    }
+
+    private void AddThinkAboutSuppliesCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        var tuning = ctx.TuningProfile.Categories.ThinkAboutSupplies;
+        var qualities = ComputeThinkAboutSuppliesQualities(ctx.Actor, ctx.World, tuning, ctx.QualityEffectiveWeight);
+
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("think_about_supplies"),
+                ActionKind.Wait,
+                EmptyActionParameters.Instance,
+                Duration.Minutes(10.0, 15.0, ctx.Random),
+                NarrationDescription: "think about available supplies"
+            ),
+            0.08,
+            Reason: "Think about supplies",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                RecipeDiscoverySystem.TryDiscover(
+                    effectCtx.Actor, effectCtx.World, effectCtx.Rng,
+                    DiscoveryTrigger.ThinkAboutSupplies,
+                    actorId: effectCtx.ActorId.Value,
+                    sourceActionId: "think_about_supplies");
+            }),
+            Qualities: qualities,
+            ActorRequirement: CandidateRequirements.AliveOnly
+        ));
+    }
+
+    /// <summary>
+    /// Computes dynamic action qualities for <c>think_about_supplies</c> based on which
+    /// recipes the actor can currently discover.  Uses a weighted top-N blend so that a
+    /// single highly relevant survival recipe is not drowned out by many mediocre ones.
+    /// Falls back to a small default when no meaningful discovery opportunity exists.
+    /// When the actor is starving and discoverable recipes would not materially help with
+    /// food or safety, qualities are further suppressed so the action loses priority.
+    /// </summary>
+    private static Dictionary<QualityType, double> ComputeThinkAboutSuppliesQualities(
+        IslandActorState actor,
+        IslandWorldState world,
+        ThinkAboutSuppliesTuning tuning,
+        Func<QualityType, double>? effectiveWeight = null)
+    {
+        var discoverable = new List<(double weight, IReadOnlyDictionary<QualityType, double> qualities)>();
+
+        foreach (var (id, recipe) in IslandRecipeRegistry.All)
+        {
+            if (recipe.Discovery == null || recipe.Discovery.Trigger != DiscoveryTrigger.ThinkAboutSupplies)
+                continue;
+
+            if (actor.KnownRecipeIds.Contains(id))
+                continue;
+
+            if (!recipe.Discovery.CanDiscover(actor, world))
+                continue;
+
+            discoverable.Add((recipe.Discovery.BaseChance, recipe.Qualities));
+        }
+
+        if (discoverable.Count == 0)
+        {
+            return new Dictionary<QualityType, double>
+            {
+                [QualityType.Preparation] = tuning.FallbackPreparation,
+                [QualityType.Efficiency]  = tuning.FallbackEfficiency
+            };
+        }
+
+        double RecipeScore((double weight, IReadOnlyDictionary<QualityType, double> qualities) r)
+            => effectiveWeight != null
+                ? r.weight * r.qualities.Sum(kvp => kvp.Value * effectiveWeight(kvp.Key))
+                : r.weight * r.qualities.Values.Sum();
+
+        var topRecipes = discoverable
+            .OrderByDescending(RecipeScore)
+            .Take(tuning.TopN)
+            .ToList();
+
+        var result = new Dictionary<QualityType, double>(Enum.GetValues<QualityType>().Length);
+        var totalWeight = topRecipes.Sum(r => r.weight);
+
+        foreach (var (weight, qualities) in topRecipes)
+        {
+            foreach (var (q, v) in qualities)
+            {
+                result.TryGetValue(q, out var existing);
+                result[q] = existing + v * weight / totalWeight;
+            }
+        }
+
+        if (actor.Satiety < tuning.StarvationThreshold)
+        {
+            bool hasSurvivalRelevantRecipe = topRecipes.Any(r =>
+                r.qualities.ContainsKey(QualityType.FoodConsumption) ||
+                r.qualities.ContainsKey(QualityType.FoodAcquisition) ||
+                r.qualities.ContainsKey(QualityType.Safety));
+
+            if (!hasSurvivalRelevantRecipe)
+            {
+                foreach (var key in result.Keys.ToList())
+                    result[key] *= tuning.StarvationSuppression;
+            }
+        }
+
+        return result;
     }
 
     public override Dictionary<string, object> SerializeToDict()
