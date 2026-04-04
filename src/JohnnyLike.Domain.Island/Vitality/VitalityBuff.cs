@@ -98,6 +98,8 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
     /// Applies one vitality time-step: computes health deterioration from starvation, exhaustion,
     /// and psyche strain, or health recovery when conditions are stable, then clamps health to [0, 100].
     /// Also applies passive morale pressure from low satiety and low energy.
+    /// When health reaches zero the actor transitions to the Downed state.
+    /// Downed and Dead actors skip all health calculations.
     /// </summary>
     public void OnTick(ActorState actorState, WorldState worldState, long currentTick)
     {
@@ -109,6 +111,16 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
 
         if (dtSeconds <= 0.0)
             return;
+
+        // ── Skip health calculations for non-Alive actors ────────────────────
+        var aliveness = actor.TryGetBuff<AlivenessBuff>();
+        if (aliveness != null && aliveness.State != AlivenessState.Alive)
+        {
+            // Morale pressure still applies for Downed actors (not Dead).
+            if (aliveness.State == AlivenessState.Downed)
+                ApplyPhysiologicalMoralePressure(actor, worldState, dtSeconds, currentTick);
+            return;
+        }
 
         var oldHealth = actor.Health;
         var healthDelta = 0.0;
@@ -162,9 +174,16 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
             {
                 var reasonStr = string.Join(", ", reasons);
                 worldState.Tracer.Beat(
-                    $"[VitalityBuff] health {oldHealth:F1} → {newHealth:F1} ({actualDelta:+0.000;-0.000}) | {reasonStr}",
+                    $"[Health] {actor.Id.Value} health {oldHealth:F1} → {newHealth:F1} ({actualDelta:+0.000;-0.000}) | {reasonStr}",
                     actorId: actor.Id.Value,
                     priority: 30);
+            }
+
+            // ── Downed transition ─────────────────────────────────────────────
+            // When health first hits zero, transition to Downed state.
+            if (newHealth <= 0.0 && aliveness != null && aliveness.State == AlivenessState.Alive)
+            {
+                MortalityWorkflow.Collapse(aliveness, actor.Id.Value, worldState.Tracer);
             }
         }
 

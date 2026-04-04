@@ -35,6 +35,7 @@ public static class WorldItemTypeRegistry
             ["palm_tree"]      = id => new CoconutTreeItem(id),
             ["ocean"]          = id => new OceanItem(id),
             ["stalactite"]     = id => new StalactiteItem(id),
+            ["corpse"]         = id => new CorpseItem(id),
         };
 
     /// <summary>
