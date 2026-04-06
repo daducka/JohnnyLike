@@ -940,13 +940,20 @@ public class IslandDomainPack : IDomainPack
         var islandWorld = (IslandWorldState)worldState;
 
         // Tick ITickableBuff implementations on each actor.
+        // Stashed actors skip normal buff ticking and receive the OnStashTick hook instead.
         foreach (var actorState in actors.Values)
         {
-            if (actorState is not IslandActorState islandActor)
+            if (actorState is not LivingActorState livingActor)
                 continue;
 
-            foreach (var buff in islandActor.ActiveBuffs.OfType<ITickableBuff>())
-                buff.OnTick(islandActor, worldState, currentTick);
+            if (livingActor.PresenceState == PresenceState.Stashed)
+            {
+                livingActor.OnStashTick(currentTick);
+                continue;
+            }
+
+            foreach (var buff in livingActor.ActiveBuffs.OfType<ITickableBuff>())
+                buff.OnTick(livingActor, worldState, currentTick);
         }
 
         return islandWorld.OnTickAdvanced(currentTick, resourceAvailability);

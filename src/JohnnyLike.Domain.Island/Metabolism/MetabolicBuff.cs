@@ -55,7 +55,7 @@ public class MetabolicBuff : ActiveBuff, ITickableBuff
     /// </summary>
     public void OnTick(ActorState actorState, WorldState worldState, long currentTick)
     {
-        if (actorState is not IslandActorState actor)
+        if (actorState is not LivingActorState actor)
             return;
 
         var dtSeconds = (currentTick - LastTick) / (double)EngineConstants.TickHz;
