@@ -5,6 +5,13 @@ using JohnnyLike.Domain.Island.Items;
 
 namespace JohnnyLike.Domain.Island.Tests;
 
+/// <summary>Minimal non-human living actor stub for testing IsHuman gating.</summary>
+file sealed class StubAnimalActorState : LivingActorState
+{
+    public override string Serialize() => "{}";
+    public override void Deserialize(string json) { }
+}
+
 /// <summary>
 /// Tests for the AlivenessBuff, buff query helpers, and candidate requirement infrastructure.
 /// </summary>
@@ -134,6 +141,34 @@ public class AlivenessCandidateRequirementTests
     }
 
     // ─── CandidateRequirements helpers ────────────────────────────────────────
+
+    [Fact]
+    public void CandidateRequirements_IsHuman_PassesForHumanActorState()
+    {
+        var actor = MakeAliveActor();
+        Assert.True(CandidateRequirements.IsHuman(actor));
+    }
+
+    [Fact]
+    public void CandidateRequirements_IsHuman_FailsForNonHumanLivingActor()
+    {
+        var animal = new StubAnimalActorState();
+        Assert.False(CandidateRequirements.IsHuman(animal));
+    }
+
+    [Fact]
+    public void CandidateRequirements_AliveOnly_FailsForNonHumanActor()
+    {
+        var animal = new StubAnimalActorState();
+        Assert.False(CandidateRequirements.AliveOnly(animal));
+    }
+
+    [Fact]
+    public void CandidateRequirements_PlayfulOnly_FailsForNonHumanActor()
+    {
+        var animal = new StubAnimalActorState();
+        Assert.False(CandidateRequirements.PlayfulOnly(animal));
+    }
 
     [Fact]
     public void CandidateRequirements_AliveOnly_PassesForAliveActor()
