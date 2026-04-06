@@ -22,7 +22,7 @@ public enum SkillType
 /// aliveness state (via <see cref="AlivenessBuff"/>), presence state, and skill-check helpers.
 ///
 /// Humanoid-specific state (decision pragmatism, recipe knowledge, chat, softmax tuning)
-/// lives in the derived <see cref="IslandActorState"/> class.
+/// lives in the derived <see cref="HumanActorState"/> class.
 /// </summary>
 public abstract class LivingActorState : ActorState
 {

@@ -15,7 +15,7 @@ namespace JohnnyLike.Domain.Island;
 /// (<see cref="LivingActorState"/>) and adds humanoid-specific fields: decision
 /// pragmatism, softmax tuning, chat/pending intents, and recipe knowledge.
 /// </summary>
-public class IslandActorState : LivingActorState, IIslandActionCandidate
+public class HumanActorState : LivingActorState, IIslandActionCandidate
 {
     public long LastPlaneSightingTick { get; set; } = -1L;
     public long LastMermaidEncounterTick { get; set; } = -1L;

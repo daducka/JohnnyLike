@@ -13,7 +13,7 @@ public sealed class RecipeDiscoverySpec
     /// Predicate evaluated against the actor and world at discovery time.
     /// Must not use any RNG — determinism is the caller's responsibility.
     /// </summary>
-    public required Func<IslandActorState, IslandWorldState, bool> CanDiscover { get; init; }
+    public required Func<HumanActorState, IslandWorldState, bool> CanDiscover { get; init; }
 
     public required double BaseChance { get; init; }
 

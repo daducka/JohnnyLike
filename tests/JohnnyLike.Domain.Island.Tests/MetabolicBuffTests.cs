@@ -11,19 +11,19 @@ public class MetabolicBuffTests
 {
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    private static (IslandActorState actor, IslandWorldState world) MakeActor(
+    private static (HumanActorState actor, IslandWorldState world) MakeActor(
         double satiety = 100.0, double energy = 100.0)
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+        var actorState = (HumanActorState)domain.CreateActorState(actorId,
             new Dictionary<string, object> { ["satiety"] = satiety, ["energy"] = energy });
         var worldState = new IslandWorldState();
         return (actorState, worldState);
     }
 
     private static void Tick(
-        IslandActorState actor,
+        HumanActorState actor,
         IslandWorldState world,
         long toTick)
     {
@@ -38,7 +38,7 @@ public class MetabolicBuffTests
     public void CreateActorState_AlwaysHasMetabolicBuff()
     {
         var domain = new IslandDomainPack();
-        var actorState = (IslandActorState)domain.CreateActorState(new ActorId("A"));
+        var actorState = (HumanActorState)domain.CreateActorState(new ActorId("A"));
 
         Assert.Contains(actorState.ActiveBuffs, b => b is MetabolicBuff);
     }
@@ -47,7 +47,7 @@ public class MetabolicBuffTests
     public void MetabolicBuff_DefaultIntensity_IsLight()
     {
         var domain = new IslandDomainPack();
-        var actorState = (IslandActorState)domain.CreateActorState(new ActorId("A"));
+        var actorState = (HumanActorState)domain.CreateActorState(new ActorId("A"));
         var buff = actorState.ActiveBuffs.OfType<MetabolicBuff>().Single();
 
         Assert.Equal(MetabolicIntensity.Light, buff.Intensity);
@@ -57,7 +57,7 @@ public class MetabolicBuffTests
     public void MetabolicBuff_NeverExpires()
     {
         var domain = new IslandDomainPack();
-        var actorState = (IslandActorState)domain.CreateActorState(new ActorId("A"));
+        var actorState = (HumanActorState)domain.CreateActorState(new ActorId("A"));
         var buff = actorState.ActiveBuffs.OfType<MetabolicBuff>().Single();
 
         Assert.Equal(long.MaxValue, buff.ExpiresAtTick);
@@ -133,13 +133,13 @@ public class MetabolicBuffTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId);
+        var actorState = (HumanActorState)domain.CreateActorState(actorId);
         var buff = actorState.ActiveBuffs.OfType<MetabolicBuff>().Single();
         buff.Intensity = MetabolicIntensity.Heavy;
         buff.LastTick  = 9999L;
 
         var json = actorState.Serialize();
-        var restored = new IslandActorState();
+        var restored = new HumanActorState();
         restored.Deserialize(json);
 
         var restoredBuff = restored.ActiveBuffs.OfType<MetabolicBuff>().FirstOrDefault();
@@ -155,7 +155,7 @@ public class MetabolicBuffTests
     {
         var domain = new IslandDomainPack();
         var actorId  = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId);
+        var actorState = (HumanActorState)domain.CreateActorState(actorId);
         var worldState = new IslandWorldState();
 
         // Manually set Heavy intensity (simulating a PreAction for swim).

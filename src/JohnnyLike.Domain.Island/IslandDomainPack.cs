@@ -42,7 +42,7 @@ public class IslandDomainPack : IDomainPack
 
     public ActorState CreateActorState(ActorId actorId, Dictionary<string, object>? initialData = null)
     {
-        var state = new IslandActorState
+        var state = new HumanActorState
         {
             Id = actorId,
             STR = (int)(initialData?.GetValueOrDefault("STR", 10) ?? 10),
@@ -118,7 +118,7 @@ public class IslandDomainPack : IDomainPack
         Random rng,
         IResourceAvailability resourceAvailability)
     {
-        var islandActorState = (IslandActorState)actorState;
+        var islandActorState = (HumanActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
         var rngStream = new RandomRngStream(rng);
 
@@ -207,7 +207,7 @@ public class IslandDomainPack : IDomainPack
         IResourceAvailability resourceAvailability,
         TraitProfile explicitTraits)
     {
-        var islandActorState = (IslandActorState)actorState;
+        var islandActorState = (HumanActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
         var rngStream = new RandomRngStream(rng);
 
@@ -323,7 +323,7 @@ public class IslandDomainPack : IDomainPack
     /// This is the single source of truth for trait derivation used by both
     /// <see cref="BuildQualityModel"/> and <see cref="ExplainCandidateScoring"/>.
     /// </summary>
-    private static PersonalityTraits DerivePersonalityTraits(IslandActorState actor)
+    private static PersonalityTraits DerivePersonalityTraits(HumanActorState actor)
     {
         static double Norm(int a, int b) => Math.Clamp(((double)(a + b) - 20.0) / 20.0, 0.0, 1.0);
         return new PersonalityTraits(
@@ -428,7 +428,7 @@ public class IslandDomainPack : IDomainPack
     }
 
     internal static double ScoreByQualities(
-        IslandActorState actor,
+        HumanActorState actor,
         double intrinsicScore,
         IReadOnlyDictionary<QualityType, double>? qualities,
         DecisionTuningProfile? profile = null)
@@ -480,7 +480,7 @@ public class IslandDomainPack : IDomainPack
     }
 
     private static QualityModel BuildQualityModel(
-        IslandActorState actor,
+        HumanActorState actor,
         long currentTick = 0L,
         IslandWorldState? world = null,
         DecisionTuningProfile? profile = null,
@@ -684,7 +684,7 @@ public class IslandDomainPack : IDomainPack
             ActorId = actorId,
             // Use a placeholder outcome: PreAction only reads world/actor state, not outcome data
             Outcome = new ActionOutcome(new ActionId("preaction_placeholder"), ActionOutcomeType.Success, Duration.FromTicks(0L)),
-            Actor = (IslandActorState)actorState,
+            Actor = (HumanActorState)actorState,
             World = (IslandWorldState)worldState,
             Tier = null,
             Rng = rng,
@@ -716,7 +716,7 @@ public class IslandDomainPack : IDomainPack
         IResourceAvailability resourceAvailability,
         object? effectHandler = null)
     {
-        var islandActorState = (IslandActorState)actorState;
+        var islandActorState = (HumanActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
 
         // Metabolism is now handled by MetabolicBuff.OnTick each world tick.
@@ -765,7 +765,7 @@ public class IslandDomainPack : IDomainPack
     private void ApplyOutcomeMorale(
         ActorId actorId,
         ActionOutcome outcome,
-        IslandActorState actor,
+        HumanActorState actor,
         IslandWorldState world)
     {
         double moraleDelta;
@@ -831,7 +831,7 @@ public class IslandDomainPack : IDomainPack
             return;
         }
 
-        var islandActorState = targetActor as IslandActorState;
+        var islandActorState = targetActor as HumanActorState;
         if (islandActorState == null)
         {
             return;
@@ -851,7 +851,7 @@ public class IslandDomainPack : IDomainPack
         }
     }
 
-    private void HandleChatRedeem(Signal signal, IslandActorState state, long currentTick)
+    private void HandleChatRedeem(Signal signal, HumanActorState state, long currentTick)
     {
         if (signal.Data.TryGetValue("redeem_name", out var redeemName))
         {
@@ -871,7 +871,7 @@ public class IslandDomainPack : IDomainPack
         }
     }
 
-    private void HandleSubOrCheer(Signal signal, IslandActorState state, long currentTick)
+    private void HandleSubOrCheer(Signal signal, HumanActorState state, long currentTick)
     {
         // Add Inspiration buff for subs/cheers (applies to all skills as a general morale boost)
         state.ActiveBuffs.Add(new ActiveBuff
@@ -895,7 +895,7 @@ public class IslandDomainPack : IDomainPack
 
     public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState)
     {
-        var islandActorState = (IslandActorState)actorState;
+        var islandActorState = (HumanActorState)actorState;
         var snapshot = new Dictionary<string, object>
         {
             ["satiety"] = FormatStat(islandActorState.Satiety, "satiety"),
@@ -994,7 +994,7 @@ public class IslandDomainPack : IDomainPack
         if (sortedCandidates.Count == 0)
             return sortedCandidates;
 
-        var actor = (IslandActorState)actorState;
+        var actor = (HumanActorState)actorState;
         var p = Math.Clamp(actor.DecisionPragmatism, 0.0, 1.0);
 
         var originalTopActionId = sortedCandidates[0].Action.Id.Value;
@@ -1104,7 +1104,7 @@ public class IslandDomainPack : IDomainPack
         long currentTick,
         IReadOnlyList<ActionCandidate> candidates)
     {
-        var actor = (IslandActorState)actorState;
+        var actor = (HumanActorState)actorState;
         var islandWorld = worldState as IslandWorldState;
         var model = BuildQualityModel(actor, currentTick, islandWorld, _profile);
 
@@ -1314,7 +1314,7 @@ public class IslandDomainPack : IDomainPack
         IReadOnlyList<ActionCandidate> candidates)
     {
         var model = BuildQualityModel(
-            (IslandActorState)actorState,
+            (HumanActorState)actorState,
             currentTick,
             worldState as IslandWorldState,
             _profile);
@@ -1349,7 +1349,7 @@ public class IslandDomainPack : IDomainPack
         TraitProfile explicitTraits)
     {
         var model = BuildQualityModel(
-            (IslandActorState)actorState,
+            (HumanActorState)actorState,
             currentTick,
             worldState as IslandWorldState,
             _profile,
@@ -1392,7 +1392,7 @@ public class IslandDomainPack : IDomainPack
             TraitProfile? explicitTraits = null)
     {
         var model = BuildQualityModel(
-            (IslandActorState)actorState,
+            (HumanActorState)actorState,
             currentTick,
             worldState as IslandWorldState,
             _profile,
@@ -1505,7 +1505,7 @@ public class IslandDomainPack : IDomainPack
         // ── Per-actor snapshots ─────────────────────────────────────────────────
         foreach (var actorId in actors.Keys.OrderBy(a => a.Value))
         {
-            if (actors[actorId] is not IslandActorState actor)
+            if (actors[actorId] is not HumanActorState actor)
                 continue;
 
             var actorDetails = new Dictionary<string, object>

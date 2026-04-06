@@ -15,7 +15,7 @@ public class EffectHandlerRefactoringTests
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
 
         var campfire = world.MainCampfire!;
         // Set fuel to 500s which is below the 1800s threshold that triggers add fuel candidate
@@ -42,7 +42,7 @@ public class EffectHandlerRefactoringTests
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
 
         var campfire = world.MainCampfire!;
         var initialQuality = campfire.Quality;

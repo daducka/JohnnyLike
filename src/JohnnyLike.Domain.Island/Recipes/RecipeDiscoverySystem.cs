@@ -15,7 +15,7 @@ public static class RecipeDiscoverySystem
     /// the top-scoring recipe.
     /// </summary>
     public static void TryDiscover(
-        IslandActorState actor,
+        HumanActorState actor,
         IslandWorldState world,
         IRngStream rng,
         DiscoveryTrigger trigger,

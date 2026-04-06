@@ -19,5 +19,5 @@ public interface IFoodSource
     /// given the current actor and world state.
     /// Each unit represents one nominal serving (e.g., 1 fish, 1 coconut).
     /// </summary>
-    double GetAcquirableFoodUnits(IslandActorState actor, IslandWorldState world);
+    double GetAcquirableFoodUnits(HumanActorState actor, IslandWorldState world);
 }

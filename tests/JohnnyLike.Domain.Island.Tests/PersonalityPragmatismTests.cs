@@ -16,35 +16,35 @@ public class PersonalityPragmatismTests
     /// Creates an actor with the given ability scores and no explicit DecisionPragmatism override.
     /// The domain will derive pragmatism from personality.
     /// </summary>
-    private static IslandActorState MakeActor(int str = 10, int dex = 10, int con = 10,
+    private static HumanActorState MakeActor(int str = 10, int dex = 10, int con = 10,
                                                int @int = 10, int wis = 10, int cha = 10)
     {
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("P");
-        return (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        return (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["STR"] = str, ["DEX"] = dex, ["CON"] = con,
             ["INT"] = @int, ["WIS"] = wis, ["CHA"] = cha
         });
     }
 
-    private static IslandActorState MakeActorWithExplicitPragmatism(double pragmatism)
+    private static HumanActorState MakeActorWithExplicitPragmatism(double pragmatism)
     {
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("PExplicit");
-        return (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        return (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["DecisionPragmatism"] = pragmatism
         });
     }
 
-    private static (IslandDomainPack, ActorId, IslandActorState, IslandWorldState) MakeSetup(
+    private static (IslandDomainPack, ActorId, HumanActorState, IslandWorldState) MakeSetup(
         int str = 10, int dex = 10, int con = 10, int @int = 10, int wis = 10, int cha = 10,
         double satiety = 80.0, double energy = 80.0, double morale = 60.0)
     {
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actor   = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["STR"] = str, ["DEX"] = dex, ["CON"] = con,
             ["INT"] = @int, ["WIS"] = wis, ["CHA"] = cha,
@@ -396,7 +396,7 @@ public class PersonalityPragmatismTests
     {
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("Explorer");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId);
+        var actor   = (HumanActorState)domain.CreateActorState(actorId);
         actor.DecisionPragmatism = 0.65; // near floor — will often explore
 
         var world = (IslandWorldState)domain.CreateInitialWorldState();
@@ -425,7 +425,7 @@ public class PersonalityPragmatismTests
     {
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("Exploiter");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId);
+        var actor   = (HumanActorState)domain.CreateActorState(actorId);
         actor.DecisionPragmatism = 0.98; // near upper bound
 
         var world = (IslandWorldState)domain.CreateInitialWorldState();

@@ -199,7 +199,7 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
     }
 
     // IFoodSource: coconuts on the tree are acquirable through shake_tree_coconut.
-    double IFoodSource.GetAcquirableFoodUnits(IslandActorState actor, IslandWorldState world)
+    double IFoodSource.GetAcquirableFoodUnits(HumanActorState actor, IslandWorldState world)
         => ((ISupplyBounty)this).GetQuantity<CoconutSupply>();
 
     private void AddSleepUnderTreeCandidate(IslandContext ctx, List<ActionCandidate> output)

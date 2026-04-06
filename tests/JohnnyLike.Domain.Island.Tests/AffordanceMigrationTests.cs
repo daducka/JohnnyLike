@@ -17,9 +17,9 @@ public class AffordanceMigrationTests
     // ── Shared helpers ────────────────────────────────────────────────────────
 
     /// <summary>Creates an actor via the domain pack (has AlivenessBuff) in a healthy, playful state.</summary>
-    private static IslandActorState MakeHealthyActor(string id = "TestActor")
+    private static HumanActorState MakeHealthyActor(string id = "TestActor")
     {
-        var state = (IslandActorState)Domain.CreateActorState(new ActorId(id));
+        var state = (HumanActorState)Domain.CreateActorState(new ActorId(id));
         state.Satiety = 80.0;
         state.Energy  = 80.0;
         state.Morale  = 60.0;
@@ -28,9 +28,9 @@ public class AffordanceMigrationTests
     }
 
     /// <summary>Creates an actor that is alive but fails PlayfulOnly (starving, low morale).</summary>
-    private static IslandActorState MakeSurvivingActor(string id = "TestActor")
+    private static HumanActorState MakeSurvivingActor(string id = "TestActor")
     {
-        var state = (IslandActorState)Domain.CreateActorState(new ActorId(id));
+        var state = (HumanActorState)Domain.CreateActorState(new ActorId(id));
         state.Satiety = 10.0;
         state.Energy  = 10.0;
         state.Morale  = 10.0;
@@ -38,7 +38,7 @@ public class AffordanceMigrationTests
         return state;
     }
 
-    private static List<ActionCandidate> GenerateCandidates(IslandActorState actor)
+    private static List<ActionCandidate> GenerateCandidates(HumanActorState actor)
     {
         var world = (IslandWorldState)Domain.CreateInitialWorldState();
         return Domain.GenerateCandidates(actor.Id, actor, world, 0L, new Random(42), new EmptyResourceAvailability());

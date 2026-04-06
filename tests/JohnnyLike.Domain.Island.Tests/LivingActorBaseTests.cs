@@ -14,7 +14,7 @@ public class LivingActorBaseTests
 {
     // ─── helpers ──────────────────────────────────────────────────────────────
 
-    private static IslandActorState MakeActor(
+    private static HumanActorState MakeActor(
         double satiety = 80.0,
         double energy  = 80.0,
         double morale  = 60.0,
@@ -22,7 +22,7 @@ public class LivingActorBaseTests
     {
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actor   = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["satiety"] = satiety,
             ["energy"]  = energy,
@@ -35,7 +35,7 @@ public class LivingActorBaseTests
     // ─── Hierarchy ────────────────────────────────────────────────────────────
 
     [Fact]
-    public void IslandActorState_InheritsFrom_LivingActorState()
+    public void HumanActorState_InheritsFrom_LivingActorState()
     {
         var actor = MakeActor();
         Assert.IsAssignableFrom<LivingActorState>(actor);
@@ -168,7 +168,7 @@ public class LivingActorBaseTests
     {
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("StashActor");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId);
+        var actor   = (HumanActorState)domain.CreateActorState(actorId);
         var world   = (IslandWorldState)domain.CreateInitialWorldState();
 
         actor.PresenceState = PresenceState.Stashed;
@@ -193,7 +193,7 @@ public class LivingActorBaseTests
     {
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("ActiveActor");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actor   = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["satiety"] = 0.0,
             ["energy"]  = 0.0,
@@ -222,7 +222,7 @@ public class LivingActorBaseTests
         var engine = new SimEngine(domain, seed: 42);
 
         engine.AddActor(new ActorId("StashActor"));
-        var actor = (IslandActorState)engine.Actors[new ActorId("StashActor")];
+        var actor = (HumanActorState)engine.Actors[new ActorId("StashActor")];
         actor.PresenceState = PresenceState.Stashed;
 
         var result = engine.TryGetNextAction(new ActorId("StashActor"), out var action);
@@ -251,29 +251,29 @@ public class LivingActorBaseTests
     // ─── Serialization round-trip ─────────────────────────────────────────────
 
     [Fact]
-    public void IslandActorState_SerializeDeserialize_PreservesPresenceState()
+    public void HumanActorState_SerializeDeserialize_PreservesPresenceState()
     {
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("SerializeActor");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId);
+        var actor   = (HumanActorState)domain.CreateActorState(actorId);
         actor.PresenceState = PresenceState.Stashed;
 
         var json = actor.Serialize();
-        var restored = (IslandActorState)domain.CreateActorState(actorId);
+        var restored = (HumanActorState)domain.CreateActorState(actorId);
         restored.Deserialize(json);
 
         Assert.Equal(PresenceState.Stashed, restored.PresenceState);
     }
 
     [Fact]
-    public void IslandActorState_SerializeDeserialize_DefaultPresenceStateIsActive()
+    public void HumanActorState_SerializeDeserialize_DefaultPresenceStateIsActive()
     {
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("SerializeActor");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId);
+        var actor   = (HumanActorState)domain.CreateActorState(actorId);
 
         var json = actor.Serialize();
-        var restored = (IslandActorState)domain.CreateActorState(actorId);
+        var restored = (HumanActorState)domain.CreateActorState(actorId);
         restored.Deserialize(json);
 
         Assert.Equal(PresenceState.Active, restored.PresenceState);

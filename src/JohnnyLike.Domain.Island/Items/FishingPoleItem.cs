@@ -287,7 +287,7 @@ public class FishingPoleItem : ToolItem, IFoodSource
     // IFoodSource: a working fishing pole held by the requesting actor can yield fish
     // from the ocean soon via go_fishing.  Returns 0 when the actor doesn't own the pole,
     // the pole is broken, or quality is too low to offer the action.
-    double IFoodSource.GetAcquirableFoodUnits(IslandActorState actor, IslandWorldState world)
+    double IFoodSource.GetAcquirableFoodUnits(HumanActorState actor, IslandWorldState world)
     {
         if (!CanActorUseTool(actor.Id) || IsBroken || Quality <= MinFishingQualityThreshold)
             return 0.0;

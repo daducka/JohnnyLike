@@ -12,7 +12,7 @@ public class RecipeSystemTests
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private static IslandContext MakeContext(
-        IslandActorState actor,
+        HumanActorState actor,
         IslandWorldState world,
         Random? rng = null)
     {
@@ -28,7 +28,7 @@ public class RecipeSystemTests
         );
     }
 
-    private static (IslandActorState actor, IslandWorldState world) MakeBase()
+    private static (HumanActorState actor, IslandWorldState world) MakeBase()
     {
         var world = new IslandWorldState();
         world.WorldItems.Add(new CampfireItem("main_campfire"));
@@ -38,7 +38,7 @@ public class RecipeSystemTests
         var pile = new SupplyPile("shared_supplies", "shared");
         world.WorldItems.Add(pile);
 
-        var actor = new IslandActorState { Id = new ActorId("test_actor") };
+        var actor = new HumanActorState { Id = new ActorId("test_actor") };
         return (actor, world);
     }
 
@@ -551,13 +551,13 @@ public class RecipeSystemTests
     [Fact]
     public void ActorState_Serialization_PreservesKnownRecipeIds()
     {
-        var actor = new IslandActorState { Id = new ActorId("test_actor") };
+        var actor = new HumanActorState { Id = new ActorId("test_actor") };
         actor.KnownRecipeIds.Add("cook_fish");
         actor.KnownRecipeIds.Add("umbrella");
 
         var json = actor.Serialize();
 
-        var actor2 = new IslandActorState();
+        var actor2 = new HumanActorState();
         actor2.Deserialize(json);
 
         Assert.Contains("cook_fish", actor2.KnownRecipeIds);
@@ -691,7 +691,7 @@ public class RecipeSystemTests
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    private static EffectContext MakeEffectContext(IslandActorState actor, IslandWorldState world, Random? rng = null)
+    private static EffectContext MakeEffectContext(HumanActorState actor, IslandWorldState world, Random? rng = null)
     {
         return new EffectContext
         {

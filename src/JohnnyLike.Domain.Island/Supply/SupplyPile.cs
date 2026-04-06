@@ -180,7 +180,7 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
     /// food or safety, qualities are further suppressed so the action loses priority.
     /// </summary>
     private static Dictionary<QualityType, double> ComputeThinkAboutSuppliesQualities(
-        IslandActorState actor,
+        HumanActorState actor,
         IslandWorldState world,
         ThinkAboutSuppliesTuning tuning,
         Func<QualityType, double>? effectiveWeight = null)

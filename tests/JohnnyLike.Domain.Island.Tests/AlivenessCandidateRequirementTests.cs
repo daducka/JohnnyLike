@@ -12,13 +12,13 @@ public class AlivenessCandidateRequirementTests
 {
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    private static IslandActorState MakeAliveActor(string id = "TestActor")
+    private static HumanActorState MakeAliveActor(string id = "TestActor")
     {
         var domain = new IslandDomainPack();
-        return (IslandActorState)domain.CreateActorState(new ActorId(id));
+        return (HumanActorState)domain.CreateActorState(new ActorId(id));
     }
 
-    private static IslandActorState MakeActorWithState(AlivenessState state, string id = "TestActor")
+    private static HumanActorState MakeActorWithState(AlivenessState state, string id = "TestActor")
     {
         var actor = MakeAliveActor(id);
         var buff = actor.TryGetBuff<AlivenessBuff>()!;
@@ -30,14 +30,14 @@ public class AlivenessCandidateRequirementTests
     /// Creates a fully initialized actor and then removes its AlivenessBuff, simulating
     /// an actor that never received the buff (used to test "absent buff" scenarios).
     /// </summary>
-    private static IslandActorState MakeActorWithoutAlivenessBuff(string id = "TestActor")
+    private static HumanActorState MakeActorWithoutAlivenessBuff(string id = "TestActor")
     {
         var actor = MakeAliveActor(id);
         actor.ActiveBuffs.RemoveAll(b => b is AlivenessBuff);
         return actor;
     }
 
-    private static List<ActionCandidate> GenerateCandidates(IslandActorState actor, string actorId = "TestActor")
+    private static List<ActionCandidate> GenerateCandidates(HumanActorState actor, string actorId = "TestActor")
     {
         var domain = new IslandDomainPack();
         var world = new IslandWorldState();

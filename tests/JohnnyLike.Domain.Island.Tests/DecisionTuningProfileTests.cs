@@ -16,7 +16,7 @@ public class DecisionTuningProfileTests
 {
     // ── Shared test helpers ───────────────────────────────────────────────────
 
-    private static (IslandDomainPack domain, ActorId actorId, IslandActorState actor, IslandWorldState world)
+    private static (IslandDomainPack domain, ActorId actorId, HumanActorState actor, IslandWorldState world)
         CreateSetup(
             double satiety = 70.0, double energy = 80.0,
             double morale  = 60.0, double health = 100.0,
@@ -24,7 +24,7 @@ public class DecisionTuningProfileTests
     {
         var domain  = new IslandDomainPack(profile);
         var actorId = new ActorId("Tester");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actor   = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["satiety"] = satiety,
             ["energy"]  = energy,
@@ -136,11 +136,11 @@ public class DecisionTuningProfileTests
         var domainExplicit = new IslandDomainPack(DecisionTuningProfile.Default);
 
         var actorId = new ActorId("ScoreCheck");
-        var actorImplicit = (IslandActorState)domainImplicit.CreateActorState(actorId, new Dictionary<string, object>
+        var actorImplicit = (HumanActorState)domainImplicit.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["satiety"] = 40.0, ["energy"] = 60.0, ["morale"] = 50.0
         });
-        var actorExplicit = (IslandActorState)domainExplicit.CreateActorState(actorId, new Dictionary<string, object>
+        var actorExplicit = (HumanActorState)domainExplicit.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["satiety"] = 40.0, ["energy"] = 60.0, ["morale"] = 50.0
         });
@@ -224,7 +224,7 @@ public class DecisionTuningProfileTests
         // personalityBase(Preparation) = (0.5+0.0) * 0.7 = 0.35
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("StatActor");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actor   = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["INT"] = 14, ["WIS"] = 16,
             ["satiety"] = 70.0, ["energy"] = 80.0, ["morale"] = 60.0
@@ -310,7 +310,7 @@ public class DecisionTuningProfileTests
         // INT=14, WIS=16 → planner=0.5; industrious=0 → personalityBase = 0.5 * 1.4 = 0.7
         var domain  = new IslandDomainPack(customProfile);
         var actorId = new ActorId("ScaleActor");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actor   = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["INT"] = 14, ["WIS"] = 16,
             ["satiety"] = 70.0, ["energy"] = 80.0, ["morale"] = 60.0
@@ -338,8 +338,8 @@ public class DecisionTuningProfileTests
         var domainDefault = new IslandDomainPack(DecisionTuningProfile.Default);
 
         var actorId = new ActorId("NullCheck");
-        var actorN  = (IslandActorState)domainNull   .CreateActorState(actorId, null);
-        var actorD  = (IslandActorState)domainDefault.CreateActorState(actorId, null);
+        var actorN  = (HumanActorState)domainNull   .CreateActorState(actorId, null);
+        var actorD  = (HumanActorState)domainDefault.CreateActorState(actorId, null);
 
         // Pragmatism should be identical since both use Default profile
         Assert.Equal(actorD.DecisionPragmatism, actorN.DecisionPragmatism, precision: 9);
@@ -499,9 +499,9 @@ public class DecisionTuningProfileTests
         var domainB = new IslandDomainPack(DecisionTuningProfile.Default);
 
         var actorId = new ActorId("ParityCheck");
-        var actorA  = (IslandActorState)domainA.CreateActorState(actorId, new Dictionary<string, object>
+        var actorA  = (HumanActorState)domainA.CreateActorState(actorId, new Dictionary<string, object>
             { ["satiety"] = satiety, ["energy"] = energy, ["morale"] = morale });
-        var actorB  = (IslandActorState)domainB.CreateActorState(actorId, new Dictionary<string, object>
+        var actorB  = (HumanActorState)domainB.CreateActorState(actorId, new Dictionary<string, object>
             { ["satiety"] = satiety, ["energy"] = energy, ["morale"] = morale });
         actorA.Health = actorB.Health = health;
         actorA.DecisionPragmatism = actorB.DecisionPragmatism = 1.0;
@@ -720,7 +720,7 @@ public class DecisionTuningProfileTests
     {
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("Tester");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actor   = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             // Critical hunger; comfortable energy and morale (so misery pressure would normally push comfort)
             ["satiety"] = 10.0,

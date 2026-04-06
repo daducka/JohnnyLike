@@ -19,7 +19,7 @@ public class FishingSpotSelectionTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         
         actor.Satiety = 50.0;
         domain.InitializeActorItems(actorId, world);
@@ -67,7 +67,7 @@ public class FishingSpotSelectionTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         
         actor.Satiety = 50.0;
         domain.InitializeActorItems(actorId, world);
@@ -102,8 +102,8 @@ public class FishingSpotSelectionTests
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId1 = new ActorId("Actor1");
         var actorId2 = new ActorId("Actor2");
-        var actor1 = (IslandActorState)domain.CreateActorState(actorId1);
-        var actor2 = (IslandActorState)domain.CreateActorState(actorId2);
+        var actor1 = (HumanActorState)domain.CreateActorState(actorId1);
+        var actor2 = (HumanActorState)domain.CreateActorState(actorId2);
         
         actor1.Satiety = 50.0;
         actor2.Satiety = 50.0;

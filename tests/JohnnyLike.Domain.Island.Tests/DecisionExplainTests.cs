@@ -13,13 +13,13 @@ public class DecisionExplainTests
 {
     // ── Shared helpers ────────────────────────────────────────────────────────
 
-    private static (IslandDomainPack domain, ActorId actorId, IslandActorState actor, IslandWorldState world)
+    private static (IslandDomainPack domain, ActorId actorId, HumanActorState actor, IslandWorldState world)
         CreateSetup(double pragmatism = 1.0, double satiety = 70.0, double energy = 80.0,
                     double morale = 60.0, double health = 100.0)
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("Tester");
-        var actor = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actor = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["satiety"] = satiety,
             ["energy"]  = energy,
@@ -341,7 +341,7 @@ public class DecisionExplainTests
             ["satiety"] = 70.0, ["energy"] = 80.0, ["morale"] = 60.0
         });
         // Force pragmatism by directly setting on actor state
-        var actor = (IslandActorState)engine.Actors[new ActorId("Johnny")];
+        var actor = (HumanActorState)engine.Actors[new ActorId("Johnny")];
         actor.DecisionPragmatism = 1.0;
 
         engine.TryGetNextAction(new ActorId("Johnny"), out _);
@@ -366,12 +366,12 @@ public class DecisionExplainTests
     ///   instinctive = Norm(10,10) = (20-20)/20 = 0.0
     ///   industrious = Norm(10,10) = (20-20)/20 = 0.0
     /// </summary>
-    private static (IslandDomainPack domain, ActorId actorId, IslandActorState actor, IslandWorldState world)
+    private static (IslandDomainPack domain, ActorId actorId, HumanActorState actor, IslandWorldState world)
         CreateStatActor()
     {
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("StatTester");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actor   = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["satiety"] = 70.0,
             ["energy"]  = 80.0,

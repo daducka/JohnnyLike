@@ -119,7 +119,7 @@ public class FishingPoleItemTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         
         var fishingPole = new FishingPoleItem("pole1", actorId);
         fishingPole.Quality = 80.0;
@@ -140,7 +140,7 @@ public class FishingPoleItemTests
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var owner = new ActorId("Owner");
         var nonOwner = new ActorId("NonOwner");
-        var actor = (IslandActorState)domain.CreateActorState(nonOwner);
+        var actor = (HumanActorState)domain.CreateActorState(nonOwner);
         
         var fishingPole = new FishingPoleItem("pole1", owner);
         fishingPole.Quality = 80.0;
@@ -160,7 +160,7 @@ public class FishingPoleItemTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         
         var fishingPole = new FishingPoleItem("pole1", actorId);
         fishingPole.Quality = 70.0;
@@ -181,7 +181,7 @@ public class FishingPoleItemTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         
         var fishingPole = new FishingPoleItem("pole1", actorId);
         fishingPole.Quality = 15.0;
@@ -202,7 +202,7 @@ public class FishingPoleItemTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         
         var fishingPole = new FishingPoleItem("pole1", actorId);
         fishingPole.Quality = 15.0;

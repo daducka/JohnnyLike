@@ -5,7 +5,7 @@ namespace JohnnyLike.Domain.Island.Candidates;
 /// <summary>
 /// Shared provider for chat-triggered and expressive/emote action candidates.
 /// Centralizes all pending-chat-intent candidate generation so the logic is reusable
-/// across actor types and is not embedded directly in <see cref="IslandActorState"/>.
+/// across actor types and is not embedded directly in <see cref="HumanActorState"/>.
 /// </summary>
 public static class ChatCandidateProvider
 {
@@ -14,7 +14,7 @@ public static class ChatCandidateProvider
     /// (e.g. viewer redeems, subs, cheers) to <paramref name="output"/>.
     /// Candidates are only emitted when the actor is not in a survival-critical state.
     /// </summary>
-    public static void AddCandidates(IslandActorState actor, IslandContext ctx, List<ActionCandidate> output)
+    public static void AddCandidates(HumanActorState actor, IslandContext ctx, List<ActionCandidate> output)
     {
         if (actor.PendingChatActions.Count == 0)
             return;

@@ -24,14 +24,14 @@ public class DespairComfortActionTests
         "curl_in_a_ball", "stare_at_sky", "reflect_on_life", "eat_sand"
     };
 
-    private static IslandActorState MakeActor(
+    private static HumanActorState MakeActor(
         double satiety = 100.0,
         double morale  = 50.0,
         double health  = 100.0,
         double energy  = 100.0)
     {
         var domain = new IslandDomainPack();
-        var actor  = (IslandActorState)domain.CreateActorState(new ActorId("TestActor"));
+        var actor  = (HumanActorState)domain.CreateActorState(new ActorId("TestActor"));
         actor.Satiety = satiety;
         actor.Morale  = morale;
         actor.Health  = health;
@@ -39,7 +39,7 @@ public class DespairComfortActionTests
         return actor;
     }
 
-    private static List<ActionCandidate> GetCandidates(IslandActorState actor)
+    private static List<ActionCandidate> GetCandidates(HumanActorState actor)
     {
         var domain = new IslandDomainPack();
         var world  = new IslandWorldState();

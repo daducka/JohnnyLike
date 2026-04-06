@@ -270,7 +270,7 @@ public class DurationTests
         // damage = 0.0006 * 14400 = 8.64 health.
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId,
+        var actor   = (HumanActorState)domain.CreateActorState(actorId,
             new Dictionary<string, object>
             {
                 ["satiety"] = 5.0,   // critically low → starvation active
@@ -300,7 +300,7 @@ public class DurationTests
         // without metabolism depleting satiety.
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId,
+        var actor   = (HumanActorState)domain.CreateActorState(actorId,
             new Dictionary<string, object>
             {
                 ["satiety"] = 80.0,
@@ -329,7 +329,7 @@ public class DurationTests
         // This is a sanity check that the Duration migration was completed.
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("Jim");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId);
+        var actor   = (HumanActorState)domain.CreateActorState(actorId);
         var world   = new IslandWorldState();
         domain.InitializeActorItems(actorId, world);
         world.WorldItems.Add(new OceanItem("ocean"));
