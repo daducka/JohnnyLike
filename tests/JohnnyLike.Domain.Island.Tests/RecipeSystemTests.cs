@@ -767,6 +767,8 @@ public class RecipeSystemTests
         var ctx1 = MakeContext(actor1, world1, candidateRng1);
         var candidates1 = new List<ActionCandidate>();
         actor1.AddCandidates(ctx1, candidates1);
+        // think_about_supplies now comes from SupplyPile, not the actor
+        world1.SharedSupplyPile!.AddCandidates(ctx1, candidates1);
         // Advance candidateRng1 further to simulate elapsed time
         for (int i = 0; i < 50; i++) candidateRng1.NextDouble();
 
@@ -774,6 +776,8 @@ public class RecipeSystemTests
         var ctx2 = MakeContext(actor2, world2, candidateRng2);
         var candidates2 = new List<ActionCandidate>();
         actor2.AddCandidates(ctx2, candidates2);
+        // think_about_supplies now comes from SupplyPile, not the actor
+        world2.SharedSupplyPile!.AddCandidates(ctx2, candidates2);
 
         // Execute think_about_supplies with the SAME effect-time seed for both actors
         var think1 = candidates1.Single(c => c.Action.Id.Value == "think_about_supplies");

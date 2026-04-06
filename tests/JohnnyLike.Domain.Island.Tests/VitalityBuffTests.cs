@@ -3,6 +3,7 @@ using JohnnyLike.Engine;
 using JohnnyLike.Domain.Island;
 using JohnnyLike.Domain.Island.Candidates;
 using JohnnyLike.Domain.Island.Items;
+using JohnnyLike.Domain.Island.Supply;
 using JohnnyLike.Domain.Island.Vitality;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -622,6 +623,9 @@ public class HealthDecisionWeightingTests
         var world      = new IslandWorldState();
         domain.InitializeActorItems(actor.Id, world);
         world.WorldItems.Add(new OceanItem("ocean"));
+        // sleep_under_tree comes from CoconutTreeItem; think_about_supplies from SupplyPile
+        world.WorldItems.Add(new CoconutTreeItem("palm_tree"));
+        world.WorldItems.Add(new SupplyPile("shared_supplies", "shared"));
 
         var candidates = domain.GenerateCandidates(actor.Id, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
 
@@ -684,6 +688,9 @@ public class IslandCandidateAliveRequirementCoverageTests
         var world  = new IslandWorldState();
         domain.InitializeActorItems(actor.Id, world);
         world.WorldItems.Add(new OceanItem("ocean"));
+        // sleep_under_tree comes from CoconutTreeItem; think_about_supplies from SupplyPile
+        world.WorldItems.Add(new CoconutTreeItem("palm_tree"));
+        world.WorldItems.Add(new SupplyPile("shared_supplies", "shared"));
         return domain.GenerateCandidates(actor.Id, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
     }
 

@@ -1,5 +1,6 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Metabolism;
 using JohnnyLike.Domain.Island.Supply;
 using JohnnyLike.Domain.Island.Telemetry;
 using JohnnyLike.Domain.Kit.Dice;
@@ -57,6 +58,9 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
     // IIslandActionCandidate
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
+        // Environment affordance: sleep under the shade of the tree
+        AddSleepUnderTreeCandidate(ctx, output);
+
         var coconutsAvailable = Bounty.GetQuantity<CoconutSupply>();
         var frondsAvailable = Bounty.GetQuantity<PalmFrondSupply>();
 
@@ -197,4 +201,38 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
     // IFoodSource: coconuts on the tree are acquirable through shake_tree_coconut.
     double IFoodSource.GetAcquirableFoodUnits(IslandActorState actor, IslandWorldState world)
         => ((ISupplyBounty)this).GetQuantity<CoconutSupply>();
+
+    private void AddSleepUnderTreeCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("sleep_under_tree"),
+                ActionKind.Interact,
+                new LocationActionParameters("tree"),
+                Duration.Minutes(30.0, 40.0, ctx.Random),
+                NarrationDescription: "take a nap under the shade of a tree"
+            ),
+            0.14,
+            Reason: "Sleep under tree",
+            PreAction: (Func<EffectContext, bool>)(effectCtx =>
+            {
+                // Switch to Sleeping intensity so the MetabolicBuff recovers Energy during the nap.
+                var metabolicBuff = effectCtx.Actor.ActiveBuffs.OfType<MetabolicBuff>().FirstOrDefault();
+                if (metabolicBuff != null)
+                    metabolicBuff.Intensity = MetabolicIntensity.Sleeping;
+                return true;
+            }),
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                var actor = effectCtx.ActorId.Value;
+                effectCtx.SetOutcomeNarration($"{actor} stirs awake, feeling well-rested.");
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Rest]   = 1.0,
+                [QualityType.Safety] = 0.2
+            },
+            ActorRequirement: CandidateRequirements.AliveOnly
+        ));
+    }
 }

@@ -85,6 +85,9 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
         AddSitAndWatchWavesCandidate(ctx, output);
         AddSkipStonesCandidate(ctx, output);
 
+        // Beach environment action: build a sand castle
+        AddBuildSandCastleCandidate(ctx, output);
+
         // Despair comfort actions — only when actor is suffering
         AddCurlInABallCandidate(ctx, output);
         AddStareAtSkyCandidate(ctx, output);
@@ -740,5 +743,79 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 }
             }
         }
+    }
+
+    private static readonly ResourceId BeachSandcastleAreaResource = new("island:resource:beach:sandcastle_spot");
+
+    private void AddBuildSandCastleCandidate(IslandContext ctx, List<ActionCandidate> output)
+    {
+        // Only offer when no sand castle already exists
+        var existingSandCastle = ctx.World.WorldItems.OfType<SandCastleItem>().FirstOrDefault();
+        if (existingSandCastle != null)
+            return;
+
+        var baseDC = 8;
+        if (Tide == TideLevel.High)
+            baseDC += 4;
+
+        var parameters = ctx.RollSkillCheck(SkillType.Performance, baseDC);
+        var baseScore = 0.08;
+
+        output.Add(new ActionCandidate(
+            new ActionSpec(
+                new ActionId("build_sand_castle"),
+                ActionKind.Interact,
+                parameters,
+                Duration.Minutes(20.0, 30.0, ctx.Random),
+                "build a sand castle on the beach",
+                parameters.ToResultData(),
+                new List<ResourceRequirement> { new ResourceRequirement(BeachSandcastleAreaResource) }
+            ),
+            baseScore,
+            Reason: $"Build sand castle (DC {baseDC}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
+            EffectHandler: new Action<EffectContext>(effectCtx =>
+            {
+                if (effectCtx.Tier == null)
+                    return;
+
+                var tier = effectCtx.Tier.Value;
+                var actor = effectCtx.ActorId.Value;
+
+                switch (tier)
+                {
+                    case RollOutcomeTier.CriticalSuccess:
+                        effectCtx.Actor.Morale += 25.0;
+                        effectCtx.World.AddWorldItem(new SandCastleItem(), effectCtx.Actor.CurrentRoomId);
+                        effectCtx.SetOutcomeNarration($"{actor} sculpts an impressive sand castle complete with towers and a moat.");
+                        break;
+
+                    case RollOutcomeTier.Success:
+                        effectCtx.Actor.Morale += 15.0;
+                        effectCtx.World.AddWorldItem(new SandCastleItem(), effectCtx.Actor.CurrentRoomId);
+                        effectCtx.SetOutcomeNarration($"{actor} pats the last handful of sand into place and steps back to admire the castle.");
+                        break;
+
+                    case RollOutcomeTier.PartialSuccess:
+                        effectCtx.Actor.Morale += 5.0;
+                        effectCtx.World.AddWorldItem(new SandCastleItem(), effectCtx.Actor.CurrentRoomId);
+                        effectCtx.SetOutcomeNarration($"{actor} manages a lopsided but recognisable sand castle.");
+                        break;
+
+                    case RollOutcomeTier.Failure:
+                        effectCtx.SetOutcomeNarration($"{actor}'s sand castle collapses before it can take shape.");
+                        break;
+
+                    case RollOutcomeTier.CriticalFailure:
+                        effectCtx.Actor.Morale -= 5.0;
+                        effectCtx.SetOutcomeNarration($"{actor} kicks the sand in frustration as the whole thing crumbles.");
+                        break;
+                }
+            }),
+            Qualities: new Dictionary<QualityType, double>
+            {
+                [QualityType.Fun] = 1.0
+            },
+            ActorRequirement: CandidateRequirements.PlayfulOnly
+        ));
     }
 }
