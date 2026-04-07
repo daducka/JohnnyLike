@@ -49,7 +49,7 @@ public static class ChatCandidateProvider
                     [QualityType.Fun]     = 0.8,
                     [QualityType.Comfort] = 0.2
                 },
-                ActorRequirement: CandidateRequirements.AliveOnly
+                ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
             ));
         }
         else if (intent.ActionId == "clap_emote")
@@ -76,7 +76,7 @@ public static class ChatCandidateProvider
                     [QualityType.Fun]     = 0.8,
                     [QualityType.Comfort] = 0.2
                 },
-                ActorRequirement: CandidateRequirements.AliveOnly
+                ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
             ));
         }
     }

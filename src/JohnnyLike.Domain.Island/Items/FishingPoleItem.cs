@@ -158,7 +158,7 @@ public class FishingPoleItem : ToolItem, IFoodSource
                         [QualityType.Efficiency]      = 0.5,
                         [QualityType.Fun]             = 0.3
                     },
-                    ActorRequirement: CandidateRequirements.AliveOnly
+                    ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
                 ));
             }
         }
@@ -187,7 +187,7 @@ public class FishingPoleItem : ToolItem, IFoodSource
                     [QualityType.ResourcePreservation] = 1.0,
                     [QualityType.Mastery]              = 0.5
                 },
-                ActorRequirement: CandidateRequirements.AliveOnly
+                ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
             ));
         }
 
@@ -216,7 +216,7 @@ public class FishingPoleItem : ToolItem, IFoodSource
                     [QualityType.Preparation]          = 0.5,
                     [QualityType.Mastery]              = 0.4
                 },
-                ActorRequirement: CandidateRequirements.AliveOnly
+                ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
             ));
         }
     }

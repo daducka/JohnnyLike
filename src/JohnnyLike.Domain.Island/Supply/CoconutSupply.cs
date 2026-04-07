@@ -92,7 +92,7 @@ public class CoconutSupply : SupplyItem, ISupplyActionCandidate, IEdibleSupply
                 [QualityType.FoodConsumption] = 0.8 * satietyFactor,
                 [QualityType.Comfort]         = 0.1
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 

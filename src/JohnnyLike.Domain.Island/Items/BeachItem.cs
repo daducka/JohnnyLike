@@ -216,7 +216,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Efficiency]         = 0.12,
                 [QualityType.ResourcePreservation] = 0.4
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 
@@ -282,7 +282,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Fun]         = -0.2,
                 [QualityType.Preparation] = -0.3
             },
-            ActorRequirement: CandidateRequirements.DespairingOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DespairingOnly(actor)
         ));
     }
 
@@ -346,7 +346,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Safety]  = 0.1,
                 [QualityType.Fun]     = -0.1
             },
-            ActorRequirement: CandidateRequirements.DespairingOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DespairingOnly(actor)
         ));
     }
 
@@ -409,7 +409,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Fun]         = -0.1,
                 [QualityType.Preparation] = -0.1
             },
-            ActorRequirement: CandidateRequirements.DespairingOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DespairingOnly(actor)
         ));
     }
 
@@ -473,7 +473,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Safety]          = -0.1,
                 [QualityType.Fun]             = -0.2
             },
-            ActorRequirement: CandidateRequirements.DespairingOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DespairingOnly(actor)
         ));
     }
 
@@ -502,7 +502,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Efficiency] = -0.05,
                 [QualityType.Safety]     = 0.05
             },
-            ActorRequirement: CandidateRequirements.PlayfulOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.PlayfulOnly(actor)
         ));
     }
 
@@ -567,7 +567,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Safety]      = 0.05,
                 [QualityType.Preparation] = 0.05
             },
-            ActorRequirement: CandidateRequirements.PlayfulOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.PlayfulOnly(actor)
         ));
     }
 
@@ -607,7 +607,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Efficiency]  = -0.05,
                 [QualityType.Safety]      = 0.05
             },
-            ActorRequirement: CandidateRequirements.PlayfulOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.PlayfulOnly(actor)
         ));
     }
 
@@ -636,7 +636,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Efficiency] = -0.10,
                 [QualityType.Safety]     = 0.10
             },
-            ActorRequirement: CandidateRequirements.PlayfulOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.PlayfulOnly(actor)
         ));
     }
 
@@ -699,7 +699,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Preparation] = 0.05,
                 [QualityType.Rest]        = -0.05
             },
-            ActorRequirement: CandidateRequirements.PlayfulOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.PlayfulOnly(actor)
         ));
     }
 
@@ -815,7 +815,7 @@ public class BeachItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
             {
                 [QualityType.Fun] = 1.0
             },
-            ActorRequirement: CandidateRequirements.PlayfulOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.PlayfulOnly(actor)
         ));
     }
 }

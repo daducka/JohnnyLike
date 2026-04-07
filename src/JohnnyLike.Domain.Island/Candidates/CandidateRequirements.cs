@@ -11,47 +11,44 @@ public static class CandidateRequirements
 {
     /// <summary>
     /// Requires the actor to be a <see cref="HumanActorState"/>.
-    /// All current island action candidates are human-authored content and should use this
-    /// requirement (directly or implicitly through the other requirements below, which all
-    /// narrow to <see cref="HumanActorState"/>).
+    /// Every current island action candidate is human-authored content; pair this with any
+    /// other requirement to gate the action on the actor being human.
     /// </summary>
     public static Func<ActorState, bool> IsHuman { get; } =
         actor => actor is HumanActorState;
 
     /// <summary>
-    /// Requires the actor to be a human with an <see cref="AlivenessBuff"/> with
+    /// Requires the actor to have an <see cref="AlivenessBuff"/> with
     /// <see cref="AlivenessState.Alive"/>.
-    /// All standard island actions should use this requirement.
     /// </summary>
     public static Func<ActorState, bool> AliveOnly { get; } =
-        actor => actor is HumanActorState living &&
+        actor => actor is LivingActorState living &&
                  living.HasBuffWhere<AlivenessBuff>(b => b.State == AlivenessState.Alive);
 
     /// <summary>
-    /// Requires the actor to be a human with an <see cref="AlivenessBuff"/> with
+    /// Requires the actor to have an <see cref="AlivenessBuff"/> with
     /// <see cref="AlivenessState.Downed"/>.
-    /// Actions that downed actors can perform while fighting for survival should use this.
     /// </summary>
     public static Func<ActorState, bool> DownedOnly { get; } =
-        actor => actor is HumanActorState living &&
+        actor => actor is LivingActorState living &&
                  living.HasBuffWhere<AlivenessBuff>(b => b.State == AlivenessState.Downed);
 
     /// <summary>
-    /// Requires the actor to be a human with an <see cref="AlivenessBuff"/> with
+    /// Requires the actor to have an <see cref="AlivenessBuff"/> with
     /// <see cref="AlivenessState.Dead"/>.
     /// Reserved for future corpse-interaction candidates.
     /// </summary>
     public static Func<ActorState, bool> DeadOnly { get; } =
-        actor => actor is HumanActorState living &&
+        actor => actor is LivingActorState living &&
                  living.HasBuffWhere<AlivenessBuff>(b => b.State == AlivenessState.Dead);
 
     /// <summary>
-    /// Requires the actor to be a human, alive and in reasonably good condition to engage in
+    /// Requires the actor to be alive and in reasonably good condition to engage in
     /// playful or recreational comfort actions. Passes when:
     /// Satiety &gt; 25, Morale &gt; 35, Health &gt; 50, Energy &gt; 30.
     /// </summary>
     public static Func<ActorState, bool> PlayfulOnly { get; } =
-        actor => actor is HumanActorState living &&
+        actor => actor is LivingActorState living &&
                  living.HasBuffWhere<AlivenessBuff>(b => b.State == AlivenessState.Alive) &&
                  living.Satiety > 25 &&
                  living.Morale  > 35 &&
@@ -59,26 +56,25 @@ public static class CandidateRequirements
                  living.Energy  > 30;
 
     /// <summary>
-    /// Requires the actor to be a human, alive and in a state of despair or suffering.
+    /// Requires the actor to be alive and in a state of despair or suffering.
     /// Passes when: Satiety &lt; 25, OR Morale &lt; 25, OR Health &lt; 40.
     /// </summary>
     public static Func<ActorState, bool> DespairingOnly { get; } =
-        actor => actor is HumanActorState living &&
+        actor => actor is LivingActorState living &&
                  living.HasBuffWhere<AlivenessBuff>(b => b.State == AlivenessState.Alive) &&
                  (living.Satiety < 25 || living.Morale < 25 || living.Health < 40);
 
     /// <summary>
-    /// Returns a requirement predicate that passes when the actor is a human and has at least
-    /// one active buff of type <typeparamref name="T"/>.
+    /// Returns a requirement predicate that passes when the actor has at least one active
+    /// buff of type <typeparamref name="T"/>.
     /// </summary>
     public static Func<ActorState, bool> HasBuff<T>() where T : ActiveBuff =>
-        actor => actor is HumanActorState living && living.HasBuff<T>();
+        actor => actor is LivingActorState living && living.HasBuff<T>();
 
     /// <summary>
-    /// Returns a requirement predicate that passes when the actor is a human and has at least
-    /// one active buff of type <typeparamref name="T"/> that also satisfies
-    /// <paramref name="predicate"/>.
+    /// Returns a requirement predicate that passes when the actor has at least one active
+    /// buff of type <typeparamref name="T"/> that also satisfies <paramref name="predicate"/>.
     /// </summary>
     public static Func<ActorState, bool> HasBuffWhere<T>(Func<T, bool> predicate) where T : ActiveBuff =>
-        actor => actor is HumanActorState living && living.HasBuffWhere(predicate);
+        actor => actor is LivingActorState living && living.HasBuffWhere(predicate);
 }

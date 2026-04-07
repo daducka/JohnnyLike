@@ -167,7 +167,7 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
                     sourceActionId: "think_about_supplies");
             }),
             Qualities: qualities,
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 

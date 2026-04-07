@@ -162,7 +162,7 @@ public class OceanItem : WorldItem, ITickableWorldItem, IIslandActionCandidate, 
                 [QualityType.Comfort] = 0.3,
                 [QualityType.Safety]  = -0.5
             },
-            ActorRequirement: CandidateRequirements.PlayfulOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.PlayfulOnly(actor)
         ));
     }
 

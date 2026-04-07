@@ -53,7 +53,7 @@ public class PalmFrondBlanketItem : ToolItem
                 [QualityType.Safety]               = 0.5,
                 [QualityType.ResourcePreservation] = 0.5
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 
@@ -98,7 +98,7 @@ public class PalmFrondBlanketItem : ToolItem
                 [QualityType.Comfort] = 0.4 + (0.3 * qualityFactor),
                 [QualityType.Safety]  = 0.3
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 

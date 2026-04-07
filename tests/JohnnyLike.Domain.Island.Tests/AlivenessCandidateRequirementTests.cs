@@ -12,6 +12,18 @@ file sealed class StubAnimalActorState : LivingActorState
     public override void Deserialize(string json) { }
 }
 
+/// <summary>Non-human living actor stub that starts with an AlivenessBuff in the Alive state.</summary>
+file sealed class StubAliveAnimalActorState : LivingActorState
+{
+    public StubAliveAnimalActorState()
+    {
+        ActiveBuffs.Add(new AlivenessBuff { State = AlivenessState.Alive, ExpiresAtTick = long.MaxValue });
+    }
+
+    public override string Serialize() => "{}";
+    public override void Deserialize(string json) { }
+}
+
 /// <summary>
 /// Tests for the AlivenessBuff, buff query helpers, and candidate requirement infrastructure.
 /// </summary>
@@ -157,17 +169,22 @@ public class AlivenessCandidateRequirementTests
     }
 
     [Fact]
-    public void CandidateRequirements_AliveOnly_FailsForNonHumanActor()
+    public void CandidateRequirements_AliveOnly_PassesForNonHumanLivingActorWithAliveBuff()
     {
-        var animal = new StubAnimalActorState();
-        Assert.False(CandidateRequirements.AliveOnly(animal));
+        // AliveOnly is now general (LivingActorState), so it should pass for any living actor
+        // that satisfies the buff condition — not just humans.
+        var animal = new StubAliveAnimalActorState();
+        Assert.True(CandidateRequirements.AliveOnly(animal));
     }
 
     [Fact]
-    public void CandidateRequirements_PlayfulOnly_FailsForNonHumanActor()
+    public void CandidateRequirements_IsHumanAndAliveOnly_FailsForNonHumanEvenWithAliveBuff()
     {
-        var animal = new StubAnimalActorState();
-        Assert.False(CandidateRequirements.PlayfulOnly(animal));
+        // Human-gating is now done at the candidate level by combining IsHuman && AliveOnly.
+        var animal = new StubAliveAnimalActorState();
+        Func<ActorState, bool> combined =
+            actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor);
+        Assert.False(combined(animal));
     }
 
     [Fact]
