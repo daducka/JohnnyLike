@@ -10,42 +10,13 @@ using System.Text.Json.Serialization;
 
 namespace JohnnyLike.Domain.Island;
 
-public enum SkillType
+/// <summary>
+/// Humanoid/person-specific actor state. Inherits the generic living-actor base
+/// (<see cref="LivingActorState"/>) and adds humanoid-specific fields: decision
+/// pragmatism, softmax tuning, chat/pending intents, and recipe knowledge.
+/// </summary>
+public class HumanActorState : LivingActorState, IIslandActionCandidate
 {
-    Fishing,
-    Survival,
-    Perception,
-    Performance,
-    Athletics,
-    Constitution
-}
-
-public class IslandActorState : ActorState, IIslandActionCandidate
-{
-    public int STR { get; set; } = 10;
-    public int DEX { get; set; } = 10;
-    public int CON { get; set; } = 10;
-    public int INT { get; set; } = 10;
-    public int WIS { get; set; } = 10;
-    public int CHA { get; set; } = 10;
-
-    public int FishingSkill      => DndMath.AbilityModifier(DEX) + DndMath.AbilityModifier(WIS);
-    public int SurvivalSkill     => DndMath.AbilityModifier(WIS) + DndMath.AbilityModifier(STR);
-    public int PerceptionSkill   => DndMath.AbilityModifier(WIS);
-    public int PerformanceSkill  => DndMath.AbilityModifier(CHA);
-    public int AthleticsSkill    => DndMath.AbilityModifier(STR);
-    public int ConstitutionSkill => DndMath.AbilityModifier(CON);
-
-    private double _satiety = 100.0;
-    private double _energy = 100.0;
-    private double _morale = 50.0;
-    private double _health = 100.0;
-
-    public double Satiety { get => _satiety; set => _satiety = Math.Clamp(value, 0.0, 100.0); }
-    public double Energy   { get => _energy;  set => _energy  = Math.Clamp(value, 0.0, 100.0); }
-    public double Morale   { get => _morale;  set => _morale  = Math.Clamp(value, 0.0, 100.0); }
-    public double Health   { get => _health;  set => _health  = Math.Clamp(value, 0.0, 100.0); }
-
     public long LastPlaneSightingTick { get; set; } = -1L;
     public long LastMermaidEncounterTick { get; set; } = -1L;
 
@@ -68,55 +39,11 @@ public class IslandActorState : ActorState, IIslandActionCandidate
     /// </summary>
     public double SoftmaxTLow { get; set; } = 2.0;
 
-    public List<ActiveBuff> ActiveBuffs { get; set; } = new();
     public Queue<PendingIntent> PendingChatActions { get; set; } = new();
     /// <summary>
     /// IDs of recipes this actor knows. Each actor can have a different set of known recipes.
     /// </summary>
     public HashSet<string> KnownRecipeIds { get; set; } = new();
-
-    public int GetSkillModifier(SkillType skillType)
-    {
-        var baseModifier = skillType switch
-        {
-            SkillType.Fishing      => FishingSkill,
-            SkillType.Survival     => SurvivalSkill,
-            SkillType.Perception   => PerceptionSkill,
-            SkillType.Performance  => PerformanceSkill,
-            SkillType.Athletics    => AthleticsSkill,
-            SkillType.Constitution => ConstitutionSkill,
-            _ => 0
-        };
-
-        var buffModifier = ActiveBuffs
-            .Where(b => (b.SkillType == skillType || b.SkillType == null) && b.Type == BuffType.SkillBonus)
-            .Sum(b => b.Value);
-
-        return baseModifier + buffModifier;
-    }
-
-    public AdvantageType GetAdvantage(SkillType skillType)
-    {
-        var hasBuff = ActiveBuffs.Any(b => b.SkillType == skillType && b.Type == BuffType.Advantage);
-        return hasBuff ? AdvantageType.Advantage : AdvantageType.Normal;
-    }
-
-    /// <summary>Returns <c>true</c> if the actor currently has an active buff of type <typeparamref name="T"/>.</summary>
-    public bool HasBuff<T>() where T : ActiveBuff
-        => ActiveBuffs.OfType<T>().Any();
-
-    /// <summary>
-    /// Returns the first active buff of type <typeparamref name="T"/>, or <c>null</c> if none is present.
-    /// </summary>
-    public T? TryGetBuff<T>() where T : ActiveBuff
-        => ActiveBuffs.OfType<T>().FirstOrDefault();
-
-    /// <summary>
-    /// Returns <c>true</c> if the actor has an active buff of type <typeparamref name="T"/>
-    /// that also satisfies <paramref name="predicate"/>.
-    /// </summary>
-    public bool HasBuffWhere<T>(Func<T, bool> predicate) where T : ActiveBuff
-        => ActiveBuffs.OfType<T>().Any(predicate);
 
     public override string Serialize()
     {
@@ -131,6 +58,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             Status,
             CurrentAction = CurrentAction?.Id.Value,
             LastDecisionTick,
+            PresenceState,
             STR,
             DEX,
             CON,
@@ -175,6 +103,14 @@ public class IslandActorState : ActorState, IIslandActionCandidate
         }
         
         LastDecisionTick = data.TryGetValue("LastDecisionTick", out var ldt) ? ldt.GetInt64() : 0L;
+
+        if (data.TryGetValue("PresenceState", out var presenceElement))
+        {
+            PresenceState = presenceElement.ValueKind == JsonValueKind.String
+                ? Enum.Parse<PresenceState>(presenceElement.GetString()!)
+                : (PresenceState)presenceElement.GetInt32();
+        }
+
         STR = data["STR"].GetInt32();
         DEX = data["DEX"].GetInt32();
         CON = data["CON"].GetInt32();
@@ -248,7 +184,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 [QualityType.Comfort]    = 0.2,
                 [QualityType.Efficiency] = -0.5
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
         
         // Known recipes
@@ -373,7 +309,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
                 }
             }),
             Qualities: new Dictionary<QualityType, double>(),
-            ActorRequirement: CandidateRequirements.DownedOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DownedOnly(actor)
         ));
 
         // ── whimper ────────────────────────────────────────────────────────────
@@ -416,7 +352,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             {
                 [QualityType.Safety] = 0.5
             },
-            ActorRequirement: CandidateRequirements.DownedOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DownedOnly(actor)
         ));
 
         // ── stare_blankly ──────────────────────────────────────────────────────
@@ -459,7 +395,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             {
                 [QualityType.Safety] = 0.5
             },
-            ActorRequirement: CandidateRequirements.DownedOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DownedOnly(actor)
         ));
 
         // ── crawl_weakly ───────────────────────────────────────────────────────
@@ -509,7 +445,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             {
                 [QualityType.Safety] = 0.5
             },
-            ActorRequirement: CandidateRequirements.DownedOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DownedOnly(actor)
         ));
     }
 
@@ -528,7 +464,7 @@ public class IslandActorState : ActorState, IIslandActionCandidate
             0.0,
             Reason: "Lie still (dead)",
             Qualities: new Dictionary<QualityType, double>(),
-            ActorRequirement: CandidateRequirements.DeadOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DeadOnly(actor)
         ));
     }
 }

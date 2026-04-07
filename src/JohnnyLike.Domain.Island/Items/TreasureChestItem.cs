@@ -107,7 +107,7 @@ public class TreasureChestItem : WorldItem, IIslandActionCandidate
                 [QualityType.Mastery]              = 0.4,
                 [QualityType.Fun]                  = 0.2
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 

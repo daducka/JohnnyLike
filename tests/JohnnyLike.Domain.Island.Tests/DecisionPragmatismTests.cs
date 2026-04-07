@@ -11,12 +11,12 @@ public class DecisionPragmatismTests
 {
     // ── Shared setup helpers ──────────────────────────────────────────────────
 
-    private static (IslandDomainPack domain, ActorId actorId, IslandActorState actorState, IslandWorldState worldState)
+    private static (IslandDomainPack domain, ActorId actorId, HumanActorState actorState, IslandWorldState worldState)
         CreateSetup(double pragmatism = 1.0)
     {
         var domain    = new IslandDomainPack();
         var actorId   = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actorState = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["satiety"] = 40.0,
             ["energy"]  = 80.0
@@ -253,9 +253,9 @@ public class DecisionPragmatismTests
             ActorId actorId, ActorState actorState, WorldState worldState,
             long currentTick, IReadOnlyList<ActionCandidate> sortedCandidates, Random rng)
         {
-            // Delegate to the real Island implementation via a temporary IslandActorState.
+            // Delegate to the real Island implementation via a temporary HumanActorState.
             var actor = (MinActorState)actorState;
-            var islandActor = new IslandActorState { Id = actor.Id, DecisionPragmatism = actor.DecisionPragmatism };
+            var islandActor = new HumanActorState { Id = actor.Id, DecisionPragmatism = actor.DecisionPragmatism };
             var islandWorld = new IslandWorldState();
             return _inner.OrderCandidatesForSelection(actorId, islandActor, islandWorld, currentTick, sortedCandidates, rng);
         }

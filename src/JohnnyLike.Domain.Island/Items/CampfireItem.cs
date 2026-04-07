@@ -79,7 +79,7 @@ public class CampfireItem : ToolItem
                     [QualityType.Comfort]     = 0.5,
                     [QualityType.Safety]      = 0.3
                 },
-                ActorRequirement: CandidateRequirements.AliveOnly
+                ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
             ));
         }
 
@@ -108,7 +108,7 @@ public class CampfireItem : ToolItem
                     [QualityType.Comfort]     = 0.7,
                     [QualityType.Safety]      = 0.5
                 },
-                ActorRequirement: CandidateRequirements.AliveOnly
+                ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
             ));
         }
 
@@ -137,7 +137,7 @@ public class CampfireItem : ToolItem
                     [QualityType.Preparation]          = 0.4,
                     [QualityType.Safety]               = 0.3
                 },
-                ActorRequirement: CandidateRequirements.AliveOnly
+                ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
             ));
         }
 
@@ -167,7 +167,7 @@ public class CampfireItem : ToolItem
                     [QualityType.Safety]               = 0.5,
                     [QualityType.Efficiency]           = -0.2
                 },
-                ActorRequirement: CandidateRequirements.AliveOnly
+                ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
             ));
         }
     }

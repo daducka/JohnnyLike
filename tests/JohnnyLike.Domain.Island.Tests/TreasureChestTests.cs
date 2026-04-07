@@ -37,7 +37,7 @@ public class TreasureChestTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         
         // Ensure chest is not present initially
         Assert.Null(world.TreasureChest);
@@ -94,7 +94,7 @@ public class TreasureChestTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         
         // No chest present - no bash candidate
         var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
@@ -122,7 +122,7 @@ public class TreasureChestTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         
         // Spawn chest
         var chest = new TreasureChestItem();
@@ -181,7 +181,7 @@ public class TreasureChestTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         
         var initialMorale = actor.Morale;
         
@@ -244,7 +244,7 @@ public class TreasureChestTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         
         // Spawn chest
         var chest = new TreasureChestItem();
@@ -323,7 +323,7 @@ public class TreasureChestTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         
         // High health chest
         var chest = new TreasureChestItem();

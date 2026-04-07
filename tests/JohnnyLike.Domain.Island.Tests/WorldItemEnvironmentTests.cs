@@ -97,7 +97,7 @@ public class WorldItemEnvironmentTests
         var beach = world.GetItem<BeachItem>("beach")!;
         ((ISupplyBounty)beach).GetSupply<StickSupply>("sticks")!.Quantity = 20;
 
-        var actor = new IslandActorState { Id = new ActorId("test_actor") };
+        var actor = new HumanActorState { Id = new ActorId("test_actor") };
         var rng = new Random(0);
         var ctx = new Candidates.IslandContext(
             actor.Id, actor, world, 0L,
@@ -154,7 +154,7 @@ public class WorldItemEnvironmentTests
         var world = MakeWorld();
         world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Hot;
 
-        var actor = new IslandActorState { Id = new ActorId("test_actor") };
+        var actor = new HumanActorState { Id = new ActorId("test_actor") };
 
         var recipe = IslandRecipeRegistry.Get("campfire");
         var canDiscover = recipe.Discovery!.CanDiscover(actor, world);
@@ -168,7 +168,7 @@ public class WorldItemEnvironmentTests
         var world = MakeWorld();
         world.GetItem<WeatherItem>("weather")!.Temperature = TemperatureBand.Cold;
 
-        var actor = new IslandActorState { Id = new ActorId("test_actor") };
+        var actor = new HumanActorState { Id = new ActorId("test_actor") };
 
         var recipe = IslandRecipeRegistry.Get("campfire");
         var canDiscover = recipe.Discovery!.CanDiscover(actor, world);
@@ -230,7 +230,7 @@ public class WorldItemEnvironmentTests
         var world = MakeWorld();
         world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Rainy;
 
-        var actor = new IslandActorState { Id = new ActorId("test_actor") };
+        var actor = new HumanActorState { Id = new ActorId("test_actor") };
         var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
         world.WorldItems.Add(umbrella);
 
@@ -252,7 +252,7 @@ public class WorldItemEnvironmentTests
         var world = MakeWorld();
         world.GetItem<WeatherItem>("weather")!.Precipitation = PrecipitationBand.Clear;
 
-        var actor = new IslandActorState { Id = new ActorId("test_actor") };
+        var actor = new HumanActorState { Id = new ActorId("test_actor") };
         var umbrella = new UmbrellaItem($"umbrella_{actor.Id.Value}", actor.Id);
         world.WorldItems.Add(umbrella);
 
@@ -280,7 +280,7 @@ public class WorldItemEnvironmentTests
         ((ISupplyBounty)beach).GetSupply<StickSupply>("sticks")!.Quantity = 1.0;
         ((ISupplyBounty)beach).GetSupply<WoodSupply>("driftwood")!.Quantity = 1.0;
 
-        var actor = new IslandActorState { Id = new ActorId("test_actor") };
+        var actor = new HumanActorState { Id = new ActorId("test_actor") };
         var rng = new Random(0);
         var ctx = new Candidates.IslandContext(
             actor.Id, actor, world, 0L,
@@ -311,7 +311,7 @@ public class WorldItemEnvironmentTests
         ((ISupplyBounty)tree).GetSupply<PalmFrondSupply>("palm_frond")!.Quantity = 0;
         world.WorldItems.Add(tree);
 
-        var actor = new IslandActorState { Id = new ActorId("test_actor") };
+        var actor = new HumanActorState { Id = new ActorId("test_actor") };
         var rng = new Random(0);
         var ctx = new Candidates.IslandContext(
             actor.Id, actor, world, 0L,

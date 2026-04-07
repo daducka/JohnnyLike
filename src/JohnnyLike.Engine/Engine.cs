@@ -120,6 +120,10 @@ public class Engine
         if (actorState.Status != ActorStatus.Ready)
             return false;
 
+        // Stashed actors are offstage and do not run the normal action-decision loop.
+        if (actorState.PresenceState == PresenceState.Stashed)
+            return false;
+
         var (plannedAction, effectHandler, decisionInfo) = _director.PlanNextAction(actorId, actorState, _worldState, _actors, _currentTick, _rng);
 
         if (plannedAction != null)

@@ -103,7 +103,7 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
     /// </summary>
     public void OnTick(ActorState actorState, WorldState worldState, long currentTick)
     {
-        if (actorState is not IslandActorState actor)
+        if (actorState is not LivingActorState actor)
             return;
 
         var dtSeconds = (currentTick - LastTick) / (double)EngineConstants.TickHz;
@@ -197,7 +197,7 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
     /// depending on how distressed the actor is.
     /// </summary>
     private void ApplyPhysiologicalMoralePressure(
-        IslandActorState actor,
+        LivingActorState actor,
         WorldState worldState,
         double dtSeconds,
         long currentTick)
@@ -263,7 +263,7 @@ public class VitalityBuff : ActiveBuff, ITickableBuff
     }
 
     private void EmitPendingMoralePressureBeat(
-        IslandActorState actor,
+        LivingActorState actor,
         WorldState worldState,
         long currentTick,
         bool force)

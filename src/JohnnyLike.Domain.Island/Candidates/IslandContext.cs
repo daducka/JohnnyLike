@@ -6,7 +6,7 @@ namespace JohnnyLike.Domain.Island.Candidates;
 public class IslandContext
 {
     public IslandWorldState World { get; }
-    public IslandActorState Actor { get; }
+    public HumanActorState Actor { get; }
     public ActorId ActorId { get; }
     public long NowTick { get; }
     public IRngStream Rng { get; }
@@ -31,7 +31,7 @@ public class IslandContext
 
     public IslandContext(
         ActorId actorId,
-        IslandActorState actor,
+        HumanActorState actor,
         IslandWorldState world,
         long nowTick,
         IRngStream rng,

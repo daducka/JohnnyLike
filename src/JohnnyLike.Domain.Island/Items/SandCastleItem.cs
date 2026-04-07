@@ -87,7 +87,7 @@ public class SandCastleItem : MaintainableWorldItem
                 [QualityType.ResourcePreservation] = -0.5,
                 [QualityType.Comfort]             = -0.2
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 }

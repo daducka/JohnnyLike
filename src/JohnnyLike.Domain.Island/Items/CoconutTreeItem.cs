@@ -156,7 +156,7 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 [QualityType.Efficiency]      = 0.15,
                 [QualityType.Safety]          = -0.35
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 
@@ -199,7 +199,7 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
     }
 
     // IFoodSource: coconuts on the tree are acquirable through shake_tree_coconut.
-    double IFoodSource.GetAcquirableFoodUnits(IslandActorState actor, IslandWorldState world)
+    double IFoodSource.GetAcquirableFoodUnits(HumanActorState actor, IslandWorldState world)
         => ((ISupplyBounty)this).GetQuantity<CoconutSupply>();
 
     private void AddSleepUnderTreeCandidate(IslandContext ctx, List<ActionCandidate> output)
@@ -232,7 +232,7 @@ public class CoconutTreeItem : WorldItem, IIslandActionCandidate, ITickableWorld
                 [QualityType.Rest]   = 1.0,
                 [QualityType.Safety] = 0.2
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 }

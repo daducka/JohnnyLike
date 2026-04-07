@@ -56,11 +56,11 @@ public class FishSupply : SupplyItem, ISupplyActionCandidate, IEdibleSupply
                 [QualityType.FoodConsumption] = 0.6,
                 [QualityType.Comfort]         = -0.2
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 
     // IEdibleSupply: raw fish in the supply pile can be eaten immediately.
-    double IEdibleSupply.GetImmediateFoodUnits(IslandActorState actor, IslandWorldState world)
+    double IEdibleSupply.GetImmediateFoodUnits(HumanActorState actor, IslandWorldState world)
         => Quantity;
 }

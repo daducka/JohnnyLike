@@ -602,7 +602,7 @@ public static class PressureFuzzerRunner
             ["energy"]  = energy,
             ["morale"]  = morale
         };
-        var actorState = (IslandActorState)domain.CreateActorState(actorId, stateData);
+        var actorState = (HumanActorState)domain.CreateActorState(actorId, stateData);
         actorState.Health = health;
 
         // Build scenario world state.
@@ -659,7 +659,7 @@ public static class PressureFuzzerRunner
         double satiety, double health, double energy, double morale) =>
         $"{actor}|{scenario}|s{(int)satiety}|h{(int)health}|e{(int)energy}|m{(int)morale}";
 
-    private static StatePlausibility ComputePlausibility(IslandActorState actor)
+    private static StatePlausibility ComputePlausibility(HumanActorState actor)
     {
         var isTerminal  = actor.Health <= TerminalHealthThreshold;
         // An extreme state has 3+ stats near zero, regardless of whether health is also
@@ -672,7 +672,7 @@ public static class PressureFuzzerRunner
     }
 
     private static ScenarioMetadata ComputeScenarioMetadata(
-        IslandWorldState world, IslandActorState actor, ActorId actorId)
+        IslandWorldState world, HumanActorState actor, ActorId actorId)
     {
         var bed      = world.WorldItems.OfType<PalmFrondBedItem>().FirstOrDefault();
         var campfire = world.MainCampfire;
@@ -815,7 +815,7 @@ public static class PressureFuzzerRunner
     }
 
     private static FoodContextInfo ComputeFoodContext(
-        IslandActorState actor, IslandWorldState world, ActorId actorId)
+        HumanActorState actor, IslandWorldState world, ActorId actorId)
     {
         var piles = world.GetAccessiblePiles(actorId);
         var immediateFood = piles
@@ -830,7 +830,7 @@ public static class PressureFuzzerRunner
     }
 
     private static FuzzerFlags ComputeFlags(
-        IslandActorState actor,
+        HumanActorState actor,
         IReadOnlyList<ActionCandidate> sortedCandidates,
         Dictionary<string, double> qualityWeights,
         FoodContextInfo foodContext)

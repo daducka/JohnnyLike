@@ -29,7 +29,7 @@ public static class RecipeCandidateBuilder
             Reason: recipe.DisplayName,
             EffectHandler: recipe.Effect,
             PreAction: recipe.PreAction,
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 }

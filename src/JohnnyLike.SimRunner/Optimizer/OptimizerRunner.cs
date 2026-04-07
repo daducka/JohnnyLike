@@ -757,7 +757,7 @@ public static class OptimizerRunner
             ["energy"]  = entry.State.Energy,
             ["morale"]  = entry.State.Morale,
         };
-        var actorState = (IslandActorState)domain.CreateActorState(actorId, stateData);
+        var actorState = (HumanActorState)domain.CreateActorState(actorId, stateData);
         actorState.Health = entry.State.Health;
 
         var worldState = PressureFuzzerScenarios.Build(scenario, actorId);
@@ -810,7 +810,7 @@ public static class OptimizerRunner
             ["energy"]  = entry.State.Energy,
             ["morale"]  = entry.State.Morale,
         };
-        var actorState = (IslandActorState)domain.CreateActorState(actorId, stateData);
+        var actorState = (HumanActorState)domain.CreateActorState(actorId, stateData);
         actorState.Health = entry.State.Health;
 
         var worldState = PressureFuzzerScenarios.Build(scenario, actorId);
@@ -840,7 +840,7 @@ public static class OptimizerRunner
     private static GoldenStateDetailedData BuildDetailedData(
         List<ActionCandidate> sorted,
         IReadOnlyList<IReadOnlyList<(QualityType Quality, double Contribution)>> contributions,
-        IslandActorState actorState,
+        HumanActorState actorState,
         IslandWorldState worldState,
         TraitProfile explicitTraits,
         IslandDomainPack domain,

@@ -18,7 +18,7 @@ public class MaintenanceIntegrationTests
         var blanket = new PalmFrondBlanketItem("palm_frond_blanket");
         world.WorldItems.Add(blanket);
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actor = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["WIS"] = 16,
             ["STR"] = 14
@@ -52,7 +52,7 @@ public class MaintenanceIntegrationTests
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
 
         var campfire = world.MainCampfire!;
         campfire.FuelSeconds = 10.0;
@@ -75,7 +75,7 @@ public class MaintenanceIntegrationTests
         world.SharedSupplyPile!.AddSupply(5, () => new PalmFrondSupply());
 
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
 
         var candidates = domain.GenerateCandidates(actorId, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
 
@@ -89,7 +89,7 @@ public class MaintenanceIntegrationTests
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
 
         var campfire = world.MainCampfire!;
         campfire.Quality = 50.0;
@@ -126,7 +126,7 @@ public class MaintenanceIntegrationTests
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         world.WorldItems.Add(new CampfireItem("main_campfire"));
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
 
         var campfire = world.MainCampfire!;
         campfire.FuelSeconds = 500.0;
@@ -166,12 +166,12 @@ public class MaintenanceIntegrationTests
 
         world.MainCampfire!.FuelSeconds = 1500.0;
 
-        var lowSkillActor = (IslandActorState)domain.CreateActorState(
+        var lowSkillActor = (HumanActorState)domain.CreateActorState(
             new ActorId("LowSkill"),
             new Dictionary<string, object> { ["WIS"] = 8, ["STR"] = 8 }
         );
 
-        var highSkillActor = (IslandActorState)domain.CreateActorState(
+        var highSkillActor = (HumanActorState)domain.CreateActorState(
             new ActorId("HighSkill"),
             new Dictionary<string, object> { ["WIS"] = 18, ["STR"] = 16 }
         );
@@ -197,7 +197,7 @@ public class MaintenanceIntegrationTests
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("TestActor");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
 
         var blanket = new PalmFrondBlanketItem("palm_frond_blanket");
         blanket.Quality = 40.0;

@@ -57,11 +57,11 @@ public class CookedFishSupply : SupplyItem, ISupplyActionCandidate, IEdibleSuppl
                 [QualityType.FoodConsumption] = 1.0,
                 [QualityType.Comfort]         = 0.3
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 
     // IEdibleSupply: cooked fish in the supply pile can be eaten immediately.
-    double IEdibleSupply.GetImmediateFoodUnits(IslandActorState actor, IslandWorldState world)
+    double IEdibleSupply.GetImmediateFoodUnits(HumanActorState actor, IslandWorldState world)
         => Quantity;
 }

@@ -16,7 +16,7 @@ public class VitalityBuffTests
 {
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    private static (IslandActorState actor, IslandWorldState world) MakeActor(
+    private static (HumanActorState actor, IslandWorldState world) MakeActor(
         double health  = 100.0,
         double satiety = 100.0,
         double energy  = 100.0,
@@ -24,7 +24,7 @@ public class VitalityBuffTests
     {
         var domain    = new IslandDomainPack();
         var actorId   = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+        var actorState = (HumanActorState)domain.CreateActorState(actorId,
             new Dictionary<string, object>
             {
                 ["satiety"] = satiety,
@@ -36,7 +36,7 @@ public class VitalityBuffTests
         return (actorState, worldState);
     }
 
-    private static void Tick(IslandActorState actor, IslandWorldState world, long toTick)
+    private static void Tick(HumanActorState actor, IslandWorldState world, long toTick)
     {
         var domain = new IslandDomainPack();
         var actors = new Dictionary<ActorId, ActorState> { [actor.Id] = actor };
@@ -44,13 +44,13 @@ public class VitalityBuffTests
     }
 
     // Simulate many ticks of elapsed time.
-    private static void TickForSeconds(IslandActorState actor, IslandWorldState world, double seconds)
+    private static void TickForSeconds(HumanActorState actor, IslandWorldState world, double seconds)
     {
         long ticks = (long)(seconds * EngineConstants.TickHz);
         Tick(actor, world, ticks);
     }
 
-    private static List<ActionCandidate> GenerateCandidates(IslandActorState actor)
+    private static List<ActionCandidate> GenerateCandidates(HumanActorState actor)
     {
         var domain  = new IslandDomainPack();
         var world   = new IslandWorldState();
@@ -59,7 +59,7 @@ public class VitalityBuffTests
         return domain.GenerateCandidates(actor.Id, actor, world, 0L, new Random(42), new EmptyResourceAvailability());
     }
 
-    private static Dictionary<string, object>? ExplainScoring(IslandActorState actor)
+    private static Dictionary<string, object>? ExplainScoring(HumanActorState actor)
     {
         var domain     = new IslandDomainPack();
         var world      = new IslandWorldState();
@@ -75,7 +75,7 @@ public class VitalityBuffTests
     public void CreateActorState_AlwaysHasVitalityBuff()
     {
         var domain = new IslandDomainPack();
-        var actor  = (IslandActorState)domain.CreateActorState(new ActorId("A"));
+        var actor  = (HumanActorState)domain.CreateActorState(new ActorId("A"));
 
         Assert.True(actor.HasBuff<VitalityBuff>(), "Actor should have VitalityBuff on creation");
     }
@@ -84,7 +84,7 @@ public class VitalityBuffTests
     public void VitalityBuff_Type_IsVitality()
     {
         var domain = new IslandDomainPack();
-        var actor  = (IslandActorState)domain.CreateActorState(new ActorId("A"));
+        var actor  = (HumanActorState)domain.CreateActorState(new ActorId("A"));
         var buff   = actor.TryGetBuff<VitalityBuff>();
 
         Assert.NotNull(buff);
@@ -95,7 +95,7 @@ public class VitalityBuffTests
     public void VitalityBuff_NeverExpires()
     {
         var domain = new IslandDomainPack();
-        var actor  = (IslandActorState)domain.CreateActorState(new ActorId("A"));
+        var actor  = (HumanActorState)domain.CreateActorState(new ActorId("A"));
         var buff   = actor.TryGetBuff<VitalityBuff>()!;
 
         Assert.Equal(long.MaxValue, buff.ExpiresAtTick);
@@ -282,14 +282,14 @@ public class VitalityBuffTests
     public void VitalityBuff_SurvivesActorSerializationRoundtrip()
     {
         var domain = new IslandDomainPack();
-        var actor  = (IslandActorState)domain.CreateActorState(new ActorId("A"));
+        var actor  = (HumanActorState)domain.CreateActorState(new ActorId("A"));
 
         // Advance LastTick so the serialized value is non-zero
         var buff = actor.TryGetBuff<VitalityBuff>()!;
         buff.LastTick = 42L;
 
         var json       = actor.Serialize();
-        var actor2     = new IslandActorState();
+        var actor2     = new HumanActorState();
         actor2.Deserialize(json);
 
         var buff2 = actor2.TryGetBuff<VitalityBuff>();
@@ -366,7 +366,7 @@ public class VitalityBuffTests
     public void MoralePressure_NarrationBeat_IsBatchedOnCooldown()
     {
         var domain = new IslandDomainPack();
-        var actor = (IslandActorState)domain.CreateActorState(
+        var actor = (HumanActorState)domain.CreateActorState(
             new ActorId("A"),
             new Dictionary<string, object>
             {
@@ -405,11 +405,11 @@ public class VitalityBuffTests
 /// </summary>
 public class HealthDecisionWeightingTests
 {
-    private static IslandActorState MakeActor(double health, string id = "TestActor")
+    private static HumanActorState MakeActor(double health, string id = "TestActor")
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId(id);
-        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+        var actorState = (HumanActorState)domain.CreateActorState(actorId,
             new Dictionary<string, object>
             {
                 // Keep satiety/energy/morale neutral so health is the only variable
@@ -421,7 +421,7 @@ public class HealthDecisionWeightingTests
         return actorState;
     }
 
-    private static Dictionary<string, object> GetScoringExplain(IslandActorState actor)
+    private static Dictionary<string, object> GetScoringExplain(HumanActorState actor)
     {
         var domain = new IslandDomainPack();
         var world  = new IslandWorldState();
@@ -520,7 +520,7 @@ public class HealthDecisionWeightingTests
         var domain = new IslandDomainPack();
         var makeActor = (double health, string id) =>
         {
-            var a = (IslandActorState)domain.CreateActorState(new ActorId(id),
+            var a = (HumanActorState)domain.CreateActorState(new ActorId(id),
                 new Dictionary<string, object>
                 {
                     ["satiety"] = 80.0,
@@ -556,7 +556,7 @@ public class HealthDecisionWeightingTests
         var domain = new IslandDomainPack();
         var makeActor = (double health, string id) =>
         {
-            var a = (IslandActorState)domain.CreateActorState(new ActorId(id),
+            var a = (HumanActorState)domain.CreateActorState(new ActorId(id),
                 new Dictionary<string, object>
                 {
                     ["satiety"] = 80.0,
@@ -669,20 +669,20 @@ public class HealthDecisionWeightingTests
 /// </summary>
 public class IslandCandidateAliveRequirementCoverageTests
 {
-    private static IslandActorState MakeAliveActor(string id = "TestActor")
+    private static HumanActorState MakeAliveActor(string id = "TestActor")
     {
         var domain = new IslandDomainPack();
-        return (IslandActorState)domain.CreateActorState(new ActorId(id));
+        return (HumanActorState)domain.CreateActorState(new ActorId(id));
     }
 
-    private static IslandActorState MakeDownedActor(string id = "TestActor")
+    private static HumanActorState MakeDownedActor(string id = "TestActor")
     {
         var actor = MakeAliveActor(id);
         actor.TryGetBuff<AlivenessBuff>()!.State = AlivenessState.Downed;
         return actor;
     }
 
-    private static List<ActionCandidate> GenerateCandidates(IslandActorState actor)
+    private static List<ActionCandidate> GenerateCandidates(HumanActorState actor)
     {
         var domain = new IslandDomainPack();
         var world  = new IslandWorldState();

@@ -14,18 +14,18 @@ public class NarrationImprovementTests
 {
     // ── Helper ────────────────────────────────────────────────────────────────
 
-    private static (IslandDomainPack domain, IslandWorldState world, IslandActorState actor, ActorId actorId)
+    private static (IslandDomainPack domain, IslandWorldState world, HumanActorState actor, ActorId actorId)
         MakeIsland()
     {
         var domain = new IslandDomainPack();
         var world = (IslandWorldState)domain.CreateInitialWorldState();
         var actorId = new ActorId("Johnny");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         return (domain, world, actor, actorId);
     }
 
     private static EffectContext MakeEffectContext(
-        IslandActorState actor, IslandWorldState world, ActorId actorId,
+        HumanActorState actor, IslandWorldState world, ActorId actorId,
         RollOutcomeTier tier)
     {
         var outcome = new ActionOutcome(

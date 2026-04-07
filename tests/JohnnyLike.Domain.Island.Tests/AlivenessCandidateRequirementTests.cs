@@ -5,6 +5,25 @@ using JohnnyLike.Domain.Island.Items;
 
 namespace JohnnyLike.Domain.Island.Tests;
 
+/// <summary>Minimal non-human living actor stub for testing IsHuman gating.</summary>
+file sealed class StubAnimalActorState : LivingActorState
+{
+    public override string Serialize() => "{}";
+    public override void Deserialize(string json) { }
+}
+
+/// <summary>Non-human living actor stub that starts with an AlivenessBuff in the Alive state.</summary>
+file sealed class StubAliveAnimalActorState : LivingActorState
+{
+    public StubAliveAnimalActorState()
+    {
+        ActiveBuffs.Add(new AlivenessBuff { State = AlivenessState.Alive, ExpiresAtTick = long.MaxValue });
+    }
+
+    public override string Serialize() => "{}";
+    public override void Deserialize(string json) { }
+}
+
 /// <summary>
 /// Tests for the AlivenessBuff, buff query helpers, and candidate requirement infrastructure.
 /// </summary>
@@ -12,13 +31,13 @@ public class AlivenessCandidateRequirementTests
 {
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    private static IslandActorState MakeAliveActor(string id = "TestActor")
+    private static HumanActorState MakeAliveActor(string id = "TestActor")
     {
         var domain = new IslandDomainPack();
-        return (IslandActorState)domain.CreateActorState(new ActorId(id));
+        return (HumanActorState)domain.CreateActorState(new ActorId(id));
     }
 
-    private static IslandActorState MakeActorWithState(AlivenessState state, string id = "TestActor")
+    private static HumanActorState MakeActorWithState(AlivenessState state, string id = "TestActor")
     {
         var actor = MakeAliveActor(id);
         var buff = actor.TryGetBuff<AlivenessBuff>()!;
@@ -30,14 +49,14 @@ public class AlivenessCandidateRequirementTests
     /// Creates a fully initialized actor and then removes its AlivenessBuff, simulating
     /// an actor that never received the buff (used to test "absent buff" scenarios).
     /// </summary>
-    private static IslandActorState MakeActorWithoutAlivenessBuff(string id = "TestActor")
+    private static HumanActorState MakeActorWithoutAlivenessBuff(string id = "TestActor")
     {
         var actor = MakeAliveActor(id);
         actor.ActiveBuffs.RemoveAll(b => b is AlivenessBuff);
         return actor;
     }
 
-    private static List<ActionCandidate> GenerateCandidates(IslandActorState actor, string actorId = "TestActor")
+    private static List<ActionCandidate> GenerateCandidates(HumanActorState actor, string actorId = "TestActor")
     {
         var domain = new IslandDomainPack();
         var world = new IslandWorldState();
@@ -134,6 +153,39 @@ public class AlivenessCandidateRequirementTests
     }
 
     // ─── CandidateRequirements helpers ────────────────────────────────────────
+
+    [Fact]
+    public void CandidateRequirements_IsHuman_PassesForHumanActorState()
+    {
+        var actor = MakeAliveActor();
+        Assert.True(CandidateRequirements.IsHuman(actor));
+    }
+
+    [Fact]
+    public void CandidateRequirements_IsHuman_FailsForNonHumanLivingActor()
+    {
+        var animal = new StubAnimalActorState();
+        Assert.False(CandidateRequirements.IsHuman(animal));
+    }
+
+    [Fact]
+    public void CandidateRequirements_AliveOnly_PassesForNonHumanLivingActorWithAliveBuff()
+    {
+        // AliveOnly is now general (LivingActorState), so it should pass for any living actor
+        // that satisfies the buff condition — not just humans.
+        var animal = new StubAliveAnimalActorState();
+        Assert.True(CandidateRequirements.AliveOnly(animal));
+    }
+
+    [Fact]
+    public void CandidateRequirements_IsHumanAndAliveOnly_FailsForNonHumanEvenWithAliveBuff()
+    {
+        // Human-gating is now done at the candidate level by combining IsHuman && AliveOnly.
+        var animal = new StubAliveAnimalActorState();
+        Func<ActorState, bool> combined =
+            actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor);
+        Assert.False(combined(animal));
+    }
 
     [Fact]
     public void CandidateRequirements_AliveOnly_PassesForAliveActor()

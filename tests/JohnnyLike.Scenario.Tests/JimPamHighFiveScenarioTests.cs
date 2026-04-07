@@ -57,7 +57,7 @@ public class JimPamHighFiveScenarioTests
         var executor = new FakeExecutor(engine);
         executor.Update(0.5);
         
-        var jimState = engine.Actors[new ActorId("Jim")] as IslandActorState;
+        var jimState = engine.Actors[new ActorId("Jim")] as HumanActorState;
         Assert.NotNull(jimState);
         
         // Enqueue chat redeem signal with proper Island domain data

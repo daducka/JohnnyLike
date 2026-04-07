@@ -38,7 +38,7 @@ public static class MortalityWorkflow
     /// </summary>
     public static void Revive(
         AlivenessBuff aliveness,
-        IslandActorState actor,
+        LivingActorState actor,
         double reviveHealth,
         string actorName,
         EffectContext ctx,
@@ -61,7 +61,7 @@ public static class MortalityWorkflow
     /// </summary>
     public static void Die(
         AlivenessBuff aliveness,
-        IslandActorState actor,
+        LivingActorState actor,
         string actorName,
         EffectContext ctx,
         string narration)

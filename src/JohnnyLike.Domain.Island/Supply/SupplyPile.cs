@@ -167,7 +167,7 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
                     sourceActionId: "think_about_supplies");
             }),
             Qualities: qualities,
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 
@@ -180,7 +180,7 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
     /// food or safety, qualities are further suppressed so the action loses priority.
     /// </summary>
     private static Dictionary<QualityType, double> ComputeThinkAboutSuppliesQualities(
-        IslandActorState actor,
+        HumanActorState actor,
         IslandWorldState world,
         ThinkAboutSuppliesTuning tuning,
         Func<QualityType, double>? effectiveWeight = null)

@@ -15,7 +15,7 @@ public class DownedAndDeathTests
 
     private static IslandDomainPack Domain => new();
 
-    private static (IslandActorState actor, IslandWorldState world) MakeActor(
+    private static (HumanActorState actor, IslandWorldState world) MakeActor(
         double health  = 100.0,
         double satiety = 100.0,
         double energy  = 100.0,
@@ -23,7 +23,7 @@ public class DownedAndDeathTests
     {
         var domain    = Domain;
         var actorId   = new ActorId("TestActor");
-        var actor     = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actor     = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["satiety"] = satiety,
             ["energy"]  = energy,
@@ -34,7 +34,7 @@ public class DownedAndDeathTests
         return (actor, world);
     }
 
-    private static void TickForSeconds(IslandActorState actor, IslandWorldState world, double seconds)
+    private static void TickForSeconds(HumanActorState actor, IslandWorldState world, double seconds)
     {
         long ticks = (long)(seconds * EngineConstants.TickHz);
         var domain = Domain;
@@ -42,7 +42,7 @@ public class DownedAndDeathTests
             new EmptyResourceAvailability());
     }
 
-    private static List<ActionCandidate> GenerateCandidates(IslandActorState actor, IslandWorldState world)
+    private static List<ActionCandidate> GenerateCandidates(HumanActorState actor, IslandWorldState world)
     {
         var domain = Domain;
         domain.InitializeActorItems(actor.Id, world);
@@ -57,7 +57,7 @@ public class DownedAndDeathTests
     /// </summary>
     private static void InvokeEffect(
         ActionCandidate candidate,
-        IslandActorState actor,
+        HumanActorState actor,
         IslandWorldState world,
         Random? rng = null)
     {
@@ -378,7 +378,7 @@ public class DownedAndDeathTests
         effectHandler(ctx);
 
         Assert.Equal(AlivenessState.Alive, aliveness.State);
-        Assert.Equal(IslandActorState.ReviveHealth, actor.Health);
+        Assert.Equal(HumanActorState.ReviveHealth, actor.Health);
         Assert.Equal(0, aliveness.DeathSaveSuccesses);
         Assert.Equal(0, aliveness.DeathSaveFailures);
     }

@@ -16,6 +16,12 @@ public abstract class ActorState
     public long LastDecisionTick { get; set; }
     public string CurrentRoomId { get; set; } = "beach";
 
+    /// <summary>
+    /// Whether this actor is currently active in the simulation or stashed offstage.
+    /// Stashed actors are excluded from the normal action-decision loop.
+    /// </summary>
+    public PresenceState PresenceState { get; set; } = PresenceState.Active;
+
     public abstract string Serialize();
     public abstract void Deserialize(string json);
 }

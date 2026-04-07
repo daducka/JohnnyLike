@@ -92,11 +92,11 @@ public class CoconutSupply : SupplyItem, ISupplyActionCandidate, IEdibleSupply
                 [QualityType.FoodConsumption] = 0.8 * satietyFactor,
                 [QualityType.Comfort]         = 0.1
             },
-            ActorRequirement: CandidateRequirements.AliveOnly
+            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
         ));
     }
 
     // IEdibleSupply: coconuts in the supply pile are immediately edible (bash-and-eat).
-    double IEdibleSupply.GetImmediateFoodUnits(IslandActorState actor, IslandWorldState world)
+    double IEdibleSupply.GetImmediateFoodUnits(HumanActorState actor, IslandWorldState world)
         => Quantity;
 }

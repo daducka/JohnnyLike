@@ -25,15 +25,15 @@ public class IslandDomainPackTests
     }
 
     [Fact]
-    public void CreateActorState_WithDefaultData_ReturnsIslandActorState()
+    public void CreateActorState_WithDefaultData_ReturnsHumanActorState()
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
         
         var state = domain.CreateActorState(actorId);
         
-        Assert.IsType<IslandActorState>(state);
-        var islandState = (IslandActorState)state;
+        Assert.IsType<HumanActorState>(state);
+        var islandState = (HumanActorState)state;
         Assert.Equal(actorId, islandState.Id);
         Assert.Equal(10, islandState.STR);
         Assert.Equal(10, islandState.DEX);
@@ -55,7 +55,7 @@ public class IslandDomainPackTests
         
         var state = domain.CreateActorState(actorId, initialData);
         
-        var islandState = (IslandActorState)state;
+        var islandState = (HumanActorState)state;
         Assert.Equal(14, islandState.STR);
         Assert.Equal(16, islandState.DEX);
         Assert.Equal(12, islandState.WIS);
@@ -157,7 +157,7 @@ public class IslandDomainPackTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = domain.CreateActorState(actorId) as IslandActorState;
+        var actorState = domain.CreateActorState(actorId) as HumanActorState;
         var worldState = domain.CreateInitialWorldState();
         
         // Add a pending chat action
@@ -184,7 +184,7 @@ public class IslandDomainPackTests
         { 
             ["satiety"] = 15.0,  // Survival critical
             ["energy"] = 50.0 
-        }) as IslandActorState;
+        }) as HumanActorState;
         var worldState = domain.CreateInitialWorldState();
         domain.InitializeActorItems(actorId, (IslandWorldState)worldState);
         
@@ -284,12 +284,12 @@ public class IslandWorldStateTests
     }
 }
 
-public class IslandActorStateTests
+public class HumanActorStateTests
 {
     [Fact]
     public void GetSkillModifier_CalculatesFishingSkill()
     {
-        var state = new IslandActorState
+        var state = new HumanActorState
         {
             DEX = 14,
             WIS = 16
@@ -303,7 +303,7 @@ public class IslandActorStateTests
     [Fact]
     public void GetSkillModifier_CalculatesSurvivalSkill()
     {
-        var state = new IslandActorState
+        var state = new HumanActorState
         {
             STR = 16,
             WIS = 14
@@ -317,7 +317,7 @@ public class IslandActorStateTests
     [Fact]
     public void GetSkillModifier_IncludesBuffs()
     {
-        var state = new IslandActorState
+        var state = new HumanActorState
         {
             WIS = 14,
             ActiveBuffs = new List<ActiveBuff>
@@ -334,7 +334,7 @@ public class IslandActorStateTests
     [Fact]
     public void GetAdvantage_ReturnsAdvantageWhenBuffActive()
     {
-        var state = new IslandActorState
+        var state = new HumanActorState
         {
             ActiveBuffs = new List<ActiveBuff>
             {
@@ -350,7 +350,7 @@ public class IslandActorStateTests
     [Fact]
     public void GetAdvantage_ReturnsNormalWhenNoBuffActive()
     {
-        var state = new IslandActorState();
+        var state = new HumanActorState();
         
         var advantage = state.GetAdvantage(SkillType.Fishing);
         
@@ -365,7 +365,7 @@ public class IslandActionEffectsTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId);
+        var actorState = (HumanActorState)domain.CreateActorState(actorId);
         actorState.Morale = 50.0;
         actorState.CurrentAction = new ActionSpec(
             new ActionId("go_fishing"),
@@ -411,7 +411,7 @@ public class IslandActionEffectsTests
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
         // Use CreateActorState so the actor has a MetabolicBuff.
-        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+        var actorState = (HumanActorState)domain.CreateActorState(actorId,
             new Dictionary<string, object> { ["energy"] = 30.0 });
         var worldState = new IslandWorldState();
         // sleep_under_tree is now provided by CoconutTreeItem
@@ -475,7 +475,7 @@ public class IslandActionEffectsTests
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
         // Use CreateActorState so the actor has a MetabolicBuff.
-        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+        var actorState = (HumanActorState)domain.CreateActorState(actorId,
             new Dictionary<string, object> { ["satiety"] = 70.0, ["energy"] = 80.0, ["morale"] = 50.0 });
         var worldState = new IslandWorldState();
 
@@ -509,7 +509,7 @@ public class IslandActionEffectsTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+        var actorState = (HumanActorState)domain.CreateActorState(actorId,
             new Dictionary<string, object> { ["morale"] = 50.0 });
         var worldState = new IslandWorldState();
         var rng = new RandomRngStream(new Random(42));
@@ -528,7 +528,7 @@ public class IslandActionEffectsTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+        var actorState = (HumanActorState)domain.CreateActorState(actorId,
             new Dictionary<string, object> { ["morale"] = 50.0 });
         var worldState = new IslandWorldState();
         var rng = new RandomRngStream(new Random(42));
@@ -547,7 +547,7 @@ public class IslandActionEffectsTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+        var actorState = (HumanActorState)domain.CreateActorState(actorId,
             new Dictionary<string, object> { ["morale"] = 50.0 });
         var worldState = new IslandWorldState();
         var rng = new RandomRngStream(new Random(42));
@@ -566,7 +566,7 @@ public class IslandActionEffectsTests
         // Regression test: a 15-minute comfort action should not tank morale.
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId,
+        var actorState = (HumanActorState)domain.CreateActorState(actorId,
             new Dictionary<string, object> { ["morale"] = 50.0 });
         var worldState = new IslandWorldState();
         var rng = new RandomRngStream(new Random(42));
@@ -592,7 +592,7 @@ public class IslandSignalHandlingTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = new IslandActorState { Id = actorId };
+        var actorState = new HumanActorState { Id = actorId };
         var worldState = new IslandWorldState();
         
         var signal = new Signal(
@@ -619,7 +619,7 @@ public class IslandSignalHandlingTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = new IslandActorState { Id = actorId };
+        var actorState = new HumanActorState { Id = actorId };
         var worldState = new IslandWorldState();
         
         var signal = new Signal(
@@ -650,7 +650,7 @@ public class IslandSignalHandlingTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId);
+        var actorState = (HumanActorState)domain.CreateActorState(actorId);
         actorState.Satiety = 70.0;  // Not critical
         actorState.Energy = 60.0;   // Not critical
         actorState.PendingChatActions.Enqueue(new PendingIntent
@@ -676,7 +676,7 @@ public class IslandSignalHandlingTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId);
+        var actorState = (HumanActorState)domain.CreateActorState(actorId);
         actorState.Satiety = 15.0;  // Critical (low satiety)
         actorState.Energy = 60.0;
         actorState.PendingChatActions.Enqueue(new PendingIntent
@@ -768,7 +768,7 @@ public class IslandSignalHandlingTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId);
+        var actorState = (HumanActorState)domain.CreateActorState(actorId);
         actorState.PendingChatActions.Enqueue(new PendingIntent
         {
             ActionId = "write_name_sand",
@@ -911,7 +911,7 @@ public class IslandCooldownSerializationTests
     [Fact]
     public void ActorState_SerializeDeserialize_PreservesCooldowns()
     {
-        var originalState = new IslandActorState
+        var originalState = new HumanActorState
         {
             Id = new ActorId("TestActor"),
             Status = ActorStatus.Ready,
@@ -931,7 +931,7 @@ public class IslandCooldownSerializationTests
         
         var serialized = originalState.Serialize();
         
-        var deserializedState = new IslandActorState();
+        var deserializedState = new HumanActorState();
         deserializedState.Deserialize(serialized);
         
         Assert.Equal(originalState.LastPlaneSightingTick, deserializedState.LastPlaneSightingTick);
@@ -943,7 +943,7 @@ public class IslandCooldownSerializationTests
     [Fact]
     public void ActorState_SerializeDeserialize_DefaultsToNegativeInfinity()
     {
-        var originalState = new IslandActorState
+        var originalState = new HumanActorState
         {
             Id = new ActorId("TestActor"),
             Status = ActorStatus.Ready,
@@ -959,7 +959,7 @@ public class IslandCooldownSerializationTests
         // Don't set cooldowns - they should default to -infinity
         var serialized = originalState.Serialize();
         
-        var deserializedState = new IslandActorState();
+        var deserializedState = new HumanActorState();
         deserializedState.Deserialize(serialized);
         
         Assert.Equal(-1L, deserializedState.LastPlaneSightingTick);
@@ -971,7 +971,7 @@ public class IslandCooldownSerializationTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = new IslandActorState
+        var actorState = new HumanActorState
         {
             Id = actorId,
             LastPlaneSightingTick = 1000L
@@ -1309,7 +1309,7 @@ public class ScoringPostPassTests
         // FoodAcquisition quality, not FoodConsumption.
         var domain  = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actor   = (IslandActorState)domain.CreateActorState(actorId);
+        var actor   = (HumanActorState)domain.CreateActorState(actorId);
         var world   = (IslandWorldState)domain.CreateInitialWorldState();
         domain.InitializeActorItems(actorId, world);
         // OceanItem starts with 100 fish by default, so go_fishing should be available.
@@ -1385,12 +1385,12 @@ public class ScoringPostPassTests
         var actorId = new ActorId("TestActor");
 
         // Starving planner: satiety=15 is below ThinkSuppliesStarvationThreshold=25.
-        var starvingActor = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var starvingActor = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["INT"] = 16, ["WIS"] = 16,
             ["satiety"] = 15.0, ["energy"] = 80.0, ["morale"] = 50.0
         });
-        var satisfiedActor = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var satisfiedActor = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["INT"] = 16, ["WIS"] = 16,
             ["satiety"] = 80.0, ["energy"] = 80.0, ["morale"] = 50.0
@@ -1424,7 +1424,7 @@ public class ActionCandidateQualitiesTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actorState = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["satiety"] = 25.0,  // low but not critical (< 20 would suppress chat actions)
             ["morale"]  = 10.0,  // low morale → sandcastle stomp appears
@@ -1499,7 +1499,7 @@ public class ActionCandidateQualitiesTests
         // Swim is gated by PlayfulOnly, so requires a healthy actor to appear in candidates.
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
+        var actorState = (HumanActorState)domain.CreateActorState(actorId, new Dictionary<string, object>
         {
             ["satiety"] = 80.0,
             ["morale"]  = 60.0,
@@ -1522,7 +1522,7 @@ public class ActionCandidateQualitiesTests
         // add_fuel_campfire requires a lit campfire with low fuel and wood in supply
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId);
+        var actorState = (HumanActorState)domain.CreateActorState(actorId);
         var worldState = (IslandWorldState)domain.CreateInitialWorldState();
 
         var campfire = new Items.CampfireItem("main_campfire") { IsLit = true, FuelSeconds = 500.0 };
@@ -1543,7 +1543,7 @@ public class ActionCandidateQualitiesTests
     {
         var domain = new IslandDomainPack();
         var actorId = new ActorId("TestActor");
-        var actorState = (IslandActorState)domain.CreateActorState(actorId);
+        var actorState = (HumanActorState)domain.CreateActorState(actorId);
         var worldState = domain.CreateInitialWorldState();
 
         actorState.PendingChatActions.Enqueue(new PendingIntent

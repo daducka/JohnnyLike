@@ -93,7 +93,7 @@ public class PeriodicSnapshotTests
         var domain = CreateDomain();
         var world = CreateWorld(domain);
         var actorId = new ActorId("Alice");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         actor.Satiety = 75.0;
         actor.Energy = 88.5;
         actor.Morale = 40.0;
@@ -124,7 +124,7 @@ public class PeriodicSnapshotTests
         var domain = CreateDomain();
         var world = CreateWorld(domain);
         var actorId = new ActorId("Bob");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         actor.KnownRecipeIds.Add("rope");
         actor.KnownRecipeIds.Add("cook_fish");
         actor.KnownRecipeIds.Add("umbrella");
@@ -143,7 +143,7 @@ public class PeriodicSnapshotTests
         var domain = CreateDomain();
         var world = CreateWorld(domain);
         var actorId = new ActorId("Charlie");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         var actors = new Dictionary<ActorId, ActorState> { [actorId] = actor };
 
         var events = domain.BuildPeriodicSnapshot(world, actors, 600L);
@@ -226,7 +226,7 @@ public class PeriodicSnapshotTests
         var domain = CreateDomain();
         var world = CreateWorld(domain);
         var actorId = new ActorId("Eve");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         var actors = new Dictionary<ActorId, ActorState> { [actorId] = actor };
 
         var events = domain.BuildPeriodicSnapshot(world, actors, 600L);
@@ -244,7 +244,7 @@ public class PeriodicSnapshotTests
         var domain = CreateDomain();
         var world = CreateWorld(domain);
         var actorId = new ActorId("Frank");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         var actors = new Dictionary<ActorId, ActorState> { [actorId] = actor };
 
         var events = domain.BuildPeriodicSnapshot(world, actors, 600L);
@@ -261,7 +261,7 @@ public class PeriodicSnapshotTests
         var domain = CreateDomain();
         var world = CreateWorld(domain);
         var actorId = new ActorId("Grace");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         var actors = new Dictionary<ActorId, ActorState> { [actorId] = actor };
 
         var events = domain.BuildPeriodicSnapshot(world, actors, 600L);
@@ -278,7 +278,7 @@ public class PeriodicSnapshotTests
         var domain = CreateDomain();
         var world = CreateWorld(domain);
         var actorId = new ActorId("Hank");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         // Add a temporary skill-bonus buff that expires 300 ticks after tick 600
         actor.ActiveBuffs.Add(new ActiveBuff
         {
@@ -304,7 +304,7 @@ public class PeriodicSnapshotTests
         var domain = CreateDomain();
         var world = CreateWorld(domain);
         var actorId = new ActorId("Ivy");
-        var actor = (IslandActorState)domain.CreateActorState(actorId);
+        var actor = (HumanActorState)domain.CreateActorState(actorId);
         // Add a buff that has already expired (ExpiresAtTick < currentTick)
         actor.ActiveBuffs.Add(new ActiveBuff
         {
