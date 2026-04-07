@@ -39,8 +39,9 @@ public static class ChatCandidateProvider
                 Reason: $"Write {name}'s name in sand (chat redeem)",
                 EffectHandler: new Action<EffectContext>(effectCtx =>
                 {
-                    if (effectCtx.Actor.PendingChatActions.Count > 0)
-                        effectCtx.Actor.PendingChatActions.Dequeue();
+                    if (effectCtx.Actor is HumanActorState humanActor &&
+                        humanActor.PendingChatActions.Count > 0)
+                        humanActor.PendingChatActions.Dequeue();
 
                     effectCtx.Actor.Morale += 10.0;
                 }),
@@ -66,8 +67,9 @@ public static class ChatCandidateProvider
                 Reason: "Clap emote (sub/cheer)",
                 EffectHandler: new Action<EffectContext>(effectCtx =>
                 {
-                    if (effectCtx.Actor.PendingChatActions.Count > 0)
-                        effectCtx.Actor.PendingChatActions.Dequeue();
+                    if (effectCtx.Actor is HumanActorState humanActor &&
+                        humanActor.PendingChatActions.Count > 0)
+                        humanActor.PendingChatActions.Dequeue();
 
                     effectCtx.Actor.Morale += 3.0;
                 }),

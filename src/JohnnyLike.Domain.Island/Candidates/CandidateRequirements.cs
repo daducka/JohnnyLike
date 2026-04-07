@@ -77,4 +77,12 @@ public static class CandidateRequirements
     /// </summary>
     public static Func<ActorState, bool> HasBuffWhere<T>(Func<T, bool> predicate) where T : ActiveBuff =>
         actor => actor is LivingActorState living && living.HasBuffWhere(predicate);
+
+    /// <summary>
+    /// Requires the actor to be a scavenger (e.g., <see cref="CrabActorState"/>).
+    /// Scavengers can access carcass-scrap-based food actions that humans cannot.
+    /// This is the first non-human actor qualifier; it may be shared by multiple animal types.
+    /// </summary>
+    public static Func<ActorState, bool> IsScavenger { get; } =
+        actor => actor is CrabActorState;
 }

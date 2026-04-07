@@ -145,8 +145,12 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
 
     private void AddThinkAboutSuppliesCandidate(IslandContext ctx, List<ActionCandidate> output)
     {
+        // think_about_supplies is human-only. Skip for non-human actors.
+        if (ctx.Actor is not HumanActorState humanActor)
+            return;
+
         var tuning = ctx.TuningProfile.Categories.ThinkAboutSupplies;
-        var qualities = ComputeThinkAboutSuppliesQualities(ctx.Actor, ctx.World, tuning, ctx.QualityEffectiveWeight);
+        var qualities = ComputeThinkAboutSuppliesQualities(humanActor, ctx.World, tuning, ctx.QualityEffectiveWeight);
 
         output.Add(new ActionCandidate(
             new ActionSpec(
@@ -160,11 +164,12 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
             Reason: "Think about supplies",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                RecipeDiscoverySystem.TryDiscover(
-                    effectCtx.Actor, effectCtx.World, effectCtx.Rng,
-                    DiscoveryTrigger.ThinkAboutSupplies,
-                    actorId: effectCtx.ActorId.Value,
-                    sourceActionId: "think_about_supplies");
+                if (effectCtx.Actor is HumanActorState humanEffectActor)
+                    RecipeDiscoverySystem.TryDiscover(
+                        humanEffectActor, effectCtx.World, effectCtx.Rng,
+                        DiscoveryTrigger.ThinkAboutSupplies,
+                        actorId: effectCtx.ActorId.Value,
+                        sourceActionId: "think_about_supplies");
             }),
             Qualities: qualities,
             ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
