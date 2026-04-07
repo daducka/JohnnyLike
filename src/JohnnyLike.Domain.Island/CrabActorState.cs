@@ -107,7 +107,9 @@ public class CrabActorState : LivingActorState, IIslandActionCandidate
                 if (pile != null)
                     pile.AddSupply(1.0, () => new CrabSupply());
 
-                // Find the crab, stash it, then remove it from the active list.
+                // Find the crab, stash its engine actor state so the engine won't try to
+                // run its decision loop after it has been caught, then remove it from the
+                // active crabs list so it no longer offers catch affordances to humans.
                 var crab = effectCtx.World.ActiveCrabActors.FirstOrDefault(c => c.Id == crabActorId);
                 if (crab != null)
                 {

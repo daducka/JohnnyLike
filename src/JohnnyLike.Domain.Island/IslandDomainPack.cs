@@ -1137,8 +1137,6 @@ public class IslandDomainPack : IDomainPack
     /// <summary>Maximum number of active crabs in the world at any time.</summary>
     public const int MaxActiveCrabs = 3;
 
-    private static readonly Random _spawnRng = new(42); // deterministic for testing
-
     private static void TrySpawnCrab(
         IslandWorldState world,
         Dictionary<ActorId, ActorState>? mutableActors,
@@ -1161,8 +1159,10 @@ public class IslandDomainPack : IDomainPack
         if (scraps == null || scraps.Quantity < CrabSpawnScrapsThreshold)
             return;
 
-        // Small random chance per tick.
-        if (_spawnRng.NextDouble() > CrabSpawnProbabilityPerTick)
+        // Small random chance per tick using a world-scoped seeded random for
+        // reproducibility within a single simulation run.
+        var spawnRng = new Random(unchecked((int)currentTick * 1337 + 42));
+        if (spawnRng.NextDouble() > CrabSpawnProbabilityPerTick)
             return;
 
         // Spawn a new crab actor.

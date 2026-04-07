@@ -1,6 +1,8 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Metabolism;
 using JohnnyLike.Domain.Island.Supply;
+using JohnnyLike.Domain.Island.Vitality;
 using JohnnyLike.Engine;
 
 namespace JohnnyLike.Domain.Island.Tests;
@@ -84,8 +86,8 @@ public class CrabActorTests
     {
         var crab = IslandDomainPack.CreateCrabActorState(new ActorId("crab1"));
         Assert.Contains(crab.ActiveBuffs, b => b is CrabPhysiologyBuff);
-        Assert.DoesNotContain(crab.ActiveBuffs, b => b.Name == "Metabolism"); // no MetabolicBuff
-        Assert.DoesNotContain(crab.ActiveBuffs, b => b.Name == "Vitality");   // no VitalityBuff
+        Assert.DoesNotContain(crab.ActiveBuffs, b => b is MetabolicBuff);  // no MetabolicBuff
+        Assert.DoesNotContain(crab.ActiveBuffs, b => b is VitalityBuff);   // no VitalityBuff
     }
 
     [Fact]
