@@ -8,7 +8,7 @@ namespace JohnnyLike.Domain.Island.Supply;
 /// <summary>
 /// Represents a pile of supplies with generic methods to manage different supply types
 /// </summary>
-public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
+public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty, IIslandWorldEventProvider
 {
     public List<SupplyItem> Supplies { get; set; } = new();
     public string AccessControl { get; set; }
@@ -141,6 +141,24 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
         }
 
         AddThinkAboutSuppliesCandidate(ctx, output);
+    }
+
+    /// <summary>
+    /// Delegates to each supply item that implements <see cref="ISupplyWorldEventProvider"/>,
+    /// allowing those supplies to trigger autonomous world events (such as animal spawning)
+    /// that do not require an actor decision context.
+    /// Called once per tick by <see cref="IslandDomainPack.TickWorldState"/>.
+    /// </summary>
+    public void ExecuteWorldEvents(
+        IslandWorldState world,
+        long currentTick,
+        Dictionary<ActorId, ActorState>? mutableActors)
+    {
+        foreach (var supply in Supplies)
+        {
+            if (supply is ISupplyWorldEventProvider provider)
+                provider.ExecuteWorldEvents(this, world, currentTick, mutableActors);
+        }
     }
 
     private void AddThinkAboutSuppliesCandidate(IslandContext ctx, List<ActionCandidate> output)

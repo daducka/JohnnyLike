@@ -370,7 +370,7 @@ public class CrabActorTests
         pile.Supplies.Add(new CarcassScrapsSupply(100.0));
 
         // Pre-populate with max crabs.
-        for (var i = 0; i < IslandDomainPack.MaxActiveCrabs; i++)
+        for (var i = 0; i < CarcassScrapsSupply.MaxActiveCrabs; i++)
         {
             var c = IslandDomainPack.CreateCrabActorState(new ActorId($"crab_pre{i}"));
             world.ActiveCrabActors.Add(c);
@@ -380,7 +380,7 @@ public class CrabActorTests
         for (long tick = 1; tick <= 100_000; tick++)
             domain.TickWorldState(world, actors, tick, _noReservations);
 
-        Assert.Equal(IslandDomainPack.MaxActiveCrabs, world.ActiveCrabActors.Count);
+        Assert.Equal(CarcassScrapsSupply.MaxActiveCrabs, world.ActiveCrabActors.Count);
     }
 
     // ── 9. Crab idle/rest behavior ────────────────────────────────────────────

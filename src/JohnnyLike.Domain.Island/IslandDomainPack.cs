@@ -1120,60 +1120,13 @@ public class IslandDomainPack : IDomainPack
                 buff.OnTick(livingActor, worldState, currentTick);
         }
 
-        // Try to spawn a new crab when CarcassScraps supply is above threshold.
-        // We need a mutable actors dictionary to add new crab actors.
-        TrySpawnCrab(islandWorld, actors as Dictionary<ActorId, ActorState>, currentTick);
+        // Delegate autonomous world events (e.g., animal spawning) to world items
+        // that implement IIslandWorldEventProvider.
+        var mutableActors = actors as Dictionary<ActorId, ActorState>;
+        foreach (var item in islandWorld.WorldItems.OfType<IIslandWorldEventProvider>())
+            item.ExecuteWorldEvents(islandWorld, currentTick, mutableActors);
 
         return islandWorld.OnTickAdvanced(currentTick, resourceAvailability);
-    }
-
-    // ── Crab spawning constants ───────────────────────────────────────────────
-    /// <summary>Minimum CarcassScraps quantity before a crab may spawn.</summary>
-    public const double CrabSpawnScrapsThreshold = 5.0;
-    /// <summary>
-    /// Probability per tick of a crab spawning when threshold is met.
-    /// Tuned so that at 1 Hz ticking, a crab typically appears after several in-game hours.
-    /// ≈ 1 spawn per 2 real sim-hours on average (7200 ticks at 1 Hz).
-    /// </summary>
-    public const double CrabSpawnProbabilityPerTick = 1.0 / 7200.0;
-    /// <summary>Maximum number of active crabs in the world at any time.</summary>
-    public const int MaxActiveCrabs = 3;
-
-    private static void TrySpawnCrab(
-        IslandWorldState world,
-        Dictionary<ActorId, ActorState>? mutableActors,
-        long currentTick)
-    {
-        // Only spawn if we have a mutable actors dictionary to add to.
-        if (mutableActors == null)
-            return;
-
-        // Cap crab population.
-        if (world.ActiveCrabActors.Count >= MaxActiveCrabs)
-            return;
-
-        // Require sufficient CarcassScraps.
-        var pile = world.SharedSupplyPile;
-        if (pile == null)
-            return;
-
-        var scraps = pile.GetSupply<CarcassScrapsSupply>();
-        if (scraps == null || scraps.Quantity < CrabSpawnScrapsThreshold)
-            return;
-
-        // Small random chance per tick using a world-scoped seeded random for
-        // reproducibility within a single simulation run.
-        var spawnRng = new Random(unchecked((int)currentTick * 1337 + 42));
-        if (spawnRng.NextDouble() > CrabSpawnProbabilityPerTick)
-            return;
-
-        // Spawn a new crab actor.
-        var crabId = new ActorId($"crab_{currentTick}");
-        var crab = CreateCrabActorState(crabId);
-        crab.Status = ActorStatus.Ready;
-
-        mutableActors[crabId] = crab;
-        world.ActiveCrabActors.Add(crab);
     }
 
     // ── Softmax weight floor — ensures every candidate retains a nonzero probability
