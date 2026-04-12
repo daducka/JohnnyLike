@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace JohnnyLike.Domain.Island;
 
 /// <summary>
-/// A crab actor: the first non-human living actor in the island simulation.
+/// A crab actor: a non-human living actor in the island simulation.
 ///
 /// Crabs are simple scavengers. They:
 /// <list type="bullet">
@@ -16,8 +16,8 @@ namespace JohnnyLike.Domain.Island;
 ///         no morale, health driven by satiety).</item>
 ///   <item>Satisfy <see cref="CandidateRequirements.IsScavenger"/>.</item>
 ///   <item>Can scavenge <see cref="CarcassScrapsSupply"/> for food (offered by the supply itself).</item>
-///   <item>Offer a human-only <c>catch_crab</c> action via <see cref="AddCandidatesForOtherActors"/>.</item>
 ///   <item>Can idle/rest to recover energy.</item>
+///   <item>Offer a human-only <c>catch_crab</c> action via <see cref="AddCandidates"/>.</item>
 ///   <item>Do NOT receive human-only actions (chat, recipes, tools, etc.).</item>
 /// </list>
 ///
@@ -33,14 +33,22 @@ public class CrabActorState : LivingActorState, IIslandActionCandidate
     // ── Candidate generation ──────────────────────────────────────────────────
 
     /// <summary>
-    /// Generates action candidates for this crab actor itself:
+    /// Generates action candidates for this crab actor.
+    ///
+    /// Self-candidates (only available to the crab itself):
     /// <list type="bullet">
     ///   <item><c>crab_idle</c> — low-priority rest/idle action that gently recovers energy.</item>
     /// </list>
     ///
+    /// Candidates offered to other actors:
+    /// <list type="bullet">
+    ///   <item><c>catch_crab</c> — human-only action that removes this crab and yields
+    ///         <see cref="CrabSupply"/>. The <see cref="ActionCandidate.ActorRequirement"/>
+    ///         gates it so only human actors receive it.</item>
+    /// </list>
+    ///
     /// Scavenging candidates are offered by <see cref="CarcassScrapsSupply.AddCandidates"/>
-    /// via the supply-pile affordance system, not here.
-    /// Catch candidates for humans are offered via <see cref="AddCandidatesForOtherActors"/>.
+    /// via the supply-pile affordance system.
     /// </summary>
     public void AddCandidates(IslandContext ctx, List<ActionCandidate> output)
     {
@@ -72,23 +80,8 @@ public class CrabActorState : LivingActorState, IIslandActionCandidate
             },
             ActorRequirement: actor => CandidateRequirements.IsScavenger(actor) && CandidateRequirements.AliveOnly(actor)
         ));
-    }
 
-    /// <summary>
-    /// Generates action candidates that this crab offers to OTHER actors (e.g., humans).
-    /// Called during candidate generation for each other actor by <see cref="IslandDomainPack"/>.
-    ///
-    /// Currently provides:
-    /// <list type="bullet">
-    ///   <item><c>catch_crab</c> — human-only action that removes this crab and yields
-    ///         <see cref="CrabSupply"/>.</item>
-    /// </list>
-    /// </summary>
-    public void AddCandidatesForOtherActors(IslandContext ctx, List<ActionCandidate> output)
-    {
-        if (!CandidateRequirements.AliveOnly(this))
-            return;
-
+        // Catch crab: offered to nearby human actors only.
         var crabActorId = Id;
 
         output.Add(new ActionCandidate(

@@ -19,6 +19,7 @@ namespace JohnnyLike.Domain.Island;
 ///
 /// This buff replaces both <see cref="Metabolism.MetabolicBuff"/> and
 /// <see cref="Vitality.VitalityBuff"/> on crab actors.
+/// It is added to every crab in <see cref="IslandDomainPack.CreateCrabActorState"/>.
 /// </summary>
 public class CrabPhysiologyBuff : ActiveBuff, ITickableBuff
 {

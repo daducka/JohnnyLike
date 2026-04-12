@@ -220,11 +220,13 @@ public class IslandDomainPack : IDomainPack
         }
 
         // Generate catch_crab affordances from active crab actors.
-        // Each live crab offers a human-only catch action; crabs are identified by their actor ID.
+        // Each live crab's AddCandidates produces both crab_idle (IsScavenger-gated)
+        // and catch_crab (IsHuman-gated); the actor requirement filter below will
+        // discard crab_idle for humans and catch_crab for crabs automatically.
         foreach (var crab in islandWorld.ActiveCrabActors)
         {
             var crabCandidates = new List<ActionCandidate>();
-            crab.AddCandidatesForOtherActors(ctx, crabCandidates);
+            crab.AddCandidates(ctx, crabCandidates);
             foreach (var c in crabCandidates)
                 candidates.Add(c with { ProviderItemId = crab.Id.Value });
         }
