@@ -61,7 +61,6 @@ public class CrabActorState : LivingActorState, IIslandActionCandidate
             return;
 
         // Idle/rest: self-action, only visible to the crab itself.
-        var selfId = Id;
         var duration = Duration.Minutes(5.0, 8.0, ctx.Random);
         var energyRecovery = IdleEnergyRecoveryPerMinute * (duration.Ticks / (double)EngineConstants.TickHz / 60.0);
 
@@ -84,7 +83,7 @@ public class CrabActorState : LivingActorState, IIslandActionCandidate
             {
                 [QualityType.Safety] = 0.5
             },
-            ActorRequirement: actor => CandidateRequirements.IsSelf(selfId)(actor) && CandidateRequirements.AliveOnly(actor)
+            ActorRequirement: actor => CandidateRequirements.IsSelf(Id)(actor) && CandidateRequirements.AliveOnly(actor)
         ));
 
         // Catch crab: offered to nearby human actors only.
