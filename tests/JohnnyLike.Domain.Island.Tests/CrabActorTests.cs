@@ -117,6 +117,43 @@ public class CrabActorTests
         Assert.False(CandidateRequirements.IsScavenger(human));
     }
 
+    [Fact]
+    public void IsSelf_TrueForMatchingActorId()
+    {
+        var crab = IslandDomainPack.CreateCrabActorState(new ActorId("crab1"));
+        var isSelf = CandidateRequirements.IsSelf(crab.Id);
+        Assert.True(isSelf(crab));
+    }
+
+    [Fact]
+    public void IsSelf_FalseForDifferentActorId()
+    {
+        var crab1 = IslandDomainPack.CreateCrabActorState(new ActorId("crab1"));
+        var crab2 = IslandDomainPack.CreateCrabActorState(new ActorId("crab2"));
+        var isSelf = CandidateRequirements.IsSelf(crab1.Id);
+        Assert.False(isSelf(crab2));
+    }
+
+    [Fact]
+    public void CrabIdle_NotOfferedToOtherCrabs()
+    {
+        var domain = new IslandDomainPack();
+        var world = (IslandWorldState)domain.CreateInitialWorldState();
+
+        var crab1 = IslandDomainPack.CreateCrabActorState(new ActorId("crab1"));
+        var crab2 = IslandDomainPack.CreateCrabActorState(new ActorId("crab2"));
+
+        // Ask crab1 for its candidates but with crab2 as the requesting actor context.
+        // crab1's crab_idle is gated by IsSelf(crab1.Id) — should not pass for crab2.
+        var ctx = MakeCtx(domain, crab2, world, crab2.Id);
+        var output = new List<ActionCandidate>();
+        crab1.AddCandidates(ctx, output);
+
+        // After ActorRequirement filtering (as GenerateCandidates does), crab_idle must not appear.
+        var filtered = output.Where(c => c.ActorRequirement == null || c.ActorRequirement(crab2)).ToList();
+        Assert.DoesNotContain(filtered, c => c.Action.Id.Value == "crab_idle");
+    }
+
     // ── 3. Crab does not receive human-only actions ───────────────────────────
 
     [Fact]
@@ -302,13 +339,82 @@ public class CrabActorTests
             new RandomRngStream(new Random(1)), _noReservations,
             catchCrab.EffectHandler);
 
-        // Crab should be removed from the active list.
+        // Crab should be removed from the active list immediately.
         Assert.Empty(world.ActiveCrabActors);
 
         // CrabSupply should be added to the shared pile.
         var crabSupply = pile.GetSupply<CrabSupply>();
         Assert.NotNull(crabSupply);
         Assert.True(crabSupply.Quantity > 0.0, "Catching a crab should add CrabSupply to the shared pile");
+    }
+
+    [Fact]
+    public void CatchCrab_AddsCrabIdToPendingRemovals_NotStashed()
+    {
+        var (domain, world, actorId, human) = SetupHuman();
+        var crabId = new ActorId("crab1");
+        var crab = IslandDomainPack.CreateCrabActorState(crabId);
+        world.ActiveCrabActors.Add(crab);
+
+        var candidates = domain.GenerateCandidates(actorId, human, world, 0L, new Random(1), _noReservations);
+        var catchCrab = candidates.First(c => c.Action.Id.Value == "catch_crab");
+
+        var outcome = new ActionOutcome(catchCrab.Action.Id, ActionOutcomeType.Success, Duration.Seconds(1.0));
+        domain.ApplyActionEffects(actorId, outcome, human, world,
+            new RandomRngStream(new Random(1)), _noReservations, catchCrab.EffectHandler);
+
+        // The crab should be queued for engine-level removal, not merely stashed.
+        Assert.Contains(crabId, world.PendingActorRemovals);
+        Assert.NotEqual(PresenceState.Stashed, crab.PresenceState);
+    }
+
+    [Fact]
+    public void CatchCrab_RemovesCrabFromEngineActorDictionary_OnNextTick()
+    {
+        var (domain, world, actorId, human) = SetupHuman();
+        var crabId = new ActorId("crab1");
+        var crab = IslandDomainPack.CreateCrabActorState(crabId);
+        world.ActiveCrabActors.Add(crab);
+
+        // Simulate a mutable actor dictionary (as the engine uses).
+        var actors = new Dictionary<ActorId, ActorState> { [crabId] = crab };
+
+        var candidates = domain.GenerateCandidates(actorId, human, world, 0L, new Random(1), _noReservations);
+        var catchCrab = candidates.First(c => c.Action.Id.Value == "catch_crab");
+
+        var outcome = new ActionOutcome(catchCrab.Action.Id, ActionOutcomeType.Success, Duration.Seconds(1.0));
+        domain.ApplyActionEffects(actorId, outcome, human, world,
+            new RandomRngStream(new Random(1)), _noReservations, catchCrab.EffectHandler);
+
+        // Before next tick: crab is queued for removal.
+        Assert.Contains(crabId, world.PendingActorRemovals);
+        Assert.True(actors.ContainsKey(crabId), "Crab should still be in actor dict before TickWorldState");
+
+        // TickWorldState drains PendingActorRemovals and removes the crab.
+        domain.TickWorldState(world, actors, 1L, _noReservations);
+
+        Assert.False(actors.ContainsKey(crabId), "Crab should be removed from actor dict after TickWorldState");
+        Assert.Empty(world.PendingActorRemovals);
+    }
+
+    [Fact]
+    public void CatchCrab_CaughtCrab_OffersNoCatchAffordances()
+    {
+        var (domain, world, actorId, human) = SetupHuman();
+        var crab = IslandDomainPack.CreateCrabActorState(new ActorId("crab1"));
+        world.ActiveCrabActors.Add(crab);
+
+        var candidates = domain.GenerateCandidates(actorId, human, world, 0L, new Random(1), _noReservations);
+        var catchCrab = candidates.First(c => c.Action.Id.Value == "catch_crab");
+
+        var outcome = new ActionOutcome(catchCrab.Action.Id, ActionOutcomeType.Success, Duration.Seconds(1.0));
+        domain.ApplyActionEffects(actorId, outcome, human, world,
+            new RandomRngStream(new Random(1)), _noReservations, catchCrab.EffectHandler);
+
+        // After catching, the crab has been removed from ActiveCrabActors.
+        // A fresh candidate generation should produce no catch_crab candidates.
+        var newCandidates = domain.GenerateCandidates(actorId, human, world, 1L, new Random(1), _noReservations);
+        Assert.DoesNotContain(newCandidates, c => c.Action.Id.Value == "catch_crab");
     }
 
     // ── 8. Crab spawning from CarcassScraps ──────────────────────────────────

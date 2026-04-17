@@ -33,18 +33,23 @@ public class CrabActorState : LivingActorState, IIslandActionCandidate
     // ── Candidate generation ──────────────────────────────────────────────────
 
     /// <summary>
-    /// Generates action candidates for this crab actor.
+    /// Contributes all candidates provided by this actor — both self-actions (only visible
+    /// to the crab itself) and affordances offered to other actors (only visible to the
+    /// appropriate actor type). The <see cref="ActionCandidate.ActorRequirement"/> predicate
+    /// on each candidate determines which requesting actors can see it; the caller must not
+    /// assume this method produces only self-actions.
     ///
-    /// Self-candidates (only available to the crab itself):
+    /// Self-candidates (only available to the crab itself, gated by <c>IsSelf</c>):
     /// <list type="bullet">
     ///   <item><c>crab_idle</c> — low-priority rest/idle action that gently recovers energy.</item>
     /// </list>
     ///
     /// Candidates offered to other actors:
     /// <list type="bullet">
-    ///   <item><c>catch_crab</c> — human-only action that removes this crab and yields
-    ///         <see cref="CrabSupply"/>. The <see cref="ActionCandidate.ActorRequirement"/>
-    ///         gates it so only human actors receive it.</item>
+    ///   <item><c>catch_crab</c> — human-only action that permanently removes this crab from
+    ///         the simulation and yields <see cref="CrabSupply"/>. The
+    ///         <see cref="ActionCandidate.ActorRequirement"/> gates it so only human actors
+    ///         receive it.</item>
     /// </list>
     ///
     /// Scavenging candidates are offered by <see cref="CarcassScrapsSupply.AddCandidates"/>
@@ -55,7 +60,8 @@ public class CrabActorState : LivingActorState, IIslandActionCandidate
         if (!CandidateRequirements.AliveOnly(this))
             return;
 
-        // Idle/rest: always available as a fallback; recovers a small amount of energy.
+        // Idle/rest: self-action, only visible to the crab itself.
+        var selfId = Id;
         var duration = Duration.Minutes(5.0, 8.0, ctx.Random);
         var energyRecovery = IdleEnergyRecoveryPerMinute * (duration.Ticks / (double)EngineConstants.TickHz / 60.0);
 
@@ -78,10 +84,11 @@ public class CrabActorState : LivingActorState, IIslandActionCandidate
             {
                 [QualityType.Safety] = 0.5
             },
-            ActorRequirement: actor => CandidateRequirements.IsScavenger(actor) && CandidateRequirements.AliveOnly(actor)
+            ActorRequirement: actor => CandidateRequirements.IsSelf(selfId)(actor) && CandidateRequirements.AliveOnly(actor)
         ));
 
         // Catch crab: offered to nearby human actors only.
+        // The effect permanently removes this crab from the simulation.
         var crabActorId = Id;
 
         output.Add(new ActionCandidate(
@@ -100,15 +107,11 @@ public class CrabActorState : LivingActorState, IIslandActionCandidate
                 if (pile != null)
                     pile.AddSupply(1.0, () => new CrabSupply());
 
-                // Find the crab, stash its engine actor state so the engine won't try to
-                // run its decision loop after it has been caught, then remove it from the
-                // active crabs list so it no longer offers catch affordances to humans.
-                var crab = effectCtx.World.ActiveCrabActors.FirstOrDefault(c => c.Id == crabActorId);
-                if (crab != null)
-                {
-                    crab.PresenceState = PresenceState.Stashed;
-                    effectCtx.World.ActiveCrabActors.Remove(crab);
-                }
+                // Remove this crab immediately from the active actors list so it no longer
+                // offers catch affordances. The engine actor dictionary entry is removed on
+                // the next TickWorldState call via PendingActorRemovals.
+                effectCtx.World.ActiveCrabActors.RemoveAll(c => c.Id == crabActorId);
+                effectCtx.World.PendingActorRemovals.Add(crabActorId);
 
                 effectCtx.SetOutcomeNarration(
                     $"{effectCtx.ActorId.Value} snatches up the crab before it can scuttle away.");

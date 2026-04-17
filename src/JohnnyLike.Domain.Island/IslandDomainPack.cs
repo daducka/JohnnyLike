@@ -1126,6 +1126,16 @@ public class IslandDomainPack : IDomainPack
         foreach (var item in islandWorld.WorldItems.OfType<IIslandWorldEventProvider>())
             item.ExecuteWorldEvents(islandWorld, currentTick, mutableActors);
 
+        // Drain actor-removal requests posted by effect handlers (e.g., catch_crab).
+        // Removals are deferred so they happen in TickWorldState where we have access
+        // to the mutable actors dictionary, not inside the effect handler itself.
+        if (mutableActors != null && islandWorld.PendingActorRemovals.Count > 0)
+        {
+            foreach (var actorId in islandWorld.PendingActorRemovals)
+                mutableActors.Remove(actorId);
+            islandWorld.PendingActorRemovals.Clear();
+        }
+
         return islandWorld.OnTickAdvanced(currentTick, resourceAvailability);
     }
 
