@@ -23,6 +23,7 @@ public static class ChatCandidateProvider
             return;
 
         var intent = actor.PendingChatActions.Peek();
+        var actorId = actor.Id;
 
         if (intent.ActionId == "write_name_sand")
         {
@@ -50,7 +51,7 @@ public static class ChatCandidateProvider
                     [QualityType.Fun]     = 0.8,
                     [QualityType.Comfort] = 0.2
                 },
-                ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
+                ActorRequirement: a => CandidateRequirements.IsSelf(actorId)(a) && CandidateRequirements.AliveOnly(a)
             ));
         }
         else if (intent.ActionId == "clap_emote")
@@ -78,7 +79,7 @@ public static class ChatCandidateProvider
                     [QualityType.Fun]     = 0.8,
                     [QualityType.Comfort] = 0.2
                 },
-                ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
+                ActorRequirement: a => CandidateRequirements.IsSelf(actorId)(a) && CandidateRequirements.AliveOnly(a)
             ));
         }
     }

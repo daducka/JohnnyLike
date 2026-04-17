@@ -220,7 +220,7 @@ public class IslandDomainPack : IDomainPack
         }
 
         // Generate catch_crab affordances from active crab actors.
-        // Each live crab's AddCandidates produces both crab_idle (IsScavenger-gated)
+        // Each live crab's AddCandidates produces both crab_idle (IsSelf-gated)
         // and catch_crab (IsHuman-gated); the actor requirement filter below will
         // discard crab_idle for humans and catch_crab for crabs automatically.
         foreach (var crab in islandWorld.ActiveCrabActors)
