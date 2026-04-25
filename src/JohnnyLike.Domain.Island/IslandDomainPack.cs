@@ -42,6 +42,58 @@ public class IslandDomainPack : IDomainPack
 
     public ActorState CreateActorState(ActorId actorId, Dictionary<string, object>? initialData = null)
     {
+        // Support crab actor kind via "actorKind" key in initialData.
+        var actorKind = initialData?.GetValueOrDefault("actorKind") as string ?? "human";
+        if (actorKind == "crab")
+            return CreateCrabActorState(actorId, initialData);
+
+        return CreateHumanActorState(actorId, initialData);
+    }
+
+    /// <summary>
+    /// Creates a new <see cref="CrabActorState"/> with crab-specific physiology buffs.
+    /// Uses <see cref="CrabPhysiologyBuff"/> in place of <see cref="MetabolicBuff"/>
+    /// and <see cref="VitalityBuff"/> to enforce crab-specific metabolic and health rules.
+    /// </summary>
+    public static CrabActorState CreateCrabActorState(ActorId actorId, Dictionary<string, object>? initialData = null)
+    {
+        var crab = new CrabActorState
+        {
+            Id      = actorId,
+            STR     = (int)(initialData?.GetValueOrDefault("STR", 8)     ?? 8),
+            DEX     = (int)(initialData?.GetValueOrDefault("DEX", 12)    ?? 12),
+            CON     = (int)(initialData?.GetValueOrDefault("CON", 10)    ?? 10),
+            INT     = (int)(initialData?.GetValueOrDefault("INT", 2)     ?? 2),
+            WIS     = (int)(initialData?.GetValueOrDefault("WIS", 8)     ?? 8),
+            CHA     = (int)(initialData?.GetValueOrDefault("CHA", 4)     ?? 4),
+            Satiety = (double)(initialData?.GetValueOrDefault("satiety", 80.0) ?? 80.0),
+            Energy  = (double)(initialData?.GetValueOrDefault("energy",  90.0) ?? 90.0),
+            Morale  = 50.0, // morale is unused by crabs; keep at neutral
+            Health  = (double)(initialData?.GetValueOrDefault("health",  100.0) ?? 100.0)
+        };
+
+        // CrabPhysiologyBuff replaces MetabolicBuff + VitalityBuff for crab-specific rules.
+        crab.ActiveBuffs.Add(new CrabPhysiologyBuff
+        {
+            Name          = "CrabPhysiology",
+            Type          = BuffType.Metabolic,
+            ExpiresAtTick = long.MaxValue
+        });
+
+        // Aliveness: crabs can be downed (starvation) and removed.
+        crab.ActiveBuffs.Add(new AlivenessBuff
+        {
+            Name          = "Aliveness",
+            Type          = BuffType.Aliveness,
+            State         = AlivenessState.Alive,
+            ExpiresAtTick = long.MaxValue
+        });
+
+        return crab;
+    }
+
+    private HumanActorState CreateHumanActorState(ActorId actorId, Dictionary<string, object>? initialData)
+    {
         var state = new HumanActorState
         {
             Id = actorId,
@@ -118,9 +170,14 @@ public class IslandDomainPack : IDomainPack
         Random rng,
         IResourceAvailability resourceAvailability)
     {
-        var islandActorState = (HumanActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
         var rngStream = new RandomRngStream(rng);
+
+        // Route to non-human path for crab actors (avoids human-specific quality model).
+        if (actorState is CrabActorState crabActor)
+            return GenerateCrabCandidates(actorId, crabActor, islandWorld, currentTick, rngStream, rng, resourceAvailability);
+
+        var islandActorState = (HumanActorState)actorState;
 
         // Note: World state time advancement is now handled by TickWorldState in Engine.AdvanceTime
         // No need to call OnTimeAdvanced here
@@ -161,6 +218,18 @@ public class IslandDomainPack : IDomainPack
             foreach (var c in itemCandidates)
                 candidates.Add(c with { ProviderItemId = wi.Id });
         }
+
+        // Generate catch_crab affordances from active crab actors.
+        // Each live crab's AddCandidates produces both crab_idle (IsSelf-gated)
+        // and catch_crab (IsHuman-gated); the actor requirement filter below will
+        // discard crab_idle for humans and catch_crab for crabs automatically.
+        foreach (var crab in islandWorld.ActiveCrabActors)
+        {
+            var crabCandidates = new List<ActionCandidate>();
+            crab.AddCandidates(ctx, crabCandidates);
+            foreach (var c in crabCandidates)
+                candidates.Add(c with { ProviderItemId = crab.Id.Value });
+        }
         
         // Generate candidates from the actor itself (e.g., idle action).
         // Actor-self candidates use the actor's own Id as ProviderItemId.
@@ -183,6 +252,99 @@ public class IslandDomainPack : IDomainPack
         }
 
         return candidates;
+    }
+
+    /// <summary>
+    /// Generates action candidates for a crab actor. Uses a simplified quality model
+    /// driven entirely by the crab's physiological state (satiety and energy) rather than
+    /// the human personality/mood model. World-item candidates are still collected so that
+    /// supply-pile affordances (e.g., scavenge_carcass_scraps) are available.
+    /// </summary>
+    private static List<ActionCandidate> GenerateCrabCandidates(
+        ActorId actorId,
+        CrabActorState crab,
+        IslandWorldState islandWorld,
+        long currentTick,
+        IRngStream rngStream,
+        Random rng,
+        IResourceAvailability resourceAvailability)
+    {
+        crab.ActiveBuffs.RemoveAll(b => b.ExpiresAtTick <= currentTick);
+
+        // Build a minimal quality model for crabs: food-driven when hungry, rest-driven when tired.
+        var crabModel = BuildCrabQualityModel(crab);
+
+        var ctx = new IslandContext(
+            actorId,
+            crab,
+            islandWorld,
+            currentTick,
+            rngStream,
+            rng,
+            resourceAvailability,
+            crabModel,
+            DecisionTuningProfile.Default
+        );
+
+        var candidates = new List<ActionCandidate>();
+
+        // World items can still provide candidates (supply piles with CarcassScraps, etc.).
+        foreach (var item in islandWorld.WorldItems
+            .OfType<IIslandActionCandidate>()
+            .Cast<WorldItem>()
+            .OrderBy(wi => wi.Id)
+            .Cast<IIslandActionCandidate>())
+        {
+            var wi = (WorldItem)item;
+            var itemCandidates = new List<ActionCandidate>();
+            item.AddCandidates(ctx, itemCandidates);
+            foreach (var c in itemCandidates)
+                candidates.Add(c with { ProviderItemId = wi.Id });
+        }
+
+        // Crab self-candidates (idle/rest).
+        var selfCandidates = new List<ActionCandidate>();
+        crab.AddCandidates(ctx, selfCandidates);
+        foreach (var c in selfCandidates)
+            candidates.Add(c with { ProviderItemId = actorId.Value });
+
+        // Filter by actor requirement (removes all human-only candidates).
+        candidates.RemoveAll(c => c.ActorRequirement != null && !c.ActorRequirement(crab));
+
+        // Score using crab quality model.
+        for (var i = 0; i < candidates.Count; i++)
+        {
+            var c = candidates[i];
+            var qualitySum = 0.0;
+            if (c.Qualities != null)
+            {
+                foreach (var (q, v) in c.Qualities)
+                    qualitySum += crabModel(q) * v;
+            }
+            candidates[i] = c with { Score = c.IntrinsicScore + qualitySum };
+        }
+
+        return candidates;
+    }
+
+    /// <summary>
+    /// Builds a minimal quality-weight function for crab decision-making.
+    /// Driven entirely by physiological state (satiety and energy pressure).
+    /// </summary>
+    private static Func<QualityType, double> BuildCrabQualityModel(CrabActorState crab)
+    {
+        // Food pressure: increases as satiety drops.
+        var foodPressure = Math.Max(0.0, (60.0 - crab.Satiety) / 60.0);  // ramps up below 60
+        // Rest pressure: increases as energy drops.
+        var restPressure = Math.Max(0.0, (50.0 - crab.Energy) / 50.0);   // ramps up below 50
+
+        return q => q switch
+        {
+            QualityType.FoodConsumption => 1.0 + foodPressure * 2.0,
+            QualityType.FoodAcquisition => 0.5 + foodPressure * 1.0,
+            QualityType.Safety          => 0.3 + restPressure * 1.5,
+            _                           => 0.0
+        };
     }
 
     /// <summary>
@@ -684,7 +846,7 @@ public class IslandDomainPack : IDomainPack
             ActorId = actorId,
             // Use a placeholder outcome: PreAction only reads world/actor state, not outcome data
             Outcome = new ActionOutcome(new ActionId("preaction_placeholder"), ActionOutcomeType.Success, Duration.FromTicks(0L)),
-            Actor = (HumanActorState)actorState,
+            Actor = (LivingActorState)actorState,
             World = (IslandWorldState)worldState,
             Tier = null,
             Rng = rng,
@@ -716,13 +878,12 @@ public class IslandDomainPack : IDomainPack
         IResourceAvailability resourceAvailability,
         object? effectHandler = null)
     {
-        var islandActorState = (HumanActorState)actorState;
+        var livingActorState = (LivingActorState)actorState;
         var islandWorld = (IslandWorldState)worldState;
 
-        // Metabolism is now handled by MetabolicBuff.OnTick each world tick.
-        // Reset the buff intensity back to Light once the action completes so the next
-        // action starts at the default resting/light-activity rate.
-        var metabolicBuff = islandActorState.ActiveBuffs.OfType<MetabolicBuff>().FirstOrDefault();
+        // Reset MetabolicBuff intensity for human actors once the action completes.
+        // Crabs use CrabPhysiologyBuff and do not have a MetabolicBuff.
+        var metabolicBuff = livingActorState.ActiveBuffs.OfType<MetabolicBuff>().FirstOrDefault();
         if (metabolicBuff != null)
             metabolicBuff.Intensity = MetabolicIntensity.Light;
 
@@ -733,7 +894,7 @@ public class IslandDomainPack : IDomainPack
             {
                 ActorId = actorId,
                 Outcome = outcome,
-                Actor = islandActorState,
+                Actor = livingActorState,
                 World = islandWorld,
                 Tier = GetTierFromOutcome(outcome),
                 Rng = rng,
@@ -753,14 +914,17 @@ public class IslandDomainPack : IDomainPack
                 outcome.ResultData["outcomeNarration"] = effectCtx.OutcomeNarration;
         }
 
-        // Apply outcome-driven morale adjustment (after any action-specific effects).
-        ApplyOutcomeMorale(actorId, outcome, islandActorState, islandWorld);
+        // Apply outcome-driven morale adjustment for human actors only.
+        // Crabs do not have morale-based decision making.
+        if (livingActorState is HumanActorState humanActor)
+            ApplyOutcomeMorale(actorId, outcome, humanActor, islandWorld);
     }
 
     /// <summary>
     /// Adjusts morale based on the outcome of an action.  The adjustment is derived from
     /// the <see cref="RollOutcomeTier"/> stored in <c>outcome.ResultData["tier"]</c> when
     /// available, falling back to <see cref="ActionOutcomeType"/> otherwise.
+    /// Only applies to human actors; crabs do not have morale-driven decision making.
     /// </summary>
     private void ApplyOutcomeMorale(
         ActorId actorId,
@@ -895,19 +1059,19 @@ public class IslandDomainPack : IDomainPack
 
     public Dictionary<string, object> GetActorStateSnapshot(ActorState actorState)
     {
-        var islandActorState = (HumanActorState)actorState;
+        var livingActor = (LivingActorState)actorState;
         var snapshot = new Dictionary<string, object>
         {
-            ["satiety"] = FormatStat(islandActorState.Satiety, "satiety"),
-            ["energy"]  = FormatStat(islandActorState.Energy,  "energy"),
-            ["morale"]  = FormatStat(islandActorState.Morale,  "morale"),
-            ["health"]  = FormatStat(islandActorState.Health,  "health")
+            ["satiety"] = FormatStat(livingActor.Satiety, "satiety"),
+            ["energy"]  = FormatStat(livingActor.Energy,  "energy"),
+            ["morale"]  = FormatStat(livingActor.Morale,  "morale"),
+            ["health"]  = FormatStat(livingActor.Health,  "health")
         };
         
-        if (islandActorState.ActiveBuffs.Count > 0)
+        if (livingActor.ActiveBuffs.Count > 0)
         {
             snapshot["active_buffs"] = string.Join(", ", 
-                islandActorState.ActiveBuffs.Select(b => $"{b.Name}({b.ExpiresAtTick})"));
+                livingActor.ActiveBuffs.Select(b => $"{b.Name}({b.ExpiresAtTick})"));
         }
         
         return snapshot;
@@ -956,6 +1120,22 @@ public class IslandDomainPack : IDomainPack
                 buff.OnTick(livingActor, worldState, currentTick);
         }
 
+        // Delegate autonomous world events (e.g., animal spawning) to world items
+        // that implement IIslandWorldEventProvider.
+        var mutableActors = actors as Dictionary<ActorId, ActorState>;
+        foreach (var item in islandWorld.WorldItems.OfType<IIslandWorldEventProvider>())
+            item.ExecuteWorldEvents(islandWorld, currentTick, mutableActors);
+
+        // Drain actor-removal requests posted by effect handlers (e.g., catch_crab).
+        // Removals are deferred so they happen in TickWorldState where we have access
+        // to the mutable actors dictionary, not inside the effect handler itself.
+        if (mutableActors != null && islandWorld.PendingActorRemovals.Count > 0)
+        {
+            foreach (var actorId in islandWorld.PendingActorRemovals)
+                mutableActors.Remove(actorId);
+            islandWorld.PendingActorRemovals.Clear();
+        }
+
         return islandWorld.OnTickAdvanced(currentTick, resourceAvailability);
     }
 
@@ -981,6 +1161,7 @@ public class IslandDomainPack : IDomainPack
     /// without replacement using the provided RNG.
     /// Populates <paramref name="debugSink"/> (when non-null) with structured ordering
     /// branch information for engine-level decision traces.
+    /// Non-human actors (e.g., crabs) always use best-first order.
     /// </summary>
     public IReadOnlyList<ActionCandidate> OrderCandidatesForSelection(
         ActorId actorId,
@@ -994,7 +1175,10 @@ public class IslandDomainPack : IDomainPack
         if (sortedCandidates.Count == 0)
             return sortedCandidates;
 
-        var actor = (HumanActorState)actorState;
+        // Non-human actors (e.g., crabs) always use deterministic best-first order.
+        if (actorState is not HumanActorState actor)
+            return sortedCandidates;
+
         var p = Math.Clamp(actor.DecisionPragmatism, 0.0, 1.0);
 
         var originalTopActionId = sortedCandidates[0].Action.Id.Value;

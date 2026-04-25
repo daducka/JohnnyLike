@@ -8,7 +8,7 @@ namespace JohnnyLike.Domain.Island.Supply;
 /// <summary>
 /// Represents a pile of supplies with generic methods to manage different supply types
 /// </summary>
-public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
+public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty, IIslandWorldEventProvider
 {
     public List<SupplyItem> Supplies { get; set; } = new();
     public string AccessControl { get; set; }
@@ -143,10 +143,32 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
         AddThinkAboutSuppliesCandidate(ctx, output);
     }
 
+    /// <summary>
+    /// Delegates to each supply item that implements <see cref="ISupplyWorldEventProvider"/>,
+    /// allowing those supplies to trigger autonomous world events (such as animal spawning)
+    /// that do not require an actor decision context.
+    /// Called once per tick by <see cref="IslandDomainPack.TickWorldState"/>.
+    /// </summary>
+    public void ExecuteWorldEvents(
+        IslandWorldState world,
+        long currentTick,
+        Dictionary<ActorId, ActorState>? mutableActors)
+    {
+        foreach (var supply in Supplies)
+        {
+            if (supply is ISupplyWorldEventProvider provider)
+                provider.ExecuteWorldEvents(this, world, currentTick, mutableActors);
+        }
+    }
+
     private void AddThinkAboutSuppliesCandidate(IslandContext ctx, List<ActionCandidate> output)
     {
+        // think_about_supplies is human-only. Skip for non-human actors.
+        if (ctx.Actor is not HumanActorState humanActor)
+            return;
+
         var tuning = ctx.TuningProfile.Categories.ThinkAboutSupplies;
-        var qualities = ComputeThinkAboutSuppliesQualities(ctx.Actor, ctx.World, tuning, ctx.QualityEffectiveWeight);
+        var qualities = ComputeThinkAboutSuppliesQualities(humanActor, ctx.World, tuning, ctx.QualityEffectiveWeight);
 
         output.Add(new ActionCandidate(
             new ActionSpec(
@@ -160,11 +182,12 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty
             Reason: "Think about supplies",
             EffectHandler: new Action<EffectContext>(effectCtx =>
             {
-                RecipeDiscoverySystem.TryDiscover(
-                    effectCtx.Actor, effectCtx.World, effectCtx.Rng,
-                    DiscoveryTrigger.ThinkAboutSupplies,
-                    actorId: effectCtx.ActorId.Value,
-                    sourceActionId: "think_about_supplies");
+                if (effectCtx.Actor is HumanActorState humanEffectActor)
+                    RecipeDiscoverySystem.TryDiscover(
+                        humanEffectActor, effectCtx.World, effectCtx.Rng,
+                        DiscoveryTrigger.ThinkAboutSupplies,
+                        actorId: effectCtx.ActorId.Value,
+                        sourceActionId: "think_about_supplies");
             }),
             Qualities: qualities,
             ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)

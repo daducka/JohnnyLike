@@ -184,7 +184,7 @@ public class HumanActorState : LivingActorState, IIslandActionCandidate
                 [QualityType.Comfort]    = 0.2,
                 [QualityType.Efficiency] = -0.5
             },
-            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
+            ActorRequirement: actor => CandidateRequirements.IsSelf(Id)(actor) && CandidateRequirements.AliveOnly(actor)
         ));
         
         // Known recipes
@@ -309,7 +309,7 @@ public class HumanActorState : LivingActorState, IIslandActionCandidate
                 }
             }),
             Qualities: new Dictionary<QualityType, double>(),
-            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DownedOnly(actor)
+            ActorRequirement: actor => CandidateRequirements.IsSelf(Id)(actor) && CandidateRequirements.DownedOnly(actor)
         ));
 
         // ── whimper ────────────────────────────────────────────────────────────
@@ -352,7 +352,7 @@ public class HumanActorState : LivingActorState, IIslandActionCandidate
             {
                 [QualityType.Safety] = 0.5
             },
-            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DownedOnly(actor)
+            ActorRequirement: actor => CandidateRequirements.IsSelf(Id)(actor) && CandidateRequirements.DownedOnly(actor)
         ));
 
         // ── stare_blankly ──────────────────────────────────────────────────────
@@ -395,7 +395,7 @@ public class HumanActorState : LivingActorState, IIslandActionCandidate
             {
                 [QualityType.Safety] = 0.5
             },
-            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DownedOnly(actor)
+            ActorRequirement: actor => CandidateRequirements.IsSelf(Id)(actor) && CandidateRequirements.DownedOnly(actor)
         ));
 
         // ── crawl_weakly ───────────────────────────────────────────────────────
@@ -445,7 +445,7 @@ public class HumanActorState : LivingActorState, IIslandActionCandidate
             {
                 [QualityType.Safety] = 0.5
             },
-            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DownedOnly(actor)
+            ActorRequirement: actor => CandidateRequirements.IsSelf(Id)(actor) && CandidateRequirements.DownedOnly(actor)
         ));
     }
 
@@ -464,7 +464,7 @@ public class HumanActorState : LivingActorState, IIslandActionCandidate
             0.0,
             Reason: "Lie still (dead)",
             Qualities: new Dictionary<QualityType, double>(),
-            ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.DeadOnly(actor)
+            ActorRequirement: actor => CandidateRequirements.IsSelf(Id)(actor) && CandidateRequirements.DeadOnly(actor)
         ));
     }
 }

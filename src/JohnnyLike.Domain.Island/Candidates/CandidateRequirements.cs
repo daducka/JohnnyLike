@@ -77,4 +77,27 @@ public static class CandidateRequirements
     /// </summary>
     public static Func<ActorState, bool> HasBuffWhere<T>(Func<T, bool> predicate) where T : ActiveBuff =>
         actor => actor is LivingActorState living && living.HasBuffWhere(predicate);
+
+    /// <summary>
+    /// Requires the actor to be a scavenger (e.g., <see cref="CrabActorState"/>).
+    /// Scavengers can access carcass-scrap-based food actions that humans cannot.
+    /// This is the first non-human actor qualifier; it may be shared by multiple animal types.
+    /// </summary>
+    public static Func<ActorState, bool> IsScavenger { get; } =
+        actor => actor is CrabActorState;
+
+    /// <summary>
+    /// Returns a requirement predicate that passes only when the requesting actor is the
+    /// specific actor identified by <paramref name="actorId"/>.
+    /// Use this to gate self-actions so they are only seen by the provider actor itself,
+    /// not by other actors iterating the provider's candidate list.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// ActorRequirement: actor => CandidateRequirements.IsSelf(this.Id)(actor)
+    ///                            &amp;&amp; CandidateRequirements.AliveOnly(actor)
+    /// </code>
+    /// </example>
+    public static Func<ActorState, bool> IsSelf(ActorId actorId) =>
+        actor => actor.Id == actorId;
 }

@@ -19,6 +19,24 @@ public class IslandWorldState : WorldState
     public SupplyPile? SharedSupplyPile => WorldItems.OfType<SupplyPile>()
         .FirstOrDefault(p => p.AccessControl == "shared");
 
+    /// <summary>
+    /// Active crab actors present in the world. Populated and maintained by
+    /// <see cref="IslandDomainPack"/> during ticking and spawning.
+    /// Used during candidate generation so that crab actors can offer affordances
+    /// (such as <c>catch_crab</c>) to human actors.
+    /// </summary>
+    public List<CrabActorState> ActiveCrabActors { get; } = new();
+
+    /// <summary>
+    /// Actor IDs that should be fully removed from the engine's actor dictionary on the
+    /// next <see cref="IslandDomainPack.TickWorldState"/> call.
+    ///
+    /// Effect handlers (e.g., <c>catch_crab</c>) populate this set to signal that an actor
+    /// has been permanently consumed/removed and must not receive future ticks or decisions.
+    /// <see cref="IslandDomainPack.TickWorldState"/> drains this set each tick.
+    /// </summary>
+    public HashSet<ActorId> PendingActorRemovals { get; } = new();
+
     public T? GetItem<T>(string id) where T : WorldItem
     {
         return WorldItems.OfType<T>().FirstOrDefault(x => x.Id == id);

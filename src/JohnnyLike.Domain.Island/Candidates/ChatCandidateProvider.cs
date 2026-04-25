@@ -23,6 +23,7 @@ public static class ChatCandidateProvider
             return;
 
         var intent = actor.PendingChatActions.Peek();
+        var actorId = actor.Id;
 
         if (intent.ActionId == "write_name_sand")
         {
@@ -39,8 +40,9 @@ public static class ChatCandidateProvider
                 Reason: $"Write {name}'s name in sand (chat redeem)",
                 EffectHandler: new Action<EffectContext>(effectCtx =>
                 {
-                    if (effectCtx.Actor.PendingChatActions.Count > 0)
-                        effectCtx.Actor.PendingChatActions.Dequeue();
+                    if (effectCtx.Actor is HumanActorState humanActor &&
+                        humanActor.PendingChatActions.Count > 0)
+                        humanActor.PendingChatActions.Dequeue();
 
                     effectCtx.Actor.Morale += 10.0;
                 }),
@@ -49,7 +51,7 @@ public static class ChatCandidateProvider
                     [QualityType.Fun]     = 0.8,
                     [QualityType.Comfort] = 0.2
                 },
-                ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
+                ActorRequirement: a => CandidateRequirements.IsSelf(actorId)(a) && CandidateRequirements.AliveOnly(a)
             ));
         }
         else if (intent.ActionId == "clap_emote")
@@ -66,8 +68,9 @@ public static class ChatCandidateProvider
                 Reason: "Clap emote (sub/cheer)",
                 EffectHandler: new Action<EffectContext>(effectCtx =>
                 {
-                    if (effectCtx.Actor.PendingChatActions.Count > 0)
-                        effectCtx.Actor.PendingChatActions.Dequeue();
+                    if (effectCtx.Actor is HumanActorState humanActor &&
+                        humanActor.PendingChatActions.Count > 0)
+                        humanActor.PendingChatActions.Dequeue();
 
                     effectCtx.Actor.Morale += 3.0;
                 }),
@@ -76,7 +79,7 @@ public static class ChatCandidateProvider
                     [QualityType.Fun]     = 0.8,
                     [QualityType.Comfort] = 0.2
                 },
-                ActorRequirement: actor => CandidateRequirements.IsHuman(actor) && CandidateRequirements.AliveOnly(actor)
+                ActorRequirement: a => CandidateRequirements.IsSelf(actorId)(a) && CandidateRequirements.AliveOnly(a)
             ));
         }
     }
