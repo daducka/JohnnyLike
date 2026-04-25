@@ -272,7 +272,7 @@ public static class ArchetypeSurvivalRunner
     private static double ComputeStddev(IReadOnlyList<double> values, double mean)
     {
         if (values.Count <= 1) return 0.0;
-        var variance = values.Sum(v => (v - mean) * (v - mean)) / values.Count;
+        var variance = values.Sum(v => (v - mean) * (v - mean)) / (values.Count - 1);
         return Math.Sqrt(variance);
     }
 
