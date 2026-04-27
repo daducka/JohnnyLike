@@ -1079,8 +1079,8 @@ public class CrabFoodAndToolTests
         world.WorldItems.Add(new CalendarItem("calendar"));
         world.WorldItems.Add(new WeatherItem("weather"));
 
-        var net = new CrabTrapItem("crab_trap");
-        net.Quality = 100.0;
+        var trap = new CrabTrapItem("crab_trap");
+        trap.Quality = 100.0;
 
         var actor = MakeHuman();
 
@@ -1091,19 +1091,19 @@ public class CrabFoodAndToolTests
 
         var baitCtx = MakeCtx(actor, world, 0L);
         var baitCandidates = new List<ActionCandidate>();
-        net.AddCandidates(baitCtx, baitCandidates);
+        trap.AddCandidates(baitCtx, baitCandidates);
         var baitAction = baitCandidates.First(c => c.Action.Id.Value == "add_bait_to_crab_trap");
         var baitEffectCtx = MakeEffectCtx(actor, world);
         ((Func<EffectContext, bool>)baitAction.PreAction!)(baitEffectCtx);
         ((Action<EffectContext>)baitAction.EffectHandler!)(baitEffectCtx);
-        Assert.True(net.HasBait);
+        Assert.True(trap.HasBait);
 
         // Remove the pile so SharedSupplyPile is null during check
         world.WorldItems.Remove(tempPile);
 
         var checkCtx = MakeCtx(actor, world, CrabTrapItem.MinSoakTicks * 3);
         var checkCandidates = new List<ActionCandidate>();
-        net.AddCandidates(checkCtx, checkCandidates);
+        trap.AddCandidates(checkCtx, checkCandidates);
         var checkAction = checkCandidates.FirstOrDefault(c => c.Action.Id.Value == "check_crab_trap");
         Assert.NotNull(checkAction);
 
