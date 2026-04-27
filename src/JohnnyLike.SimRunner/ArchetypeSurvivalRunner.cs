@@ -88,6 +88,19 @@ public static class ArchetypeSurvivalRunner
         Console.WriteLine();
 
         var allRuns = new List<ArchetypeSurvivalRunResult>();
+
+        // Generate all per-run seeds up front from the base seed so that the study
+        // is fully reproducible but each run uses a well-distributed, independent seed.
+        var seedRng = new Random(options.BaseSeed);
+        var runSeeds = new Dictionary<string, int[]>();
+        foreach (var actorName in options.Actors)
+        {
+            var seeds = new int[options.RunsPerActor];
+            for (int i = 0; i < options.RunsPerActor; i++)
+                seeds[i] = seedRng.Next();
+            runSeeds[actorName] = seeds;
+        }
+
         var actorIndex = 0;
 
         foreach (var actorName in options.Actors)
@@ -103,7 +116,7 @@ public static class ArchetypeSurvivalRunner
 
             for (int run = 0; run < options.RunsPerActor; run++)
             {
-                var seed = options.BaseSeed + actorIndex * 10000 + run;
+                var seed = runSeeds[actorName][run];
                 var runResult = RunOne(actorName, archetypeData, seed, options.DurationSeconds, options.SaveTraces, options.OutputDirectory);
                 allRuns.Add(runResult);
 
