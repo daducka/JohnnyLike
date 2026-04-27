@@ -11,10 +11,13 @@ public static class IslandRecipeRegistry
         new Dictionary<string, RecipeDefinition>
         {
             ["cook_fish"]          = CookFish.Define(),
+            ["cook_crab"]          = CookCrab.Define(),
             ["umbrella"]           = Umbrella.Define(),
             ["campfire"]           = Campfire.Define(),
             ["rope"]               = Rope.Define(),
             ["fishing_pole"]       = FishingPole.Define(),
+            ["crab_trap"]          = CrabTrap.Define(),
+            ["fishing_net"]        = FishingNetRecipe.Define(),
             ["palm_frond_blanket"] = PalmFrondBlanket.Define(),
             ["palm_frond_bed"]     = PalmFrondBed.Define(),
             ["bait"]               = Bait.Define(),

@@ -5,36 +5,36 @@ using JohnnyLike.Domain.Island.Supply;
 namespace JohnnyLike.Domain.Island.Recipes.Definitions;
 
 /// <summary>
-/// Recipe: cook raw fish over a lit campfire to produce cooked fish.
-/// Discoverable when fish is in the supply pile and the campfire is lit.
+/// Recipe: cook raw crab over a lit campfire to produce cooked crab.
+/// Discoverable when crab is in the supply pile and the campfire is lit.
 /// </summary>
-public static class CookFish
+public static class CookCrab
 {
     public static RecipeDefinition Define()
     {
         var supplyCosts = new List<RecipeSupplyCost>
         {
-            RecipeSupplyCost.Of<FishSupply>(1)
+            RecipeSupplyCost.Of<CrabSupply>(1)
         };
 
         return new RecipeDefinition(
-            Id: "cook_fish",
-            DisplayName: "Cook fish over campfire",
+            Id: "cook_crab",
+            DisplayName: "Cook crab over campfire",
 
-            CraftActionId: new ActionId("cook_fish"),
+            CraftActionId: new ActionId("cook_crab"),
 
             Location: "campfire",
 
-            Duration: Duration.Minutes(25),
+            Duration: Duration.Minutes(30),
 
-            IntrinsicScore: 0.16,
+            IntrinsicScore: 0.20,
 
             Qualities: new Dictionary<QualityType, double>
             {
-                [QualityType.Preparation] = 0.90,
-                [QualityType.FoodConsumption] = 0.90,
-                [QualityType.Mastery]     = 0.20,
-                [QualityType.Efficiency]  = 0.65
+                [QualityType.Preparation]     = 0.90,
+                [QualityType.FoodConsumption] = 1.10,
+                [QualityType.Mastery]         = 0.25,
+                [QualityType.Efficiency]      = 0.65
             },
 
             CanCraft: ctx =>
@@ -61,10 +61,10 @@ public static class CookFish
                 var pile = effectCtx.World.SharedSupplyPile;
                 if (pile == null) return;
 
-                pile.AddSupply(1, () => new CookedFishSupply());
+                pile.AddSupply(1, () => new CookedCrabSupply());
                 effectCtx.World.Metrics.FoodCooked++;
                 var actor = effectCtx.ActorId.Value;
-                effectCtx.SetOutcomeNarration($"{actor} grills the fish to perfection.");
+                effectCtx.SetOutcomeNarration($"{actor} roasts the crab over the fire — the smell is heavenly.");
             },
 
             Discovery: new RecipeDiscoverySpec
@@ -76,7 +76,7 @@ public static class CookFish
                     var pile = world.SharedSupplyPile;
                     if (pile == null) return false;
 
-                    if (pile.GetQuantity<FishSupply>() < 1)
+                    if (pile.GetQuantity<CrabSupply>() < 1)
                         return false;
 
                     var campfire = world.MainCampfire;
@@ -85,7 +85,7 @@ public static class CookFish
 
                 BaseChance = 0.8,
                 DiscoveryBeatText = actorName =>
-                                    $"{actorName} realizes they could cook raw fish over the campfire to make it more delicious and satisfying."
+                    $"{actorName} looks at the crab and the campfire and realizes they could cook it for a much better meal."
             },
 
             SupplyCosts: supplyCosts

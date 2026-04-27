@@ -13,6 +13,9 @@ public class IslandWorldState : WorldState
 
     public List<WorldItem> WorldItems { get; set; } = new();
 
+    /// <summary>Centralized simulation counters for recipe triggers, debugging, and analytics.</summary>
+    public IslandMetrics Metrics { get; set; } = new();
+
     public CampfireItem? MainCampfire => WorldItems.OfType<CampfireItem>().FirstOrDefault();
     public TreasureChestItem? TreasureChest => WorldItems.OfType<TreasureChestItem>().FirstOrDefault();
     public SharkItem? Shark => WorldItems.OfType<SharkItem>().FirstOrDefault();
@@ -134,7 +137,8 @@ public class IslandWorldState : WorldState
         {
             CurrentTick,
             WorldItems = serializedItems,
-            Rooms = roomData
+            Rooms = roomData,
+            Metrics = Metrics.SerializeToDict()
         }, options);
     }
 
@@ -181,6 +185,13 @@ public class IslandWorldState : WorldState
                         AddItemToRoom(roomId, itemId);
                 }
             }
+        }
+
+        if (data.TryGetValue("Metrics", out var metricsElement))
+        {
+            var metricsData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(metricsElement.GetRawText());
+            if (metricsData != null)
+                Metrics.DeserializeFromDict(metricsData);
         }
     }
 }

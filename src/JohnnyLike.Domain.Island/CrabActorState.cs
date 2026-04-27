@@ -106,6 +106,8 @@ public class CrabActorState : LivingActorState, IIslandActionCandidate
                 if (pile != null)
                     pile.AddSupply(1.0, () => new CrabSupply());
 
+                effectCtx.World.Metrics.CrabsCaught++;
+
                 // Remove this crab immediately from the active actors list so it no longer
                 // offers catch affordances. The engine actor dictionary entry is removed on
                 // the next TickWorldState call via PendingActorRemovals.

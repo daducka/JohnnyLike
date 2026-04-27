@@ -1717,6 +1717,18 @@ public class IslandDomainPack : IDomainPack
             }));
         }
 
+        // ── Metrics snapshot ────────────────────────────────────────────────────
+        events.Add(new TraceEvent(currentTick, null, "PeriodicMetricsSnapshot", new Dictionary<string, object>
+        {
+            ["fishCaught"]        = islandWorld.Metrics.FishCaught,
+            ["crabsCaught"]       = islandWorld.Metrics.CrabsCaught,
+            ["crabTrapChecks"]    = islandWorld.Metrics.CrabTrapChecks,
+            ["crabTrapCatches"]   = islandWorld.Metrics.CrabTrapCatches,
+            ["fishingNetChecks"]  = islandWorld.Metrics.FishingNetChecks,
+            ["fishingNetCatches"] = islandWorld.Metrics.FishingNetCatches,
+            ["foodCooked"]        = islandWorld.Metrics.FoodCooked
+        }));
+
         return events;
     }
 }
