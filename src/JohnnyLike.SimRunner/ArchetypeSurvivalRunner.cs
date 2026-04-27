@@ -303,25 +303,23 @@ public static class ArchetypeSurvivalRunner
 
     // ── Console output ─────────────────────────────────────────────────────────
 
+    private static string ToDays(double seconds) => $"{seconds / 86400.0:F2} Days";
+
     private static void PrintRankingTable(ArchetypeSurvivalSummary summary)
     {
         Console.WriteLine();
         Console.WriteLine("=== ARCHETYPE SURVIVAL SUMMARY ===");
-        Console.WriteLine($"Duration: {summary.ConfiguredDurationSeconds}s");
+        Console.WriteLine($"Duration: {ToDays(summary.ConfiguredDurationSeconds)}");
         Console.WriteLine($"Runs per archetype: {summary.RunsPerActor}");
         Console.WriteLine();
 
         const int rankW    = 4;
         const int actorW   = 12;
         const int survW    = 9;
-        const int meanW    = 10;
-        const int medW     = 10;
-        const int stdW     = 10;
-        const int minW     = 9;
-        const int maxW     = 9;
+        const int timeW    = 12;
 
-        var header = $"{"Rank",rankW}  {"Actor",-actorW}  {"Survive%",survW}  {"Mean(s)",meanW}  {"Median(s)",medW}  {"StdDev(s)",stdW}  {"Min(s)",minW}  {"Max(s)",maxW}";
-        var sep    = $"{"----",rankW}  {"----------",-actorW}  {"---------",survW}  {"--------",meanW}  {"----------",medW}  {"----------",stdW}  {"-------",minW}  {"-------",maxW}";
+        var header = $"{"Rank",rankW}  {"Actor",-actorW}  {"Survive%",survW}  {"Mean",timeW}  {"Median",timeW}  {"StdDev",timeW}  {"Min",timeW}  {"Max",timeW}";
+        var sep    = $"{"----",rankW}  {"----------",-actorW}  {"---------",survW}  {"----------",timeW}  {"----------",timeW}  {"----------",timeW}  {"----------",timeW}  {"----------",timeW}";
 
         Console.WriteLine(header);
         Console.WriteLine(sep);
@@ -331,7 +329,7 @@ public static class ArchetypeSurvivalRunner
         {
             var survPct = $"{e.SurvivedToEndRate * 100.0:F1}%";
             Console.WriteLine(
-                $"{rank,rankW}  {e.Actor,-actorW}  {survPct,survW}  {e.MeanSurvivalTimeSeconds,meanW:F0}  {e.MedianSurvivalTimeSeconds,medW:F0}  {e.StddevSurvivalTimeSeconds,stdW:F0}  {e.MinSurvivalTimeSeconds,minW:F0}  {e.MaxSurvivalTimeSeconds,maxW:F0}");
+                $"{rank,rankW}  {e.Actor,-actorW}  {survPct,survW}  {ToDays(e.MeanSurvivalTimeSeconds),timeW}  {ToDays(e.MedianSurvivalTimeSeconds),timeW}  {ToDays(e.StddevSurvivalTimeSeconds),timeW}  {ToDays(e.MinSurvivalTimeSeconds),timeW}  {ToDays(e.MaxSurvivalTimeSeconds),timeW}");
             rank++;
         }
 

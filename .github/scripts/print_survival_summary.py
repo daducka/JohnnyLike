@@ -54,10 +54,10 @@ def fmt_pct(v: float) -> str:
     return f"{v * 100.0:.1f}%"
 
 
-def fmt_s(v) -> str:
+def fmt_days(v) -> str:
     if v is None:
         return "—"
-    return f"{float(v):.0f}"
+    return f"{float(v) / 86400.0:.2f} Days"
 
 
 def _g(entry: dict, *keys):
@@ -65,25 +65,27 @@ def _g(entry: dict, *keys):
 
 
 def print_table(summary: dict, entries: list[dict]) -> None:
-    duration = get(summary, "configuredDurationSeconds", "ConfiguredDurationSeconds") or "?"
+    duration = get(summary, "configuredDurationSeconds", "ConfiguredDurationSeconds") or 0.0
     runs     = get(summary, "runsPerActor", "RunsPerActor") or "?"
+    dur_days = fmt_days(duration)
 
     print("=== ARCHETYPE SURVIVAL SUMMARY ===")
-    print(f"Duration: {duration}s")
+    print(f"Duration: {dur_days}")
     print(f"Runs per archetype: {runs}")
     print()
 
     # Column widths
     actor_w = max(10, max((len(get(e, "actor", "Actor") or "") for e in entries), default=10))
+    time_w  = 12
     header = (
         f"{'Rank':>4}  {'Actor':<{actor_w}}  {'Survive%':>9}  "
-        f"{'Mean(s)':>10}  {'Median(s)':>10}  {'StdDev(s)':>10}  "
-        f"{'Min(s)':>9}  {'Max(s)':>9}"
+        f"{'Mean':>{time_w}}  {'Median':>{time_w}}  {'StdDev':>{time_w}}  "
+        f"{'Min':>{time_w}}  {'Max':>{time_w}}"
     )
     sep = (
         f"{'----':>4}  {'-' * actor_w:<{actor_w}}  {'---------':>9}  "
-        f"{'--------':>10}  {'----------':>10}  {'----------':>10}  "
-        f"{'-------':>9}  {'-------':>9}"
+        f"{'----------':>{time_w}}  {'----------':>{time_w}}  {'----------':>{time_w}}  "
+        f"{'----------':>{time_w}}  {'----------':>{time_w}}"
     )
 
     print(header)
@@ -92,16 +94,16 @@ def print_table(summary: dict, entries: list[dict]) -> None:
     for rank, e in enumerate(entries, start=1):
         actor  = get(e, "actor", "Actor") or "?"
         surv   = fmt_pct(_g(e, "survivedToEndRate", "SurvivedToEndRate"))
-        mean   = fmt_s(get(e, "meanSurvivalTimeSeconds", "MeanSurvivalTimeSeconds"))
-        median = fmt_s(get(e, "medianSurvivalTimeSeconds", "MedianSurvivalTimeSeconds"))
-        stddev = fmt_s(get(e, "stddevSurvivalTimeSeconds", "StddevSurvivalTimeSeconds"))
-        mn     = fmt_s(get(e, "minSurvivalTimeSeconds", "MinSurvivalTimeSeconds"))
-        mx     = fmt_s(get(e, "maxSurvivalTimeSeconds", "MaxSurvivalTimeSeconds"))
+        mean   = fmt_days(get(e, "meanSurvivalTimeSeconds", "MeanSurvivalTimeSeconds"))
+        median = fmt_days(get(e, "medianSurvivalTimeSeconds", "MedianSurvivalTimeSeconds"))
+        stddev = fmt_days(get(e, "stddevSurvivalTimeSeconds", "StddevSurvivalTimeSeconds"))
+        mn     = fmt_days(get(e, "minSurvivalTimeSeconds", "MinSurvivalTimeSeconds"))
+        mx     = fmt_days(get(e, "maxSurvivalTimeSeconds", "MaxSurvivalTimeSeconds"))
 
         print(
             f"{rank:>4}  {actor:<{actor_w}}  {surv:>9}  "
-            f"{mean:>10}  {median:>10}  {stddev:>10}  "
-            f"{mn:>9}  {mx:>9}"
+            f"{mean:>{time_w}}  {median:>{time_w}}  {stddev:>{time_w}}  "
+            f"{mn:>{time_w}}  {mx:>{time_w}}"
         )
 
     print()
@@ -112,19 +114,19 @@ def write_step_summary(summary: dict, entries: list[dict]) -> None:
     if not summary_path:
         return
 
-    duration = get(summary, "configuredDurationSeconds", "ConfiguredDurationSeconds") or "?"
+    duration = get(summary, "configuredDurationSeconds", "ConfiguredDurationSeconds") or 0.0
     runs     = get(summary, "runsPerActor", "RunsPerActor") or "?"
     ts       = get(summary, "timestamp", "Timestamp") or ""
 
     lines = []
     lines.append("## 🏝️ Archetype Survival Study")
     lines.append("")
-    lines.append(f"**Duration:** {duration}s &nbsp; **Runs per archetype:** {runs}")
+    lines.append(f"**Duration:** {fmt_days(duration)} &nbsp; **Runs per archetype:** {runs}")
     if ts:
         lines.append(f"**Generated:** {ts}")
     lines.append("")
     lines.append(
-        "| Rank | Actor | Survive% | Mean (s) | Median (s) | StdDev (s) | Min (s) | Max (s) |"
+        "| Rank | Actor | Survive% | Mean | Median | StdDev | Min | Max |"
     )
     lines.append(
         "|-----:|-------|--------:|--------:|----------:|-----------:|--------:|--------:|"
@@ -133,11 +135,11 @@ def write_step_summary(summary: dict, entries: list[dict]) -> None:
     for rank, e in enumerate(entries, start=1):
         actor  = get(e, "actor", "Actor") or "?"
         surv   = fmt_pct(_g(e, "survivedToEndRate", "SurvivedToEndRate"))
-        mean   = fmt_s(get(e, "meanSurvivalTimeSeconds", "MeanSurvivalTimeSeconds"))
-        median = fmt_s(get(e, "medianSurvivalTimeSeconds", "MedianSurvivalTimeSeconds"))
-        stddev = fmt_s(get(e, "stddevSurvivalTimeSeconds", "StddevSurvivalTimeSeconds"))
-        mn     = fmt_s(get(e, "minSurvivalTimeSeconds", "MinSurvivalTimeSeconds"))
-        mx     = fmt_s(get(e, "maxSurvivalTimeSeconds", "MaxSurvivalTimeSeconds"))
+        mean   = fmt_days(get(e, "meanSurvivalTimeSeconds", "MeanSurvivalTimeSeconds"))
+        median = fmt_days(get(e, "medianSurvivalTimeSeconds", "MedianSurvivalTimeSeconds"))
+        stddev = fmt_days(get(e, "stddevSurvivalTimeSeconds", "StddevSurvivalTimeSeconds"))
+        mn     = fmt_days(get(e, "minSurvivalTimeSeconds", "MinSurvivalTimeSeconds"))
+        mx     = fmt_days(get(e, "maxSurvivalTimeSeconds", "MaxSurvivalTimeSeconds"))
         lines.append(f"| {rank} | {actor} | {surv} | {mean} | {median} | {stddev} | {mn} | {mx} |")
 
     lines.append("")
