@@ -1,0 +1,63 @@
+name: Archetype Survival Study
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Runs per archetype
+        required: true
+        default: '50'
+      duration_seconds:
+        description: Simulation duration in seconds
+        required: true
+        default: '86400'
+      actors:
+        description: Comma-separated actor names or 'all'
+        required: true
+        default: 'all'
+      base_seed:
+        description: Base random seed
+        required: true
+        default: '42'
+  schedule:
+    - cron: '0 9 * * 1'
+
+jobs:
+  survival-study:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore JohnnyLike.sln
+
+    - name: Build (Release)
+      run: dotnet build JohnnyLike.sln --configuration Release --no-restore /warnaserror
+
+    - name: Run survival study
+      run: |
+        dotnet run --project src/JohnnyLike.SimRunner --configuration Release --no-build -- survival-study \
+          --actors "${{ github.event.inputs.actors || 'all' }}" \
+          --runs "${{ github.event.inputs.runs || '50' }}" \
+          --duration "${{ github.event.inputs.duration_seconds || '86400' }}" \
+          --seed "${{ github.event.inputs.base_seed || '42' }}" \
+          --output artifacts/survival
+
+    - name: Print formatted summary
+      run: |
+        python .github/scripts/print_survival_summary.py artifacts/survival/survival-summary.json
+
+    - name: Upload survival artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: archetype-survival-study
+        path: artifacts/survival/
+        retention-days: 30

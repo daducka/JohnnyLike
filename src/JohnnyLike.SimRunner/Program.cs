@@ -40,6 +40,13 @@ if (args.Length > 0 && args[0] == "run-fuzzer")
     return;
 }
 
+// ── survival-study subcommand ──────────────────────────────────────────────
+if (args.Length > 0 && args[0] == "survival-study")
+{
+    RunSurvivalStudy(args[1..]);
+    return;
+}
+
 if (args.Length == 0)
 {
     Console.WriteLine("JohnnyLike SimRunner");
@@ -79,6 +86,15 @@ if (args.Length == 0)
     Console.WriteLine("  --golden-states <path>      Path to golden-states JSON file (default: embedded dataset)");
     Console.WriteLine("  --output <path>             Output JSON file path (default: ./optimizer-results.json)");
     Console.WriteLine("  --max-iterations <n>        Max coordinate-descent iterations (default: 20)");
+    Console.WriteLine("\nArchetype Survival Study:");
+    Console.WriteLine("  survival-study              Run full-lifecycle survival study across archetypes");
+    Console.WriteLine("  --actors <names|all>        Comma-separated actor names or 'all' (default: all)");
+    Console.WriteLine($"                              Available: {string.Join(", ", Archetypes.All.Keys)}");
+    Console.WriteLine("  --runs <n>                  Number of seeds/runs per archetype (default: 50)");
+    Console.WriteLine("  --duration <sec>            Study horizon in seconds (default: 86400)");
+    Console.WriteLine("  --seed <n>                  Base random seed (default: 42)");
+    Console.WriteLine("  --output <path>             Output directory (default: artifacts/survival)");
+    Console.WriteLine("  --save-traces               Save per-run trace files for debugging");
     return;
 }
 
@@ -1578,4 +1594,59 @@ void RunFuzzerComparison(string[] fuzzerArgs)
 
     Console.WriteLine();
     Console.WriteLine($"✓ All artifacts written to {outputDir}");
+}
+
+void RunSurvivalStudy(string[] studyArgs)
+{
+    var actorFilter = new List<string>();
+    var runs        = 50;
+    var duration    = 86400.0;
+    var baseSeed    = 42;
+    var outputDir   = "artifacts/survival";
+    var saveTraces  = false;
+
+    for (int i = 0; i < studyArgs.Length; i++)
+    {
+        switch (studyArgs[i])
+        {
+            case "--actors":
+            {
+                var arg = studyArgs[++i];
+                if (arg.Equals("all", StringComparison.OrdinalIgnoreCase))
+                    actorFilter.AddRange(Archetypes.All.Keys);
+                else
+                    actorFilter.AddRange(arg.Split(',', StringSplitOptions.TrimEntries));
+                break;
+            }
+            case "--runs":
+                runs = int.Parse(studyArgs[++i]);
+                break;
+            case "--duration":
+                duration = double.Parse(studyArgs[++i]);
+                break;
+            case "--seed":
+                baseSeed = int.Parse(studyArgs[++i]);
+                break;
+            case "--output":
+                outputDir = studyArgs[++i];
+                break;
+            case "--save-traces":
+                saveTraces = true;
+                break;
+        }
+    }
+
+    var effectiveActors = actorFilter.Count > 0
+        ? actorFilter
+        : Archetypes.All.Keys.OrderBy(k => k).ToList();
+
+    var options = new ArchetypeSurvivalOptions(
+        Actors:          effectiveActors,
+        RunsPerActor:    runs,
+        DurationSeconds: duration,
+        BaseSeed:        baseSeed,
+        OutputDirectory: outputDir,
+        SaveTraces:      saveTraces);
+
+    ArchetypeSurvivalRunner.Run(options);
 }

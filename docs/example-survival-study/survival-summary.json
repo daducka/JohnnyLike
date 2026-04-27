@@ -1,0 +1,86 @@
+{
+  "ConfiguredDurationSeconds": 864000,
+  "RunsPerActor": 3,
+  "BaseSeed": 42,
+  "Timestamp": "2026-04-27T19:54:03.3593102Z",
+  "Archetypes": [
+    {
+      "Actor": "Frank",
+      "RunCount": 3,
+      "SurvivedToEndCount": 1,
+      "SurvivedToEndRate": 0.3333333333333333,
+      "MeanSurvivalTimeSeconds": 564224.1666666666,
+      "MedianSurvivalTimeSeconds": 504673,
+      "StddevSurvivalTimeSeconds": 274881.59467047505,
+      "MinSurvivalTimeSeconds": 323999.5,
+      "MaxSurvivalTimeSeconds": 864000,
+      "P25SurvivalTimeSeconds": 414336.25,
+      "P75SurvivalTimeSeconds": 684336.5
+    },
+    {
+      "Actor": "Sawyer",
+      "RunCount": 3,
+      "SurvivedToEndCount": 0,
+      "SurvivedToEndRate": 0,
+      "MeanSurvivalTimeSeconds": 613147.5,
+      "MedianSurvivalTimeSeconds": 668687,
+      "StddevSurvivalTimeSeconds": 130545.59130146832,
+      "MinSurvivalTimeSeconds": 464016,
+      "MaxSurvivalTimeSeconds": 706739.5,
+      "P25SurvivalTimeSeconds": 566351.5,
+      "P75SurvivalTimeSeconds": 687713.25
+    },
+    {
+      "Actor": "Elizabeth",
+      "RunCount": 3,
+      "SurvivedToEndCount": 0,
+      "SurvivedToEndRate": 0,
+      "MeanSurvivalTimeSeconds": 665956.5,
+      "MedianSurvivalTimeSeconds": 626419,
+      "StddevSurvivalTimeSeconds": 80137.56155979542,
+      "MinSurvivalTimeSeconds": 613271,
+      "MaxSurvivalTimeSeconds": 758179.5,
+      "P25SurvivalTimeSeconds": 619845,
+      "P75SurvivalTimeSeconds": 692299.25
+    },
+    {
+      "Actor": "Johnny",
+      "RunCount": 3,
+      "SurvivedToEndCount": 0,
+      "SurvivedToEndRate": 0,
+      "MeanSurvivalTimeSeconds": 593912.5,
+      "MedianSurvivalTimeSeconds": 604739,
+      "StddevSurvivalTimeSeconds": 65795.72755696224,
+      "MinSurvivalTimeSeconds": 523375,
+      "MaxSurvivalTimeSeconds": 653623.5,
+      "P25SurvivalTimeSeconds": 564057,
+      "P75SurvivalTimeSeconds": 629181.25
+    },
+    {
+      "Actor": "Ashley",
+      "RunCount": 3,
+      "SurvivedToEndCount": 0,
+      "SurvivedToEndRate": 0,
+      "MeanSurvivalTimeSeconds": 484318.8333333333,
+      "MedianSurvivalTimeSeconds": 513888,
+      "StddevSurvivalTimeSeconds": 136104.45676789328,
+      "MinSurvivalTimeSeconds": 335860.5,
+      "MaxSurvivalTimeSeconds": 603208,
+      "P25SurvivalTimeSeconds": 424874.25,
+      "P75SurvivalTimeSeconds": 558548
+    },
+    {
+      "Actor": "Oscar",
+      "RunCount": 3,
+      "SurvivedToEndCount": 0,
+      "SurvivedToEndRate": 0,
+      "MeanSurvivalTimeSeconds": 473995.5,
+      "MedianSurvivalTimeSeconds": 497923.5,
+      "StddevSurvivalTimeSeconds": 70248.90758581233,
+      "MinSurvivalTimeSeconds": 394908.5,
+      "MaxSurvivalTimeSeconds": 529154.5,
+      "P25SurvivalTimeSeconds": 446416,
+      "P75SurvivalTimeSeconds": 513539
+    }
+  ]
+}
