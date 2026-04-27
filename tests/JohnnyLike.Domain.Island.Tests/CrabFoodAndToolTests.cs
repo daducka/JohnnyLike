@@ -435,6 +435,10 @@ public class CrabFoodAndToolTests
         var (world, pile) = MakeWorld();
         pile.AddSupply(1.0, () => new BaitSupply());
 
+        // A crab actor must be present for the check to be offered and succeed.
+        var crabActor = IslandDomainPack.CreateCrabActorState(new ActorId("crab1"));
+        world.ActiveCrabActors.Add(crabActor);
+
         var trap  = new CrabTrapItem("crab_trap");
         trap.Quality = 100.0;
 
@@ -457,12 +461,17 @@ public class CrabFoodAndToolTests
         var checkAction = checkCandidates.FirstOrDefault(c => c.Action.Id.Value == "check_crab_trap");
         Assert.NotNull(checkAction);
 
-        // Run check with a success tier
-        ((Action<EffectContext>)checkAction.EffectHandler!)(MakeEffectCtx(actor, world, RollOutcomeTier.Success));
+        // Run PreAction (reserves the crab actor) then EffectHandler with success tier
+        var effectCtx = MakeEffectCtx(actor, world, RollOutcomeTier.Success);
+        ((Func<EffectContext, bool>)checkAction.PreAction!)(effectCtx);
+        ((Action<EffectContext>)checkAction.EffectHandler!)(effectCtx);
 
         Assert.Equal(1, world.Metrics.CrabTrapChecks);
         Assert.Equal(1, world.Metrics.CrabTrapCatches);
         Assert.Equal(1.0, pile.GetQuantity<CrabSupply>());
+        // The reserved crab actor is now in PendingActorRemovals, not in ActiveCrabActors
+        Assert.Equal(0, world.ActiveCrabActors.Count);
+        Assert.Contains(crabActor.Id, world.PendingActorRemovals);
     }
 
     [Fact]
@@ -470,6 +479,10 @@ public class CrabFoodAndToolTests
     {
         var (world, pile) = MakeWorld();
         pile.AddSupply(1.0, () => new BaitSupply());
+
+        // A crab actor must be present for check to be offered.
+        var crabActor = IslandDomainPack.CreateCrabActorState(new ActorId("crab1"));
+        world.ActiveCrabActors.Add(crabActor);
 
         var trap  = new CrabTrapItem("crab_trap");
         trap.Quality = 100.0;
@@ -486,11 +499,15 @@ public class CrabFoodAndToolTests
         trap.AddCandidates(checkCtx, checkCandidates);
         var checkAction = checkCandidates.First(c => c.Action.Id.Value == "check_crab_trap");
 
-        // Failure tier
-        ((Action<EffectContext>)checkAction.EffectHandler!)(MakeEffectCtx(actor, world, RollOutcomeTier.Failure));
+        // Run PreAction (reserves crab) then EffectHandler with failure tier
+        var effectCtx = MakeEffectCtx(actor, world, RollOutcomeTier.Failure);
+        ((Func<EffectContext, bool>)checkAction.PreAction!)(effectCtx);
+        ((Action<EffectContext>)checkAction.EffectHandler!)(effectCtx);
 
         Assert.Equal(1, world.Metrics.CrabTrapChecks);
         Assert.Equal(0, world.Metrics.CrabTrapCatches); // no catch on failure
+        // The reserved crab was returned to ActiveCrabActors on failure
+        Assert.Equal(1, world.ActiveCrabActors.Count);
     }
 
     [Fact]
@@ -595,6 +612,9 @@ public class CrabFoodAndToolTests
 
         // Not baited — 0 food units
         Assert.Equal(0.0, ((IFoodSource)trap).GetAcquirableFoodUnits(actor, world));
+
+        // Add a crab actor (required for non-zero food units)
+        world.ActiveCrabActors.Add(IslandDomainPack.CreateCrabActorState(new ActorId("crab1")));
 
         // Bait the trap
         var baitCtx = MakeCtx(actor, world);
