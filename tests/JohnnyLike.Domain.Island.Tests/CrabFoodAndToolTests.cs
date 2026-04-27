@@ -423,7 +423,9 @@ public class CrabFoodAndToolTests
         var baitAction = candidates.FirstOrDefault(c => c.Action.Id.Value == "add_bait_to_crab_trap");
         Assert.NotNull(baitAction);
 
-        ((Action<EffectContext>)baitAction.EffectHandler!)(MakeEffectCtx(actor, world));
+        var effectCtx = MakeEffectCtx(actor, world);
+        ((Func<EffectContext, bool>)baitAction.PreAction!)(effectCtx);
+        ((Action<EffectContext>)baitAction.EffectHandler!)(effectCtx);
 
         Assert.Equal(1.0, pile.GetQuantity<BaitSupply>());
         Assert.True(trap.HasBait);
@@ -435,10 +437,6 @@ public class CrabFoodAndToolTests
         var (world, pile) = MakeWorld();
         pile.AddSupply(1.0, () => new BaitSupply());
 
-        // A crab actor must be present for the check to be offered and succeed.
-        var crabActor = IslandDomainPack.CreateCrabActorState(new ActorId("crab1"));
-        world.ActiveCrabActors.Add(crabActor);
-
         var trap  = new CrabTrapItem("crab_trap");
         trap.Quality = 100.0;
 
@@ -448,7 +446,11 @@ public class CrabFoodAndToolTests
         var baitCandidates = new List<ActionCandidate>();
         trap.AddCandidates(baitCtx, baitCandidates);
         var baitAction = baitCandidates.First(c => c.Action.Id.Value == "add_bait_to_crab_trap");
-        ((Action<EffectContext>)baitAction.EffectHandler!)(MakeEffectCtx(actor, world));
+
+        // Run PreAction (consumes bait) then EffectHandler (sets BaitCharges)
+        var baitEffectCtx = MakeEffectCtx(actor, world);
+        ((Func<EffectContext, bool>)baitAction.PreAction!)(baitEffectCtx);
+        ((Action<EffectContext>)baitAction.EffectHandler!)(baitEffectCtx);
 
         Assert.True(trap.HasBait);
 
@@ -461,17 +463,15 @@ public class CrabFoodAndToolTests
         var checkAction = checkCandidates.FirstOrDefault(c => c.Action.Id.Value == "check_crab_trap");
         Assert.NotNull(checkAction);
 
-        // Run PreAction (reserves the crab actor) then EffectHandler with success tier
-        var effectCtx = MakeEffectCtx(actor, world, RollOutcomeTier.Success);
-        ((Func<EffectContext, bool>)checkAction.PreAction!)(effectCtx);
-        ((Action<EffectContext>)checkAction.EffectHandler!)(effectCtx);
+        // Trap does NOT need active crab actors — pure passive yield model
+        Assert.Null(checkAction.PreAction);
+
+        // Run check with a success tier
+        ((Action<EffectContext>)checkAction.EffectHandler!)(MakeEffectCtx(actor, world, RollOutcomeTier.Success));
 
         Assert.Equal(1, world.Metrics.CrabTrapChecks);
         Assert.Equal(1, world.Metrics.CrabTrapCatches);
         Assert.Equal(1.0, pile.GetQuantity<CrabSupply>());
-        // The reserved crab actor is now in PendingActorRemovals, not in ActiveCrabActors
-        Assert.Equal(0, world.ActiveCrabActors.Count);
-        Assert.Contains(crabActor.Id, world.PendingActorRemovals);
     }
 
     [Fact]
@@ -479,10 +479,6 @@ public class CrabFoodAndToolTests
     {
         var (world, pile) = MakeWorld();
         pile.AddSupply(1.0, () => new BaitSupply());
-
-        // A crab actor must be present for check to be offered.
-        var crabActor = IslandDomainPack.CreateCrabActorState(new ActorId("crab1"));
-        world.ActiveCrabActors.Add(crabActor);
 
         var trap  = new CrabTrapItem("crab_trap");
         trap.Quality = 100.0;
@@ -492,22 +488,20 @@ public class CrabFoodAndToolTests
         var baitCandidates = new List<ActionCandidate>();
         trap.AddCandidates(baitCtx, baitCandidates);
         var baitAction = baitCandidates.First(c => c.Action.Id.Value == "add_bait_to_crab_trap");
-        ((Action<EffectContext>)baitAction.EffectHandler!)(MakeEffectCtx(actor, world));
+        var baitEffectCtx = MakeEffectCtx(actor, world);
+        ((Func<EffectContext, bool>)baitAction.PreAction!)(baitEffectCtx);
+        ((Action<EffectContext>)baitAction.EffectHandler!)(baitEffectCtx);
 
         var checkCtx = new IslandContext(actor.Id, actor, world, CrabTrapItem.MinSoakTicks * 2, new RandomRngStream(new Random(1)), new Random(1), _noReservations);
         var checkCandidates = new List<ActionCandidate>();
         trap.AddCandidates(checkCtx, checkCandidates);
         var checkAction = checkCandidates.First(c => c.Action.Id.Value == "check_crab_trap");
 
-        // Run PreAction (reserves crab) then EffectHandler with failure tier
-        var effectCtx = MakeEffectCtx(actor, world, RollOutcomeTier.Failure);
-        ((Func<EffectContext, bool>)checkAction.PreAction!)(effectCtx);
-        ((Action<EffectContext>)checkAction.EffectHandler!)(effectCtx);
+        // Failure tier
+        ((Action<EffectContext>)checkAction.EffectHandler!)(MakeEffectCtx(actor, world, RollOutcomeTier.Failure));
 
         Assert.Equal(1, world.Metrics.CrabTrapChecks);
         Assert.Equal(0, world.Metrics.CrabTrapCatches); // no catch on failure
-        // The reserved crab was returned to ActiveCrabActors on failure
-        Assert.Equal(1, world.ActiveCrabActors.Count);
     }
 
     [Fact]
@@ -570,7 +564,9 @@ public class CrabFoodAndToolTests
         var baitCandidates = new List<ActionCandidate>();
         trap.AddCandidates(baitCtx, baitCandidates);
         var baitAction = baitCandidates.First(c => c.Action.Id.Value == "add_bait_to_crab_trap");
-        ((Action<EffectContext>)baitAction.EffectHandler!)(MakeEffectCtx(actor, world));
+        var baitEffectCtx = MakeEffectCtx(actor, world);
+        ((Func<EffectContext, bool>)baitAction.PreAction!)(baitEffectCtx);
+        ((Action<EffectContext>)baitAction.EffectHandler!)(baitEffectCtx);
 
         Assert.True(trap.HasBait);
 
@@ -613,15 +609,14 @@ public class CrabFoodAndToolTests
         // Not baited — 0 food units
         Assert.Equal(0.0, ((IFoodSource)trap).GetAcquirableFoodUnits(actor, world));
 
-        // Add a crab actor (required for non-zero food units)
-        world.ActiveCrabActors.Add(IslandDomainPack.CreateCrabActorState(new ActorId("crab1")));
-
-        // Bait the trap
+        // Bait the trap (no active crab actors required)
         var baitCtx = MakeCtx(actor, world);
         var baitCandidates = new List<ActionCandidate>();
         trap.AddCandidates(baitCtx, baitCandidates);
         var baitAction = baitCandidates.First(c => c.Action.Id.Value == "add_bait_to_crab_trap");
-        ((Action<EffectContext>)baitAction.EffectHandler!)(MakeEffectCtx(actor, world));
+        var baitEffectCtx = MakeEffectCtx(actor, world);
+        ((Func<EffectContext, bool>)baitAction.PreAction!)(baitEffectCtx);
+        ((Action<EffectContext>)baitAction.EffectHandler!)(baitEffectCtx);
 
         Assert.True(((IFoodSource)trap).GetAcquirableFoodUnits(actor, world) > 0.0);
     }
@@ -698,7 +693,9 @@ public class CrabFoodAndToolTests
         var baitAction = candidates.FirstOrDefault(c => c.Action.Id.Value == "add_bait_to_fishing_net");
         Assert.NotNull(baitAction);
 
-        ((Action<EffectContext>)baitAction.EffectHandler!)(MakeEffectCtx(actor, world));
+        var effectCtx = MakeEffectCtx(actor, world);
+        ((Func<EffectContext, bool>)baitAction.PreAction!)(effectCtx);
+        ((Action<EffectContext>)baitAction.EffectHandler!)(effectCtx);
 
         Assert.Equal(1.0, pile.GetQuantity<BaitSupply>());
         Assert.True(net.HasBait);
@@ -759,7 +756,9 @@ public class CrabFoodAndToolTests
         var baitCandidates = new List<ActionCandidate>();
         net.AddCandidates(baitCtx, baitCandidates);
         var baitAction = baitCandidates.First(c => c.Action.Id.Value == "add_bait_to_fishing_net");
-        ((Action<EffectContext>)baitAction.EffectHandler!)(MakeEffectCtx(actor, world));
+        var baitEffectCtx = MakeEffectCtx(actor, world);
+        ((Func<EffectContext, bool>)baitAction.PreAction!)(baitEffectCtx);
+        ((Action<EffectContext>)baitAction.EffectHandler!)(baitEffectCtx);
 
         Assert.True(net.HasBait);
 
@@ -798,7 +797,9 @@ public class CrabFoodAndToolTests
         var baitCandidates = new List<ActionCandidate>();
         net.AddCandidates(baitCtx, baitCandidates);
         var baitAction = baitCandidates.First(c => c.Action.Id.Value == "add_bait_to_fishing_net");
-        ((Action<EffectContext>)baitAction.EffectHandler!)(MakeEffectCtx(actor, world));
+        var baitEffectCtx = MakeEffectCtx(actor, world);
+        ((Func<EffectContext, bool>)baitAction.PreAction!)(baitEffectCtx);
+        ((Action<EffectContext>)baitAction.EffectHandler!)(baitEffectCtx);
 
         Assert.True(((IFoodSource)net).GetAcquirableFoodUnits(actor, world) > 0.0);
     }
@@ -881,5 +882,269 @@ public class CrabFoodAndToolTests
         var actor  = MakeHuman();
         var recipe = IslandRecipeRegistry.Get("cook_fish");
         Assert.True(recipe.Discovery!.CanDiscover(actor, world));
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // New tests: bait PreAction, null-pile metrics, passive trap model,
+    // known-recipe candidate paths
+    // ════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void CrabTrap_BaitNotSet_WhenBaitAlreadyConsumed()
+    {
+        // If another action drained the bait before PreAction runs, bait is not set.
+        var (world, pile) = MakeWorld();
+        pile.AddSupply(1.0, () => new BaitSupply());
+
+        var trap  = new CrabTrapItem("crab_trap");
+        var actor = MakeHuman();
+        var ctx   = MakeCtx(actor, world);
+
+        var candidates = new List<ActionCandidate>();
+        trap.AddCandidates(ctx, candidates);
+
+        var baitAction = candidates.First(c => c.Action.Id.Value == "add_bait_to_crab_trap");
+
+        // Drain the pile before PreAction runs (simulates race)
+        pile.TryConsumeSupply<BaitSupply>(1.0);
+
+        var effectCtx = MakeEffectCtx(actor, world);
+        var preActionOk = ((Func<EffectContext, bool>)baitAction.PreAction!)(effectCtx);
+
+        Assert.False(preActionOk);    // PreAction should have failed
+        Assert.False(trap.HasBait);   // BaitCharges must NOT have been set
+    }
+
+    [Fact]
+    public void FishingNet_BaitNotSet_WhenBaitAlreadyConsumed()
+    {
+        var (world, pile) = MakeWorld();
+        pile.AddSupply(1.0, () => new BaitSupply());
+
+        var net   = new FishingNetItem("fishing_net");
+        var actor = MakeHuman();
+        var ctx   = MakeCtx(actor, world);
+
+        var candidates = new List<ActionCandidate>();
+        net.AddCandidates(ctx, candidates);
+
+        var baitAction = candidates.First(c => c.Action.Id.Value == "add_bait_to_fishing_net");
+
+        // Drain the pile before PreAction runs
+        pile.TryConsumeSupply<BaitSupply>(1.0);
+
+        var effectCtx = MakeEffectCtx(actor, world);
+        var preActionOk = ((Func<EffectContext, bool>)baitAction.PreAction!)(effectCtx);
+
+        Assert.False(preActionOk);
+        Assert.False(net.HasBait);
+    }
+
+    [Fact]
+    public void CrabTrap_OffersCheckWithNoCrabActors_PassiveModel()
+    {
+        // The trap should offer check_crab_trap even when there are no active crab
+        // actors — it is a passive yield model driven by bait + soak + quality alone.
+        var (world, pile) = MakeWorld();
+        pile.AddSupply(1.0, () => new BaitSupply());
+
+        Assert.Equal(0, world.ActiveCrabActors.Count); // explicitly no active crabs
+
+        var trap  = new CrabTrapItem("crab_trap");
+        trap.Quality = 100.0;
+
+        var actor = MakeHuman();
+        var baitCtx = MakeCtx(actor, world, 0L);
+        var baitCandidates = new List<ActionCandidate>();
+        trap.AddCandidates(baitCtx, baitCandidates);
+        var baitAction = baitCandidates.First(c => c.Action.Id.Value == "add_bait_to_crab_trap");
+        var baitEffectCtx = MakeEffectCtx(actor, world);
+        ((Func<EffectContext, bool>)baitAction.PreAction!)(baitEffectCtx);
+        ((Action<EffectContext>)baitAction.EffectHandler!)(baitEffectCtx);
+
+        // Now check after sufficient soak time
+        var checkCtx = MakeCtx(actor, world, CrabTrapItem.MinSoakTicks * 2);
+        var checkCandidates = new List<ActionCandidate>();
+        trap.AddCandidates(checkCtx, checkCandidates);
+
+        Assert.Contains(checkCandidates, c => c.Action.Id.Value == "check_crab_trap");
+    }
+
+    [Fact]
+    public void CrabTrap_StillUsable_AfterOriginalCrabWasCaughtToUnlockRecipe()
+    {
+        // Simulates: crab caught → CrabSupply unlocks recipe → trap built → original
+        // crab actor removed → baited trap can STILL yield crab (passive model).
+        var (world, pile) = MakeWorld();
+
+        // The original crab was caught (CrabSupply in pile), which unlocked the recipe.
+        pile.AddSupply(1.0, () => new CrabSupply());
+        pile.AddSupply(1.0, () => new BaitSupply());
+
+        // No active crabs left (the original was consumed)
+        Assert.Equal(0, world.ActiveCrabActors.Count);
+
+        var trap  = new CrabTrapItem("crab_trap");
+        trap.Quality = 100.0;
+
+        var actor  = MakeHuman();
+        var baitCtx = MakeCtx(actor, world, 0L);
+        var baitCandidates = new List<ActionCandidate>();
+        trap.AddCandidates(baitCtx, baitCandidates);
+        var baitAction = baitCandidates.First(c => c.Action.Id.Value == "add_bait_to_crab_trap");
+        var baitEffectCtx = MakeEffectCtx(actor, world);
+        ((Func<EffectContext, bool>)baitAction.PreAction!)(baitEffectCtx);
+        ((Action<EffectContext>)baitAction.EffectHandler!)(baitEffectCtx);
+
+        var longSoakTick = CrabTrapItem.MinSoakTicks * 3;
+        var checkCtx = MakeCtx(actor, world, longSoakTick);
+        var checkCandidates = new List<ActionCandidate>();
+        trap.AddCandidates(checkCtx, checkCandidates);
+
+        // Trap should still offer check_crab_trap
+        var checkAction = checkCandidates.FirstOrDefault(c => c.Action.Id.Value == "check_crab_trap");
+        Assert.NotNull(checkAction);
+
+        ((Action<EffectContext>)checkAction.EffectHandler!)(MakeEffectCtx(actor, world, RollOutcomeTier.Success));
+
+        // Should have produced another CrabSupply
+        Assert.Equal(2.0, pile.GetQuantity<CrabSupply>());
+        Assert.Equal(1, world.Metrics.CrabTrapCatches);
+    }
+
+    [Fact]
+    public void FishingNet_CatchMetrics_NotIncremented_WhenSharedPileIsNull()
+    {
+        // Metrics should only increment when fish are actually committed to the pile.
+        // Use a world with no shared supply pile to simulate the null-pile path.
+        var world = new IslandWorldState();
+        world.WorldItems.Add(new CalendarItem("calendar"));
+        world.WorldItems.Add(new WeatherItem("weather"));
+
+        // Add ocean with fish
+        var ocean = new OceanItem("ocean");
+        ((ISupplyBounty)ocean).AddSupply(10.0, () => new FishSupply());
+        world.WorldItems.Add(ocean);
+
+        // No shared supply pile → SharedSupplyPile is null
+
+        var net = new FishingNetItem("fishing_net");
+        net.Quality = 100.0;
+
+        // Manually set bait state (bypass bait action since there's no pile to check)
+        var actor = MakeHuman();
+        // Use reflection-free approach: just ensure HasBait is set via public API
+        // by temporarily adding and removing a pile just for baiting
+        var tempPile = new SupplyPile("shared_supplies", "shared");
+        world.WorldItems.Add(tempPile);
+        tempPile.AddSupply(1.0, () => new BaitSupply());
+
+        var baitCtx = MakeCtx(actor, world, 0L);
+        var baitCandidates = new List<ActionCandidate>();
+        net.AddCandidates(baitCtx, baitCandidates);
+        var baitAction = baitCandidates.First(c => c.Action.Id.Value == "add_bait_to_fishing_net");
+        var baitEffectCtx = MakeEffectCtx(actor, world);
+        ((Func<EffectContext, bool>)baitAction.PreAction!)(baitEffectCtx);
+        ((Action<EffectContext>)baitAction.EffectHandler!)(baitEffectCtx);
+        Assert.True(net.HasBait);
+
+        // Now remove the pile so SharedSupplyPile is null
+        world.WorldItems.Remove(tempPile);
+
+        var checkCtx = MakeCtx(actor, world, FishingNetItem.MinSoakTicks * 2);
+        var checkCandidates = new List<ActionCandidate>();
+        net.AddCandidates(checkCtx, checkCandidates);
+        var checkAction = checkCandidates.FirstOrDefault(c => c.Action.Id.Value == "check_fishing_net");
+        Assert.NotNull(checkAction);
+
+        var actorKey = actor.Id.Value;
+        var oceanBounty = (ISupplyBounty)ocean;
+
+        // Run PreAction to reserve fish
+        var checkEffectCtx = MakeEffectCtx(actor, world, RollOutcomeTier.Success);
+        ((Func<EffectContext, bool>)checkAction.PreAction!)(checkEffectCtx);
+
+        // Run effect — pile is null so fish are released, metrics should NOT increment
+        ((Action<EffectContext>)checkAction.EffectHandler!)(checkEffectCtx);
+
+        Assert.Equal(0, world.Metrics.FishingNetCatches);
+        Assert.Equal(0, world.Metrics.FishCaught);
+    }
+
+    [Fact]
+    public void CrabTrap_CatchMetrics_NotIncremented_WhenSharedPileIsNull()
+    {
+        // CrabTrapCatches should only increment when CrabSupply is actually added.
+        var world = new IslandWorldState();
+        world.WorldItems.Add(new CalendarItem("calendar"));
+        world.WorldItems.Add(new WeatherItem("weather"));
+
+        var net = new CrabTrapItem("crab_trap");
+        net.Quality = 100.0;
+
+        var actor = MakeHuman();
+
+        // Temporarily add a pile to bait the trap
+        var tempPile = new SupplyPile("shared_supplies", "shared");
+        world.WorldItems.Add(tempPile);
+        tempPile.AddSupply(1.0, () => new BaitSupply());
+
+        var baitCtx = MakeCtx(actor, world, 0L);
+        var baitCandidates = new List<ActionCandidate>();
+        net.AddCandidates(baitCtx, baitCandidates);
+        var baitAction = baitCandidates.First(c => c.Action.Id.Value == "add_bait_to_crab_trap");
+        var baitEffectCtx = MakeEffectCtx(actor, world);
+        ((Func<EffectContext, bool>)baitAction.PreAction!)(baitEffectCtx);
+        ((Action<EffectContext>)baitAction.EffectHandler!)(baitEffectCtx);
+        Assert.True(net.HasBait);
+
+        // Remove the pile so SharedSupplyPile is null during check
+        world.WorldItems.Remove(tempPile);
+
+        var checkCtx = MakeCtx(actor, world, CrabTrapItem.MinSoakTicks * 3);
+        var checkCandidates = new List<ActionCandidate>();
+        net.AddCandidates(checkCtx, checkCandidates);
+        var checkAction = checkCandidates.FirstOrDefault(c => c.Action.Id.Value == "check_crab_trap");
+        Assert.NotNull(checkAction);
+
+        ((Action<EffectContext>)checkAction.EffectHandler!)(MakeEffectCtx(actor, world, RollOutcomeTier.Success));
+
+        // Catch metric should NOT have incremented since supply was not produced
+        Assert.Equal(0, world.Metrics.CrabTrapCatches);
+        Assert.Equal(1, world.Metrics.CrabTrapChecks); // Check still happened
+    }
+
+    [Fact]
+    public void CookFish_KnownRecipe_IsReachable_ThroughCandidateGeneration()
+    {
+        var (world, pile) = MakeWorld();
+        world.MainCampfire!.FuelSeconds = 600;
+        pile.AddSupply(3.0, () => new FishSupply());
+
+        var actor = MakeHuman();
+        actor.KnownRecipeIds.Add("cook_fish");
+
+        var ctx        = MakeCtx(actor, world);
+        var candidates = new List<ActionCandidate>();
+        actor.AddCandidates(ctx, candidates);
+
+        Assert.Contains(candidates, c => c.Action.Id.Value == "cook_fish");
+    }
+
+    [Fact]
+    public void CookCrab_KnownRecipe_IsReachable_ThroughCandidateGeneration()
+    {
+        var (world, pile) = MakeWorld();
+        world.MainCampfire!.FuelSeconds = 600;
+        pile.AddSupply(2.0, () => new CrabSupply());
+
+        var actor = MakeHuman();
+        actor.KnownRecipeIds.Add("cook_crab");
+
+        var ctx        = MakeCtx(actor, world);
+        var candidates = new List<ActionCandidate>();
+        actor.AddCandidates(ctx, candidates);
+
+        Assert.Contains(candidates, c => c.Action.Id.Value == "cook_crab");
     }
 }

@@ -76,12 +76,16 @@ public class CrabTrapItem : ToolItem, IFoodSource
                 ),
                 0.15,
                 Reason: "Bait the crab trap",
+                PreAction: new Func<EffectContext, bool>(effectCtx =>
+                {
+                    // Consume the bait atomically before the action duration starts so
+                    // a concurrent actor cannot claim the same bait charge.
+                    var pile = effectCtx.World.SharedSupplyPile;
+                    return pile != null && pile.TryConsumeSupply<BaitSupply>(1.0);
+                }),
                 EffectHandler: (Action<EffectContext>)(effectCtx =>
                 {
-                    var pile = effectCtx.World.SharedSupplyPile;
-                    if (pile == null) return;
-                    pile.TryConsumeSupply<BaitSupply>(1.0);
-                    BaitCharges = 1;
+                    BaitCharges    = 1;
                     LastBaitedTick = effectCtx.World.CurrentTick;
                     effectCtx.SetOutcomeNarration($"{effectCtx.ActorId.Value} baits the crab trap and sets it in a promising spot.");
                 }),
@@ -95,23 +99,20 @@ public class CrabTrapItem : ToolItem, IFoodSource
         }
 
         // ── check_crab_trap ───────────────────────────────────────────────────
-        var activeCrabs = ctx.World.ActiveCrabActors.Count;
-        if (!IsBroken && Quality > MinUsableQualityThreshold && HasBait && activeCrabs > 0)
+        // Passive model: bait + soak time + quality determine catch chance.
+        // Does not require an active crab actor — the trap catches from the
+        // ambient crab population independently of the actor-lifecycle system.
+        if (!IsBroken && Quality > MinUsableQualityThreshold && HasBait)
         {
             var elapsedTicks = ctx.NowTick - (LastBaitedTick ?? ctx.NowTick);
             var soakFactor   = Math.Min(1.0, (double)elapsedTicks / MinSoakTicks);
 
-            // Catch chance: quality (0-1) * soak factor * modest base chance
+            // Catch DC decreases the longer the trap has been soaking (DC 10–14).
             // Crab is premium, so keep catches relatively rare.
-            var catchDC  = 14 - (int)(soakFactor * 4.0); // DC 10–14 depending on soak time
+            var catchDC = 14 - (int)(soakFactor * 4.0);
             if (Quality < 50.0) catchDC += 2;
 
             var parameters = ctx.RollSkillCheck(SkillType.Survival, catchDC);
-
-            // Reservation slot for the tentatively-claimed crab actor — mirrors the
-            // fishing net's ocean.ReserveSupply approach so two actors cannot claim
-            // the same crab concurrently.
-            CrabActorState? reservedCrab = null;
 
             output.Add(new ActionCandidate(
                 new ActionSpec(
@@ -123,16 +124,7 @@ public class CrabTrapItem : ToolItem, IFoodSource
                     ResultData: parameters.ToResultData()
                 ),
                 0.18,
-                Reason: $"Check crab trap (bait: {BaitCharges}, soak: {soakFactor:P0}, crabs nearby: {activeCrabs}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
-                PreAction: new Func<EffectContext, bool>(effectCtx =>
-                {
-                    // Tentatively claim one active crab — mirrors ocean.ReserveSupply.
-                    var crab = effectCtx.World.ActiveCrabActors.FirstOrDefault();
-                    if (crab == null) return false;
-                    effectCtx.World.ActiveCrabActors.Remove(crab);
-                    reservedCrab = crab;
-                    return true;
-                }),
+                Reason: $"Check crab trap (bait: {BaitCharges}, soak: {soakFactor:P0}, rolled {parameters.Result.Total}, {parameters.Result.OutcomeTier})",
                 EffectHandler: (Action<EffectContext>)(effectCtx =>
                 {
                     effectCtx.World.Metrics.CrabTrapChecks++;
@@ -141,26 +133,22 @@ public class CrabTrapItem : ToolItem, IFoodSource
                     // Apply active-use quality reduction
                     Quality = Math.Max(0.0, Quality - 1.5);
 
-                    if (effectCtx.Tier == null || effectCtx.Tier.Value < RollOutcomeTier.PartialSuccess || reservedCrab == null)
+                    if (effectCtx.Tier == null || effectCtx.Tier.Value < RollOutcomeTier.PartialSuccess)
                     {
-                        // No catch — return reserved crab to the world and consume bait.
-                        if (reservedCrab != null)
-                            effectCtx.World.ActiveCrabActors.Add(reservedCrab);
+                        // No catch — bait consumed anyway (crab escaped or wasn't lured)
                         BaitCharges = 0;
                         effectCtx.SetOutcomeNarration($"{effectCtx.ActorId.Value} checks the trap — empty. The bait is gone.");
                         return;
                     }
 
-                    // Success: permanently consume the reserved crab actor (mirrors CommitReservation).
-                    effectCtx.World.PendingActorRemovals.Add(reservedCrab.Id);
-
                     var pile = effectCtx.World.SharedSupplyPile;
                     if (pile != null)
+                    {
                         pile.AddSupply(1.0, () => new CrabSupply());
+                        effectCtx.World.Metrics.CrabTrapCatches++;
+                    }
 
-                    effectCtx.World.Metrics.CrabTrapCatches++;
                     BaitCharges = 0;
-
                     effectCtx.Actor.Morale += 6.0;
                     effectCtx.SetOutcomeNarration(
                         $"{effectCtx.ActorId.Value} checks the crab trap and finds a crab inside!");
@@ -231,13 +219,10 @@ public class CrabTrapItem : ToolItem, IFoodSource
         }
     }
 
-    // IFoodSource: a baited, usable trap may yield crab soon — but only if crabs are nearby.
+    // IFoodSource: a baited, usable trap may yield crab soon.
     double IFoodSource.GetAcquirableFoodUnits(HumanActorState actor, IslandWorldState world)
     {
         if (IsBroken || Quality <= MinUsableQualityThreshold || !HasBait)
-            return 0.0;
-
-        if (world.ActiveCrabActors.Count == 0)
             return 0.0;
 
         return 0.5; // Half a unit — crab is premium but catch is probabilistic

@@ -77,12 +77,16 @@ public class FishingNetItem : ToolItem, IFoodSource
                 ),
                 0.15,
                 Reason: "Bait the fishing net",
+                PreAction: new Func<EffectContext, bool>(effectCtx =>
+                {
+                    // Consume the bait atomically before the action duration starts so
+                    // a concurrent actor cannot claim the same bait charge.
+                    var pile = effectCtx.World.SharedSupplyPile;
+                    return pile != null && pile.TryConsumeSupply<BaitSupply>(1.0);
+                }),
                 EffectHandler: (Action<EffectContext>)(effectCtx =>
                 {
-                    var pile = effectCtx.World.SharedSupplyPile;
-                    if (pile == null) return;
-                    pile.TryConsumeSupply<BaitSupply>(1.0);
-                    BaitCharges = 1;
+                    BaitCharges    = 1;
                     LastBaitedTick = effectCtx.World.CurrentTick;
                     effectCtx.SetOutcomeNarration($"{effectCtx.ActorId.Value} baits and deploys the fishing net in the shallows.");
                 }),
@@ -159,14 +163,13 @@ public class FishingNetItem : ToolItem, IFoodSource
                         {
                             fishCtx.Source.CommitReservation<FishSupply>(
                                 fishCtx.ReservationKey, commitFish, pile, () => new FishSupply());
+                            effectCtx.World.Metrics.FishingNetCatches++;
+                            effectCtx.World.Metrics.FishCaught += (int)commitFish;
                         }
                         else
                         {
                             fishCtx.Source.ReleaseReservation(fishCtx.ReservationKey);
                         }
-
-                        effectCtx.World.Metrics.FishingNetCatches++;
-                        effectCtx.World.Metrics.FishCaught += (int)commitFish;
 
                         effectCtx.Actor.Morale += 8.0;
                         effectCtx.SetOutcomeNarration(
