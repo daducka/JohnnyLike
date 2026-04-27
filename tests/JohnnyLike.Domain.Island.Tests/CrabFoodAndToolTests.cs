@@ -948,7 +948,7 @@ public class CrabFoodAndToolTests
         var (world, pile) = MakeWorld();
         pile.AddSupply(1.0, () => new BaitSupply());
 
-        Assert.Equal(0, world.ActiveCrabActors.Count); // explicitly no active crabs
+        Assert.Empty(world.ActiveCrabActors); // explicitly no active crabs
 
         var trap  = new CrabTrapItem("crab_trap");
         trap.Quality = 100.0;
@@ -982,7 +982,7 @@ public class CrabFoodAndToolTests
         pile.AddSupply(1.0, () => new BaitSupply());
 
         // No active crabs left (the original was consumed)
-        Assert.Equal(0, world.ActiveCrabActors.Count);
+        Assert.Empty(world.ActiveCrabActors);
 
         var trap  = new CrabTrapItem("crab_trap");
         trap.Quality = 100.0;
