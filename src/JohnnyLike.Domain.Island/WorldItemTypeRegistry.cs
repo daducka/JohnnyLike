@@ -25,6 +25,8 @@ public static class WorldItemTypeRegistry
             ["palm_frond_blanket"]  = id => new PalmFrondBlanketItem(id),
             ["palm_frond_bed"]      = id => new PalmFrondBedItem(id),
             ["fishing_pole"]   = id => new FishingPoleItem(id),
+            ["crab_trap"]      = id => new CrabTrapItem(id),
+            ["fishing_net"]    = id => new FishingNetItem(id),
             ["treasure_chest"] = id => new TreasureChestItem(id),
             ["shark"]          = id => new SharkItem(id),
             ["supply_pile"]    = id => new SupplyPile(id),

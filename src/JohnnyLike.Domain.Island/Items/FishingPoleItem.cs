@@ -134,6 +134,7 @@ public class FishingPoleItem : ToolItem, IFoodSource
                                 // CommitReservation returns any remainder (e.g. reserved 2, committed 1)
                                 var commitFish = tier == RollOutcomeTier.CriticalSuccess ? 2.0 : 1.0;
                                 src.CommitReservation<FishSupply>(key, commitFish, sharedPile, () => new FishSupply());
+                                effectCtx.World.Metrics.FishCaught += (int)commitFish;
                             }
                             else
                             {
