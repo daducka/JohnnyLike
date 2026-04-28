@@ -38,6 +38,8 @@ public static class WorldItemTypeRegistry
             ["ocean"]          = id => new OceanItem(id),
             ["stalactite"]     = id => new StalactiteItem(id),
             ["corpse"]         = id => new CorpseItem(id),
+            ["loot_item"]      = id => new LootItem(id),
+            ["broken_radio"]   = id => new BrokenRadioItem(id),
         };
 
     /// <summary>

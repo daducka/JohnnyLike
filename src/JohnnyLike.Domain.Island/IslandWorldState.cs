@@ -1,4 +1,5 @@
 using JohnnyLike.Domain.Abstractions;
+using JohnnyLike.Domain.Island.Events;
 using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Island.Supply;
 using System.Text.Json;
@@ -15,6 +16,9 @@ public class IslandWorldState : WorldState
 
     /// <summary>Centralized simulation counters for recipe triggers, debugging, and analytics.</summary>
     public IslandMetrics Metrics { get; set; } = new();
+
+    /// <summary>Tracks progress of all world event scripts (chapters triggered, last-checked ticks).</summary>
+    public WorldEventProgress EventProgress { get; set; } = new();
 
     public CampfireItem? MainCampfire => WorldItems.OfType<CampfireItem>().FirstOrDefault();
     public TreasureChestItem? TreasureChest => WorldItems.OfType<TreasureChestItem>().FirstOrDefault();
@@ -119,6 +123,15 @@ public class IslandWorldState : WorldState
         AddItemToRoom(roomId, item.Id);
     }
 
+    /// <summary>Removes a world item from <see cref="WorldItems"/> and room membership.</summary>
+    public void RemoveWorldItem(string itemId)
+    {
+        var item = WorldItems.FirstOrDefault(i => i.Id == itemId);
+        if (item != null)
+            WorldItems.Remove(item);
+        RemoveItemFromRooms(itemId);
+    }
+
     public override string Serialize()
     {
         var serializedItems = WorldItems.Select(item => item.SerializeToDict()).ToList();
@@ -138,7 +151,8 @@ public class IslandWorldState : WorldState
             CurrentTick,
             WorldItems = serializedItems,
             Rooms = roomData,
-            Metrics = Metrics.SerializeToDict()
+            Metrics = Metrics.SerializeToDict(),
+            EventProgress = EventProgress.SerializeToDict()
         }, options);
     }
 
@@ -192,6 +206,13 @@ public class IslandWorldState : WorldState
             var metricsData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(metricsElement.GetRawText());
             if (metricsData != null)
                 Metrics.DeserializeFromDict(metricsData);
+        }
+
+        if (data.TryGetValue("EventProgress", out var eventProgressEl))
+        {
+            var epData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(eventProgressEl.GetRawText());
+            if (epData != null)
+                EventProgress.DeserializeFromDict(epData);
         }
     }
 }

@@ -78,6 +78,24 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty, IIsl
     }
 
     /// <summary>
+    /// Adds <paramref name="quantity"/> to a supply by matching type string,
+    /// creating and inserting the supplied template if no matching entry exists.
+    /// </summary>
+    public void AddSupplyItem(SupplyItem supplyTemplate, double quantity)
+    {
+        var existing = Supplies.FirstOrDefault(s => s.Type == supplyTemplate.Type);
+        if (existing != null)
+        {
+            existing.Quantity += quantity;
+        }
+        else
+        {
+            supplyTemplate.Quantity = quantity;
+            Supplies.Add(supplyTemplate);
+        }
+    }
+
+    /// <summary>
     /// Attempts to consume a specific quantity of a supply
     /// Returns true if successful, false if insufficient quantity
     /// </summary>
@@ -309,6 +327,7 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty, IIsl
                         "supply_carcass_scraps"  => new CarcassScrapsSupply(id),
                         "supply_bait"            => new BaitSupply(id),
                         "supply_shells"          => new ShellSupply(id),
+                        "supply_metal_scrap"     => new MetalScrapSupply(id),
                         _ => null
                     };
 
