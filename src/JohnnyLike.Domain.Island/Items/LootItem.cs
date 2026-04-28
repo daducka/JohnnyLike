@@ -56,8 +56,8 @@ public class LootItem : WorldItem, IIslandActionCandidate
 
                 IsConsumed = true;
 
-                var actorName = effectCtx.ActorId.Value;
-                var narration = def.SuccessNarration.Replace("{actor}", actorName);
+                var actorId = effectCtx.ActorId.Value;
+                var narration = def.SuccessNarration.Replace("{actor}", actorId);
 
                 var sharedPile = effectCtx.World.SharedSupplyPile;
                 foreach (var drop in def.Drops)
