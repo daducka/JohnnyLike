@@ -108,7 +108,7 @@ public class WreckageEventTests
     }
 
     [Fact]
-    public void Chapter1_Triggers_WhenDay3AndChancePassses()
+    public void Chapter1_Triggers_WhenDay3AndChancePasses()
     {
         var world = MakeWorldWithCalendarAndWeather(dayCount: 3);
         var progress = new WorldEventProgress();
