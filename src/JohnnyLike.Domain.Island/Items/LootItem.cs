@@ -13,6 +13,8 @@ namespace JohnnyLike.Domain.Island.Items;
 /// </summary>
 public class LootItem : WorldItem, IIslandActionCandidate
 {
+    private const string FallbackRoomId = "beach";
+
     public LootKind Kind { get; set; }
     public bool IsConsumed { get; set; } = false;
 
@@ -72,7 +74,7 @@ public class LootItem : WorldItem, IIslandActionCandidate
 
                         case WorldItemLootDrop worldDrop:
                             var newItem = worldDrop.Factory(worldDrop.ItemId);
-                            var roomId = effectCtx.World.GetItemRoomId(Id) ?? "beach";
+                            var roomId = effectCtx.World.GetItemRoomId(Id) ?? FallbackRoomId;
                             effectCtx.World.AddWorldItem(newItem, roomId);
                             break;
                     }

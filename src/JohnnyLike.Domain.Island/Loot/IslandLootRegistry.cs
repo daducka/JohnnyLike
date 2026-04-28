@@ -132,6 +132,6 @@ public static class IslandLootRegistry
                 "{actor} pries open the crate and takes stock of its contents."
         },
 
-        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, $"Unsupported LootKind: {kind}")
     };
 }

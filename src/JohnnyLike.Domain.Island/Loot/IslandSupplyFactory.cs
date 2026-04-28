@@ -14,6 +14,6 @@ public static class IslandSupplyFactory
         SupplyKind.Crab          => new CrabSupply(),
         SupplyKind.Bait          => new BaitSupply(),
         SupplyKind.CarcassScraps => new CarcassScrapsSupply(),
-        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, $"Unsupported SupplyKind: {kind}")
     };
 }

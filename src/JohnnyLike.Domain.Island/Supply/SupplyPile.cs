@@ -80,6 +80,8 @@ public class SupplyPile : WorldItem, IIslandActionCandidate, ISupplyBounty, IIsl
     /// <summary>
     /// Adds <paramref name="quantity"/> to a supply by matching type string,
     /// creating and inserting the supplied template if no matching entry exists.
+    /// When no matching supply exists this method takes ownership of
+    /// <paramref name="supplyTemplate"/> and adds it directly to the pile.
     /// </summary>
     public void AddSupplyItem(SupplyItem supplyTemplate, double quantity)
     {

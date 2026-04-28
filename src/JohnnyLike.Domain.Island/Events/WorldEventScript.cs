@@ -9,6 +9,8 @@ public abstract class WorldEventScript
 
     public void TryTick(IslandWorldState world, WorldEventProgress progress, long currentTick, Random rng)
     {
+        // Only one chapter triggers per tick to keep events sequential and
+        // prevent multiple simultaneous world-state changes in a single pass.
         foreach (var chapter in Chapters)
         {
             if (progress.HasTriggered(chapter.Id))
