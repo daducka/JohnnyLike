@@ -1,6 +1,7 @@
 using JohnnyLike.Domain.Abstractions;
 using JohnnyLike.Domain.Kit.Dice;
 using JohnnyLike.Domain.Island.Candidates;
+using JohnnyLike.Domain.Island.Events;
 using JohnnyLike.Domain.Island.Items;
 using JohnnyLike.Domain.Island.Metabolism;
 using JohnnyLike.Domain.Island.Supply;
@@ -14,6 +15,11 @@ public class IslandDomainPack : IDomainPack
 
     private static readonly IReadOnlyDictionary<ActorId, ActorState> EmptyActors =
         new Dictionary<ActorId, ActorState>();
+
+    private static readonly IReadOnlyList<WorldEventScript> _worldEventScripts =
+    [
+        new WreckageEventScript()
+    ];
 
     private readonly DecisionTuningProfile _profile;
 
@@ -1135,6 +1141,11 @@ public class IslandDomainPack : IDomainPack
                 mutableActors.Remove(actorId);
             islandWorld.PendingActorRemovals.Clear();
         }
+
+        // Tick world event scripts
+        var eventRng = new Random(unchecked((int)(currentTick ^ (currentTick >> 32)) * 2537 + 17));
+        foreach (var script in _worldEventScripts)
+            script.TryTick(islandWorld, islandWorld.EventProgress, currentTick, eventRng);
 
         return islandWorld.OnTickAdvanced(currentTick, resourceAvailability);
     }
